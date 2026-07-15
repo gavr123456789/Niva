@@ -47,26 +47,37 @@ enum TokenType =
   |Bang // !
   |Invalid // used for identifiers
 
+type SourceFile
+  path: String
+static fakeSourceFile = SourceFile path: ""
+//constructor SourceFile fake = SourceFile path: ""
+
+
 type Token
   kind: TokenType
   lexeme: String
   line: Int
   start: Int end: Int // at line
+  file: SourceFile
 
 Token toString = "$kind($lexeme)"
-Token toPosition = "testss.niva:" + line toString + ":" + start toString // TODO add file path
+Token toPosition = file path + ":" + line toString + ":" + start toString
+Token printGoLine-intoSb(sb): StringBuilder =
+  file path != "" ifTrue: [sb appendLine: ("//line " + file path + ":" + line toString)]
 
-constructor Token fake = Token
+static FAKE_TOKEN = Token
   kind: TokenType.Identifier
   lexeme: "FakeToken"
   line: 1
   start: 0 end: 1
+  file: fakeSourceFile
 
-constructor Token eof = Token
+static EOF_TOKEN = Token
   kind: TokenType.EndOfFile
   lexeme: ""
   line: 1
   start: 0 end: 1
+  file: fakeSourceFile
 
 extend Token [
   on isIdentifier =

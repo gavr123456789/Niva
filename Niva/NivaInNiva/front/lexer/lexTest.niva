@@ -257,3 +257,19 @@ Test enumDeclaration = [
                    TokenType.Identifier
                   }
 ]
+
+Test sourceFileInTokens = [
+  filePath = "src/mymodule.niva"
+  sf = SourceFile path: filePath
+  tokens = Lexer get-tokens: "x y z" file: sf
+
+  // all tokens (incl EOF) carry the same file path
+  tokens forEach: [it ->
+    Assert that: it file path equals: filePath
+  ]
+]
+
+Test sourceFileFakeIsUnknown = [
+  tokens = LexTest input: "hello"
+  Assert that: (tokens at: 0) file path equals: ""
+]
