@@ -47,6 +47,7 @@ constructor NivaCompiler [
         realJSPath = io currentDir + "/.niva_js"
         realIrPath = io currentDir + "/.niva_ir"
         realGoPath = io currentDir + "/.niva_go"
+        realCljPath = io currentDir + "/.niva_clj"
 
         generateJsFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realJSPath toPath)
@@ -75,10 +76,20 @@ constructor NivaCompiler [
             io writeFile file: destanation content: goContent
         ]
 
+        generateCljFromResolver = [res::ResolverHelper ->
+            FileSystem createDirectories: (realCljPath toPath)
+            irModule = res toIrModule
+            cljContent = CljBackend fullFromIrModule: irModule
+            destanation = realCljPath + "/main.clj"
+            io writeFile file: destanation content: cljContent
+            io writeFile file: realCljPath + "/deps.edn" content: "{:paths [\".\"]}\n"
+        ]
+
         backendStr =
           | backend
           | CompilerBackend.Go => "go"
           | CompilerBackend.Js => "js"
+          | CompilerBackend.Clj => "clj"
           | CompilerBackend.Lsp => TO DO: "no lsp binary"
 
         rootFile = path unpackOrValue: "main.niva"
@@ -134,6 +145,12 @@ constructor NivaCompiler [
                   // run with bun
                   pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
                   io runProgram args: {"bun" pathToEntryPoint}
+                ]
+              ]
+            | CompilerBackend.Clj => [
+                generateCljFromResolver res: resolver
+                option == CompilerOption.Run ifTrue: [
+                  io runProgramFromPath path: realCljPath args: {"bb" "-m" "main"} // "clojure" "-M" "-m" "main"
                 ]
               ]
             | CompilerBackend.Lsp => []
