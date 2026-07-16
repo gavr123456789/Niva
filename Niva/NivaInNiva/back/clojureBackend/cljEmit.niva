@@ -1,0 +1,561 @@
+// -----------------------------------------------------------------------------
+// Clojure backend: emitter
+// -----------------------------------------------------------------------------
+//
+// Design (kept intentionally small):
+//   * types    -> defrecord
+//   * unions   -> a defrecord per branch (dispatch by instance? in match)
+//   * enums    -> individual defs to distinct keywords
+//   * fns      -> defn
+//   * mut vars -> atoms; @x for reads, (reset! x v) for writes
+//   * blocks   -> single let with `_` bindings for side-effect statements
+//   * IrReturn -> supported only as the trailing statement; anywhere else it
+//                 explodes with `TO DO: "Clojure does not support ^"`
+//
+// error domains + IrSetField are intentionally rejected with TO DO for now.
+
+// ---------------------------------------------------------------------------
+// expression emission
+// ---------------------------------------------------------------------------
+
+extend IrExpr [
+  on toCljExpr(ctx): CljContext scope: CljScope -> String =
+    | this
+    | IrLiteralExpr => literal toCljLiteral
+    | IrVarRef      => [
+        safe = name cljSanitizeIdent
+        (scope isMut: name) ifTrue: ["@" + safe] ifFalse: [safe]
+      ]
+    | IrThisRef  => "this"
+    | IrFieldGet => [
+        recv = receiver toCljExpr: ctx scope: scope
+        "(:" + (field cljSanitizeIdent) + " " + recv + ")"
+      ]
+    | IrTypeRefExpr => ref cljTypeName
+    | IrOpBin => [
+        l = left  toCljExpr: ctx scope: scope
+        r = right toCljExpr: ctx scope: scope
+        // replace + for Strings to str
+        isStrPlus = (op == "+") && ((left typeRef typeId cljNormalizeTypeId) == "core_String")
+        isStrPlus
+          ifTrue:  ["(str " + l + " " + r + ")"]
+          ifFalse: ["(" + (op cljOperator) + " " + l + " " + r + ")"]
+      ]
+    | IrCall     => this callToCljExpr:  ctx scope: scope
+    | IrLambda   => this lambdaToCljExpr: ctx scope: scope
+    | IrBlockExpr => block toCljBlockExpr: ctx scope: scope
+    | IrMatchExpr => this matchToCljExpr: ctx scope: scope
+    | IrNewExpr   => [
+        name = "->" + (typeId cljNormalizeTypeId cljSanitizeIdent)
+        argsStr = args isNotEmpty
+          ifTrue: [" " + (args joinWith: " " transform: [it toCljExpr: ctx scope: scope])]
+          ifFalse: [""]
+        "(" + name + argsStr + ")"
+      ]
+    | IrCollectionLiteral => this collectionToCljExpr: ctx scope: scope
+
+  on isCljCallLike -> Bool =
+    | this
+    | IrCall | IrBlockExpr | IrMatchExpr => true
+    |=> false
+]
+
+// (isIrLambda is shared with the Go backend, defined in back/goBackend/goBack.niva)
+
+// ---------------------------------------------------------------------------
+// bind handling: `Bind emit:` / `Bind goCode:` -> template inlined at call site
+// ---------------------------------------------------------------------------
+
+IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String? = [
+  r = receiverType
+  | r
+  | null => [^ null]
+  |=> r typeId == "core_Bind"
+        ifFalse: [^ null]
+
+  msgNameLocalMaybe = msgName
+  | msgNameLocalMaybe
+  | null => [^ null]
+  |=> [
+    msgNameLocal = msgNameLocalMaybe
+    ^ | msgNameLocal
+    | "emit" | "goCode" => [
+        templateExpr = args first
+        templateExpr irStringLiteralValue unpackOrValue: (templateExpr toCljExpr: ctx scope: scope)
+      ]
+    | "emit__args" => [
+        templateExpr = args first
+        argsListExpr = args at: 1
+        template = templateExpr irStringLiteralValue unpackOrPANIC
+        items = argsListExpr irListLiteralItems
+        argsValues = items map: [it toCljExpr: ctx scope: scope]
+        template bindApply: argsValues
+      ]
+    | "emit__backend" => [
+        templateExpr = args first
+        backendExpr = args at: 1
+        backendName = backendExpr irStringLiteralValue unpackOrPANIC
+        (backendName == "clojure") || (backendName == "clj")
+          ifFalse: [^ ""]
+        templateExpr irStringLiteralValue unpackOrValue: (templateExpr toCljExpr: ctx scope: scope)
+      ]
+    | "emit__backend__args" => [
+        templateExpr = args first
+        backendExpr = args at: 1
+        argsListExpr = args at: 2
+        backendName = backendExpr irStringLiteralValue unpackOrPANIC
+        (backendName == "clojure") || (backendName == "clj")
+          ifFalse: [^ ""]
+        template = templateExpr irStringLiteralValue unpackOrPANIC
+        items = argsListExpr irListLiteralItems
+        argsValues = items map: [it toCljExpr: ctx scope: scope]
+        template bindApply: argsValues
+      ]
+    | "addImport" => [
+        importExpr = args first
+        importName = importExpr irStringLiteralValue unpackOrPANIC
+        ctx addImport: importName
+        ""
+      ]
+    | "addImport__backend" => [
+        importExpr = args first
+        backendExpr = args at: 1
+        isClj = backendExpr irStringLiteralValue
+                unpack: [(it == "clojure") || (it == "clj")]
+                or: false
+        isClj ifFalse: [^ ""]
+        importName = importExpr irStringLiteralValue unpackOrPANIC
+        ctx addImport: importName
+        ""
+      ]
+    |=> null
+  ]
+]
+
+// (irStringLiteralValue and irListLiteralItems are shared with the Go backend
+//  and defined in back/goBackend/goBack.niva)
+
+// ---------------------------------------------------------------------------
+// IrCall
+// ---------------------------------------------------------------------------
+
+IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  // new-style bind attached during IR generation
+  bind unpack: [bp ->
+    | bp
+    | IrBindByName => [
+        // .bind.niva by-name binds are Go-centric today. Treat the goPkg as the
+        // Clojure namespace so at least the call site produces a well-formed
+        // (ns/fn args...) call.
+        argsStr = args joinWith: " " transform: [it toCljExpr: ctx scope: scope]
+        pkgQ = bp goPkg
+        pkgQ != "" ifTrue: [ctx addImport: pkgQ]
+        argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
+        ^ "(" + pkgQ + "/" + (bp goName) + argsPart + ")"
+      ]
+    | IrBindEmit => [
+        bp goPkg unpack: [ctx addImport: it]
+        emitArgVals = args map: [it toCljExpr: ctx scope: scope]
+        ^ bp template bindApply0: emitArgVals
+      ]
+  ]
+
+  // legacy inline bind (Bind emit:/goCode:/...)
+  bindExpr = this tryCljBindExpr: ctx scope: scope
+  bindExpr != null ifTrue: [^ bindExpr unpackOrPANIC]
+
+  argsStr = args joinWith: " " transform: [it toCljExpr: ctx scope: scope]
+  argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
+
+  funcIdLocal = funcId
+  ^ | funcIdLocal
+    | null => [
+        calleeLocal = callee
+        | calleeLocal
+        | null => [TO DO: "IrCall without funcId must have callee"]
+        |=> [
+            calleeExpr = calleeLocal toCljExpr: ctx scope: scope
+            "(" + calleeExpr + argsPart + ")"
+          ]
+      ]
+    |=> [
+        declPkgLocal = declPkg unpackOrPANIC
+        declPkgLocal == "core"
+          ifTrue: [
+            ctx addImport: "niva.core"
+            msgNameLocal = msgName unpackOrPANIC
+            recvTypeLocal = receiverType unpackOrPANIC
+            coreFn = recvTypeLocal coreFuncNameFromCljCall: msgNameLocal
+            "(niva.core/" + coreFn + argsPart + ")"
+          ]
+          ifFalse: [
+            fn = funcIdLocal cljFuncIdToName
+            "(" + fn + argsPart + ")"
+          ]
+      ]
+]
+
+// ---------------------------------------------------------------------------
+// IrLambda
+// ---------------------------------------------------------------------------
+
+IrExpr lambdaToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  | this | IrLambda => [
+    argsStr = args joinWith: " " transform: [it name cljSanitizeIdent]
+
+    innerScope = scope copy
+    // lambda arg mutability is not tracked in IrArg, treat all as immutable locals
+
+    bodyStr = body toCljBlockBody: ctx scope: innerScope
+
+    ^ "(fn [" + argsStr + "] " + bodyStr + ")"
+  ] |=> [TO DO: "lambdaToCljExpr called on non-lambda"]
+]
+
+// ---------------------------------------------------------------------------
+// IrCollectionLiteral
+// ---------------------------------------------------------------------------
+
+IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> String =
+  | this kind
+  | IrCollectionKind.List => "[" + (items joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "]"
+  | IrCollectionKind.Set  => "#{" + (items joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
+  | IrCollectionKind.Map  => [
+      items count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
+      chunkedItems = items asSequence chunked: 2, toList
+      pairs = chunkedItems joinWith: " " transform: [chunk ->
+        key = chunk at: 0
+        value = chunk at: 1
+        (key toCljExpr: ctx scope: scope) + " " + (value toCljExpr: ctx scope: scope)
+      ]
+      "{" + pairs + "}"
+    ]
+
+// ---------------------------------------------------------------------------
+// IrMatchExpr
+// ---------------------------------------------------------------------------
+
+IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  subjectExpr = subject toCljExpr: ctx scope: scope
+  subjectName = "__cljSubject"
+  innerScope = scope copy
+
+  elseBranchLocal = elseBranch
+  hasElse = | elseBranchLocal | null => false |=> true
+
+  | kind
+  | IrMatchKind.ByError => [TO DO: "Clojure backend: match on errors is not implemented"]
+  | IrMatchKind.ByType  => [
+      // condp instance? subject Foo (let [alias subject] body) ...
+      sb = StringBuilder new
+      sb append: "(let ["
+      sb append: subjectName
+      sb append: " "
+      sb append: subjectExpr
+      sb append: "] (condp instance? "
+      sb append: subjectName
+      cases forEach: [c ->
+        typeStr = c assertedTypeRef unpack: [it cljTypeName]
+                                    or: (c condition toCljExpr: ctx scope: innerScope)
+        aliasName = typeAlias unpackOrValue: "it"
+        caseScope = innerScope copy
+        caseScope mutLocals remove: aliasName
+        bodyStr = c body toCljBlockBodyWithBind: ctx scope: caseScope
+                    bindName: aliasName bindValue: subjectName
+        sb append: " "
+        sb append: typeStr
+        sb append: " "
+        sb append: bodyStr
+      ]
+      | elseBranchLocal
+      | null => [ sb append: " (throw (ex-info \"no matching type\" {})))" ]
+      |=> [
+          elseBlock = elseBranchLocal
+          elseScope = innerScope copy
+          elseStr = elseBlock toCljBlockBody: ctx scope: elseScope
+          sb append: " "
+          sb append: elseStr
+          sb append: ")"
+        ]
+      sb append: ")"
+      ^ sb toString
+    ]
+  |=> [
+      // ByValue or ByBool -> cond chain
+      sb = StringBuilder new
+      sb append: "(let ["
+      sb append: subjectName
+      sb append: " "
+      sb append: subjectExpr
+      sb append: "] (cond"
+      cases forEach: [c ->
+        cond = c condition toCljExpr: ctx scope: innerScope
+        guardStr = c additionalConditions isNotEmpty
+          ifTrue: [" (and " + (c additionalConditions joinWith: " " transform: [it toCljExpr: ctx scope: innerScope]) + ")"]
+          ifFalse: [""]
+        fullCond = guardStr == ""
+          ifTrue: ["(= " + subjectName + " " + cond + ")"]
+          ifFalse: ["(and (= " + subjectName + " " + cond + ")" + guardStr + ")"]
+        caseScope = innerScope copy
+        bodyStr = c body toCljBlockBody: ctx scope: caseScope
+        sb append: " "
+        sb append: fullCond
+        sb append: " "
+        sb append: bodyStr
+      ]
+      | elseBranchLocal
+      | null => []
+      |=> [
+          elseBlock = elseBranchLocal
+          elseStr = elseBlock toCljBlockBody: ctx scope: (innerScope copy)
+          sb append: " :else "
+          sb append: elseStr
+          ()
+        ]
+      sb append: "))"
+      ^ sb toString
+    ]
+]
+
+// ---------------------------------------------------------------------------
+// blocks
+// ---------------------------------------------------------------------------
+
+extend IrBlock [
+  // Emits the block as a Clojure expression: (let [...] body) with all
+  // statements collected into the bindings vector. Non-binding statements use
+  // `_` as their symbol.
+  on toCljBlockBody(ctx): CljContext scope: CljScope -> String =
+    .toCljBlockBodyWithBind: ctx scope: scope bindName: "" bindValue: ""
+
+  // Same as `toCljBlockBody` but injects an extra binding at the top. Used by
+  // match cases to alias the subject inside a type-cast branch.
+  on toCljBlockBodyWithBind(ctx): CljContext scope: CljScope
+                             bindName: String bindValue: String -> String = [
+    // If the last statement is an IrReturn, treat its expression as the body's
+    // result. IrReturn anywhere else is not allowed on this backend.
+    stmtsLocal = stmts
+    lastIdx = stmtsLocal count - 1
+    mut trailingReturnExpr::IrExpr? = null
+    stmtsToEmit::mut List(IrStmt) = {}!
+    stmtsLocal forEachIndexed: [i, st ->
+      | st
+      | IrReturn => [
+          i == lastIdx
+            ifTrue:  [trailingReturnExpr <- st expr]
+            ifFalse: [TO DO: "Clojure does not support ^"]
+        ]
+      |=> [
+          stmtsToEmit add: st
+          ()
+        ]
+    ]
+
+    bindingsSb = StringBuilder new
+    mut hasBindings = false
+    appendBinding = [b::String ->
+      hasBindings ifTrue: [bindingsSb append: " "]
+      bindingsSb append: b
+      hasBindings <- true
+    ]
+
+    bindName != "" ifTrue: [
+      appendBinding do: (bindName cljSanitizeIdent + " " + bindValue)
+    ]
+
+    stmtsToEmit forEach: [st ->
+      binding = st toCljStmtBinding: ctx scope: scope
+      binding != "" ifTrue: [appendBinding do: binding]
+    ]
+
+    // trailing IrReturn or block result
+    mut resultExpr::IrExpr? = null
+    | trailingReturnExpr
+    | null => [
+        | result
+        | null => []
+        |=> [resultExpr <- result]
+      ]
+    |=> [resultExpr <- trailingReturnExpr]
+
+    resultStr = | resultExpr
+                | null => "nil"
+                |=> resultExpr toCljExpr: ctx scope: scope
+
+    ^ hasBindings
+      ifTrue: ["(let [" + (bindingsSb toString) + "] " + resultStr + ")"]
+      ifFalse: [resultStr]
+  ]
+
+  on toCljBlockExpr(ctx): CljContext scope: CljScope -> String =
+    .toCljBlockBody: ctx scope: scope
+]
+
+// ---------------------------------------------------------------------------
+// statement -> let-binding pair
+// ---------------------------------------------------------------------------
+
+IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> String = [
+  ^ | this
+    | IrLet => [
+        goName = name cljSanitizeIdent
+        scope mutLocals remove: name
+        isMut ifTrue: [scope mutLocals add: name]
+        valueLocal = value
+        | valueLocal
+        | null => [
+            isMut
+              ifTrue: [goName + " (atom nil)"]
+              ifFalse: [goName + " nil"]
+          ]
+        |=> [
+            valStr = valueLocal toCljExpr: ctx scope: scope
+            isMut
+              ifTrue: [goName + " (atom " + valStr + ")"]
+              ifFalse: [goName + " " + valStr]
+          ]
+      ]
+    | IrSetLocal => [
+        goName = name cljSanitizeIdent
+        (scope isMut: name) ifFalse: [TO DO: "Clojure backend: assignment to non-mut var: " + name]
+        valStr = value toCljExpr: ctx scope: scope
+        "_ (reset! " + goName + " " + valStr + ")"
+      ]
+    | IrSetField => [TO DO: "Clojure backend: field mutation is not supported (records are immutable)"]
+    | IrDestructure => [
+        valStr = value toCljExpr: ctx scope: scope
+        // build {a :field b :field2 ...} destructure map
+        parts = bindings joinWith: " " transform: [b ->
+          scope mutLocals remove: b name
+          (b name cljSanitizeIdent) + " :" + (b fieldName cljSanitizeIdent)
+        ]
+        "{" + parts + "} " + valStr
+      ]
+    | IrExprStmt => [
+        // an IrCall with propagatingErrVar isn't supported on this backend
+        exprLocal = expr
+        | exprLocal
+        | IrCall => [
+            (exprLocal propagatingErrVar) != null ifTrue: [
+              TO DO: "Clojure backend: error propagation is not supported"
+            ]
+          ]
+        |=> []
+        "_ " + (exprLocal toCljExpr: ctx scope: scope)
+      ]
+    | IrReturn => [TO DO: "Clojure does not support ^"]
+    | IrWhile => [
+        condStr = cond isIrLambda
+          ifTrue:  [cond cljUnwrapLambdaBody: ctx scope: scope]
+          ifFalse: ["(" + (cond toCljExpr: ctx scope: scope) + ")"]
+        bodyStr = body isIrLambda
+          ifTrue:  [body cljUnwrapLambdaBody: ctx scope: scope]
+          ifFalse: [body toCljExpr: ctx scope: scope]
+        "_ (while " + condStr + " " + bodyStr + ")"
+      ]
+    | IrThrow => [
+        throwErrExpr = errExpr
+        errStr = | throwErrExpr
+          | IrTypeRefExpr => "(ex-info \"" + (throwErrExpr ref typeId cljNormalizeTypeId) + "\" {})"
+          |=> throwErrExpr toCljExpr: ctx scope: scope
+        "_ (throw " + errStr + ")"
+      ]
+]
+
+// Unwrap the body of an IrLambda: expose its statements + result inline so that
+// (while (fn [] cond)) becomes (while cond) instead of paying the closure cost.
+IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String = [
+  | this | IrLambda => [
+    ^ body toCljBlockBody: ctx scope: scope
+  ] |=> [TO DO: "cljUnwrapLambdaBody: expected IrLambda"]
+]
+
+// ---------------------------------------------------------------------------
+// top-level definitions
+// ---------------------------------------------------------------------------
+
+constructor CljBackend [
+  on emitTypeDef(def): IrTypeDef ctx: CljContext sb: StringBuilder -> Unit = [
+    name = def id cljNormalizeTypeId cljSanitizeIdent
+    fields = def fields joinWith: " " transform: [it name cljSanitizeIdent]
+    sb appendLine: ("(defrecord " + name + " [" + fields + "])")
+    sb appendLine: ""
+  ]
+
+  on emitUnionDef(def): IrUnionDef ctx: CljContext sb: StringBuilder -> Unit = [
+    // each branch becomes its own defrecord that inlines common fields first
+    def branches forEach: [br ->
+      br isInclude ifFalse: [
+        branchTypeId = def pkgId + "_" + br name
+        branchName = branchTypeId cljSanitizeIdent
+        commonStr = def commonFields joinWith: " " transform: [f -> f name cljSanitizeIdent]
+        branchStr = br fields joinWith: " " transform: [f -> f name cljSanitizeIdent]
+        fieldsStr = commonStr == ""
+          ifTrue: [branchStr]
+          ifFalse: [branchStr == "" ifTrue: [commonStr] ifFalse: [commonStr + " " + branchStr]]
+        sb appendLine: ("(defrecord " + branchName + " [" + fieldsStr + "])")
+      ]
+    ]
+    sb appendLine: ""
+  ]
+
+  on emitEnumDef(def): IrEnumDef ctx: CljContext sb: StringBuilder -> Unit = [
+    name = def id cljNormalizeTypeId cljSanitizeIdent
+    def values forEach: [v ->
+      valSafe = v cljSanitizeIdent
+      valName = name + "_" + valSafe
+      sb appendLine: ("(def " + valName + " :" + valName + ")")
+    ]
+    sb appendLine: ""
+  ]
+
+  on emitFunction(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
+    name = fn cljFuncNameFromIr
+    // fn.args already includes `this` for instance methods
+    fullArgs = fn args joinWith: " " transform: [it name cljSanitizeIdent]
+
+    scope = CljScope new
+    body = fn body toCljBlockBody: ctx scope: scope
+
+    sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
+    sb appendLine: ""
+  ]
+
+  on emitEntry(entry): IrBlock ctx: CljContext sb: StringBuilder -> Unit = [
+    // wrap the entry as (defn -main [& args] ...) so `clojure -M -m main` finds it
+    scope = CljScope new
+    body = entry toCljBlockBody: ctx scope: scope
+    sb appendLine: "(defn -main [& args]"
+    sb appendLine: ("  " + body + ")")
+    sb appendLine: ""
+  ]
+
+  // Public entry point.
+  on fullFromIrModule(ir): IrModule -> String = [
+    ctx = CljContext new
+    // ns declaration is decided at the end; emit bodies first into a scratch buffer
+    body = StringBuilder new
+
+    ir packages forEach: [pkg ->
+      pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
+      pkg unions forEach: [CljBackend emitUnionDef: it ctx: ctx sb: body]
+      pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
+      pkg functions forEach: [CljBackend emitFunction: it ctx: ctx sb: body]
+    ]
+    ir entry unpack: [CljBackend emitEntry: it ctx: ctx sb: body]
+
+    header = StringBuilder new
+    header appendLine: ";; Code generated by Niva. DO NOT EDIT."
+    importsList = ctx imports toList
+    importsList count == 0
+      ifTrue:  [header appendLine: "(ns main)"]
+      ifFalse: [
+        reqs = importsList joinWith: " " transform: [it -> "[" + it + "]"]
+        header appendLine: ("(ns main (:require " + reqs + "))")
+      ]
+    header appendLine: ""
+    header append: (body toString)
+
+    ^ header toString
+  ]
+]

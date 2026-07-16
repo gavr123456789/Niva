@@ -1,0 +1,209 @@
+Test cljRecordTypes = [
+  fileMain = """
+    type Point
+      x: Int
+      y: Int
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defrecord main_Point [x y])", assertTrue
+]
+
+Test cljUnionShapesAsRecords = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defrecord main_Rectangle [width height])", assertTrue
+  clj contains: "(defrecord main_Circle [radius])", assertTrue
+]
+
+// enum inside triple-quoted source is not parsed by the parser test path
+// (same as goEnumCodegen in goBackTests.niva — kept commented until the parser
+// supports enums in-string). Enum emit itself is still exercised via the
+// compiler pipeline when running from a real file.
+
+Test cljFunctionAsDefn = [
+  fileMain = """
+    Int double -> Int = this * 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main__core_Int__double [this]", assertTrue
+  clj contains: "(* this 2)", assertTrue
+]
+
+Test cljEntryUsesLetAtTopLevel = [
+  fileMain = """
+    x = 1
+    y = 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(let [x 1 y 2] nil)", assertTrue
+]
+
+Test cljMutVarAsAtom = [
+  fileMain = """
+    mut c = 3
+    c <- 4
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "c (atom 3)", assertTrue
+  clj contains: "(reset! c 4)", assertTrue
+]
+
+Test cljWhileTrueUnwrapsLambdas = [
+  fileMain = """
+    mut c = 3
+    [c > 0] whileTrue: [c <- c - 1]
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(while ", assertTrue
+  clj contains: "(> @c 0)", assertTrue
+  clj contains: "(reset! c (- @c 1))", assertTrue
+]
+
+Test cljCoreCallGoesToCoreNs = [
+  fileMain = """
+    1 echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Any__echo 1)", assertTrue
+  clj contains: "[niva.core]", assertTrue
+]
+
+Test cljMatchByTypeUsesCondpInstance = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    shape::Shape = Rectangle width: 1 height: 2
+
+    area = | shape
+    | Rectangle => shape width * shape height
+    | Circle => shape radius
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "condp instance?", assertTrue
+  clj contains: "main_Rectangle", assertTrue
+  clj contains: "main_Circle", assertTrue
+]
+
+Test cljMatchByValueUsesCond = [
+  fileMain = """
+    x = 1
+    y = | x
+    | 1 => 10
+    | 2 => 20
+    |=> 30
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(cond", assertTrue
+  clj contains: ":else 30", assertTrue
+]
+
+Test cljCollectionLiterals = [
+  fileMain = """
+    xs = {1 2 3}
+    ys = #(1 2 3)
+    zs = #{"a" 1 "b" 2}
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "[1 2 3]", assertTrue
+  clj contains: "#{1 2 3}", assertTrue
+  clj contains: "{\"a\" 1 \"b\" 2}", assertTrue
+]
+
+Test cljFieldGetUsesKeyword = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    n = alice name
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(->main_Person \"Alice\" 24)", assertTrue
+  clj contains: "(:name alice)", assertTrue
+]
+
+Test cljBindEmitInline = [
+  fileMain = """
+    Int double -> Int = Bind emit: "(* $0 2)"
+    x = 21 double
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(* 21 2)", assertTrue
+  Assert that: (clj contains: "(defn main__core_Int__double") equals: false
+]
+
+Test cljBindEmitBackendSpecific = [
+  fileMain = """
+    Int foo: Int -> Int = [
+      ^ Bind emit: "(clj-only $1)" backend: "clojure" args: {foo}
+    ]
+    x = 5 foo: 42
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(clj-only foo)", assertTrue
+]
+
+Test cljBindAddImport = [
+  fileMain = """
+    Int readFile: String -> String = [
+      Bind addImport: "clojure.java.io" backend: "clojure"
+      ^ Bind emit: "(clojure.java.io/slurp $1)" backend: "clojure" args: {readFile}
+    ]
+    x = 1 readFile: "file.txt"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "[clojure.java.io]", assertTrue
+  clj contains: "(clojure.java.io/slurp readFile)", assertTrue
+]
+
+Test cljDestructure = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "{age :age name :name}", assertTrue
+]

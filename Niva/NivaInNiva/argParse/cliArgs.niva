@@ -53,6 +53,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
                 | backendValue
                 | "go" => backend <- CompilerBackend.Go
                 | "js" => backend <- CompilerBackend.Js
+                | "clj" | "clojure" => backend <- CompilerBackend.Clj
                 | "lsp" => backend <- CompilerBackend.Lsp
                 |=> backendError <- true
                 skipNext <- true
@@ -101,4 +102,4 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
 ]
 
 enum CompilerOption = Run | Build | Ir | Daemon | RunTests | Info | Help
-enum CompilerBackend = Go | Js | Lsp
+enum CompilerBackend = Go | Js | Clj | Lsp

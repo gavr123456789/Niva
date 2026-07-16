@@ -1,0 +1,151 @@
+type CljBackend
+
+type CljContext
+  imports: mut Set(String)
+
+constructor CljContext new -> CljContext = CljContext imports: #()!
+
+CljContext addImport(name): String -> Unit = [
+  imports add: name
+]
+
+// tracks which locals were declared as mut (so refs to them emit @name)
+type CljScope
+  mutLocals: mut Set(String)
+
+constructor CljScope new = CljScope mutLocals: #()!
+
+CljScope copy -> CljScope = [
+  s = CljScope new
+  s mutLocals addAll: mutLocals
+  ^ s
+]
+
+CljScope isMut(name): String -> Bool = mutLocals contains: name
+
+// ---------------------------------------------------------------------------
+// name sanitization
+// ---------------------------------------------------------------------------
+
+extend String [
+  on cljSanitizeIdent -> String =
+        .replace: ".." with: "rangeTo"
+        ,replace: "?" with: "_QM"
+        //,replace: "==" with: "equals"
+        //,replace: "!=" with: "notEquals"
+        //,replace: ">=" with: "gte"
+        //,replace: "<=" with: "lte"
+        //,replace: ">" with: "gt"
+        //,replace: "<" with: "lt"
+        //,replace: "||" with: "or"
+        //,replace: "&&" with: "and"
+        //,replace: "+" with: "plus"
+        //,replace: "-" with: "minus"
+        //,replace: "*" with: "times"
+        //,replace: "/" with: "div"
+        //,replace: "%" with: "rem"
+        //,replace: "." with: "_"
+        //,replace: "(" with: "_"
+        //,replace: ")" with: "_"
+        //,replace: "," with: "_"
+        //,replace: " " with: "_"
+
+]
+
+// mangled function name derived directly from IR
+IrFunction cljFuncNameFromIr -> String = .id cljFuncIdToName
+
+// The IR-issued function id has the shape "pkg.recv.name" (see irIds.niva).
+// This mirrors it as "pkg__recv__name" so we can derive the same name from
+// either an IrFunction (at defn site) or a bare funcId string (at call site)
+// without needing a symbol table.
+// pkg.recv.name -> pkg__recv__name
+String cljFuncIdToName -> String =
+  .split: ".", joinWith: "__" transform: [it cljSanitizeIdent]
+
+
+extend String [
+  on stripCljPkgPrefix(prefix): String -> String = [
+    pre = prefix + "_"
+    preLen = pre count
+    ^ (.count >= preLen && ((.slice: 0..<preLen) == pre))
+        ifTrue: [.slice: preLen..< .count]
+        ifFalse: [this]
+  ]
+
+  on cljHasPrefix(prefix): String -> Bool = [
+    prefixLen = prefix count
+    ^ (.count >= prefixLen) && ((.slice: 0..<prefixLen) == prefix)
+  ]
+
+  on cljNormalizeTypeId -> String = [
+    hasGeneric = .contains: "__"
+    ^ hasGeneric ifTrue: [.substringBefore: "__"] ifFalse: [this]
+  ]
+]
+
+// ---------------------------------------------------------------------------
+// core function name matching (core.Any__echo, core.Int__plus, etc.)
+// ---------------------------------------------------------------------------
+IrTypeRef coreFuncNameFromCljCall(name): String -> String = [
+  baseId = typeId cljNormalizeTypeId
+  recvBase = baseId stripCljPkgPrefix: "core"
+  ^ (recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)
+]
+
+// ---------------------------------------------------------------------------
+// type mapping (no static types in Clojure but we still need type-ids for match)
+// ---------------------------------------------------------------------------
+
+IrTypeRef isCljUnitType -> Bool =
+  (kind == IrTypeRefKind.Builtin) && (typeId cljNormalizeTypeId == "core_Unit")
+
+IrTypeRef cljTypeName -> String = [
+  ^ typeId cljNormalizeTypeId cljSanitizeIdent
+]
+
+// ---------------------------------------------------------------------------
+// operator translation for IrOpBin
+// ---------------------------------------------------------------------------
+String cljOperator -> String =
+  | this
+  | "==" => "="
+  | "!=" => "not="
+  | "&&" => "and"
+  | "||" => "or"
+  | "%" => "rem"
+  |=> this
+
+// ---------------------------------------------------------------------------
+// literals
+// ---------------------------------------------------------------------------
+IrLiteral toCljLiteral -> String =
+  | kind
+  | IrLiteralKind.Null   => "nil"
+  | IrLiteralKind.Unit   => "nil"
+  | IrLiteralKind.Bool   => lexeme
+  | IrLiteralKind.Int    => lexeme
+  | IrLiteralKind.Double => lexeme
+  | IrLiteralKind.Float  => lexeme endsWith: "f",
+                                  ifTrue:  [lexeme dropLast: 1]
+                                 ifFalse: [lexeme]
+  | IrLiteralKind.Char   => "\\" + (lexeme drop: 1, dropLast: 1)
+  | IrLiteralKind.String => lexeme
+
+// ---------------------------------------------------------------------------
+// indent helper
+// ---------------------------------------------------------------------------
+Int cljIndent -> String = [
+  sb = StringBuilder new
+  mut i = 0
+  [i < this] whileTrue: [
+    sb append: "  "
+    i <- i inc
+  ]
+  ^ sb toString
+]
+
+StringBuilder appendCljIndent(level): Int line: String -> Unit = [
+  this append: (level cljIndent)
+  this appendLine: line
+]
