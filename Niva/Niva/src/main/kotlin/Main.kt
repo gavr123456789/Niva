@@ -98,23 +98,23 @@ fun run(args2: Array<String>) {
         MainArgument.BUILD_MILL -> compiler.runMill(Option.BUILD, am.outputRename)
         MainArgument.TEST_MILL -> compiler.runMill(Option.TEST, am.outputRename)
         MainArgument.TEST -> {
-            // 1) niva test FILE TESTNAME  -> --tests "Class.TestName"
-            // 2) niva test TESTNAME       -> --tests "*.TestName"
-            val testFilter = if (args[0] == "test") {
+            // 1) niva test FILE TESTNAME  -> --tests "*File*.TestName"
+            // 2) niva test NAME_OR_PKG    -> --tests "*NAME*" (class/file) + "*.NAME" (method)
+            val testFilters: List<String>? = if (args[0] == "test") {
                 when (args.size) {
                     3 -> {
                         val cls = File(args[1]).nameWithoutExtension
                         val testName = args[2]
-                        "*$cls*.$testName"
+                        listOf("*$cls*.$testName")
                     }
                     2 -> {
-                        val testName = args[1]
-                        "*.$testName"
+                        val nameOrPkg = args[1]
+                        listOf("*$nameOrPkg*", "*.$nameOrPkg")
                     }
                     else -> null
                 }
             } else null
-            compiler.runGradleAmperBuildCommand(runTests = true, testFilter = testFilter)
+            compiler.runGradleAmperBuildCommand(runTests = true, testFilter = testFilters)
         }
         MainArgument.SINGLE_FILE_PATH -> compiler.runGradleAmperBuildCommand(dist = am.compileOnly)
         MainArgument.INFO_ONLY -> compiler.infoPrint(false, specialPkgToInfoPrint)
