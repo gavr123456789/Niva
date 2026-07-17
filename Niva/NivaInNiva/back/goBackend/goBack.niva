@@ -320,6 +320,7 @@ IrLiteral toGoLiteral -> String =
                                  ifFalse: [lexeme]
   | IrLiteralKind.Char   => lexeme
   | IrLiteralKind.String => lexeme
+  | IrLiteralKind.Atom   => "\"" + lexeme + "\""
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
   r = receiverType

@@ -103,6 +103,7 @@ union LiteralExprT token: Token typeInfo: TypeInfo =
 | BooleanExprT
 | NullExprT
 | UnitExprT
+| AtomExprT name: String // #red -> name = "red"
 
 
 union CollectionLiteralT token: Token elements: TypedBody typeInfo: TypeInfo =

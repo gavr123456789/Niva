@@ -207,3 +207,15 @@ Test cljDestructure = [
 
   clj contains: "{age :age name :name}", assertTrue
 ]
+
+Test cljAtomIdentifierAsKeyword = [
+  fileMain = """
+    color = #red
+    other = #blue
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "color :red", assertTrue
+  clj contains: "other :blue", assertTrue
+]

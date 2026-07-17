@@ -258,6 +258,30 @@ Test enumDeclaration = [
                   }
 ]
 
+Test atomIdentifier = [
+  tokens = LexTest input: "#red #blue #green_2"
+  expectedKinds = {TokenType.AtomIdentifier TokenType.AtomIdentifier TokenType.AtomIdentifier}
+  expectedLexemes = {"#red" "#blue" "#green_2"}
+
+  Assert that: tokens count equals: expectedKinds count
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind   equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
+Test atomIdentifierMixed = [
+  tokens = LexTest input: "x #red 42"
+  expectedKinds = {TokenType.Identifier TokenType.AtomIdentifier TokenType.Integer}
+  expectedLexemes = {"x" "#red" "42"}
+
+  Assert that: tokens count equals: expectedKinds count
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind   equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
 Test sourceFileInTokens = [
   filePath = "src/mymodule.niva"
   sf = SourceFile path: filePath

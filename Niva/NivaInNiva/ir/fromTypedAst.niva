@@ -187,11 +187,17 @@ LiteralExprT toIrLiteralKind -> IrLiteralKind =
   | BooleanExprT => IrLiteralKind.Bool
   | NullExprT => IrLiteralKind.Null
   | UnitExprT => IrLiteralKind.Unit
+  | AtomExprT => IrLiteralKind.Atom
 
 LiteralExprT toIrLiteral -> IrLiteral = [
+  // atoms carry the bare identifier (no leading '#') as their lexeme; other
+  // literals keep the raw token text.
+  lex = | this
+    | AtomExprT => name
+    |=> token lexeme
   ^ IrLiteral
     kind: (this toIrLiteralKind)
-    lexeme: token lexeme
+    lexeme: lex
 ]
 
 Bool toIrBoolLiteralExpr(db): TyperDB -> IrExpr = [

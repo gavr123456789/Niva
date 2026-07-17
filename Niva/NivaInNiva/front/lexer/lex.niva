@@ -213,7 +213,13 @@ extend mut Lexer [
       | ch
       | '{' => .createToken: TokenType.OpenBraceHash lexeme: "#{"
       | '(' => .createToken: TokenType.OpenParenHash lexeme: "#("
-      |=> Error throwWithMessage: "only { or ( can be after #"
+      |=> [
+        (ch isLetter || (ch == '_')) ifTrue: [
+          lit = .readIdentifier
+          ^ .createToken: TokenType.AtomIdentifier lexeme: "#" + lit
+        ]
+        Error throwWithMessage: "only { or ( or identifier can be after #"
+      ]
     ]
 
 

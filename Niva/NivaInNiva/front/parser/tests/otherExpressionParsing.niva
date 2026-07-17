@@ -171,6 +171,24 @@ Test codeBlockStatement -> Unit = [
 
 
 
+Test atomIdentifierExpr -> Unit = [
+  input = """
+    #red
+    #blue
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 2
+  first = statements at: 0
+  second = statements at: 1
+
+  | first
+  | AtomIdentifier => Assert that: first name equals: "red"
+  |=> [TO DO: "AtomIdentifier expected, got " + first toString]
+
+  | second
+  | AtomIdentifier => Assert that: second name equals: "blue"
+  |=> [TO DO: "AtomIdentifier expected, got " + second toString]
+]
+
 Test failingComment = [
   input = """
     type Person name: String age: Int wallet: Wallet
