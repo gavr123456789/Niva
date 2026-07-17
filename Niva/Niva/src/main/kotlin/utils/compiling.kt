@@ -187,6 +187,11 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
             .redirectError(ProcessBuilder.Redirect.INHERIT)
     }
 
+    if (runTests) {
+        // merge stderr into stdout so gradle shows error messages
+        p.redirectErrorStream(true)
+    }
+
 //    if (GlobalVariables.isDemonMode) {
 //        println("running '$this' command inside $workingDir")
 //    }
@@ -309,7 +314,7 @@ class CompilerRunner(
         buildFatJar: Boolean = false,
         runTests: Boolean = false,
         outputRename: String? = null,
-        testFilter: String? = null,
+        testFilter: List<String>? = null,
     ) {
         // 1 remove repl log file since it will be recreated
         removeReplFile()
@@ -325,11 +330,14 @@ class CompilerRunner(
         }
         // 3 generate a command and run it
         var cmd = gradleCmd(dist, buildFatJar, runTests)
-        if (runTests && !testFilter.isNullOrBlank()) {
-            // Gradle test filtering. Supports patterns like ClassName.testName
-            // We quote the value to keep it intact across shells.
-            val escaped = testFilter.replace("\"", "\\\"")
-            cmd += " --tests \"$escaped\""
+        if (runTests && !testFilter.isNullOrEmpty()) {
+            // Gradle test filtering. Supports patterns like ClassName.testName.
+            // Multiple --tests are OR-combined by Gradle.
+            for (pattern in testFilter) {
+                if (pattern.isBlank()) continue
+                val escaped = pattern.replace("\"", "\\\"")
+                cmd += " --tests \"$escaped\""
+            }
         }
         if (!nativeImageGradleProperty.isNullOrBlank()) {
             cmd += " $nativeImageGradleProperty"
