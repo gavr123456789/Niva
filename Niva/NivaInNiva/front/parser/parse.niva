@@ -230,6 +230,12 @@ extend mut Parser [
       ^.parseDotSeparatedIdentifier: tok
     ]
 
+    tok kind == TokenType.AtomIdentifier ifTrue: [
+      // lexeme includes the leading '#'
+      name = tok lexeme substring: 1
+      ^ AtomIdentifier name: name token: tok
+    ]
+
     .parseCollection: tok, unpack: [
       ^it
     ]

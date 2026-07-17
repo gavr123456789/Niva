@@ -107,6 +107,7 @@ type DestructureBinding
 union Expr token: Token =
   | ^LiteralExpr
   | Identifier     name: String path: {String}?
+  | AtomIdentifier name: String // #red, #blue, Smalltalk-style symbol
   | ExprInBrackets value: Expr
   | VarDeclaration    name: String value: Expr astType: AstType2? isMut: Bool
   | Assign            name: String value: Expr
@@ -127,6 +128,7 @@ union Expr token: Token =
     isMutable: Bool
 
 Identifier toString = "$name"
+AtomIdentifier toString = "#$name"
 
 Expr isNullExpr -> Bool =
   | this

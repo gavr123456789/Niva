@@ -579,3 +579,15 @@ Test goBindGoCodeInBody = [
   // a multi-expr bind body is a normal Go function
   go contains: "func main__core_Int__compute", assertTrue
 ]
+
+Test goAtomIdentifierAsStringLiteral = [
+  fileMain = """
+    color = #red
+    other = #blue
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var color string = \"red\"", assertTrue
+  go contains: "var other string = \"blue\"", assertTrue
+]

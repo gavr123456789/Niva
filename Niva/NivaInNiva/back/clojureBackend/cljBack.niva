@@ -131,6 +131,7 @@ IrLiteral toCljLiteral -> String =
                                  ifFalse: [lexeme]
   | IrLiteralKind.Char   => "\\" + (lexeme drop: 1, dropLast: 1)
   | IrLiteralKind.String => lexeme
+  | IrLiteralKind.Atom   => ":" + lexeme
 
 // ---------------------------------------------------------------------------
 // indent helper

@@ -9,6 +9,7 @@ enum TokenType =
   |Float // 4.2f
   |Double // 4.2
   |Identifier|NullableIdentifier|IdentifierColon|IdentifierDoubleColon
+  |AtomIdentifier // #word, e.g. #red #blue
 //    Binary| Octal| Hex|
 
   // Keywords

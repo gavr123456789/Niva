@@ -86,7 +86,7 @@ enum IrMatchKind = ByType | ByValue | ByBool | ByError
 
 enum IrCollectionKind = List | Set | Map
 
-enum IrLiteralKind = Char | Int | Float | Double | String | Bool | Null | Unit
+enum IrLiteralKind = Char | Int | Float | Double | String | Bool | Null | Unit | Atom
 
 type IrLiteral
   kind: IrLiteralKind
