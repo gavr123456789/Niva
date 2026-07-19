@@ -445,21 +445,6 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
 
 
 extend IrExpr [
-
-  on irStringLiteralValue -> String? = | this
-    | IrLiteralExpr => [
-        literal kind == IrLiteralKind.String
-          ifTrue: [literal lexeme unquoteLiteral]
-         ifFalse: [null]
-      ]
-    |=> null
-
-  on irListLiteralItems -> List::IrExpr = | this
-    | IrCollectionLiteral => [
-        kind == IrCollectionKind.List ifTrue: [items] ifFalse: [TO DO: "Bind emit:args: expects List literal as second argument"]
-    ]
-    |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
-
   on toGoArgExpr(ctx): GoContext scope: GoScope paramType: IrTypeRef -> String = [
     exprStr = this toGoExpr: ctx scope: scope
     paramType needsGoAddressAtCall ifFalse: [^ exprStr]
@@ -583,9 +568,7 @@ extend IrExpr [
     | IrMatchExpr => true
     |=> false
 
-  on isIrLambda = | this | IrLambda => true |=> false
-
-  on emitPropagatingCall(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef bindTo: String? -> String? = [
+  on emitGoPropagatingCall(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef bindTo: String? -> String? = [
     callStr = this toGoExpr: ctx scope: scope
     errName = "__err" uniqueName: scope locals
     retIsUnit = typeRef isGoUnitType
@@ -620,7 +603,7 @@ extend IrExpr [
     hasErrors = returnType errors isNotEmpty
     | this | IrCall => [
       propagatingErrVar unpack: [
-        resultName = this emitPropagatingCall: ctx :scope :sb :indent :returnType bindTo: null
+        resultName = this emitGoPropagatingCall: ctx :scope :sb :indent :returnType bindTo: null
         resultName unpack: [
           line = hasErrors
             ifTrue: ["return " + it + ", nil"]
@@ -646,7 +629,7 @@ extend IrExpr [
   on emitAsStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
     | this | IrCall => [
       propagatingErrVar unpack: [
-        this emitPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: null
+        this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: null
         ^ Unit
       ]
     ] |=> []
@@ -898,7 +881,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
         doProp = | valueExpr | IrCall => (valueExpr propagatingErrVar != null) |=> false
         doProp
           ifTrue: [
-            valueExpr emitPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
+            valueExpr emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
             Unit
           ]
           ifFalse: [

@@ -1,0 +1,20 @@
+extend IrExpr [
+
+  on irStringLiteralValue -> String? = | this
+    | IrLiteralExpr => [
+        literal kind == IrLiteralKind.String
+          ifTrue: [literal lexeme unquoteLiteral]
+         ifFalse: [null]
+      ]
+    |=> null
+
+  on irListLiteralItems -> List(IrExpr) = | this
+    | IrCollectionLiteral => [
+        kind == IrCollectionKind.List ifTrue: [items] ifFalse: [TO DO: "Bind emit:args: expects List literal as second argument"]
+    ]
+    |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
+
+  on isIrLambda = | this | IrLambda => true |=> false
+
+
+]

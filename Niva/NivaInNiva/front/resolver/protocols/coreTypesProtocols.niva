@@ -147,7 +147,7 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
   intProtocol addMethod: (NivaMethod binary: "<" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: ">" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
-  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "<=" receiverType: num argT: num  returnT: bool)
 
   intProtocol addMethod: (NivaMethod binary: "==" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)

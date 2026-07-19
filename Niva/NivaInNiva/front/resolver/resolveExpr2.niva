@@ -395,7 +395,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | DoubleExpr  => DoubleExprT :token typeInfo: db dtc double toTypeInfoDefault
   | StringExpr  => StringExprT :token typeInfo: db dtc str toTypeInfoDefault
   | BooleanExpr => BooleanExprT :token typeInfo: db dtc bool toTypeInfoDefault
-  | NullExpr    => NullExprT :token typeInfo: db dtc nothing toTypeInfoDefault
+  | NullExpr    => NullExprT :token typeInfo: (NullableT v: db dtc nothing) toTypeInfoDefault
   | UnitExpr    => UnitExprT :token typeInfo: db dtc unit toTypeInfoDefault
   | AtomIdentifier => AtomExprT :name :token typeInfo: db dtc str toTypeInfoDefault
   // Identifier can be type itself like Unit
