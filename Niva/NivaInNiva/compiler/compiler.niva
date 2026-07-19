@@ -77,7 +77,7 @@ constructor NivaCompiler [
         ]
 
         generateCljFromResolver = [res::ResolverHelper ->
-            FileSystem createDirectories: (realCljPath toPath)
+            FileSystem createDirectories: realCljPath toPath
             irModule = res toIrModule
             cljContent = CljBackend fullFromIrModule: irModule
             destanation = realCljPath + "/main.clj"
@@ -148,9 +148,12 @@ constructor NivaCompiler [
                 ]
               ]
             | CompilerBackend.Clj => [
+                t5 = measureTimeFrom from: t1 text: "full niva until IR"
                 generateCljFromResolver res: resolver
                 option == CompilerOption.Run ifTrue: [
+                  t6 = measureTimeFrom from: t5 text: "IR + codegen"
                   io runProgramFromPath path: realCljPath args: {"bb" "-m" "main"} // "clojure" "-M" "-m" "main"
+                  t7 = measureTimeFrom from: t6 text: "run binary"
                 ]
               ]
             | CompilerBackend.Lsp => []

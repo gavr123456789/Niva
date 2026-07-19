@@ -52,7 +52,7 @@ constructor TyperDB new -> TyperDB = [
   corePkg = tuple x
   dtc = tuple y
 
-  {char int float double str bool bind error nill unit nothing any t list map set intRange charRange} = dtc
+  {char int float double str bool bind error unit nothing any t list map set intRange charRange} = dtc
 
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
@@ -330,9 +330,35 @@ extend TyperDB [
   on mergeTypesByUnion(types): List::NivaType -> NivaType? = [
     types isEmpty ifTrue: [^ null]
 
-    mut merged::NivaType = types first
+    // unwrap NullableT branches (marking result nullable) and drop NothingT (bottom type)
+    mut hasNullable::Bool = false
+    unwrapped::mut List::NivaType = {}!
+    types forEach: [t ->
+      | t
+      | NullableT => [
+        hasNullable <- true
+        | t v
+        | NothingT => []
+        |=> [
+          unwrapped add: t v
+          ()
+        ]
+      ]
+      | NothingT => []
+      |=> [
+        unwrapped add: t
+        ()
+      ]
+    ]
 
-    rest = types drop: 1
+    // all branches were NothingT/Nullable(NothingT) - result is Nothing, possibly nullable
+    unwrapped isEmpty ifTrue: [
+      ^ hasNullable ifTrue: [NullableT v: dtc nothing] ifFalse: [dtc nothing]
+    ]
+
+    mut merged::NivaType = unwrapped first
+
+    rest = unwrapped drop: 1
     rest forEach: [t ->
       merged sameTypeAs: t, ifFalse: [
         ancestor = this findFirstCommonUnionAncestor: {merged t}
@@ -342,7 +368,7 @@ extend TyperDB [
       ]
     ]
 
-    ^ merged
+    ^ hasNullable ifTrue: [NullableT v: merged] ifFalse: [merged]
   ]
 
   on isAssignable(actual): NivaType toExpected(expected): NivaType -> Bool = [

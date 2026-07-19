@@ -30,9 +30,6 @@ NivaType sameSimpleTypeAs(nivaType): NivaType -> Bool = | nivaType
   | UnresolvedGenericT => | this
                           | UnresolvedGenericT => letter == nivaType letter
                           |=> false
-  | NullT =>  | this
-              | NullT => true
-              |=> false
   |=> false
 
 
@@ -83,7 +80,6 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
     | NullableT => | this
                    | NullableT => .v sameTypeAs: nivaType v
                    | NothingT => true
-                   | NullT => true
                    |=> false
     |=> false
   ] ifFalse: [
@@ -147,7 +143,6 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
     | NullableT =>  | this
                     | NullableT => v isAssignableTo: nivaType v :db
                     | NothingT => true
-                    | NullT => true
                     |=> .isAssignableTo: nivaType v :db
 
     |=> false

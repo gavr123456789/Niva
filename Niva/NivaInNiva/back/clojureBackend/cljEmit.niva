@@ -1,8 +1,3 @@
-// -----------------------------------------------------------------------------
-// Clojure backend: emitter
-// -----------------------------------------------------------------------------
-//
-// Design (kept intentionally small):
 //   * types    -> defrecord
 //   * unions   -> a defrecord per branch (dispatch by instance? in match)
 //   * enums    -> individual defs to distinct keywords
@@ -13,10 +8,6 @@
 //                 explodes with `TO DO: "Clojure does not support ^"`
 //
 // error domains + IrSetField are intentionally rejected with TO DO for now.
-
-// ---------------------------------------------------------------------------
-// expression emission
-// ---------------------------------------------------------------------------
 
 extend IrExpr [
   on toCljExpr(ctx): CljContext scope: CljScope -> String =
@@ -231,17 +222,13 @@ IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> Stri
       "{" + pairs + "}"
     ]
 
-// ---------------------------------------------------------------------------
-// IrMatchExpr
-// ---------------------------------------------------------------------------
-
 IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   subjectExpr = subject toCljExpr: ctx scope: scope
   subjectName = "__cljSubject"
   innerScope = scope copy
 
   elseBranchLocal = elseBranch
-  hasElse = | elseBranchLocal | null => false |=> true
+  hasElse = elseBranchLocal != null
 
   | kind
   | IrMatchKind.ByError => [TO DO: "Clojure backend: match on errors is not implemented"]

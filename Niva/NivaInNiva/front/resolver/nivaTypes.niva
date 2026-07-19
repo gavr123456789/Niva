@@ -26,7 +26,6 @@ union NivaType name: String pkgName: String =
 | MapT k: NivaType v: NivaType
 // utility
 | UnresolvedGenericT letter: String
-| NullT // usually x = null, should be resolved to x::Nothing = null
 | NullableT v: NivaType
 | Unknown // Special type for
 
@@ -301,7 +300,6 @@ constructor CharT new    = CharT    name: "Char"    pkgName: "core"
 
 constructor AnyT new     = AnyT     name: "Any"     pkgName: "core"
 constructor NothingT new = NothingT name: "Nothing" pkgName: "core"
-constructor NullT new    = NullT    name: "Null"    pkgName: "core"
 constructor Unknown new  = Unknown  name: "Unknown" pkgName: "core"
 
 constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: "core"
@@ -502,7 +500,6 @@ type DefaultTypesContainer
   bool: BoolT
   bind: TypeT
   error: TypeT
-  nill: NullT
   unit: UnitT
   // utils
   nothing: NothingT
@@ -531,7 +528,6 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   str = StringT new
   bool = BoolT new
   bind = TypeT noFieldsWithName: "Bind" pkgName: "core"
-  nill = NullT new
   unit = UnitT new
   nothing = NothingT new
   any = AnyT new
@@ -561,7 +557,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     genericArgs: {}!
 
   dtc = DefaultTypesContainer
-    :char :int :float :double :str :bool :bind :error :nill :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
+    :char :int :float :double :str :bool :bind :error :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
   ^ dtc
 ]
 
@@ -577,7 +573,7 @@ DefaultTypesContainer collection-with-different-generic(collection): NivaType ->
 /// create basic types like String Int List
 constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   dtc = DefaultTypesContainer new
-  {char, int, float, double, str, bool, bind, error, nill, unit,
+  {char, int, float, double, str, bool, bind, error, unit,
   // utils
   nothing, any,
   // T
@@ -598,7 +594,6 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "IntRange" intRange
     "CharRange" charRange
 
-    "Null" nill
     "Nothing" nothing
     "Any" any
 
@@ -641,7 +636,6 @@ DoubleT  toString -> String = " Type(" + name + ")"
 BoolT    toString -> String = " Type(" + name + ")"
 UnitT    toString -> String = " Type(" + name + ")"
 CharT    toString -> String = " Type(" + name + ")"
-NullT    toString -> String = " Type(" + name + ")"
 AnyT    toString -> String = " Type(" +  name + ")"
 ListT    toString -> String = " Type(" + name + " <" + t toString + ">" + ")"
 MapT    toString -> String = " Type(" +  name + " <" + "key: $k val: $v" +  ">" + ")"
