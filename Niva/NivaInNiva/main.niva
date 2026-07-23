@@ -70,6 +70,8 @@ compilerTry2 = [
   //diff echo // 60 toLong / 1000 toLong, echo
 ]
 
+
+
 // enum inside triple-quoted strings is not accepted by the current parser
 // (same limitation blocks goEnumCodegen in goBackTests.niva). Test manually
 // against a real .niva file via `niva run main.niva --backend clj`.

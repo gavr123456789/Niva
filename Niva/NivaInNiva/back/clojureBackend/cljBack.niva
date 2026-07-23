@@ -23,6 +23,9 @@ CljScope copy -> CljScope = [
 
 CljScope isMut(name): String -> Bool = mutLocals contains: name
 
+// A single `(let [name value ...])` binding pair.
+type CljBinding name: String value: String
+
 // ---------------------------------------------------------------------------
 // name sanitization
 // ---------------------------------------------------------------------------
@@ -82,6 +85,10 @@ extend String [
     hasGeneric = .contains: "__"
     ^ hasGeneric ifTrue: [.substringBefore: "__"] ifFalse: [this]
   ]
+
+  on cljPadTo(width): Int -> String =
+    this + (" " repeat: width - this count)
+
 ]
 
 // ---------------------------------------------------------------------------

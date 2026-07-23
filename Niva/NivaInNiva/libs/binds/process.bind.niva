@@ -11,6 +11,9 @@ Bind package: "java.lang" content: [
   @emit: "$0.redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT)"
   ProcessBuilder redirectOutput -> ProcessBuilder
 
+  @emit: "$0.redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT)"
+  ProcessBuilder redirectAll -> ProcessBuilder
+
   Process waitFor -> Int
 
   @emit: """System.getProperty("user.dir")"""

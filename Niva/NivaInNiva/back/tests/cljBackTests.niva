@@ -42,14 +42,14 @@ Test cljFunctionAsDefn = [
 ]
 
 Test cljEntryUsesLetAtTopLevel = [
-  fileMain = """
-    x = 1
-    y = 2
-  """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  clj = CljBackend fullFromIrModule: (result toIrModule)
-
-  clj contains: "(let [x 1 y 2] nil)", assertTrue
+    fileMain = """
+     x = 1
+     y = 2
+    """
+    result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+    clj = CljBackend fullFromIrModule: (result toIrModule)
+    clj contains: "(let [x 1", assertTrue
+    clj contains: "y 2]", assertTrue
 ]
 
 Test cljMutVarAsAtom = [

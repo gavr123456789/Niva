@@ -120,8 +120,6 @@ constructor NivaCompiler [
             | backend
             | CompilerBackend.Go => [
                 generateGoFromResolver res: resolver
-
-
                 t5 = measureTimeFrom from: t1 text: "full niva until go generated"
 
                 option == CompilerOption.Run ifTrue: [
@@ -152,7 +150,9 @@ constructor NivaCompiler [
                 generateCljFromResolver res: resolver
                 option == CompilerOption.Run ifTrue: [
                   t6 = measureTimeFrom from: t5 text: "IR + codegen"
-                  io runProgramFromPath path: realCljPath args: {"bb" "-m" "main"} // "clojure" "-M" "-m" "main"
+                  //io runProgramFromPath path: realCljPath args: {"bb" "-m" "main"} // "clojure" "-M" "-m" "main"
+                  io runProgram args: {"bb" "-cp" realCljPath "-m" "main" }
+
                   t7 = measureTimeFrom from: t6 text: "run binary"
                 ]
               ]
