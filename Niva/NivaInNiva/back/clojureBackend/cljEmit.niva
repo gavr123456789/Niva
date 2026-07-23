@@ -222,6 +222,38 @@ IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> Stri
       "{" + pairs + "}"
     ]
 
+// Wrap `this` body expression in `(let [<bindings>] <this>)`. Single binding
+// with a single-line body stays compact; otherwise names are padded to a
+// shared column width, split across lines, and the body is placed on its own
+// line (with its own internal newlines re-indented).
+String cljWrapInLet(bindings): List(CljBinding) -> String = [
+  isSingle = bindings count == 1
+  bodyMultiline = this contains: "\n"
+
+  (isSingle && bodyMultiline not) ifTrue: [
+    b = bindings first
+    ^ "(let [" + b name + " " + b value + "] " + this + ")"
+  ]
+
+  bStr = isSingle
+    ifTrue: [
+      b = bindings first
+      b name + " " + b value
+    ]
+    ifFalse: [
+      mut maxLen = 0
+      bindings forEach: [it ->
+        w = it name count
+        w > maxLen ifTrue: [maxLen <- w]
+      ]
+      bindings joinWith: "\n      " transform: [it ->
+        (it name cljPadTo: maxLen) + " " + it value
+      ]
+    ]
+  indented = this replace: "\n" with: "\n  "
+  ^ "(let [" + bStr + "]\n  " + indented + ")"
+]
+
 IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   subjectExpr = subject toCljExpr: ctx scope: scope
   subjectName = "__cljSubject"
@@ -235,11 +267,7 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   | IrMatchKind.ByType  => [
       // condp instance? subject Foo (let [alias subject] body) ...
       sb = StringBuilder new
-      sb append: "(let ["
-      sb append: subjectName
-      sb append: " "
-      sb append: subjectExpr
-      sb append: "] (condp instance? "
+      sb append: "(condp instance? "
       sb append: subjectName
       cases forEach: [c ->
         typeStr = c assertedTypeRef unpack: [it cljTypeName]
@@ -249,32 +277,27 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
         caseScope mutLocals remove: aliasName
         bodyStr = c body toCljBlockBodyWithBind: ctx scope: caseScope
                     bindName: aliasName bindValue: subjectName
-        sb append: " "
+        sb append: "\n  "
         sb append: typeStr
         sb append: " "
-        sb append: bodyStr
+        sb append: (bodyStr replace: "\n" with: "\n  ")
       ]
       | elseBranchLocal
-      | null => [ sb append: " (throw (ex-info \"no matching type\" {})))" ]
+      | null => [ sb append: "\n  (throw (ex-info \"no matching type\" {})))" ]
       |=> [
           elseBlock = elseBranchLocal
           elseScope = innerScope copy
           elseStr = elseBlock toCljBlockBody: ctx scope: elseScope
-          sb append: " "
-          sb append: elseStr
+          sb append: "\n  "
+          sb append: (elseStr replace: "\n" with: "\n  ")
           sb append: ")"
         ]
-      sb append: ")"
-      ^ sb toString
+      ^ (sb toString) cljWrapInLet: {(CljBinding name: subjectName value: subjectExpr)}
     ]
   |=> [
       // ByValue or ByBool -> cond chain
       sb = StringBuilder new
-      sb append: "(let ["
-      sb append: subjectName
-      sb append: " "
-      sb append: subjectExpr
-      sb append: "] (cond"
+      sb append: "(cond"
       cases forEach: [c ->
         cond = c condition toCljExpr: ctx scope: innerScope
         guardStr = c additionalConditions isNotEmpty
@@ -285,22 +308,22 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
           ifFalse: ["(and (= " + subjectName + " " + cond + ")" + guardStr + ")"]
         caseScope = innerScope copy
         bodyStr = c body toCljBlockBody: ctx scope: caseScope
-        sb append: " "
+        sb append: "\n  "
         sb append: fullCond
         sb append: " "
-        sb append: bodyStr
+        sb append: (bodyStr replace: "\n" with: "\n  ")
       ]
       | elseBranchLocal
       | null => []
       |=> [
           elseBlock = elseBranchLocal
           elseStr = elseBlock toCljBlockBody: ctx scope: (innerScope copy)
-          sb append: " :else "
-          sb append: elseStr
+          sb append: "\n  :else "
+          sb append: (elseStr replace: "\n" with: "\n  ")
           ()
         ]
-      sb append: "))"
-      ^ sb toString
+      sb append: ")"
+      ^ (sb toString) cljWrapInLet: {(CljBinding name: subjectName value: subjectExpr)}
     ]
 ]
 
@@ -332,27 +355,16 @@ extend IrBlock [
             ifTrue:  [trailingReturnExpr <- st expr]
             ifFalse: [TO DO: "Clojure does not support ^"]
         ]
-      |=> [
-          stmtsToEmit add: st
-          ()
-        ]
+      |=> [ stmtsToEmit add: st
+            ()]
     ]
 
-    bindingsSb = StringBuilder new
-    mut hasBindings = false
-    appendBinding = [b::String ->
-      hasBindings ifTrue: [bindingsSb append: " "]
-      bindingsSb append: b
-      hasBindings <- true
-    ]
-
+    bindings::mut List(CljBinding) = {}!
     bindName != "" ifTrue: [
-      appendBinding do: (bindName cljSanitizeIdent + " " + bindValue)
+      bindings add: (CljBinding name: (bindName cljSanitizeIdent) value: bindValue)
     ]
-
     stmtsToEmit forEach: [st ->
-      binding = st toCljStmtBinding: ctx scope: scope
-      binding != "" ifTrue: [appendBinding do: binding]
+      bindings add: (st toCljStmtBinding: ctx scope: scope)
     ]
 
     // trailing IrReturn or block result
@@ -369,8 +381,8 @@ extend IrBlock [
                 | null => "nil"
                 |=> resultExpr toCljExpr: ctx scope: scope
 
-    ^ hasBindings
-      ifTrue: ["(let [" + (bindingsSb toString) + "] " + resultStr + ")"]
+    ^ bindings isNotEmpty
+      ifTrue: [resultStr cljWrapInLet: bindings]
       ifFalse: [resultStr]
   ]
 
@@ -382,31 +394,24 @@ extend IrBlock [
 // statement -> let-binding pair
 // ---------------------------------------------------------------------------
 
-IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> String = [
+IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
   ^ | this
     | IrLet => [
         goName = name cljSanitizeIdent
         scope mutLocals remove: name
         isMut ifTrue: [scope mutLocals add: name]
         valueLocal = value
-        | valueLocal
-        | null => [
-            isMut
-              ifTrue: [goName + " (atom nil)"]
-              ifFalse: [goName + " nil"]
-          ]
-        |=> [
-            valStr = valueLocal toCljExpr: ctx scope: scope
-            isMut
-              ifTrue: [goName + " (atom " + valStr + ")"]
-              ifFalse: [goName + " " + valStr]
-          ]
+        raw = | valueLocal
+              | null => "nil"
+              |=> valueLocal toCljExpr: ctx scope: scope
+        valStr = isMut ifTrue: ["(atom " + raw + ")"] ifFalse: [raw]
+        CljBinding name: goName value: valStr
       ]
     | IrSetLocal => [
         goName = name cljSanitizeIdent
         (scope isMut: name) ifFalse: [TO DO: "Clojure backend: assignment to non-mut var: " + name]
         valStr = value toCljExpr: ctx scope: scope
-        "_ (reset! " + goName + " " + valStr + ")"
+        CljBinding name: "_" value: ("(reset! " + goName + " " + valStr + ")")
       ]
     | IrSetField => [TO DO: "Clojure backend: field mutation is not supported (records are immutable)"]
     | IrDestructure => [
@@ -416,7 +421,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> String = [
           scope mutLocals remove: b name
           (b name cljSanitizeIdent) + " :" + (b fieldName cljSanitizeIdent)
         ]
-        "{" + parts + "} " + valStr
+        CljBinding name: ("{" + parts + "}") value: valStr
       ]
     | IrExprStmt => [
         // an IrCall with propagatingErrVar isn't supported on this backend
@@ -428,7 +433,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> String = [
             ]
           ]
         |=> []
-        "_ " + (exprLocal toCljExpr: ctx scope: scope)
+        CljBinding name: "_" value: (exprLocal toCljExpr: ctx scope: scope)
       ]
     | IrReturn => [TO DO: "Clojure does not support ^"]
     | IrWhile => [
@@ -438,14 +443,14 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> String = [
         bodyStr = body isIrLambda
           ifTrue:  [body cljUnwrapLambdaBody: ctx scope: scope]
           ifFalse: [body toCljExpr: ctx scope: scope]
-        "_ (while " + condStr + " " + bodyStr + ")"
+        CljBinding name: "_" value: ("(while " + condStr + " " + bodyStr + ")")
       ]
     | IrThrow => [
         throwErrExpr = errExpr
         errStr = | throwErrExpr
           | IrTypeRefExpr => "(ex-info \"" + (throwErrExpr ref typeId cljNormalizeTypeId) + "\" {})"
           |=> throwErrExpr toCljExpr: ctx scope: scope
-        "_ (throw " + errStr + ")"
+        CljBinding name: "_" value: ("(throw " + errStr + ")")
       ]
 ]
 
@@ -504,7 +509,15 @@ constructor CljBackend [
     scope = CljScope new
     body = fn body toCljBlockBody: ctx scope: scope
 
-    sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
+    (body contains: "\n")
+      ifTrue: [
+        indented = body replace: "\n" with: "\n  "
+        sb appendLine: ("(defn " + name + " [" + fullArgs + "]")
+        sb appendLine: ("  " + indented + ")")
+      ]
+      ifFalse: [
+        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
+      ]
     sb appendLine: ""
   ]
 
@@ -512,8 +525,9 @@ constructor CljBackend [
     // wrap the entry as (defn -main [& args] ...) so `clojure -M -m main` finds it
     scope = CljScope new
     body = entry toCljBlockBody: ctx scope: scope
+    indented = body replace: "\n" with: "\n  "
     sb appendLine: "(defn -main [& args]"
-    sb appendLine: ("  " + body + ")")
+    sb appendLine: ("  " + indented + ")")
     sb appendLine: ""
   ]
 
