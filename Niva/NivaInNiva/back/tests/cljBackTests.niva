@@ -219,3 +219,88 @@ Test cljAtomIdentifierAsKeyword = [
   clj contains: "color :red", assertTrue
   clj contains: "other :blue", assertTrue
 ]
+
+Test cljErrorDomainThrowCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defrecord main_Error1 [text])", assertTrue
+  clj contains: "(defrecord main_Error2 [code])", assertTrue
+  // JVM throws only Throwables: the error record is wrapped in an ex-info
+  clj contains: "(->main_Error2 404)", assertTrue
+  clj contains: "(throw (ex-info (str __cljErr) {:value __cljErr}))", assertTrue
+]
+
+Test cljErrorDomainHandledMatchCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error1 => [0]
+                | Error2 => [1]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // subject runs in a try; failure is caught and dispatched on the record type
+  clj contains: "(try [:niva-ok", assertTrue
+  clj contains: "(catch clojure.lang.ExceptionInfo __cljErr", assertTrue
+  clj contains: "(:value (ex-data __cljErr))", assertTrue
+  clj contains: "(condp instance? it", assertTrue
+  clj contains: "main_Error1 [:niva-done", assertTrue
+  clj contains: "main_Error2 [:niva-done", assertTrue
+  // unhandled errors keep propagating
+  clj contains: "(throw __cljErr)", assertTrue
+  // else branch runs on success, aliasing the subject value to `it`
+  clj contains: "(if (= (nth __cljMatchRes 0) :niva-ok)", assertTrue
+  clj contains: "(let [it (nth __cljMatchRes 1)]", assertTrue
+]
+
+Test cljErrorDomainMatchByCoreErrorCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error => [0]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // the base `Error` type has no runtime class, so Object is the catch-all
+  clj contains: "Object [:niva-done", assertTrue
+]
