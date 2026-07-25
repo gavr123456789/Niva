@@ -6,8 +6,13 @@
 //   * blocks   -> single let with `_` bindings for side-effect statements
 //   * IrReturn -> supported only as the trailing statement; anywhere else it
 //                 explodes with `TO DO: "Clojure does not support ^"`
+//   * errors   -> exceptions. `throw` wraps the error record in an ex-info
+//                 (payload under `:value`, matching niva.core/Error__throw);
+//                 propagation is free (the exception unwinds the stack); a
+//                 ByError match becomes a try/catch that dispatches on the
+//                 record type and re-throws anything it does not handle.
 //
-// error domains + IrSetField are intentionally rejected with TO DO for now.
+// IrSetField is intentionally rejected with TO DO for now.
 
 extend IrExpr [
   on toCljExpr(ctx): CljContext scope: CljScope -> String =
@@ -263,7 +268,73 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   hasElse = elseBranchLocal != null
 
   | kind
-  | IrMatchKind.ByError => [TO DO: "Clojure backend: match on errors is not implemented"]
+  | IrMatchKind.ByError => [
+      // The subject is a fallible call. If it throws, the error record is
+      // carried inside an ex-info under `:value` (see IrThrow / Error__throw).
+      // Success/handled results are tagged so the else branch runs OUTSIDE the
+      // try (a nested failure there must propagate, not be caught here).
+      aliasName = (typeAlias unpackOrValue: "it") cljSanitizeIdent
+      errName = "__cljErr"
+      matchResName = "__cljMatchRes"
+
+      // catch body: dispatch on the error record's concrete type, re-throw the
+      // original exception for anything unhandled so it keeps propagating.
+      condpSb = StringBuilder new
+      condpSb append: "(condp instance? "
+      condpSb append: aliasName
+      cases forEach: [c ->
+        typeStr = c assertedTypeRef
+          unpack: [ref ->
+            // the base `Error` type has no runtime class in clj; Object catches all
+            (ref typeId cljNormalizeTypeId) == "core_Error"
+              ifTrue:  ["Object"]
+              ifFalse: [ref cljTypeName]
+          ]
+          or: (c condition toCljExpr: ctx scope: innerScope)
+        caseScope = innerScope copy
+        caseScope mutLocals remove: aliasName
+        bodyStr = c body toCljBlockBody: ctx scope: caseScope
+        condpSb append: "\n  "
+        condpSb append: typeStr
+        condpSb append: " [:niva-done "
+        condpSb append: (bodyStr replace: "\n" with: "\n  ")
+        condpSb append: "]"
+      ]
+      condpSb append: "\n  (throw "
+      condpSb append: errName
+      condpSb append: "))"
+
+      trySb = StringBuilder new
+      trySb append: "(try [:niva-ok "
+      trySb append: subjectExpr
+      trySb append: "]\n  (catch clojure.lang.ExceptionInfo "
+      trySb append: errName
+      trySb append: "\n    (let ["
+      trySb append: aliasName
+      trySb append: " (:value (ex-data "
+      trySb append: errName
+      trySb append: "))]\n      "
+      trySb append: ((condpSb toString) replace: "\n" with: "\n      ")
+      trySb append: ")))"
+
+      // consumer: on success run the else branch (aliasing the subject value),
+      // otherwise return the already-computed handled result.
+      consumer = | elseBranchLocal
+        | null => ("(nth " + matchResName + " 1)")
+        |=> [
+            elseBlock = elseBranchLocal
+            elseScope = innerScope copy
+            elseScope mutLocals remove: aliasName
+            elseStr = elseBlock toCljBlockBody: ctx scope: elseScope
+            successBody = subjectIsUnit
+              ifTrue:  [elseStr]
+              ifFalse: ["(let [" + aliasName + " (nth " + matchResName + " 1)] " + elseStr + ")"]
+            successIndented = successBody replace: "\n" with: "\n  "
+            "(if (= (nth " + matchResName + " 0) :niva-ok)\n  " + successIndented + "\n  (nth " + matchResName + " 1))"
+          ]
+
+      ^ consumer cljWrapInLet: {(CljBinding name: matchResName value: (trySb toString))}
+    ]
   | IrMatchKind.ByType  => [
       // condp instance? subject Foo (let [alias subject] body) ...
       sb = StringBuilder new
@@ -424,16 +495,10 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         CljBinding name: ("{" + parts + "}") value: valStr
       ]
     | IrExprStmt => [
-        // an IrCall with propagatingErrVar isn't supported on this backend
-        exprLocal = expr
-        | exprLocal
-        | IrCall => [
-            (exprLocal propagatingErrVar) != null ifTrue: [
-              TO DO: "Clojure backend: error propagation is not supported"
-            ]
-          ]
-        |=> []
-        CljBinding name: "_" value: (exprLocal toCljExpr: ctx scope: scope)
+        // Error propagation is automatic here: a call with propagatingErrVar just
+        // throws on failure, and the exception unwinds the stack until a ByError
+        // match (try/catch) handles it — so no special emission is needed.
+        CljBinding name: "_" value: (expr toCljExpr: ctx scope: scope)
       ]
     | IrReturn => [TO DO: "Clojure does not support ^"]
     | IrWhile => [
@@ -446,11 +511,15 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         CljBinding name: "_" value: ("(while " + condStr + " " + bodyStr + ")")
       ]
     | IrThrow => [
+        // JVM can only throw Throwables, so wrap the error record in an ex-info
+        // whose data carries it under `:value` (matching niva.core/Error__throw
+        // and the extraction done by a ByError match).
         throwErrExpr = errExpr
-        errStr = | throwErrExpr
-          | IrTypeRefExpr => "(ex-info \"" + (throwErrExpr ref typeId cljNormalizeTypeId) + "\" {})"
+        errRecordStr = | throwErrExpr
+          | IrTypeRefExpr => "(->" + (throwErrExpr ref typeId cljNormalizeTypeId cljSanitizeIdent) + ")"
           |=> throwErrExpr toCljExpr: ctx scope: scope
-        CljBinding name: "_" value: ("(throw " + errStr + ")")
+        CljBinding name: "_"
+          value: ("(let [__cljErr " + errRecordStr + "] (throw (ex-info (str __cljErr) {:value __cljErr})))")
       ]
 ]
 
