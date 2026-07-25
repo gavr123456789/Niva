@@ -265,18 +265,17 @@ Test cljErrorDomainHandledMatchCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
-  // subject runs in a try; failure is caught and dispatched on the record type
-  clj contains: "(try [:niva-ok", assertTrue
-  clj contains: "(catch clojure.lang.ExceptionInfo __cljErr", assertTrue
-  clj contains: "(:value (ex-data __cljErr))", assertTrue
+  // with an else branch, the success/handled plumbing hides in niva.core/handling
+  clj contains: "(niva.core/handling [it", assertTrue
+  clj contains: "[niva.core]", assertTrue
   clj contains: "(condp instance? it", assertTrue
-  clj contains: "main_Error1 [:niva-done", assertTrue
-  clj contains: "main_Error2 [:niva-done", assertTrue
-  // unhandled errors keep propagating
-  clj contains: "(throw __cljErr)", assertTrue
-  // else branch runs on success, aliasing the subject value to `it`
-  clj contains: "(if (= (nth __cljMatchRes 0) :niva-ok)", assertTrue
-  clj contains: "(let [it (nth __cljMatchRes 1)]", assertTrue
+  clj contains: "main_Error1 0", assertTrue
+  clj contains: "main_Error2 1", assertTrue
+  // unhandled errors -> sentinel, which the macro turns into a re-throw
+  clj contains: ":niva.core/miss", assertTrue
+  // no Go-style value/no-value tuples leak into the generated code
+  Assert that: (clj contains: ":niva-ok") equals: false
+  Assert that: (clj contains: ":niva-done") equals: false
 ]
 
 Test cljErrorDomainMatchByCoreErrorCodegen = [
@@ -302,5 +301,42 @@ Test cljErrorDomainMatchByCoreErrorCodegen = [
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
   // the base `Error` type has no runtime class, so Object is the catch-all
-  clj contains: "Object [:niva-done", assertTrue
+  clj contains: "(niva.core/handling [it", assertTrue
+  clj contains: "Object 0", assertTrue
+  clj contains: ":niva.core/miss", assertTrue
+]
+
+// A ByError match with no else branch needs no success/handled bookkeeping:
+// it emits a plain, idiomatic try/catch/condp with an unhandled re-throw.
+Test cljErrorDomainNoElseMatchCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      ^ | () foo
+        | Error1 => [0]
+        | Error2 => [1]
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(catch clojure.lang.ExceptionInfo __cljErr", assertTrue
+  clj contains: "(:value (ex-data __cljErr))", assertTrue
+  clj contains: "(condp instance? it", assertTrue
+  clj contains: "main_Error1 0", assertTrue
+  clj contains: "main_Error2 1", assertTrue
+  // the condp default re-throws so an unexpected error would keep propagating
+  clj contains: "(throw __cljErr)", assertTrue
+  // no macro and no tuples for the else-less shape
+  Assert that: (clj contains: "niva.core/handling") equals: false
+  Assert that: (clj contains: ":niva-ok") equals: false
 ]
