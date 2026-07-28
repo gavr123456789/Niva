@@ -43,11 +43,17 @@ union Complex
 
 extend NivaType [
 
-  on unwrapNullable -> NivaType = [
-    ^  | this
-       | NullableT => v
-       |=> this
-  ]
+  on unwrapNullable -> NivaType =
+    | this
+    | NullableT => v
+    |=> this
+
+
+  on toNullable -> NullableT =
+    | this
+    | NullableT => TO DO: this toString + "already nullable"
+    |=> NullableT v: this
+
 
   /// generate unique identifiers for instantiated types (Box__Int)
   on toMangledName -> String = [

@@ -88,6 +88,8 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
   ^ result
 ]
 
+// typechecks for x::Int = 4
+// where nivaType is `::Int` part, and 4 is `this`
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
   result = nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
@@ -128,11 +130,11 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
                   |=> false
 
     | ListT => | this
-               | ListT => t isAssignableTo: nivaType t :db
+               | ListT => this t isAssignableTo: nivaType t :db
                |=> false
 
     | SetT => | this
-              | SetT =>  t isAssignableTo: nivaType t :db
+              | SetT =>  this t isAssignableTo: nivaType t :db
               |=> false
 
     | MapT => | this
@@ -141,7 +143,13 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
               |=> false
 
     | NullableT =>  | this
-                    | NullableT => v isAssignableTo: nivaType v :db
+                    | NullableT => [
+                                    // nullable with nothing inside is just `null`
+                                    // x::Int? = null
+                                    // null here is NullableT(NothingT)
+                                    | this v isNothingType
+                                    | true => true
+                                    |=> this v isAssignableTo: nivaType v :db]
                     | NothingT => true
                     |=> .isAssignableTo: nivaType v :db
 

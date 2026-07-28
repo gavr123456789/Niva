@@ -54,8 +54,10 @@ constructor TyperDB new -> TyperDB = [
 
   {char int float double str bool bind error unit nothing any t list map set intRange charRange} = dtc
 
-
+  // TODO set
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
+  mapProtocol     = NivaProtocol mapFromDefaultTypes: dtc mapType: map keyType: map k valueType: map v
+  //setProtocol     = NivaProtocol collectionFromDefaultTypes: dtc collectionType: set itemType: (UnresolvedGenericT name: "T")
   intProtocol     = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc int
   doubleProtocol  = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc double
   strProtocol     = NivaProtocol stringFromDefaultTypes: dtc
@@ -86,8 +88,8 @@ constructor TyperDB new -> TyperDB = [
     any anyProtocol
     error errorProtocol
     list listProtocol
-    map tempEmptyProto
-    set tempEmptyProto
+    map mapProtocol
+    set tempEmptyProto // TODO
     intRange intRangeProtocol
     charRange charRangeProtocol
   }
@@ -808,7 +810,8 @@ extend TyperDB [
           {any} = dtc
           foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver
           | foundInAnyMaybe
-          | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
+          | null => [ // TODO check for nullable, and suggest unpacking methods
+                      TO DO: "Searching for $name method but its not found for type $receiverType"]
           |=> foundInAnyMaybe
         ]
       |=> methodMaybe
