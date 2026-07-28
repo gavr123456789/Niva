@@ -29,6 +29,7 @@ extend NivaType [
   on isStringType -> Bool = .isCoreTypeNamed: "String"
   on isBoolType -> Bool = .isCoreTypeNamed: "Bool"
   on isNullableType -> Bool = | this | NullableT => true |=> false
+  on isNothingType -> Bool = | this | NothingT => true |=> false
 ]
 
 
