@@ -474,6 +474,68 @@ Test collectionsTestingMapTry = [
 
 ]
 
+Test nestedCollectionsAndExprInBracketsTypes = [
+  fileMain = """
+    {{1 2} {3}}
+    {(1 inc) (2 inc)}
+    #{1 {1 2}}
+    emptyNested::List(List(Int)) = {{} {}}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  Assert that: db listOfErrors count equals: 0
+
+  checkListOfLists = [
+    t = typedAst at: 0, typeInfo t
+    | t
+    | ListT => [
+      inner = t t
+      | inner
+      | ListT => Assert that: inner t name equals: "Int"
+      |=> [TO DO: "List(List(Int)) expected, got $t"]
+    ]
+    |=> [TO DO: "list expected, got $t"]
+  ] do
+
+  checkListOfExprInBrackets = [
+    t = typedAst at: 1, typeInfo t
+    | t
+    | ListT => Assert that: t t name equals: "Int"
+    |=> [TO DO: "list expected, got $t"]
+  ] do
+
+  checkMapWithListValue = [
+    t = typedAst at: 2, typeInfo t
+    | t
+    | MapT => [
+      Assert that: t k name equals: "Int"
+      Assert that: t v name equals: "List"
+    ]
+    |=> [TO DO: "map expected, got $t"]
+  ] do
+
+  // empty nested collections take their type from the declaration
+  checkEmptyNested = [
+    decl = typedAst at: 3
+    | decl
+    | VarDeclarationT => [
+      t = decl value typeInfo t
+      | t
+      | ListT => [
+        inner = t t
+        | inner
+        | ListT => Assert that: inner t name equals: "Int"
+        |=> [TO DO: "List(List(Int)) expected, got $t"]
+      ]
+      |=> [TO DO: "list expected, got $t"]
+    ]
+    |=> [TO DO: "var declaration expected, got $decl"]
+  ] do
+]
+
 Test listMapFilterForEachChain = [
   fileMain = """
     list = {1 2 3}

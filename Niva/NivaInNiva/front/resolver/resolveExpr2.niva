@@ -107,6 +107,33 @@ extend Body [
                 t: bodyType
                 listOfErrors: (bodyErrors normalizeErrorList)
   ]
+
+  /// resolve elements of a collection literal, expected type is propagated to every element,
+  /// so a nested empty collection can infer its type: `x::List(List(Int)) = {{} {}}`
+  /// for list and set both expected types are the element type, for map its key and value
+  on resolveCollectionElements(db): TyperDB withContext(upperContext): Context expectedEven: NivaType? expectedOdd: NivaType? -> TypedBody = [
+    (expectedEven == null) && (expectedOdd == null) ifTrue: [
+      ^ .resolveBody2: db withContext: upperContext
+    ]
+
+    c = Context fromParent: upperContext
+    unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
+
+    typedElems = unTypedBody mapIndexed: [ i, elem ->
+      expectedForElem = i % 2 == 0 ifTrue: [expectedEven] ifFalse: [expectedOdd]
+      elem toTypedExprFromDb2: db withContext: c expectedType: expectedForElem
+    ]
+
+    bodyErrors::mut List(NivaType) = {}!
+    typedElems forEach: [expr ->
+      expr typeInfo listOfErrors forEach: [bodyErrors add: it]
+    ]
+
+    ^ TypedBody
+        v: typedElems
+        t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
+        listOfErrors: (bodyErrors normalizeErrorList)
+  ]
 ]
 
 List(NivaType) normalizeErrorList -> List(NivaType) = [
@@ -502,7 +529,18 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ]
     // resolve
     // compere each first and each second
-    typedBody = elements resolveBody2: db withContext: c
+    expectedMap = expectedType unpack: [ et ->
+      unwrapped = et unwrapNullable
+      | unwrapped
+      | MapT => unwrapped
+      |=> null
+    ] or: null
+
+    typedBody = elements
+      resolveCollectionElements: db
+      withContext: c
+      expectedEven: (expectedMap unpack: [m -> m k] or: null)
+      expectedOdd: (expectedMap unpack: [m -> m v] or: null)
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -570,7 +608,19 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
       ]
     ]
-    typedBody = elements resolveBody2: db withContext: c
+    expectedElem = expectedType unpack: [ et ->
+      unwrapped = et unwrapNullable
+      | unwrapped
+      | ListT => unwrapped t
+      | SetT => unwrapped t
+      |=> null
+    ] or: null
+
+    typedBody = elements
+      resolveCollectionElements: db
+      withContext: c
+      expectedEven: expectedElem
+      expectedOdd: expectedElem
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -609,9 +659,9 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
   | VarDeclaration  => [
     // "var decl " + c toString, log
-    typedExpr = this value toTypedExprFromDb2: db withContext: c
 
-    // check that ast type is the same as declared
+    // declared type is resolved first, so the value knows what type is expected
+    // `x::List(Int) = {}`
     mut declaredType::NivaType? = null
     mut declaredTypeInfo::TypeInfo? = null
     this astType unpack: [ declaredAstType ->
@@ -620,6 +670,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       errorsList = declaredAstType toErrorsFromDb: db inPkg: null
       declaredType <- nivaType
       declaredTypeInfo <- (TypeInfo t: nivaType isMut: isMut listOfErrors: errorsList)
+    ]
+
+    typedExpr = this value toTypedExprFromDb2: db withContext: c expectedType: declaredType
+
+    // check that ast type is the same as declared
+    declaredType unpack: [ nivaType ->
       db isAssignable: typedExpr typeInfo t toExpected: nivaType,
         ifFalse: [
           valName = name
