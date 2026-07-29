@@ -167,19 +167,34 @@ extend mut Parser [
     ^ x
   ]
 
-  /// if starts from { #{ #(, then return collection
-  /// tok already eaten outside
-  on parseCollection(tok): Token -> CollectionLiteral? = [
+  /// single element of a collection literal
+  /// primary(including nested collections) or expression in brackets `(1 inc)`
+  on parseCollectionElement(tok): Token -> Expr? = [
+    tok kind == TokenType.OpenParen ifTrue: [
+      inner = .nextExpression: .step
+      .matchAssert: TokenType.CloseParen
+      ^ ExprInBrackets value: inner token: tok
+    ]
 
-    manyPrimary = [
-      body::mut List::Expr = {}!
+    ^ .primary: tok
+  ]
 
-      mut c = true
-      [c] whileTrue: [
+  /// elements of a collection literal until `end` token(not eaten)
+  on parseCollectionBody(end): TokenType -> Body = [
+    body::mut List::Expr = {}!
+
+    mut c = true
+    [c] whileTrue: [
+      peekKind = .peek kind
+      (peekKind == end) || (peekKind == TokenType.EndOfFile), ifTrue: [
+        c <- false
+      ] ifFalse: [
         tok2 = .step
-        pr = .primary: tok2
+        pr = .parseCollectionElement: tok2
         | pr
         | null => [
+          // not an element, let the caller report unclosed collection
+          .stepBack
           c <- false
         ]
         |=> [
@@ -188,18 +203,22 @@ extend mut Parser [
           Unit
         ]
       ]
-      Body unTypedBody: body
     ]
+    ^ Body unTypedBody: body
+  ]
 
+  /// if starts from { #{ #(, then return collection
+  /// tok already eaten outside
+  on parseCollection(tok): Token -> CollectionLiteral? = [
    ^| tok kind
     | TokenType.OpenBrace => [
-      body = manyPrimary do
-      .match: TokenType.CloseBrace
+      body = .parseCollectionBody: TokenType.CloseBrace
+      .matchAssert: TokenType.CloseBrace
       ListLiteral token: tok elements: body
     ]
     | TokenType.OpenBraceHash => [
-      body = manyPrimary do
-      .match: TokenType.CloseBrace
+      body = .parseCollectionBody: TokenType.CloseBrace
+      .matchAssert: TokenType.CloseBrace
 
       body unTypedBody count % 2 != 0 ifTrue: [
         TO DO: "elements count in Map should be even"
@@ -208,8 +227,8 @@ extend mut Parser [
       MapLiteral token: tok elements: body
     ]
     | TokenType.OpenParenHash => [
-      body = manyPrimary do
-      .match: TokenType.CloseParen
+      body = .parseCollectionBody: TokenType.CloseParen
+      .matchAssert: TokenType.CloseParen
       SetLiteral token: tok elements: body
     ]
     |=> null

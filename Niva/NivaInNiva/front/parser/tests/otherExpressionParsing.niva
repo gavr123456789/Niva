@@ -115,6 +115,79 @@ Test listLiterals -> Unit = [
 
 ]
 
+Test nestedCollectionLiterals -> Unit = [
+  input = """
+    {{1 2 3} {1 2}}
+    #({1 2} #(3) #{4 5})
+    #{1 {1 2} 2 #(3)}
+    {{{1}}}
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 4
+
+  outerList = statements at: 0
+  | outerList
+  | ListLiteral => [
+    elements = outerList elements unTypedBody
+    Assert that: elements count equals: 2
+    first = elements first
+    | first
+    | ListLiteral => Assert that: first elements unTypedBody count equals: 3
+    |=> [TO DO: "$first is not list literal"]
+  ]
+  |=> [TO DO: "$outerList is not list literal"]
+
+  set = statements at: 1
+  | set
+  | SetLiteral => Assert that: set elements unTypedBody count equals: 3
+  |=> [TO DO: "$set is not set literal"]
+
+  map = statements at: 2
+  | map
+  | MapLiteral => Assert that: map elements unTypedBody count equals: 4
+  |=> [TO DO: "$map is not map literal"]
+
+  deep = statements at: 3
+  | deep
+  | ListLiteral => Assert that: deep elements unTypedBody count equals: 1
+  |=> [TO DO: "$deep is not list literal"]
+]
+
+Test exprInBracketsInsideCollectionLiterals -> Unit = [
+  input = """
+    {(1 inc) (2 + 3) 4}
+    #((1 inc) (2 dec))
+    #{(1 inc) (2 dec)}
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 3
+
+  list = statements at: 0
+  | list
+  | ListLiteral => [
+    elements = list elements unTypedBody
+    Assert that: elements count equals: 3
+    first = elements first
+    | first
+    | ExprInBrackets => [
+      inner = first value
+      | inner
+      | UnaryMsg => Assert that: inner selector name equals: "inc"
+      |=> [TO DO: "unary msg expected inside brackets, got $inner"]
+    ]
+    |=> [TO DO: "$first is not expr in brackets"]
+  ]
+  |=> [TO DO: "$list is not list literal"]
+
+  set = statements at: 1
+  | set
+  | SetLiteral => Assert that: set elements unTypedBody count equals: 2
+  |=> [TO DO: "$set is not set literal"]
+
+  map = statements at: 2
+  | map
+  | MapLiteral => Assert that: map elements unTypedBody count equals: 2
+  |=> [TO DO: "$map is not map literal"]
+]
+
 Test returnStatement -> Unit = [
   input = """
     [
