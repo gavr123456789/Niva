@@ -236,6 +236,120 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
 ]
 
 
+constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
+  setType: NivaType
+  itemType: NivaType
+  -> mut Map(String, NivaMethod) = [
+
+  {int bool unit} = dtc
+
+  setP = NivaProtocol common
+
+  // count, first, toList
+  setP addMethod: (
+    NivaMethod unary: "count"
+        receiverType: setType
+             returnT: int
+  )
+
+  setP addMethod: (
+    NivaMethod unary: "first"
+        receiverType: setType
+             returnT: itemType
+  )
+
+  listType = ListT t: itemType
+  setP addMethod: (
+    NivaMethod unary: "toList"
+        receiverType: setType
+             returnT: listType
+  )
+
+  // set + otherSet
+  setP addMethod: (
+    NivaMethod binary: "+"
+         receiverType: setType
+                 argT: setType
+              returnT: setType
+  )
+
+  // set - otherSet
+  setP addMethod: (
+    NivaMethod binary: "-"
+         receiverType: setType
+                 argT: setType
+              returnT: setType
+  )
+
+  // set contains: item
+  setP addMethod: (
+    NivaMethod singleArgKw: "contains"
+              receiverType: setType
+                      argT: itemType
+                   returnT: bool
+  )
+
+  // `it` and not `item`, otherwise the implicit `it` inside the block wont resolve
+  itemArg = TypeTField
+             name: "it"
+            typeT: itemType
+            isMut: false
+
+  // set forEach: [item -> ...]
+  foreachBlock = FuntionT
+                 fields: {itemArg}!
+                   name: "forEach"
+            genericArgs: {}!
+                pkgName: "core"
+             returnType: unit
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "forEach"
+              receiverType: setType
+                      argT: foreachBlock
+                   returnT: unit
+  )
+
+  // set filter: [item -> Bool]
+  predicateBlock = FuntionT
+                   fields: {itemArg}!
+                     name: "filter"
+              genericArgs: {}!
+                  pkgName: "core"
+               returnType: bool
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "filter"
+              receiverType: setType
+                      argT: predicateBlock
+                   returnT: setType
+  )
+
+  // mutable Set operations.
+  setP addMethod: (
+    NivaMethod unary: "clear"
+        receiverType: setType
+             returnT: unit
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "add"
+              receiverType: setType
+                      argT: itemType
+                   returnT: unit
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "remove"
+              receiverType: setType
+                      argT: itemType
+                   returnT: bool
+  )
+
+  ^ setP methods
+]
+
+
 constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
   {str bool unit char intRange double} = dtc
 

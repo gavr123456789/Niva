@@ -26,8 +26,8 @@ constructor NivaBuildSystem [
 type NivaCompiler
 
 constructor NivaCompiler [
-    on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: true
-    on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [
+    on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: false
+    on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [ // enable time
         t1 = System currentTimeMillis
 
         measureTimeFrom = [from: Long, text: String ->

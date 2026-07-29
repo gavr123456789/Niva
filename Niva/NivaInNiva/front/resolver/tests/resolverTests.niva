@@ -1043,3 +1043,144 @@ Test shadowCopyAllFieldsError = [
 
   Assert that: db listOfErrors count equals: 1
 ]
+
+Test nullableReceiverMessageDecl = [
+  fileMain = """
+    T? orDefault: default::T -> T = [
+      | this
+      | null => ^default
+      |=> ^this
+    ]
+
+    x::Int? = null
+    y = x orDefault: 42
+    z::String? = "sas"
+    w = z orDefault: "nope"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  yDecl = typedAst at: 1
+  | yDecl
+  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  wDecl = typedAst at: 3
+  | wDecl
+  | VarDeclarationT => Assert that: wDecl value typeInfo t name equals: "String"
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test nullableReceiverMessageDeclForConcreteType = [
+  fileMain = """
+    G? isNil -> Bool = [
+      ^ this == null
+    ]
+
+    Int? orZero -> Int = [
+      | this
+      | null => ^0
+      |=> ^this
+    ]
+
+    x::Int? = null
+    y = x orZero
+    z = x isNil
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  yDecl = typedAst at: 1
+  | yDecl
+  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  zDecl = typedAst at: 2
+  | zDecl
+  | VarDeclarationT => Assert that: zDecl value typeInfo t name equals: "Bool"
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+/// a method declared for the exact inner type wins over the generic one with the same name
+Test nullableReceiverExactTypeWinsOverGeneric = [
+  fileMain = """
+    T? orDefaultOrPanic -> Int = [
+      ^ 42
+    ]
+
+    String? orDefaultOrPanic -> String = [
+      ^ "no"
+    ]
+
+    x::Int? = null
+    fromGeneric = x orDefaultOrPanic
+    y::String? = null
+    fromExact = y orDefaultOrPanic
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  genericDecl = typedAst at: 1
+  | genericDecl
+  | VarDeclarationT => Assert that: genericDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  exactDecl = typedAst at: 3
+  | exactDecl
+  | VarDeclarationT => Assert that: exactDecl value typeInfo t name equals: "String"
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test setProtocolMethods = [
+  fileMain = """
+    set = #(1 2 3)
+    set count
+    set first
+    set toList
+    set contains: 2
+    set filter: [it > 1]
+    set + #(4)
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  countType = typedAst at: 1, typeInfo t
+  Assert that: countType name equals: "Int"
+
+  firstType = typedAst at: 2, typeInfo t
+  Assert that: firstType name equals: "Int"
+
+  toListType = typedAst at: 3, typeInfo t
+  | toListType
+  | ListT => Assert that: toListType t name equals: "Int"
+  |=> [TO DO: "list expected but got: $toListType"]
+
+  containsType = typedAst at: 4, typeInfo t
+  Assert that: containsType name equals: "Bool"
+
+  filteredType = typedAst at: 5, typeInfo t
+  | filteredType
+  | SetT => Assert that: filteredType t name equals: "Int"
+  |=> [TO DO: "set expected but got: $filteredType"]
+
+  mergedType = typedAst at: 6, typeInfo t
+  | mergedType
+  | SetT => Assert that: mergedType t name equals: "Int"
+  |=> [TO DO: "set expected but got: $mergedType"]
+]
