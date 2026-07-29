@@ -421,7 +421,9 @@ extend mut Parser [
       | TokenType.Constructor => [
         .messageDeclarationOrExpression: .step savedPosition: savePosition isConstructor: true
       ]
-      | TokenType.Identifier => [
+      // `Int inc = []` or `T? unpack = []`
+      | TokenType.Identifier
+      | TokenType.NullableIdentifier => [
         firstChar = tok lexeme first
         isTypeName = firstChar isUpperCase
         isTypeName ifTrue: [
@@ -612,7 +614,10 @@ extend mut Parser [
     // here, we need to know that it is not a `p` unary for "Ada", but new msg
     //        Person name: "Ada"
     //        p greet
-    (next line > tok line) && ((.peekAt: -1) lexeme != ","),
+    // the last token of the primary and not `tok`, because the primary itself can be
+    // multiline, and then the msg is on the line of its last token(`[\n 1 echo \n] do`)
+    lastTokOfPrimary = .peekAt: -1
+    (next line > lastTokOfPrimary line) && (lastTokOfPrimary lexeme != ","),
       ifTrue: [
         ^ maybePrimary
       ]

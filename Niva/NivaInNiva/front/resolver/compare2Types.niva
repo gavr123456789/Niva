@@ -88,6 +88,12 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
   ^ result
 ]
 
+/// sameTypeAs: is asymmetric, NothingT and AnyT on the right match everything,
+/// so `null`(NothingT) or `Any` receivers would match a method declared for a concrete type
+NivaType sameTypeStrictAs(nivaType): NivaType -> Bool =
+  (.sameTypeAs: nivaType) && (nivaType sameTypeAs: this)
+
+
 // typechecks for x::Int = 4
 // where nivaType is `::Int` part, and 4 is `this`
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [

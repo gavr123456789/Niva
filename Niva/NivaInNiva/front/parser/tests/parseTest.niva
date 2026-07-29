@@ -253,3 +253,41 @@ Test parseExtendMessageDeclarations = [
   ]
   |=> [TO DO: "ExtendDecl expected"]
 ]
+
+Test parseNullableReceiverMessageDeclarations = [
+  input = """
+    T? unpackOrPanic -> T = [this]
+    Int? orZero: default::Int -> Int = [42]
+  """
+
+  statements = TestParse withInput: input expectedCount: 2
+
+  unary = statements at: 0
+  | unary
+  | MessageDecl => [
+    Assert that: unary name equals: "unpackOrPanic"
+    receiver = unary receiver
+    | receiver
+    | AstType => [
+      Assert that: receiver name equals: "T"
+      Assert that: receiver isNullable equals: true
+    ]
+    |=> [TO DO: "AstType receiver expected"]
+  ]
+  |=> [TO DO: "MessageDecl expected"]
+
+  kw = statements at: 1
+  | kw
+  | MessageDecl => [
+    Assert that: kw name equals: "orZero"
+    Assert that: kw args count equals: 1
+    receiver = kw receiver
+    | receiver
+    | AstType => [
+      Assert that: receiver name equals: "Int"
+      Assert that: receiver isNullable equals: true
+    ]
+    |=> [TO DO: "AstType receiver expected"]
+  ]
+  |=> [TO DO: "MessageDecl expected"]
+]

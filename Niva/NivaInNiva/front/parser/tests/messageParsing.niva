@@ -161,3 +161,64 @@ Test parseBinaryMsgWithUnary2 -> Unit = [
     ] |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
   ] |=> TO DO: "It should be MessageSend, but it " + msgSend toString
 ]
+
+/// a msg after a multiline primary belongs to it, and is not a new statement
+Test parseUnaryAfterMultilineCodeblock -> Unit = [
+  input = """
+    [
+      a = 1
+      a echo
+    ] do
+  """
+
+  statements = TestParse withInput: input expectedCount: 1
+
+  first = statements at: 0
+  | first
+  | UnaryMsg => [
+    Assert that: first selector name equals: "do"
+    receiver = first receiver
+    | receiver
+    | CodeBlock => Assert that: receiver body unTypedBody count equals: 2
+    |=> TO DO: "It should be CodeBlock, but it " + receiver toString
+  ] |=> TO DO: "It should be UnaryMsg, but it " + first toString
+]
+
+Test parseBinaryAfterMultilineCodeblock -> Unit = [
+  input = """
+    [
+      5
+    ] do + 1
+  """
+
+  statements = TestParse withInput: input expectedCount: 1
+
+  first = statements at: 0
+  | first
+  | BinaryMsg => [
+    Assert that: first args count equals: 1
+    receiver = first receiver
+    | receiver
+    | UnaryMsg => Assert that: receiver selector name equals: "do"
+    |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
+  ] |=> TO DO: "It should be BinaryMsg, but it " + first toString
+]
+
+Test parseUnaryAfterMultilineCollection -> Unit = [
+  input = """
+    {1 2
+     3} count
+  """
+
+  statements = TestParse withInput: input expectedCount: 1
+
+  first = statements at: 0
+  | first
+  | UnaryMsg => [
+    Assert that: first selector name equals: "count"
+    receiver = first receiver
+    | receiver
+    | ListLiteral => Assert that: receiver elements unTypedBody count equals: 3
+    |=> TO DO: "It should be ListLiteral, but it " + receiver toString
+  ] |=> TO DO: "It should be UnaryMsg, but it " + first toString
+]

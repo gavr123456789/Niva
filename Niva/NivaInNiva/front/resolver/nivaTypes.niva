@@ -41,6 +41,9 @@ union Complex
 // for now unions are just TypeT, u should look into a table from TyperDB to see does it have childrens
 //| UnionT  branches: List::UnionTBranch
 
+/// mangled names of nullables look like `Nullable__core_Int`
+static NULLABLE_MANGLE_PREFIX = "Nullable__"
+
 extend NivaType [
 
   on unwrapNullable -> NivaType =
@@ -66,7 +69,8 @@ extend NivaType [
       pkgName + "_" + name + genericArgsStr
     ]
     | UnresolvedGenericT => [name]
-    | NullableT => [this v toMangledName + "__Nullable"] // nullables not supported yet
+    // prefix, not suffix, otherwise `Box(Int?)` and `Box(Int)?` mangle to the same name
+    | NullableT => [NULLABLE_MANGLE_PREFIX + this v toMangledName]
     | Unknown => ["Unknown"]
     |=> [
       pkgName + "_" + name

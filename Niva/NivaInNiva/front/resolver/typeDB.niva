@@ -17,6 +17,10 @@ type TyperDB
   dtc: DefaultTypesContainer
   // methods
   typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
+  // methods of nullable receivers(`Int? orZero = ...`, `T? unpackOr: x = ...`) they cant live in
+  // typeToMethodNameToMethod, because NullableT is created anew every time and has no structural equality
+  // methodName -> mangled name of the inner type -> method
+  nullableMethods: mut Map(String, mut Map(String, NivaMethod))
   constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB, since we can have constructo and message with the same names
   instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
   // canonical instances for collection types (ListT/SetT/MapT), keyed by "List_Int" etc.
@@ -54,10 +58,9 @@ constructor TyperDB new -> TyperDB = [
 
   {char int float double str bool bind error unit nothing any t list map set intRange charRange} = dtc
 
-  // TODO set
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
   mapProtocol     = NivaProtocol mapFromDefaultTypes: dtc mapType: map keyType: map k valueType: map v
-  //setProtocol     = NivaProtocol collectionFromDefaultTypes: dtc collectionType: set itemType: (UnresolvedGenericT name: "T")
+  setProtocol     = NivaProtocol setFromDefaultTypes: dtc setType: set itemType: set t
   intProtocol     = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc int
   doubleProtocol  = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc double
   strProtocol     = NivaProtocol stringFromDefaultTypes: dtc
@@ -69,7 +72,10 @@ constructor TyperDB new -> TyperDB = [
   intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
 
-  tempEmptyProto::mut Map(mut String, mut NivaMethod) = #{}!
+  // every type needs its own empty protocol, sharing one map means
+  // that a method added to one type appears on all of them
+  floatProto::mut Map(String, NivaMethod) = #{}!
+  unitProto::mut Map(String, NivaMethod) = #{}!
 
   typeToMethodNameToMethod::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
     char charProtocol
@@ -77,37 +83,49 @@ constructor TyperDB new -> TyperDB = [
     int intProtocol
     double doubleProtocol
 
-    float tempEmptyProto
+    float floatProto
 
     str strProtocol
     bool boolProtocol
 
     //nill
-    unit tempEmptyProto
+    unit unitProto
 
     any anyProtocol
     error errorProtocol
     list listProtocol
     map mapProtocol
-    set tempEmptyProto // TODO
+    set setProtocol
     intRange intRangeProtocol
     charRange charRangeProtocol
   }
 
+  charConstructors::mut Map(String, NivaMethod) = #{}!
+  intConstructors::mut Map(String, NivaMethod) = #{}!
+  floatConstructors::mut Map(String, NivaMethod) = #{}!
+  doubleConstructors::mut Map(String, NivaMethod) = #{}!
+  strConstructors::mut Map(String, NivaMethod) = #{}!
+  boolConstructors::mut Map(String, NivaMethod) = #{}!
+  unitConstructors::mut Map(String, NivaMethod) = #{}!
+  anyConstructors::mut Map(String, NivaMethod) = #{}!
+  listConstructors::mut Map(String, NivaMethod) = #{}!
+  mapConstructors::mut Map(String, NivaMethod) = #{}!
+  setConstructors::mut Map(String, NivaMethod) = #{}!
+
   constructorsCache::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
-    char tempEmptyProto
-    int tempEmptyProto
-    float tempEmptyProto
-    double tempEmptyProto
-    str tempEmptyProto
-    bool tempEmptyProto
+    char charConstructors
+    int intConstructors
+    float floatConstructors
+    double doubleConstructors
+    str strConstructors
+    bool boolConstructors
     bind bindConstructors
-    unit tempEmptyProto
-    any tempEmptyProto
+    unit unitConstructors
+    any anyConstructors
     error errorProtocol
-    list tempEmptyProto
-    map tempEmptyProto
-    set tempEmptyProto
+    list listConstructors
+    map mapConstructors
+    set setConstructors
   }
 
   typesWithSameNames = #{}!
@@ -131,6 +149,7 @@ constructor TyperDB new -> TyperDB = [
     typesById: typesById
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
+    nullableMethods: #{}!
     constructorsTypeToMethodNameToMethod: constructorsCache
     instantiatedCache: #{}!
     canonicalCollectionInstances: #{}!
@@ -393,13 +412,32 @@ extend TyperDB [
       null
     ] or: null
   ]
+  /// nullable receivers are keyed by the mangled name of their inner type,
+  /// every generic one(`T? m`, `G? m`) matches any nullable, so they all share a single slot
+  on nullableMethodKeyFor(inner): NivaType -> String = [
+    mangled = inner toMangledName
+    ^ mangled isGeneric ifTrue: ["?"] ifFalse: [mangled]
+  ]
+
   /// adds method to protocol, if no such protocol - creates it
   on addMethod(m): NivaMethod forType(forType): NivaType = [
-    methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
-    methodNameToMethodMap containsKey: m name,
-      ifTrue: [TO DO: "Type $forType already has method $m"]
+    | forType
+    // nullable receivers(`T? unpackOr: x = ...`) are never registered as types, see nullableMethods
+    | NullableT => [
+      innerToMethod::mut Map(String, NivaMethod) = nullableMethods get: m name orPut: [#{}!]
+      key = .nullableMethodKeyFor: forType v
+      innerToMethod containsKey: key,
+        ifTrue: [TO DO: "Type $forType already has method $m"]
 
-    methodNameToMethodMap at: m name put: m
+      innerToMethod at: key put: m
+    ]
+    |=> [
+      methodNameToMethodMap::mut Map(String, NivaMethod) = (typeToMethodNameToMethod at: forType) unpackOrPANIC
+      methodNameToMethodMap containsKey: m name,
+        ifTrue: [TO DO: "Type $forType already has method $m"]
+
+      methodNameToMethodMap at: m name put: m
+    ]
     //m kind == MessageSendKind.Getter ifFalse: [
     //  "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
     //]
@@ -670,8 +708,15 @@ extend TyperDB [
 
   /// we use this for replacing an old method with Unknown return type with new one with resolved rt
   on replaceMethod(m): NivaMethod inType::NivaType = [
-    x::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: inType, unpackOrPANIC
-    x at: m name put: m
+    | inType
+    | NullableT => [
+      innerToMethod::mut Map(String, NivaMethod) = nullableMethods at: m name, unpackOrPANIC
+      innerToMethod at: (.nullableMethodKeyFor: inType v) put: m
+    ]
+    |=> [
+      x::mut Map(String, NivaMethod) = typeToMethodNameToMethod at: inType, unpackOrPANIC
+      x at: m name put: m
+    ]
   ]
 
 
@@ -680,6 +725,23 @@ extend TyperDB [
 // добавить в NivaPkg список методов из других пакетов, точнее даже мапа
 // методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
 // как ни крути походу лучше всего хранить пакет в самом методе
+
+  /// methods of nullable receivers(`Int? orZero = ...`, `T? unpackOr: x = ...`) live in
+  /// nullableMethods instead of typeToMethodNameToMethod
+  /// a method declared for the exact inner type wins over a generic one
+  on findMethodOnNullable(name): String inner(innerType): NivaType -> NivaMethod? = [
+    nullableMethods at: name, unpack: [ byInnerType ->
+      // mangled names of collections dont contain their item types(`List(Int)` and `List(String)`
+      // are both `core_List`), so the found method still has to be checked
+      byInnerType at: (.nullableMethodKeyFor: innerType), unpack: [ m ->
+        m receiverType unwrapNullable sameTypeStrictAs: innerType, ifTrue: [^ m]
+      ]
+
+      ^ byInnerType at: "?"
+    ]
+
+    ^ null
+  ]
 
   on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2  -> NivaMethod? = [
     lookupType = forType
@@ -708,16 +770,17 @@ extend TyperDB [
       ]
     ]
 
-    isNullable = | lookupType
-      | NullableT => true
-      |=> false
+    nullableInner::NivaType? = | lookupType
+      | NullableT => lookupType v
+      |=> null
 
     x = this typeToMethodNameToMethod at: lookupType
     | x
     | null => [
-      isNullable
-        ifTrue:  [^ null]
-        ifFalse: [TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"]
+      nullableInner unpack: [ inner ->
+        ^ this findMethodOnNullable: name inner: inner
+      ]
+      TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"
     ]
     |=> []
 
@@ -855,6 +918,13 @@ extend TyperDB [
 
     typeName isGeneric ifTrue: [
       ^ UnresolvedGenericT name: typeName
+    ]
+
+    // generated declarations refer to types by mangled name, and a nullable one
+    // is never registered anywhere, so rebuild it from its base(`Nullable__core_Int`)
+    (typeName startsWith: NULLABLE_MANGLE_PREFIX) ifTrue: [
+      base = typeName drop: NULLABLE_MANGLE_PREFIX count
+      ^ NullableT v: (.findByTypeName: base inPkg: pkgName)
     ]
 
     // check local scope
