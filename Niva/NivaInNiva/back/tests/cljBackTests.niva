@@ -273,7 +273,6 @@ Test cljErrorDomainHandledMatchCodegen = [
   clj contains: "main_Error2 1", assertTrue
   // unhandled errors -> sentinel, which the macro turns into a re-throw
   clj contains: ":niva.core/miss", assertTrue
-  // no Go-style value/no-value tuples leak into the generated code
   Assert that: (clj contains: ":niva-ok") equals: false
   Assert that: (clj contains: ":niva-done") equals: false
 ]

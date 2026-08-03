@@ -11,10 +11,9 @@ ResolveErrors toConsoleMsg = [
 ]
 
 union AstVisitor =
-| PrintingVisitor //sb: StringBuilder
+| PrintingVisitor
 | TypeDeclVisitor db: TyperDB
 | MsgDeclVisitor
-| GoBackendVisitor
 
 PrintingVisitor visit(st): Statement = [
   st echo
@@ -389,8 +388,12 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
 
     st fields forEach: [
       fieldType = it astType toNivaTypefromDBWithKnown: db knownTypes: knownTypes
+      astFieldType = it astType
+      isMut = | astFieldType
+              | AstType => astFieldType isMut
+              | AstLambdaType => false
 
-      field = TypeTField name: it name typeT: fieldType isMut: (it astType toTypeInfoFromDb: db inPkg: null) isMut
+      field = TypeTField name: it name typeT: fieldType isMut: isMut
       typeStub fields add: field
 
       // getter = NivaMethod
@@ -604,7 +607,5 @@ AstVisitor visit(st): Statement = [
   | MsgDeclVisitor => [
     TO DO
   ]
-  | GoBackendVisitor => [
-    this visit: st
-  ]
+
 ]

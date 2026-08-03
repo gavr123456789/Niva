@@ -44,7 +44,7 @@ Test escape = [
 ]
 
 Test rawMultiLineString = [
-  quote = '"' toString
+  quote = "\""
   triple = quote + quote + quote
   input = triple + "escaped\n \\n \\t\nString" + triple
   tokens = LexTest input: input
