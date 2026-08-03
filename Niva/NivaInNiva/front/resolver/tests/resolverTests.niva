@@ -1,5 +1,24 @@
 
 
+Test typeFieldCanReferenceTypeDeclaredLater = [
+  fileMain = """
+    type Box a: Kek
+    type Kek b: Int
+
+    x = Box a: (Kek b: 42)
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  box = result db findByTypeName: "Box" inPkg: "main"
+  | box
+  | TypeT => [
+    Assert that: box fields first typeT name equals: "Kek"
+  ]
+  |=> [TO DO: "Box must be TypeT"]
+]
+
 Test constructorReturnType = [
   fileMain = """
     type FS

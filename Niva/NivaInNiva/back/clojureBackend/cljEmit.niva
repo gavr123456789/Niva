@@ -291,7 +291,7 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
             unpack: [ref ->
               // the base `Error` type has no runtime class in clj; Object catches all
               (ref typeId cljNormalizeTypeId) == "core_Error"
-                ifTrue:  ["Object"]
+                ifTrue:  ["Throwable"]
                 ifFalse: [ref cljTypeName]
             ]
             or: (c condition toCljExpr: ctx scope: innerScope)
