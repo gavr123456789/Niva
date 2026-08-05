@@ -41,6 +41,31 @@ Test cljFunctionAsDefn = [
   clj contains: "(* this 2)", assertTrue
 ]
 
+Test cljStringBuilderConstructor = [
+  fileMain = """
+    b = StringBuilder new
+    b append: "x"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(StringBuilder.)", assertTrue
+  Assert that: (clj contains: "->core_StringBuilder") equals: false
+]
+
+Test cljDeclaresFunctionsBeforeDefinitions = [
+  fileMain = """
+    Int first -> Int = this second
+    Int second -> Int = this + 1
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(declare main__core_Int__first main__core_Int__second)", assertTrue
+  beforeFirstDef = clj substringBefore: "(defn main__core_Int__first"
+  beforeFirstDef contains: "(declare main__core_Int__first main__core_Int__second)", assertTrue
+]
+
 Test cljEntryUsesLetAtTopLevel = [
     fileMain = """
      x = 1
