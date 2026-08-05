@@ -17,6 +17,10 @@ type TyperDB
   dtc: DefaultTypesContainer
   // methods
   typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
+  // Methods declared on generic receiver patterns (for example List(T)).
+  // These are deliberately kept separate from the concrete method cache:
+  // NivaType uses identity semantics as a Map key.
+  genericReceiverMethods: mut List::GenericReceiverMethodTemplate
   // methods of nullable receivers(`Int? orZero = ...`, `T? unpackOr: x = ...`) they cant live in
   // typeToMethodNameToMethod, because NullableT is created anew every time and has no structural equality
   // methodName -> mangled name of the inner type -> method
@@ -149,6 +153,7 @@ constructor TyperDB new -> TyperDB = [
     typesById: typesById
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
+    genericReceiverMethods: {}!
     nullableMethods: #{}!
     constructorsTypeToMethodNameToMethod: constructorsCache
     instantiatedCache: #{}!
@@ -160,6 +165,11 @@ constructor TyperDB new -> TyperDB = [
     bindMeta: BindMeta new
 
 ]
+
+type GenericReceiverMethodTemplate
+  receiverPattern: NivaType
+  method: NivaMethod
+  pkgName: String
 
 extend TyperDB [
   on addBindFile(fileName): String pkgName: String = [
@@ -446,9 +456,18 @@ extend TyperDB [
 
   /// adds ne method for db, if protocol is null then adds to "common"
   on addNewMethod(m): NivaMethod forType::NivaType inProtocol::String? = [
-    this
-      addMethod: m
-      forType: forType
+    // A generic receiver is a pattern, not an instantiable method-table key.
+    // Keep it in a separate registry and materialize it on first concrete use.
+    isNullableReceiver = | forType
+      | NullableT => true
+      |=> false
+    (forType isContainsUnresolvedGenerics) && (isNullableReceiver not)
+      ifTrue: [this registerGenericReceiverMethod: m forType: forType]
+      ifFalse: [
+        this
+          addMethod: m
+          forType: forType
+      ]
 
     m decl unpack: [
       existing = declToMethod at: it
@@ -456,6 +475,97 @@ extend TyperDB [
       | null => declToMethod at: it put: m
       |=> []
     ]
+  ]
+
+  on registerGenericReceiverMethod(m): NivaMethod forType: NivaType = [
+    duplicate = genericReceiverMethods find: [candidate ->
+      (candidate pkgName == m pkgName) &&
+      (candidate receiverPattern sameTypeStrictAs: forType) &&
+      (candidate method name == m name)
+    ]
+    duplicate != null ifTrue: [
+      TO DO: "Generic receiver method $m name already exists for $forType in package $m pkgName"
+    ]
+    genericReceiverMethods add: (GenericReceiverMethodTemplate
+      receiverPattern: forType
+      method: m
+      pkgName: m pkgName)
+  ]
+
+  /// Returns a mapping only when the whole receiver shape matches. In
+  /// particular, TypeT arity is checked before collectGenericMappingsFrom,
+  /// which otherwise indexes the actual generic arguments directly.
+  on matchGenericReceiver(template): NivaType actual: NivaType -> Map(String, NivaType)? = [
+    shapeMatches = [expected::NivaType, got::NivaType ->
+      | expected
+      | ListT => | got | ListT => true |=> false
+      | SetT => | got | SetT => true |=> false
+      | MapT => | got | MapT => true |=> false
+      | TypeT => | got
+        | TypeT => (expected name == got name) &&
+                    (expected pkgName == got pkgName) &&
+                    (expected genericArgs count == got genericArgs count)
+        |=> false
+      | NullableT => | got | NullableT => true |=> false
+      | FuntionT => | got | FuntionT => expected fields count == got fields count |=> false
+      | UnresolvedGenericT => true
+      |=> expected sameTypeStrictAs: got
+    ]
+    shapeMatchesResult = shapeMatches expected: template got: actual
+
+    shapeMatchesResult ifFalse: [^ null]
+    letterToType::mut Map(String, NivaType) = #{}!
+    template collectGenericMappingsFrom: actual into: letterToType db: this
+    specialized = template replaceGenericsFromTableDeep: letterToType db: this
+    (specialized isContainsUnresolvedGenerics) ifTrue: [^ null]
+    sameReceiver = specialized sameTypeStrictAs: actual
+    sameReceiver ifFalse: [^ null]
+    ^ letterToType
+  ]
+
+  on findGenericReceiverMethod(name): String forType::NivaType -> NivaMethod? = [
+    matches::mut List::NivaMethod = {}!
+    genericReceiverMethods forEach: [candidate ->
+      candidate method name == name ifTrue: [
+        mapping = this matchGenericReceiver: candidate receiverPattern actual: forType
+        mapping unpack: [letterToType ->
+          receiverGenerics = candidate receiverPattern collectUnresolvedGenerics
+          receiverNames = (receiverGenerics map: [generic -> generic name]) toSet
+          specialized = candidate method replaceGenericsFromTable:
+            letterToType dontMangle: receiverNames mangle: false db: this
+          // Keep the canonical actual receiver identity used by the cache.
+          // replaceGenericsFromTableDeep creates a structurally equal ListT/SetT/
+          // MapT value, which is not safe as a Map key here.
+          specializedWithActualReceiver = NivaMethod
+            name: specialized name
+            receiverType: forType
+            args: specialized args
+            returnType: specialized returnType
+            returnErrors: specialized returnErrors
+            forMut: specialized forMut
+            possibleErrors: specialized possibleErrors
+            kind: specialized kind
+            decl: specialized decl
+            protocolName: specialized protocolName
+            pkgName: specialized pkgName
+          matches add: specializedWithActualReceiver
+        ]
+      ]
+    ]
+    matches count == 0 ifTrue: [^ null]
+    matches count > 1 ifTrue: [
+      TO DO: "Ambiguous generic receiver method $name for $forType"
+    ]
+    method = matches first
+    cache = typeToMethodNameToMethod at: forType
+    | cache
+    | null => [
+      newCache::mut Map(String, NivaMethod) = #{}!
+      newCache at: method name put: method
+      typeToMethodNameToMethod at: forType put: newCache
+    ]
+    |=> cache at: method name put: method
+    ^ method
   ]
 
   on addErrorMessage(e): ResolveErrors = [
@@ -780,6 +890,8 @@ extend TyperDB [
       nullableInner unpack: [ inner ->
         ^ this findMethodOnNullable: name inner: inner
       ]
+      genericMethod = this findGenericReceiverMethod: name forType: lookupType
+      genericMethod unpack: [^ it]
       TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"
     ]
     |=> []
@@ -792,6 +904,8 @@ extend TyperDB [
     result =
       | methodMaybe
       | null => [
+        genericMethod = this findGenericReceiverMethod: name forType: lookupType
+        genericMethod unpack: [^ it]
         | lookupType
         | TypeT => [
           // search union parents if method not found on the branch

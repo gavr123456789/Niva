@@ -2,9 +2,9 @@ extend IrExpr [
 
   on irStringLiteralValue -> String? = | this
     | IrLiteralExpr => [
-        literal kind == IrLiteralKind.String
-          ifTrue: [literal lexeme unquoteLiteral]
-         ifFalse: [null]
+        ^ | literal kind
+          | IrLiteralKind.String | IrLiteralKind.RawString => literal lexeme unquoteLiteral
+          |=> null
       ]
     |=> null
 

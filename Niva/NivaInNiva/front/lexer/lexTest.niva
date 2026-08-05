@@ -50,7 +50,7 @@ Test rawMultiLineString = [
   tokens = LexTest input: input
 
   Assert that: tokens count equals: 1
-  Assert that: (tokens at: 0) kind equals: TokenType.String
+  Assert that: (tokens at: 0) kind equals: TokenType.RawString
 ]
 
 Test unitTypeLex = [

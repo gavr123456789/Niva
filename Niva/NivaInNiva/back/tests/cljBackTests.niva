@@ -137,6 +137,18 @@ Test cljCollectionLiterals = [
   clj contains: "{\"a\" 1 \"b\" 2}", assertTrue
 ]
 
+Test cljRawStringLiteral = [
+  quote = "\""
+  triple = quote + quote + quote
+  fileMain = "x = " + triple + "hello\nworld" + triple
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  Assert that: (clj contains: "\"\"\"") equals: false
+  Assert that: (clj contains: "\"hello\\nworld\"") equals: true
+]
+
 Test cljFieldGetUsesKeyword = [
   fileMain = """
     type Person
@@ -165,6 +177,18 @@ Test cljBindEmitInline = [
   Assert that: (clj contains: "(defn main__core_Int__double") equals: false
 ]
 
+Test cljBindEmitRawStringInline = [
+  quote = "\""
+  triple = quote + quote + quote
+  fileMain = "Int foo -> Int = Bind emit: " + triple + "(+ $0 1)" + triple + "\nx = 41 foo"
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(+ 41 1)", assertTrue
+  Assert that: (clj contains: "\"\"(+ 41 1)\"\"") equals: false
+]
+
 Test cljBindEmitBackendSpecific = [
   fileMain = """
     Int foo: Int -> Int = [
@@ -191,6 +215,54 @@ Test cljBindAddImport = [
 
   clj contains: "[clojure.java.io]", assertTrue
   clj contains: "(clojure.java.io/slurp readFile)", assertTrue
+]
+
+// New bind design: an empty body in a .bind.niva file calls the external
+// function by its first keyword name. The receiver is the first Clojure arg.
+Test cljBindByNameInstance = [
+  bindFile = """
+    String toUpper -> String = []
+  """
+  fileMain = """
+    a = "hi" toUpper
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "clojure.string.bind" bindFile} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(clojure.string/ToUpper \"hi\")", assertTrue
+  clj contains: "[clojure.string]", assertTrue
+]
+
+// Static bind: the receiver type is not part of the external call arguments.
+Test cljBindByNameStatic = [
+  bindFile = """
+    static String parse: String -> Int = []
+  """
+  fileMain = """
+    x = String parse: "42"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "clojure.core.bind" bindFile} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(clojure.core/Parse \"42\")", assertTrue
+  clj contains: "[clojure.core]", assertTrue
+]
+
+// A multi-expression body remains a normal function, while its single
+// Bind goCode expression is still emitted inline in that function.
+Test cljBindGoCodeInBody = [
+  fileMain = """
+    Int compute -> Int = [
+      a::Int = Bind goCode: "(+ 1 41)"
+      ^ a
+    ]
+    x = 0 compute
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(+ 1 41)", assertTrue
+  clj contains: "(defn main__core_Int__compute", assertTrue
 ]
 
 Test cljDestructure = [
@@ -301,7 +373,7 @@ Test cljErrorDomainMatchByCoreErrorCodegen = [
 
   // the base `Error` type has no runtime class, so Object is the catch-all
   clj contains: "(niva.core/handling [it", assertTrue
-  clj contains: "Object 0", assertTrue
+  clj contains: "Throwable 0", assertTrue
   clj contains: ":niva.core/miss", assertTrue
 ]
 

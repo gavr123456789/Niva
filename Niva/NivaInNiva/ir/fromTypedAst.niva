@@ -77,7 +77,13 @@ extend MessageDecl [
         selName = firstArg name name
         ((selName == "emit") || (selName == "goCode")) ifFalse: [^ null]
         | firstArg expr
-        | StringExpr => (firstArg expr token lexeme) unquoteLiteral
+        | StringExpr => [
+          tok = firstArg expr token
+          // todo make this a method
+          tok kind == TokenType.RawString
+            ifTrue: [tok lexeme unquoteRawLiteral]
+            ifFalse: [tok lexeme unquoteLiteral]
+        ]
         |=> null
       ]
       |=> null
@@ -183,7 +189,9 @@ LiteralExprT toIrLiteralKind -> IrLiteralKind =
   | IntExprT => IrLiteralKind.Int
   | FloatExprT => IrLiteralKind.Float
   | DoubleExprT => IrLiteralKind.Double
-  | StringExprT => IrLiteralKind.String
+  | StringExprT => token kind == TokenType.RawString
+                    ifTrue: [IrLiteralKind.RawString]
+                    ifFalse: [IrLiteralKind.String]
   | BooleanExprT => IrLiteralKind.Bool
   | NullExprT => IrLiteralKind.Null
   | UnitExprT => IrLiteralKind.Unit

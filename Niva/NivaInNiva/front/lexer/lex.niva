@@ -160,7 +160,10 @@ extend mut Lexer [
 
     | '"' => [
       result = .parseStringLike: '"'
-      ^ .createToken: TokenType.String lexeme: result
+      kind = (result startsWith: "\"\"\"")
+        ifTrue: [TokenType.RawString]
+        ifFalse: [TokenType.String]
+      ^ .createToken: kind lexeme: result
     ]
     | '\'' => [
       result = .parseStringLike: '\''

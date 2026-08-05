@@ -14,3 +14,40 @@ Test list_generic_has_been_inferred_as_a_field = [
   // check that Sas x: {} has List(Int)
   Assert that: typedAst last typeInfo t toString equals: " Type(Sas x:  Type(List < Type(Int)>))"
 ]
+
+Test generic_receiver_method_on_list = [
+  fileMain = """
+    List(T) firstItem -> T = {
+      (this at: 0)
+    }
+
+    list = {"a" "b"}
+    result = list firstItem
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  lastExpr = result entryPointExpressions last
+  | lastExpr
+  | VarDeclarationT => Assert that: lastExpr value typeInfo t name equals: "String"
+  |=> TO DO: "VarDeclarationT expected"
+]
+
+Test generic_receiver_method_specializes_nested_collection = [
+  fileMain = """
+    List(T) firstInnerItem -> T = {
+      (this at: 0)
+    }
+
+    values = {{1 2} {3 4}}
+    result = values firstInnerItem
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  lastExpr = result entryPointExpressions last
+  isExpected = | lastExpr
+    | VarDeclarationT => lastExpr value typeInfo t sameTypeStrictAs: (ListT t: (IntegerT new))
+    |=> false
+  Assert that: isExpected equals: true
+]

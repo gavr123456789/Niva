@@ -687,6 +687,7 @@ Test codeblockReturnType = [
     [a::Int, b::Int ->
       a + b
     ]
+    {1} map: [it inc]
 
 
   """
@@ -695,6 +696,7 @@ Test codeblockReturnType = [
 
 
   db = result db
+  Assert that: db listOfErrors count equals: 0
   typedAst = result entryPointExpressions
   checkFirst = [
     codeBlock = typedAst at: 0

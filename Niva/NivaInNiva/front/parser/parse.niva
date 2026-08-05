@@ -23,6 +23,7 @@ extend mut Parser [
    ^| tok kind
     | TokenType.Integer
     | TokenType.String
+    | TokenType.RawString
     | TokenType.True|TokenType.False
     | TokenType.Char
     | TokenType.Float
@@ -142,7 +143,7 @@ extend mut Parser [
       IntExpr num: numStr toInt token: tok
     ]
 
-    | TokenType.String =>
+    | TokenType.String|TokenType.RawString =>
       StringExpr token: tok
 
     | TokenType.True|TokenType.False =>
