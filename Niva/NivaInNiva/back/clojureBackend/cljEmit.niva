@@ -45,10 +45,18 @@ extend IrExpr [
     | IrBlockExpr => block toCljBlockExpr: ctx scope: scope
     | IrMatchExpr => this matchToCljExpr: ctx scope: scope
     | IrNewExpr   => [
-        name = "->" + (typeId cljNormalizeTypeId cljSanitizeIdent)
         argsStr = args isNotEmpty
           ifTrue: [" " + (args joinWith: " " transform: [it toCljExpr: ctx scope: scope])]
           ifFalse: [""]
+        constructorBind unpack: [bind ->
+          | bind
+          | IrConstructorBindEmit => [
+            bind backend == "clojure" ifTrue: [
+              ^ bind template bindApply0: (args map: [it toCljExpr: ctx scope: scope])
+            ]
+          ]
+        ]
+        name = "->" + (typeId cljNormalizeTypeId cljSanitizeIdent)
         "(" + name + argsStr + ")"
       ]
     | IrCollectionLiteral => this collectionToCljExpr: ctx scope: scope
@@ -614,11 +622,13 @@ constructor CljBackend [
     ctx = CljContext new
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
+    functionNames::mut List(String) = {}!
 
     ir packages forEach: [pkg ->
       pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
       pkg unions forEach: [CljBackend emitUnionDef: it ctx: ctx sb: body]
       pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
+      pkg functions forEach: [functionNames add: (it cljFuncNameFromIr)]
       pkg functions forEach: [CljBackend emitFunction: it ctx: ctx sb: body]
     ]
     ir entry unpack: [CljBackend emitEntry: it ctx: ctx sb: body]
@@ -632,6 +642,9 @@ constructor CljBackend [
         reqs = importsList joinWith: " " transform: [it -> "[" + it + "]"]
         header appendLine: ("(ns main (:require " + reqs + "))")
       ]
+    functionNames isNotEmpty ifTrue: [
+      header appendLine: ("(declare " + (functionNames joinWith: " ") + ")")
+    ]
     header appendLine: ""
     header append: (body toString)
 

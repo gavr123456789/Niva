@@ -1,4 +1,15 @@
 extend NivaType [
+  // this is a stupid hack, since String builder constructed not via record, but via java
+  // since for now its only one such case, I will leave it as is
+  on irConstructorBind -> IrConstructorBind? = [
+    typeId = this toMangledName
+    ^ | typeId
+      | "core_StringBuilder" => IrConstructorBindEmit
+                                  backend: "clojure"
+                                  template: "(StringBuilder.)"
+      |=> null
+   ]
+
   on isIrBuiltin -> Bool = [
     ^ | this
       | UnresolvedGenericT => false
@@ -542,7 +553,9 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                   ]
                   ifFalse: [
                     isCtor ifTrue: [
-                             useNewCtor ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: {} typeRef: exprType token: token]
+                             useNewCtor ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: {}
+                                                  constructorBind: receiverType irConstructorBind
+                                                  typeRef: exprType token: token]
                                         ifFalse: [
                                           callId = dbMsg toCanonicalIrFunctionId: db
                                           IrCall funcId: callId callee: null args: {} paramTypes: {} isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: null bind: bindPlan token: token
@@ -620,7 +633,9 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
               ]
               |=> argExpr
             ]
-            IrNewExpr typeId: (shadowType toIrTypeId) args: argsExprs typeRef: exprType token: token
+            IrNewExpr typeId: (shadowType toIrTypeId) args: argsExprs
+              constructorBind: shadowType irConstructorBind
+              typeRef: exprType token: token
           ]
           ifFalse: [
             isReceiverFunction
@@ -633,7 +648,9 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                 isCtor
                   ifTrue: [
                     useNewCtor
-                      ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: argsExprs typeRef: exprType token: token]
+                      ifTrue: [IrNewExpr typeId: (receiverType toIrTypeId) args: argsExprs
+                                constructorBind: receiverType irConstructorBind
+                                typeRef: exprType token: token]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
                         IrCall funcId: callId callee: null args: argsExprs paramTypes: methodArgParamTypes isConstructor: true isBindCall: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef typeRef: exprType propagatingErrVar: null bind: bindPlan token: token

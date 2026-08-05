@@ -118,6 +118,10 @@ union IrBind =
 // auto-imported at the call site (so no manual `Bind addImport:` is needed)
 | IrBindEmit template: String goPkg: String?
 
+// Backend-specific constructor emit for external types.
+union IrConstructorBind =
+| IrConstructorBindEmit backend: String template: String
+
 union IrExpr typeRef: IrTypeRef token: Token =
 | IrLiteralExpr literal: IrLiteral
 | IrVarRef name: String
@@ -129,7 +133,7 @@ union IrExpr typeRef: IrTypeRef token: Token =
 // typeAlias name of the variable that will change its type inside different match branches (usually this, or it)
 // subjectIsUnit if its match on error, and func returns only error, no value, then we emit `err := call()` not `val, err := call()`
 | IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock? typeAlias: String? subjectIsUnit: Bool
-| IrNewExpr typeId: String args: List(IrExpr)
+| IrNewExpr typeId: String args: List(IrExpr) constructorBind: IrConstructorBind?
 | IrCollectionLiteral kind: IrCollectionKind items: List(IrExpr)
 | IrOpBin op: String left: IrExpr right: IrExpr
 | IrTypeRefExpr ref: IrTypeRef
