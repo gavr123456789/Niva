@@ -44,11 +44,11 @@ extend String [
       this
     ]
   ]
-  on unquoteRawLiteral -> String = [
+  on unquoteRawLiteral -> String =
     | this count > 6
     | true => .drop: 3, dropLast: 3
     | false => this
-  ]
+
   on escapedTemplateLiteralChunkAt(i): Int -> NumAndStr = [
     bs = '\\' toString
     dollar = '$' toString

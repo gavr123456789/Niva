@@ -60,6 +60,9 @@ constructor TyperDB new -> TyperDB = [
   corePkg = tuple x
   dtc = tuple y
 
+  sb = TypeT noFieldsWithName: "StringBuilder" pkgName: "core"
+  corePkg types at: "StringBuilder" put: sb
+
   {char int float double str bool bind error unit nothing any t list map set intRange charRange} = dtc
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
@@ -75,6 +78,7 @@ constructor TyperDB new -> TyperDB = [
   errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: error
   intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
+  stringBuilderProtocol = NivaProtocol stringBuilderFromDefaultTypes: dtc sb: sb
 
   // every type needs its own empty protocol, sharing one map means
   // that a method added to one type appears on all of them
@@ -92,7 +96,6 @@ constructor TyperDB new -> TyperDB = [
     str strProtocol
     bool boolProtocol
 
-    //nill
     unit unitProto
 
     any anyProtocol
@@ -102,6 +105,8 @@ constructor TyperDB new -> TyperDB = [
     set setProtocol
     intRange intRangeProtocol
     charRange charRangeProtocol
+
+    sb stringBuilderProtocol
   }
 
   charConstructors::mut Map(String, NivaMethod) = #{}!
@@ -115,6 +120,8 @@ constructor TyperDB new -> TyperDB = [
   listConstructors::mut Map(String, NivaMethod) = #{}!
   mapConstructors::mut Map(String, NivaMethod) = #{}!
   setConstructors::mut Map(String, NivaMethod) = #{}!
+  sbConstructors::mut Map(String, NivaMethod) = #{}!
+  sbConstructors at: "new" put: sb generateDefaultConstructor
 
   constructorsCache::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
     char charConstructors
@@ -130,6 +137,7 @@ constructor TyperDB new -> TyperDB = [
     list listConstructors
     map mapConstructors
     set setConstructors
+    sb sbConstructors
   }
 
   typesWithSameNames = #{}!
