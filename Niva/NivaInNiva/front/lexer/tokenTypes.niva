@@ -5,6 +5,7 @@ enum TokenType =
   // Literal types
   |Integer
   |String
+  |RawString
   |Char
   |Float // 4.2f
   |Double // 4.2

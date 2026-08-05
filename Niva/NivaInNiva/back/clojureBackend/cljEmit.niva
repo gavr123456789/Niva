@@ -59,12 +59,9 @@ extend IrExpr [
     |=> false
 ]
 
-// (isIrLambda is shared with the Go backend, defined in back/goBackend/goBack.niva)
-
-// ---------------------------------------------------------------------------
 // bind handling: `Bind emit:` / `Bind goCode:` -> template inlined at call site
-// ---------------------------------------------------------------------------
-
+// declaration from `<namespace>.bind.niva` carries the same information in
+// IrBind, so Clojure uses that namespace directly at the call site
 IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String? = [
   r = receiverType
   | r
@@ -143,17 +140,14 @@ IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
   bind unpack: [bp ->
     | bp
     | IrBindByName => [
-        // .bind.niva by-name binds are Go-centric today. Treat the goPkg as the
-        // Clojure namespace so at least the call site produces a well-formed
-        // (ns/fn args...) call.
         argsStr = args joinWith: " " transform: [it toCljExpr: ctx scope: scope]
-        pkgQ = bp goPkg
-        pkgQ != "" ifTrue: [ctx addImport: pkgQ]
+        namespace = bp goPkg cljBindNamespace
+        namespace != "" ifTrue: [ctx addImport: namespace]
         argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
-        ^ "(" + pkgQ + "/" + (bp goName) + argsPart + ")"
+        ^ "(" + namespace + "/" + (bp goName cljSanitizeIdent) + argsPart + ")"
       ]
     | IrBindEmit => [
-        bp goPkg unpack: [ctx addImport: it]
+        bp goPkg unpack: [ctx addImport: (it cljBindNamespace)]
         emitArgVals = args map: [it toCljExpr: ctx scope: scope]
         ^ bp template bindApply0: emitArgVals
       ]

@@ -319,7 +319,9 @@ IrLiteral toGoLiteral -> String =
                                   ifTrue:  [lexeme dropLast: 1]
                                  ifFalse: [lexeme]
   | IrLiteralKind.Char   => lexeme
-  | IrLiteralKind.String => lexeme
+  | IrLiteralKind.String    => lexeme
+  // backtick literals for raw strings
+  | IrLiteralKind.RawString => "`" + ((lexeme drop: 3) dropLast: 3) + "`"
   | IrLiteralKind.Atom   => "\"" + lexeme + "\""
 
 IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [

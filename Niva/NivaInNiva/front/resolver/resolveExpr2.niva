@@ -441,7 +441,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         | thisType
         | null => [
           contextString = c allKnownVars
-          TO DO: "Cant find $this in the current context: \n$contextString"
+          pos = token toPosition toString
+          TO DO: "Cant find $this in the current context: \n$contextString " + pos
         ]
         |=> [
           thisIdent = IdentifierT

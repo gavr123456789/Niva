@@ -68,6 +68,9 @@ String cljFuncIdToName -> String =
 
 
 extend String [
+  // `clojure.string.bind` -> `clojure/string`
+  on cljBindNamespace -> String = .replace: "/" with: "."
+
   on stripCljPkgPrefix(prefix): String -> String = [
     pre = prefix + "_"
     preLen = pre count
@@ -126,6 +129,27 @@ String cljOperator -> String =
 // ---------------------------------------------------------------------------
 // literals
 // ---------------------------------------------------------------------------
+String toCljRawStringLiteral -> String = [
+  // Raw Niva strings keep their triple-quote delimiters in the lexeme and
+  // do not interpret backslash escapes. Clojure has no triple-quoted string
+  // syntax, so emit an ordinary string while preserving the raw value.
+  content = (this drop: 3) dropLast: 3
+  sb = StringBuilder new
+  mut i = 0
+  [i < content count] whileTrue: [
+    c = content at: i
+    | c
+    | '\\' => [sb append: "\\\\"]
+    | '"'  => [sb append: "\\\""]
+    | '\n' => [sb append: "\\n"]
+    | '\r' => [sb append: "\\r"]
+    | '\t' => [sb append: "\\t"]
+    |=> [sb append: c toString]
+    i <- i inc
+  ]
+  ^ "\"" + sb toString + "\""
+]
+
 IrLiteral toCljLiteral -> String =
   | kind
   | IrLiteralKind.Null   => "nil"
@@ -137,7 +161,8 @@ IrLiteral toCljLiteral -> String =
                                   ifTrue:  [lexeme dropLast: 1]
                                  ifFalse: [lexeme]
   | IrLiteralKind.Char   => "\\" + (lexeme drop: 1, dropLast: 1)
-  | IrLiteralKind.String => lexeme
+  | IrLiteralKind.String    => lexeme
+  | IrLiteralKind.RawString => lexeme toCljRawStringLiteral
   | IrLiteralKind.Atom   => ":" + lexeme
 
 // ---------------------------------------------------------------------------
