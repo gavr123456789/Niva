@@ -349,6 +349,22 @@ constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
   ^ setP methods
 ]
 
+constructor NivaProtocol stringBuilderFromDefaultTypes(dtc): DefaultTypesContainer sb: NivaType -> mut Map(String, NivaMethod) = [
+  {str int} = dtc
+
+  sbProtocol = NivaProtocol name: "arithmetic"
+
+  // unary
+  sbProtocol addMethod: (NivaMethod unary: "count" receiverType: sb returnT: int)
+  sbProtocol addMethod: (NivaMethod unary: "clear" receiverType: sb returnT: sb)
+  sbProtocol addMethod: (NivaMethod unary: "toString" receiverType: sb returnT: str)
+  sbProtocol addMethod: (NivaMethod unary: "trim" receiverType: sb returnT: str)
+  // keyword
+  sbProtocol addMethod: (NivaMethod singleArgKw: "append" receiverType: sb argT: str returnT: sb )
+  sbProtocol addMethod: (NivaMethod singleArgKw: "appendLine" receiverType: sb argT: str returnT: sb )
+
+  ^ sbProtocol methods
+]
 
 constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
   {str bool unit char intRange double} = dtc
@@ -376,7 +392,7 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
   intProtocol addMethod: (NivaMethod binary: "==" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)
 
-  num name == "Int" ifTrue: [
+  num name == "Int" ifTrue: [ // not for Float|Double
     intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
   ]
 

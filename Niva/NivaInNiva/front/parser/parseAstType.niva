@@ -40,7 +40,8 @@ extend mut Parser [
   on parseGenericType -> AstType = [
 
     isMut = .match: TokenType.Mut
-    identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString
+    pos = .peek toPosition
+    identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString + "\n" + pos
     isNullable = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
 

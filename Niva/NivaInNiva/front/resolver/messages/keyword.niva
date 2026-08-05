@@ -38,7 +38,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           db addErrorMessage: (LazyError tok: token msg: "Shadow copy has duplicate fields")
         ]
 
-        allFieldsMentioned = fieldNames count == argNameSet count
+        allFieldsMentioned = (fieldNames count != 1) && (fieldNames count == argNameSet count)
         allFieldsMentioned ifTrue: [
           db addErrorMessage: (LazyError tok: token msg: "Shadow copy must not mention all fields; use constructor")
         ]
