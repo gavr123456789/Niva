@@ -1020,8 +1020,8 @@ Test nullableMatchExhaustiveNarrows = [
     x::Int? = 1
 
     | x
-    | null => "meh" echo
-    |=> x inc echo
+    | null => [("meh" echo) ()]
+    |=> [(x inc echo) ()]
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"

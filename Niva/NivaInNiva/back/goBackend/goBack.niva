@@ -117,7 +117,11 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
   recvBaseSafe = recvBase toSafeGoIdent
   normalized = name goSanitizeIdent
 
-  x = recvBaseSafe + "__" + normalized
+  // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
+  // this should be solved by lazily generating ?__echo methods for everything or something elce
+  x = name == "echo"
+        ifTrue: ["Any__echo"]
+        ifFalse: [recvBaseSafe + "__" + normalized]
 
   name == x ifFalse: [
     "coreFuncNameFromCall: was: $name became $x"// log
