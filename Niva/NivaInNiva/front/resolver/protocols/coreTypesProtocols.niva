@@ -548,12 +548,12 @@ constructor NivaProtocol whileTrueFromDefaultTypes(dtc): DefaultTypesContainer  
 ]
 
 constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
-  {str bool unit any} = dtc
+  {str bool unit any t} = dtc
 
   anyProto = NivaProtocol common
 
   // unary
-  anyProto addMethod: (NivaMethod unary: "echo" receiverType: any returnT: unit)
+  anyProto addMethod: (NivaMethod unary: "echo" receiverType: t returnT: t)
   anyProto addMethod: (NivaMethod unary: "echonl" receiverType: any returnT: unit)
   anyProto addMethod: (NivaMethod unary: "toString" receiverType: any returnT: str)
   // binary

@@ -151,7 +151,7 @@ constructor TyperDB new -> TyperDB = [
     |=> []
   ]
 
-  ^TyperDB
+  db = TyperDB
     listOfErrors: {}!
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
@@ -171,6 +171,13 @@ constructor TyperDB new -> TyperDB = [
     declToMethod: #{}!
     localGenericScope: #{}!
     bindMeta: BindMeta new
+
+  // all core methods are stored in the type table above
+  // but echo from anyProtocol is very special and has T echo -> T signature
+  // so we registering it very very much specifically --- registerGenericReceiverMethod
+  echoMethod = anyProtocol at: "echo", unpackOrPANIC
+  db registerGenericReceiverMethod: echoMethod forType: echoMethod receiverType
+  ^db
 
 ]
 
