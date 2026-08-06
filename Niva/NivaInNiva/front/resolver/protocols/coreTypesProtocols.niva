@@ -38,6 +38,16 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
             returnType: unit
   collP addMethod: (NivaMethod singleArgKw: "forEach" receiverType: collectionType argT: foreachBlock returnT: unit)
 
+  iArg = TypeTField name: "i" typeT: int isMut: false
+  foreachIndexedBlock = FuntionT
+                fields: { iArg itArg }!
+                  name: "forEachIndexed"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
+  collP addMethod: (NivaMethod singleArgKw: "forEachIndexed" receiverType: collectionType argT: foreachIndexedBlock returnT: unit)
+
+
   // filter: (item) -> bool
   filterBlock = FuntionT
                 fields: { itArg }!
@@ -395,6 +405,18 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
   num name == "Int" ifTrue: [ // not for Float|Double
     intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
   ]
+
+
+  itArg = TypeTField name: "it" typeT: num isMut: false
+  repeatBlock = FuntionT
+                  fields: { itArg }!
+                    name: "repeat"
+             genericArgs: {}!
+                 pkgName: "core"
+              returnType: unit
+
+  intProtocol addMethod: (NivaMethod singleArgKw: "repeat" receiverType: num argT: repeatBlock returnT: unit)
+
 
   ^ intProtocol methods
   // ^intProtocol
