@@ -100,7 +100,13 @@ extend String [
 IrTypeRef coreFuncNameFromCljCall(name): String -> String = [
   baseId = typeId cljNormalizeTypeId
   recvBase = baseId stripCljPkgPrefix: "core"
-  ^ (recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)
+//   ^ (recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)
+
+  // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
+  // this should be solved by lazily generating ?__echo methods for everything or something elce
+  ^ name == "echo"
+      ifTrue: ["Any__echo"]
+      ifFalse: [(recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)]
 ]
 
 // ---------------------------------------------------------------------------

@@ -113,6 +113,19 @@ Test cljCoreCallGoesToCoreNs = [
   clj contains: "[niva.core]", assertTrue
 ]
 
+Test cljGenericEchoKeepsValue = [
+  fileMain = """
+    x = 1 echo
+    y = x + 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Any__echo 1)", assertTrue
+  clj contains: "(+ x 2)", assertTrue
+]
+
 Test cljMatchByTypeUsesCondpInstance = [
   fileMain = """
     union Shape =
