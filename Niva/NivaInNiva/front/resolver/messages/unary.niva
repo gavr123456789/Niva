@@ -6,7 +6,7 @@ UnaryMsg resolveUnaryFromDb2(db): TyperDB withContext(c): Context -> UnaryMsgT =
     token: token
     kind: kind
 
-  kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: selector name
+  kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: selector name expectedType: null
 
   newUnary2 = UnaryMsgT
     selector: selector

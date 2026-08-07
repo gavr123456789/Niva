@@ -565,17 +565,16 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
 ]
 
 constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
-  {str bind list any} = dtc
+  {str bind list any t} = dtc
   //listAny = ListT
   bindProto = NivaProtocol name: "constructors"
 
-  bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: any)
-  // `goCode:` is `emit:` whose expected type comes from the surrounding annotation
-  bindProto addMethod: (NivaMethod singleArgCtorKw: "goCode" receiverType: bind argT: str returnType: any)
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: t)
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "goCode" receiverType: bind argT: str returnType: t)
   bindProto addMethod: (NivaMethod singleArgCtorKw: "addImport" receiverType: bind argT: any)
-  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: any)
-  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "backend" receiverType: bind argT1: str argT2: str returnType: any)
-  bindProto addMethod: (NivaMethod threeArgCtorKw: "emit" name2: "backend" name3: "args" receiverType: bind argT1: str argT2: str argT3: list returnType: any)
+  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: t)
+  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "backend" receiverType: bind argT1: str argT2: str returnType: t)
+  bindProto addMethod: (NivaMethod threeArgCtorKw: "emit" name2: "backend" name3: "args" receiverType: bind argT1: str argT2: str argT3: list returnType: t)
   bindProto addMethod: (NivaMethod twoArgCtorKw: "addImport" name2: "backend" receiverType: bind argT1: any argT2: str returnType: any)
 
   ^bindProto methods

@@ -1107,30 +1107,94 @@ extend TyperDB [
 
   // INFO
 
-  /// returns md like documentation about every pkg -> type -> protocol -> method
-  on structureInfo -> String = [
-    sb = StringBuilder new
-    packages values filter: [it name != "core"], forEach: [ pkg ->
+  on appendStructureInfoForType(t): NivaType to(sb): StringBuilder -> Unit = [
+    sb appendLine: "### Type `" + t name + "`"
 
-      sb appendLine: "## pkg: " + pkg name
-
-      pkg imports count != 0, ifTrue: [
-        importsStr = pkg imports toList joinWith: ", "
-        sb appendLine: "- uses: " + importsStr
+    sb appendLine: "#### Fields"
+    fields = t collectFields
+    fields isEmpty
+      ifTrue: [
+        sb appendLine: "_None._"
+        ()
       ]
-
-      this typeToMethodNameToMethod forEach: [t, methodNameToMethod ->
-        t pkgName == pkg name ifTrue: [
-          sb appendLine: "### type: " + t toString
-          methodNameToMethod values forEach: [ method ->
-            sb appendLine: "- " + method toString
-          ]
+      ifFalse: [
+        fields forEach: [field ->
+          mutPrefix = field isMut ifTrue: ["mut "] ifFalse: [""]
+          sb appendLine: "- `" + field name + "`: `" + mutPrefix + field typeT nameForInfo + "`"
         ]
       ]
 
-    ]
+    sb appendLine: "#### Methods"
+    methodsMaybe = typeToMethodNameToMethod at: t
+    methods = methodsMaybe unpack: [methodMap ->
+      methodMap values
+        filter: [it kind != MessageSendKind.Getter]
+        ,sortedBy: [it name]
+    ] or: {NivaMethod}
+    methods isEmpty
+      ifTrue: [
+        sb appendLine: "_None._"
+        ()
+      ]
+      ifFalse: [
+        methods forEach: [method ->
+          sb appendLine: "- `" + method infoSignature + "`"
+        ]
+      ]
+    sb appendLine: ""
+    ()
+  ]
+
+  on appendStructureInfoForPackage(pkg): NivaPkg to(sb): StringBuilder -> Unit = [
+    sb appendLine: "## Package `" + pkg name + "`"
+    types = pkg types values toList sortedBy: [it name]
+    types isEmpty
+//       ifTrue: [
+//         sb appendLine: "_No types._"
+//         ()
+//       ]
+      ifFalse: [types forEach: [this appendStructureInfoForType: it to: sb]]
+    ()
+  ]
+
+  /// Returns Markdown documentation about every package -> type -> fields/methods.
+  on structureInfo -> String = [
+    sb = StringBuilder new
+    sb appendLine: "# Niva project info"
+    sb appendLine: ""
+    projectPackages = packages values
+      filter: [it name != "core"]
+      ,sortedBy: [it name]
+    projectPackages forEach: [this appendStructureInfoForPackage: it to: sb]
 
     ^ sb toString
+  ]
+
+  /// Returns the same Markdown hierarchy narrowed to `package.Type`.
+  on structureInfoFor(typePath): String -> String = [
+    hasPackageAndType = (typePath contains: ".") &&
+      ((typePath substringBeforeLast: ".") count != 0) &&
+      ((typePath substringAfterLast: ".") count != 0)
+    hasPackageAndType ifFalse: [
+      ^ "# Niva info error\n\nExpected a type path in the form `package.Type`, got `" + typePath + "`."
+    ]
+
+    pkgName = typePath substringBeforeLast: "."
+    typeName = typePath substringAfterLast: "."
+    pkgMaybe = packages at: pkgName
+    pkgMaybe unpack: [pkg ->
+      typeMaybe = pkg types at: typeName
+      typeMaybe unpack: [t ->
+        sb = StringBuilder new
+        sb appendLine: "# Niva project info"
+        sb appendLine: ""
+        sb appendLine: "## Package `" + pkg name + "`"
+        this appendStructureInfoForType: t to: sb
+        ^ sb toString
+      ]
+      ^ "# Niva info error\n\nType `" + typeName + "` was not found in package `" + pkgName + "`."
+    ]
+    ^ "# Niva info error\n\nPackage `" + pkgName + "` was not found."
   ]
 ]
 

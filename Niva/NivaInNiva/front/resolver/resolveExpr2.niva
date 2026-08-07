@@ -655,7 +655,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   ]
   | KeywordMsg =>[
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
-    ^ .resolveKeywordFromDb2: db withContext: c
+    ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: expectedType
   ]
 
   | VarDeclaration  => [

@@ -59,6 +59,19 @@ Test errorEffectsMismatch = [
   Assert that: db listOfErrors count equals: 1
 ]
 
+Test declaredReturnTypeMustMatchLastExpression = [
+  fileMain = """
+    Int fooBar -> Int = [
+      "str"
+    ]
+
+    1 fooBar
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
 Test errorEffectsDeclared = [
   fileMain = """
     Unit sas -> Int!Error = [
@@ -1266,4 +1279,36 @@ Test setProtocolMethods = [
   | mergedType
   | SetT => Assert that: mergedType t name equals: "Int"
   |=> [TO DO: "set expected but got: $mergedType"]
+]
+
+Test structureInfoMarkdownAndTypePath = [
+  fileMain = """
+    type Hidden value: Int
+
+    type Person
+      name: String
+      age: Int
+
+    Person greet -> String = "hello"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  allInfo = result db structureInfo
+  (allInfo contains: "# Niva project info") assertTrue
+  (allInfo contains: "## Package `main`") assertTrue
+  (allInfo contains: "### Type `Person`") assertTrue
+  (allInfo contains: "#### Fields") assertTrue
+  (allInfo contains: "- `name`: `String`") assertTrue
+  (allInfo contains: "- `age`: `Int`") assertTrue
+  (allInfo contains: "#### Methods") assertTrue
+  (allInfo contains: "- `greet -> String`") assertTrue
+
+  personInfo = result db structureInfoFor: "main.Person"
+  (personInfo contains: "### Type `Person`") assertTrue
+  Assert that: (personInfo contains: "### Type `Hidden`") equals: false
+
+  invalidInfo = result db structureInfoFor: "Person"
+  (invalidInfo contains: "Expected a type path in the form `package.Type`") assertTrue
 ]

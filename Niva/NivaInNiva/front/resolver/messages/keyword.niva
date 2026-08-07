@@ -1,14 +1,14 @@
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context  -> KeywordMsgT = [
-  ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null
+  ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: null
 ]
 
-KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String?  -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
   receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
-  ^ .resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride
+  ^ .resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride expectedType: expectedType
 ]
 
-KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String?  -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
   receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType
@@ -153,6 +153,11 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
   letterToType::mut Map(String, NivaType) = #{}!
 
+  // `Bind emit:` returns T to make `Sas sus -> String = Bind emit: "..."` possible
+  expectedType unpack: [expectedReturnType ->
+    kwMsgDB returnType collectGenericMappingsFrom: expectedReturnType into: letterToType db: db
+  ]
+
   typedArgs = args mapIndexed: [ i, kwArg ->
     {name expr} = kwArg
     argTypeFromDb = kwMsgDB args at: i, typeT
@@ -249,29 +254,24 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
     | methodAlreadyExists
     | null => [
-       // Method not found, register it
+       // method not found, register it
 
-       // 1. Add to DB method cache
+       // 1 add to DB method cache
        db addNewMethod: newMethod forType: instReceiverType inProtocol: "generated"
 
-       // 2. Generate MessageDecl for backend
+       // 2 generate MessageDecl for backend
        originalDecl = kwMsgDB decl
 
        | originalDecl
        | null => [] // nothing to generate (e.g. intrinsic or getter without decl)
        |=> [
-          // Create new MessageDecl
-
           // create new body with same expressions but empty typed body
           newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList)
 
           // create args
-          // args is List<NameAndAstType>
           // we need to update types to mangled names of resolved types
           newArgs = originalDecl args mapIndexed: [ i, arg ->
-             // get resolved type from newMethod args
              resolvedArgType = newMethod args at: i, typeT
-
              NameAndAstType name: arg name astType: (AstType name: resolvedArgType toMangledName tok: FAKE_TOKEN)
           ]
           newDecl = MessageDecl
@@ -283,7 +283,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor
             token: originalDecl token
-          // resolve body of the new declaration to ensure types are correct inside
+          // resolve body of the new declaration (generic monomorphized)
           newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType
 
           // add to generated list for backend
@@ -299,7 +299,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     kwMsgDB <- newMethod
 
   ] ifFalse: [
-    // 1.2) check here
+    // 1.2 check here
     | receiverType
     | TypeT => [
       isThereUnresolvedGenerics = receiverType genericArgs find: [

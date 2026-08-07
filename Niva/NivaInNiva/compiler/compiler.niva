@@ -92,7 +92,11 @@ constructor NivaCompiler [
           | CompilerBackend.Clj => "clj"
           | CompilerBackend.Lsp => TO DO: "no lsp binary"
 
-        rootFile = path unpackOrValue: "main.niva"
+        // for `info package.Type`, we always start from main
+        // path arg in info mode is PKG.TYPE
+        rootFile = option == CompilerOption.Info
+          ifTrue: ["main.niva"]
+          ifFalse: [path unpackOrValue: "main.niva"]
         entryPoint = rootFile toPath name substringBeforeLast: "."
         //t2 = measureTimeFrom from: t1 text: "arg-parsed"
 
@@ -165,7 +169,13 @@ constructor NivaCompiler [
         | CompilerOption.Help => []
         | CompilerOption.Daemon => []
         | CompilerOption.RunTests => []
-        | CompilerOption.Info => []
+        | CompilerOption.Info => [
+            resolver = runOrBuild do
+            info = path unpack: [resolver db structureInfoFor: it]
+                        or: resolver db structureInfo
+            info echo
+            ()
+        ]
 
     ]
 ]
