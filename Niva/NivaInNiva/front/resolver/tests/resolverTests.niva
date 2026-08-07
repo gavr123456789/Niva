@@ -1296,19 +1296,42 @@ Test structureInfoMarkdownAndTypePath = [
   Assert that: result db listOfErrors count equals: 0
 
   allInfo = result db structureInfo
-  (allInfo contains: "# Niva project info") assertTrue
   (allInfo contains: "## Package `main`") assertTrue
-  (allInfo contains: "### Type `Person`") assertTrue
-  (allInfo contains: "#### Fields") assertTrue
-  (allInfo contains: "- `name`: `String`") assertTrue
-  (allInfo contains: "- `age`: `Int`") assertTrue
+  (allInfo contains: "type Person") assertTrue
+  (allInfo contains: "    name: String") assertTrue
+  (allInfo contains: "    age: Int") assertTrue
   (allInfo contains: "#### Methods") assertTrue
   (allInfo contains: "- `greet -> String`") assertTrue
 
   personInfo = result db structureInfoFor: "main.Person"
-  (personInfo contains: "### Type `Person`") assertTrue
-  Assert that: (personInfo contains: "### Type `Hidden`") equals: false
+  (personInfo contains: "type Person") assertTrue
+  (personInfo contains: "    name: String") assertTrue
+  (personInfo contains: "    age: Int") assertTrue
+  Assert that: (personInfo contains: "type Hidden") equals: false
 
   invalidInfo = result db structureInfoFor: "Person"
   (invalidInfo contains: "Expected a type path in the form `package.Type`") assertTrue
+]
+
+Test compileTimeInfoMessage = [
+  fileMain = """
+    type Person name: String
+    Person greet -> String = "hello"
+
+    p = Person name: "Alice"
+    p infoFull
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  infoExpr = result entryPointExpressions last
+  | infoExpr
+  | UnitExprT => []
+  |=> [TO DO: "compile-time info should be erased to Unit"]
+
+  personInfo = result db compileTimeInfoFor: (result db findByTypeName: "Person" inPkg: "main") showSourceLocations: true
+  (personInfo contains: "type Person ( main.niva:2 )") assertTrue
+  (personInfo contains: "    name: String") assertTrue
+  (personInfo contains: "- `greet -> String` ( main.niva:3 )") assertTrue
 ]

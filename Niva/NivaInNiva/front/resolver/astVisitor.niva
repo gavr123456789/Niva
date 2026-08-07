@@ -185,6 +185,7 @@ TypeDeclVisitor
         db
           addNewType: resolvedType
           inPkg: pkgName
+        db registerTypeDeclaration: resolvedType token: typeDecl token
 
         // add fields
 
@@ -345,6 +346,7 @@ TypeDeclVisitor
           protocolName: "common"
           pkgName: pkg
 
+        db registerMethodDeclaration: receiverType name: msg name token: msg token
         db addNewMethod: method forType: receiverType inProtocol: null
         //"Methods: added method " + method name + " in pkg: " + pkg, log
         ()

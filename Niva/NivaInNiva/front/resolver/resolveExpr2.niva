@@ -11,7 +11,11 @@ Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
   | Assign => value collectExprRefNames: refs
   | DestructingAssign => value collectExprRefNames: refs
   | ReturnStatement => value unpack: [it collectExprRefNames: refs]
-  | UnaryMsg => [ receiver collectExprRefNames: refs ]
+  | UnaryMsg => [
+    // compile time info about type
+    (selector name == "info") || (selector name == "infoFull")
+      ifFalse: [receiver collectExprRefNames: refs]
+  ]
   | BinaryMsg => [
     receiver collectExprRefNames: refs
     args forEach: [it expr collectExprRefNames: refs]
@@ -648,7 +652,18 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
       astType
   ]
-  | UnaryMsg   => .resolveUnaryFromDb2: db withContext: c
+  | UnaryMsg   => [
+    // `info` is a compiler intrinsic. Resolve its receiver first so the
+    // output describes the inferred type, then erase the message from the
+    // runtime AST by replacing it with Unit.
+    isFullInfo = selector name == "infoFull"
+    (selector name == "info") || isFullInfo ifTrue: [
+      receiverTyped = receiver toTypedExprFromDb2: db withContext: c
+      (db compileTimeInfoFor: receiverTyped typeInfo t showSourceLocations: isFullInfo) echo
+      ^ UnitExprT :token typeInfo: db dtc unit toTypeInfoDefault
+    ]
+    ^ .resolveUnaryFromDb2: db withContext: c
+  ]
   | BinaryMsg  => [
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
     ^ .replaceArgsWithTypedfromDb2: db withContext: c
