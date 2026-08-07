@@ -566,6 +566,29 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
       ifTrue: [actualReturnErrors]
       ifFalse: [returnType unpack: [it toErrorsFromDb: db inPkg: null] or: {}]
 
+  // check the inferred body type explicitly after the body has been resolved
+  // since single expr bodies can omit the return type
+
+  // check that last expr type == return type declared
+  // if return type is generic it will be checked here keyword 282 `newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType`
+  // so skipping
+  declaredReturnType = returnType unpack: [it toNivaTypefromDB: db inPkg: null]
+                                  or: null
+  (hasAnyReturnErrors not), ifTrue: [
+    declaredReturnType unpack: [declaredType ->
+      // generic return types are checked after method specialization,
+      // when their concrete mapping is known
+      declaredType isContainsUnresolvedGenerics ifFalse: [
+        actualReturnType = finalTypedBody t
+        actualReturnType isAssignableTo: declaredType :db, ifFalse: [
+          db addErrorMessage: (ErrorWrongArgType
+            tok: token
+            msg: "Function " + name + " returns " + actualReturnType toString + ", but " + declaredType toString + " is declared")
+        ]
+      ]
+    ]
+  ]
+
   hasAnyReturnErrors ifTrue: [
     methodFromDb unpack: [
       updatedMethod = it copyWithDifferentReturnErrors: actualReturnErrors

@@ -20,3 +20,9 @@ Test cliArgsRunGoBackend = [
   Assert that: result path equals: ".niva_go/testss.niva"
   Assert that: result backend equals: CompilerBackend.Go
 ]
+
+Test cliArgsInfoTypePath = [
+  result = ArgParser args: {"info" "main.Person"} toList
+  Assert that: result option equals: CompilerOption.Info
+  Assert that: result path equals: "main.Person"
+]

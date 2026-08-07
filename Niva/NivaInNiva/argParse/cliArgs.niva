@@ -19,6 +19,8 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         build FILE — compile only the given file
         ir — build IR from main.niva (recursive)
         ir FILE — build IR from root file (recursive)
+        info — print packages, types, fields, and methods as Markdown
+        info PACKAGE.TYPE — print information about one type
         run FILE --backend go|js|lsp — select backend (default: js)
     """ trimIndent
     help echo

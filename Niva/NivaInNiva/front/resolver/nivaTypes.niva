@@ -46,6 +46,25 @@ static NULLABLE_MANGLE_PREFIX = "Nullable__"
 
 extend NivaType [
 
+  /// type name used in user-facing project information.
+  on nameForInfo -> String = [
+    ^ | this
+      | TypeT => [
+        genericArgs isNotEmpty
+          ifTrue: [name + "(" + (genericArgs joinWith: ", " transform: [it nameForInfo]) + ")"]
+          ifFalse: [name]
+      ]
+      | FuntionT => [
+        argsStr = fields joinWith: ", " transform: [it typeT nameForInfo]
+        "[" + argsStr + " -> " + returnType nameForInfo + "]"
+      ]
+      | ListT => "List(" + t nameForInfo + ")"
+      | SetT => "Set(" + t nameForInfo + ")"
+      | MapT => "Map(" + k nameForInfo + ", " + v nameForInfo + ")"
+      | NullableT => v nameForInfo + "?"
+      |=> name
+  ]
+
   on unwrapNullable -> NivaType =
     | this
     | NullableT => v
@@ -334,6 +353,20 @@ type NivaMethod
   pkgName: String
 
 extend NivaMethod [
+  /// Niva-like method signature used by the `info` CLI command.
+  on infoSignature -> String = [
+    selector = args isEmpty
+      ifTrue: [name]
+      ifFalse: [
+        firstArg = args first
+        firstArg name == ""
+          ifTrue: [name + " " + firstArg typeT nameForInfo]
+          ifFalse: [args joinWith: " " transform: [it name + ": " + it typeT nameForInfo]]
+      ]
+    mutPrefix = forMut ifTrue: ["mut "] ifFalse: [""]
+    ^ mutPrefix + selector + " -> " + returnType nameForInfo
+  ]
+
   on getGenericArgs =
     args filter: [
       | it typeT

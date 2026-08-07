@@ -18,7 +18,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
       token: token
       kind: MessageSendKind.Call
 
-    kwResolved = kw resolveKeywordFromDb2: db withContext: c receiverTyped: lastReceiverTypedExpr nameOverride: binary name name
+    kwResolved = kw resolveKeywordFromDb2: db withContext: c receiverTyped: lastReceiverTypedExpr nameOverride: binary name name expectedType: null
     lastDbMsg <- kwResolved dbMsg
     lastTypeInfo <- kwResolved typeInfo
     lastReceiverExpr <- binary expr
