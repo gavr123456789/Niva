@@ -7,6 +7,9 @@ type TyperDB
   // caches
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
+  // needed for info infoFull special messages(and future lsp probably)
+  typeDeclarationTokens: mut Map(String, Token)
+  methodDeclarationTokens: mut Map(String, Token)
   // key = typeId ("pkg.Type"), value = branch typeIds
   unionRootToBranches: mut Map(String, mut Set::String)
   // reverse: branch typeId -> direct parent typeId
@@ -156,6 +159,8 @@ constructor TyperDB new -> TyperDB = [
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: typesWithSameNames
+    typeDeclarationTokens: #{}!
+    methodDeclarationTokens: #{}!
     unionRootToBranches: #{}!
     branchIdToParentId: #{}!
     typesById: typesById
@@ -691,6 +696,15 @@ extend TyperDB [
     ] |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
   ]
 
+  on registerTypeDeclaration(t): TypeT token: Token = [
+    typeDeclarationTokens at: (t pkgName + "." + t name) put: token
+  ]
+
+  on registerMethodDeclaration(receiver): NivaType name(name): String token: Token = [
+    key = receiver pkgName + "." + receiver name + "." + name
+    methodDeclarationTokens at: key put: token
+  ]
+
   on addGenericInstantiationIfAbsent(t): TypeT letterToType::Map(String, NivaType) -> TypeT = [
     baseType = t
     newTypeWithGenericInstantiated = baseType replaceGenericsFromTable: letterToType db: this
@@ -1107,22 +1121,38 @@ extend TyperDB [
 
   // INFO
 
-  on appendStructureInfoForType(t): NivaType to(sb): StringBuilder -> Unit = [
-    sb appendLine: "### Type `" + t name + "`"
+  /// Returns the same type information as the `info` CLI command, but for a
+  /// type that has already been inferred by the resolver.
+  on compileTimeInfoFor(t): NivaType -> String = [
+    ^ .compileTimeInfoFor: t showSourceLocations: false
+  ]
 
-    sb appendLine: "#### Fields"
+  on compileTimeInfoFor(t): NivaType showSourceLocations(show): Bool -> String = [
+    sb = StringBuilder new
+    this appendStructureInfoForType: t to: sb showSourceLocations: show
+    ^ sb toString
+  ]
+
+  on appendStructureInfoForType(t): NivaType to(sb): StringBuilder -> Unit = [
+    ^ .appendStructureInfoForType: t to: sb showSourceLocations: false
+  ]
+
+  on appendStructureInfoForType(t): NivaType to(sb): StringBuilder showSourceLocations(show): Bool -> Unit = [
+    typeToken = typeDeclarationTokens at: (t pkgName + "." + t name)
+    mut typeLocation = ""
+    show ifTrue: [typeToken unpack: [typeLocation <- this infoSourceLocation: it]]
+    sb appendLine: "type " + t nameForInfo + typeLocation
     fields = t collectFields
     fields isEmpty
-      ifTrue: [
-        sb appendLine: "_None._"
-        ()
-      ]
+      ifTrue: []
       ifFalse: [
         fields forEach: [field ->
           mutPrefix = field isMut ifTrue: ["mut "] ifFalse: [""]
-          sb appendLine: "- `" + field name + "`: `" + mutPrefix + field typeT nameForInfo + "`"
+          sb appendLine: "    " + field name + ": " + mutPrefix + field typeT nameForInfo
         ]
       ]
+
+    sb appendLine: ""
 
     sb appendLine: "#### Methods"
     methodsMaybe = typeToMethodNameToMethod at: t
@@ -1138,11 +1168,26 @@ extend TyperDB [
       ]
       ifFalse: [
         methods forEach: [method ->
-          sb appendLine: "- `" + method infoSignature + "`"
+          methodLocation = show ifTrue: [
+            methodKey = method receiverType pkgName + "." + method receiverType name + "." + method name
+            registeredToken = methodDeclarationTokens at: methodKey
+            mut location = ""
+            registeredToken unpack: [location <- this infoSourceLocation: it]
+            location == "" ifTrue: [
+              method decl unpack: [location <- this infoSourceLocation: it token]
+            ]
+            location
+          ] ifFalse: [""]
+          sb appendLine: "- `" + method infoSignature + "`" + methodLocation
         ]
       ]
     sb appendLine: ""
     ()
+  ]
+
+  on infoSourceLocation(token): Token -> String = [
+    token file path == "" ifTrue: [^ ""]
+    ^ " ( " + token file path + ":" + token line toString + " )"
   ]
 
   on appendStructureInfoForPackage(pkg): NivaPkg to(sb): StringBuilder -> Unit = [
@@ -1160,8 +1205,6 @@ extend TyperDB [
   /// Returns Markdown documentation about every package -> type -> fields/methods.
   on structureInfo -> String = [
     sb = StringBuilder new
-    sb appendLine: "# Niva project info"
-    sb appendLine: ""
     projectPackages = packages values
       filter: [it name != "core"]
       ,sortedBy: [it name]
@@ -1186,8 +1229,6 @@ extend TyperDB [
       typeMaybe = pkg types at: typeName
       typeMaybe unpack: [t ->
         sb = StringBuilder new
-        sb appendLine: "# Niva project info"
-        sb appendLine: ""
         sb appendLine: "## Package `" + pkg name + "`"
         this appendStructureInfoForType: t to: sb
         ^ sb toString
