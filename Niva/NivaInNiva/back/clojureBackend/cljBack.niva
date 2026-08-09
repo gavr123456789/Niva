@@ -159,7 +159,7 @@ String toCljRawStringLiteral -> String = [
 IrLiteral toCljLiteral -> String =
   | kind
   | IrLiteralKind.Null   => "nil"
-  | IrLiteralKind.Unit   => "nil"
+  | IrLiteralKind.Unit   => ":unit"
   | IrLiteralKind.Bool   => lexeme
   | IrLiteralKind.Int    => lexeme
   | IrLiteralKind.Double => lexeme

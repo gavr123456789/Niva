@@ -191,6 +191,30 @@ type GenericReceiverMethodTemplate
   method: NivaMethod
   pkgName: String
 
+// AST type for synthetic declaration of a specialized method(from generic)
+NivaType toFakeAstType -> AstType = [
+  astName = | this
+    | NullableT => v name
+    |=> name
+
+  genericParams = | this
+    | TypeT => genericArgs map: [it toFakeAstType]
+    | ListT => {(t toFakeAstType)}
+    | SetT => {(t toFakeAstType)}
+    | MapT => {(k toFakeAstType) (v toFakeAstType)}
+    | NullableT => v genericParamsForFakeAstType
+    |=> {}
+
+  ^ AstType name: astName
+      genericParams: genericParams
+      tok: FAKE_TOKEN
+      isNullable: this isNullableType
+      isMut: false errors: null
+]
+
+NivaType genericParamsForFakeAstType -> List(AstType2) =
+  (this toFakeAstType) genericParams
+
 extend TyperDB [
   on addBindFile(fileName): String pkgName: String = [
     bindMeta bindFiles add: fileName
@@ -549,18 +573,38 @@ extend TyperDB [
       candidate method name == name ifTrue: [
         mapping = this matchGenericReceiver: candidate receiverPattern actual: forType
         mapping unpack: [letterToType ->
+          resolvedGenerics::mut Map(String, NivaType) = #{}!
+          letterToType forEach: [k, v -> resolvedGenerics at: k put: v]
           receiverGenerics = candidate receiverPattern collectUnresolvedGenerics
           receiverNames = (receiverGenerics map: [generic -> generic name]) toSet
-          specialized = candidate method replaceGenericsFromTable:
-            letterToType dontMangle: receiverNames mangle: false db: this
-          // Keep the canonical actual receiver identity used by the cache.
-          // replaceGenericsFromTableDeep creates a structurally equal ListT/SetT/
-          // MapT value, which is not safe as a Map key here.
+          specialized = candidate method replaceGenericsFromTable: letterToType dontMangle: receiverNames mangle: false db: this
+          mut specializedName = specialized name
+          existingMethods = typeToMethodNameToMethod at: forType
+          existingMethods unpack: [methods ->
+            existing = methods at: specializedName
+            existing unpack: [other ->
+              other args count != specialized args count ifTrue: [
+                specializedName <- specializedName + "__" + specialized args count toString
+              ]
+            ]
+          ]
+          resolvedReturnType = | specialized returnType
+            | Unknown => [
+              body = candidate method decl unpack: [
+                it resolveBodyWithDb: this
+                  pkg: (packages at: candidate pkgName, unpackOrPANIC)
+                  extraTypes: resolvedGenerics
+              ] or: null
+              body unpack: [it t] or: specialized returnType
+            ]
+            |=> specialized returnType
+
+          // keep the og receiver used by cache
           specializedWithActualReceiver = NivaMethod
-            name: specialized name
+            name: specializedName
             receiverType: forType
             args: specialized args
-            returnType: specialized returnType
+            returnType: resolvedReturnType
             returnErrors: specialized returnErrors
             forMut: specialized forMut
             possibleErrors: specialized possibleErrors
@@ -569,6 +613,35 @@ extend TyperDB [
             protocolName: specialized protocolName
             pkgName: specialized pkgName
           matches add: specializedWithActualReceiver
+
+          // The method is now available in the concrete method cache, but the
+          // backend still needs a declaration whose receiver has the concrete
+          // type. Keep the original generic declaration for other uses.
+          | forType
+          | TypeT => [
+            originalDecl = specializedWithActualReceiver decl
+            originalDecl unpack: [decl ->
+            receiverAst = forType toFakeAstType
+            newArgs = decl args mapIndexed: [i, arg ->
+              resolvedArgType = specializedWithActualReceiver args at: i, typeT
+              NameAndAstType name: arg name astType: resolvedArgType toFakeAstType
+            ]
+            newDecl = MessageDecl
+              receiver: receiverAst
+              name: specializedWithActualReceiver name
+              args: newArgs
+              returnType: specializedWithActualReceiver returnType toFakeAstType
+              body: (Body unTypedBody: (decl body unTypedBody toMutableList))
+              isSingleExpr: decl isSingleExpr
+              isConstructor: decl isConstructor
+              token: decl token
+            newDecl resolveBodyWithDb: this
+              pkg: (packages at: specializedWithActualReceiver pkgName, unpackOrPANIC)
+              extraTypes: resolvedGenerics
+            this addGeneratedMessageDecl: newDecl
+            ]
+          ]
+          |=> []
         ]
       ]
     ]
@@ -585,6 +658,7 @@ extend TyperDB [
       typeToMethodNameToMethod at: forType put: newCache
     ]
     |=> cache at: method name put: method
+
     ^ method
   ]
 

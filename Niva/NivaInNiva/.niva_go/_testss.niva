@@ -1,8 +1,0 @@
-
-
-cats = "😼 😹 😻 😺 😸 😽" split: " "
-1..3 forEach: [
-  cats shuffled take: 3,
-                forEach: [it echonl]
-  "" echo
-]

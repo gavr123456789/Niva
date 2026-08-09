@@ -462,11 +462,11 @@ extend IrBlock [
         | result
         | null => []
         |=> [resultExpr <- result]
-      ]
+    ]
     |=> [resultExpr <- trailingReturnExpr]
 
     resultStr = | resultExpr
-                | null => "nil"
+                | null => [resultType isCljUnitType ifTrue: [":unit"] ifFalse: ["nil"]]
                 |=> resultExpr toCljExpr: ctx scope: scope
 
     ^ bindings isNotEmpty
@@ -589,6 +589,13 @@ constructor CljBackend [
 
   on emitFunction(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
     name = fn cljFuncNameFromIr
+    CljBackend emitFunctionNamed: name fn: fn ctx: ctx sb: sb
+  ]
+
+  // Generic receiver methods are represented by one IR function and a list of
+  // concrete call-site instantiations. Clojure has no dispatch by static type,
+  // so every concrete receiver needs its own function symbol.
+  on emitFunctionNamed(name): String fn(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
     // fn.args already includes `this` for instance methods
     fullArgs = fn args joinWith: " " transform: [it name cljSanitizeIdent]
 
@@ -628,8 +635,25 @@ constructor CljBackend [
       pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
       pkg unions forEach: [CljBackend emitUnionDef: it ctx: ctx sb: body]
       pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
-      pkg functions forEach: [functionNames add: (it cljFuncNameFromIr)]
-      pkg functions forEach: [CljBackend emitFunction: it ctx: ctx sb: body]
+      pkg functions forEach: [fn ->
+        baseName = fn cljFuncNameFromIr
+        functionNames contains: baseName, ifFalse: [functionNames add: baseName]
+        fn instantiations forEach: [inst ->
+          specializedId = (fn id replace: (fn receiverType typeId) with: (inst receiverType typeId))
+          specializedName = specializedId cljFuncIdToName
+          functionNames contains: specializedName, ifFalse: [functionNames add: specializedName]
+        ]
+      ]
+      pkg functions forEach: [fn ->
+        CljBackend emitFunction: fn ctx: ctx sb: body
+        fn instantiations forEach: [inst ->
+          specializedId = (fn id replace: (fn receiverType typeId) with: (inst receiverType typeId))
+          specializedName = specializedId cljFuncIdToName
+          specializedName == (fn cljFuncNameFromIr) ifFalse: [
+            CljBackend emitFunctionNamed: specializedName fn: fn ctx: ctx sb: body
+          ]
+        ]
+      ]
     ]
     ir entry unpack: [CljBackend emitEntry: it ctx: ctx sb: body]
 
