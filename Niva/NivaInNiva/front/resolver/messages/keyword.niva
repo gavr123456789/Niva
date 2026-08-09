@@ -138,6 +138,14 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     findMsgFromReceiver: receiverTypedExpr
     byName: msgName
     currentPkg: c currentPkg
+
+  // unary and keyword can share the same name, so if current not match, there might be generic kinda overloading
+  kwMsgDB args count != args count ifTrue: [
+    genericCandidate = db findGenericReceiverMethod: msgName forType: receiverType
+    genericCandidate unpack: [candidate ->
+      candidate args count == args count ifTrue: [kwMsgDB <- candidate]
+    ]
+  ]
   // just replace this mutability with flag
   // hasGenerics
   // and at the end if it has then use the new generated kwMsg with instantiated geneircs, if not then use kwMsgDB

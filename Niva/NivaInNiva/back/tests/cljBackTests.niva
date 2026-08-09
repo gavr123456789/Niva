@@ -126,6 +126,67 @@ Test cljGenericEchoKeepsValue = [
   clj contains: "(+ x 2)", assertTrue
 ]
 
+Test cljUnitUsesUnitKeyword = [
+  fileMain = """
+    Unit sas -> Unit = [
+      ()
+    ]
+    () sas echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: ":unit", assertTrue
+  clj contains: "(defn main__core_Unit__sas [this] (let [_ :unit] :unit))", assertTrue
+]
+
+Test cljGenericReceiverGetsSpecializedFunction = [
+  fileMain = """
+    type Person name: String
+    p = Person name: "Alice"
+    T sas = "hii!"
+    p sas
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(declare main__T__sas main_Person__sas)", assertTrue
+  clj contains: "(defn main_Person__sas [this]", assertTrue
+]
+
+Test cljGenericReceiverPreservesNestedGenericTypes = [
+  fileMain = """
+    type Box(T) value: T
+    Box(T) keep: List(T) -> Unit = ()
+    b = Box value: 1
+    b keep: {2}
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main_Box__core_Int__keep [this keep]", assertTrue
+]
+
+Test cljGenericArgumentAndUnaryOverloadAreDistinct = [
+  fileMain = """
+    type Person name: String
+    p = Person name: "Alice"
+    Person sas: T -> String = "qwfqwf"
+    T sas = "Sas"
+    p sas: 42
+    p sas
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main_Person__sas__core_Int [this sas]", assertTrue
+  clj contains: "(defn main_Person__sas__0 [this]", assertTrue
+]
+
 Test cljMatchByTypeUsesCondpInstance = [
   fileMain = """
     union Shape =
