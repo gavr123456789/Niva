@@ -542,6 +542,7 @@ Test goBindByNameInstance = [
     a = "hi" toUpper
   """
   result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "strings.ToUpper(\"hi\")", assertTrue
@@ -557,6 +558,7 @@ Test goBindByNameStatic = [
     b = String atoi: "42"
   """
   result = ResolverHelper resolve: #{"main" fileMain "strconv.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "strconv.Atoi(\"42\")", assertTrue

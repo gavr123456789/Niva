@@ -489,7 +489,7 @@ extend IrExpr [
                 paramType = paramTypes at: i
                 it toGoArgExpr: ctx scope: scope paramType: paramType
               ], goCallArgs
-              ^ (bp goPkg goPkgQualifier) + "." + (bp goName) + "(" + byNameArgs + ")"
+              ^ (bp goPkg goPkgQualifier) + "." + (bp goName bindCapitalizeFirst) + "(" + byNameArgs + ")"
             ]
           | IrBindEmit => [
               // emits from a .bind.niva file auto-import that Go package

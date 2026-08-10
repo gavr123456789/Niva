@@ -41,7 +41,7 @@ constructor NivaCompiler [
 
 
         argsParsed = ArgParser args: args
-        {option path backend} = argsParsed
+        {option path backend debug} = argsParsed
 
 
         realJSPath = io currentDir + "/.niva_js"
@@ -79,7 +79,7 @@ constructor NivaCompiler [
         generateCljFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: realCljPath toPath
             irModule = res toIrModule
-            cljContent = CljBackend fullFromIrModule: irModule
+            cljContent = CljBackend fullFromIrModule: irModule debug: debug
             destanation = realCljPath + "/main.clj"
             io writeFile file: destanation content: cljContent
             io writeFile file: realCljPath + "/deps.edn" content: "{:paths [\".\"]}\n"

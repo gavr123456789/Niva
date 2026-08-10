@@ -102,7 +102,10 @@ extend MessageDecl [
 
   on bindPlanWith(db): TyperDB pkg: String -> IrBind? = [
     ((db isBindMessageDecl: this) && (.bindIsEmptyBody)) ifTrue: [
-      ^ IrBindByName goPkg: pkg goName: (.bindFirstKey bindCapitalizeFirst) isStatic: isConstructor
+      // Keep the declared foreign name intact. Go applies its exported-name
+      // convention during emission; Clojure names (for example `upper-case`)
+      // must not be capitalized.
+      ^ IrBindByName goPkg: pkg goName: .bindFirstKey isStatic: isConstructor
     ]
     tmpl = .bindEmitTemplate
     ^ tmpl unpack: [t ->

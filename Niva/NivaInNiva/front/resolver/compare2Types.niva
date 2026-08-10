@@ -97,6 +97,8 @@ NivaType sameTypeStrictAs(nivaType): NivaType -> Bool =
 // typechecks for x::Int = 4
 // where nivaType is `::Int` part, and 4 is `this`
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
+  // Nothing is the bottom type (for example `throw`) is valid wherever a value is expected
+  this isNothingType ifTrue: [^ true]
   result = nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
     | TypeT =>  | this
