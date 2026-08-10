@@ -291,9 +291,9 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
         cases forEach: [c ->
           typeStr = c assertedTypeRef
             unpack: [ref ->
-              // the base `Error` type has no runtime class in clj; Object catches all
+              // Object for record errors(niva errors)
               (ref typeId cljNormalizeTypeId) == "core_Error"
-                ifTrue:  ["Throwable"]
+                ifTrue:  ["Object"]
                 ifFalse: [ref cljTypeName]
             ]
             or: (c condition toCljExpr: ctx scope: innerScope)
@@ -597,36 +597,54 @@ constructor CljBackend [
   // so every concrete receiver needs its own function symbol.
   on emitFunctionNamed(name): String fn(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
     // fn.args already includes `this` for instance methods
+    generatedLine = (sb toString) cljLineCount
     fullArgs = fn args joinWith: " " transform: [it name cljSanitizeIdent]
 
     scope = CljScope new
     body = fn body toCljBlockBody: ctx scope: scope
+    bodyToEmit = body
 
-    (body contains: "\n")
+    (bodyToEmit contains: "\n")
       ifTrue: [
-        indented = body replace: "\n" with: "\n  "
+        indented = bodyToEmit replace: "\n" with: "\n  "
         sb appendLine: ("(defn " + name + " [" + fullArgs + "]")
         sb appendLine: ("  " + indented + ")")
       ]
       ifFalse: [
-        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
-      ]
+        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + bodyToEmit + ")")
+    ]
     sb appendLine: ""
+    generatedEndLine = ((sb toString) cljLineCount) - 2
+    ctx addDebugEntry: generatedLine endLine: generatedEndLine token: fn token method: fn name
   ]
 
   on emitEntry(entry): IrBlock ctx: CljContext sb: StringBuilder -> Unit = [
     // wrap the entry as (defn -main [& args] ...) so `clojure -M -m main` finds it
+    entryToken = entry stmts isNotEmpty
+      ifTrue: [(entry stmts first) token]
+      ifFalse: [entry result unpack: [it token] or: FAKE_TOKEN]
+    generatedLine = (sb toString) cljLineCount
     scope = CljScope new
     body = entry toCljBlockBody: ctx scope: scope
     indented = body replace: "\n" with: "\n  "
     sb appendLine: "(defn -main [& args]"
-    sb appendLine: ("  " + indented + ")")
+    ctx debug
+      ifTrue: [
+        sb appendLine: "  (try"
+        sb appendLine: ("    " + indented replace: "\n" with: "\n    ")
+        sb appendLine: "    (catch ^:sci/error Exception __niva_exception"
+        sb appendLine: "      (__niva_debug_print __niva_exception)))"
+        sb appendLine: ")"
+      ]
+      ifFalse: [sb appendLine: ("  " + indented + ")")]
     sb appendLine: ""
+    generatedEndLine = ((sb toString) cljLineCount) - 2
+    ctx addDebugEntry: generatedLine endLine: generatedEndLine token: entryToken method: "main"
   ]
 
   // Public entry point.
-  on fullFromIrModule(ir): IrModule -> String = [
-    ctx = CljContext new
+  on fullFromIrModule(ir): IrModule debug: Bool -> String = [
+    ctx = CljContext newDebug: debug
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut List(String) = {}!
@@ -670,8 +688,47 @@ constructor CljBackend [
       header appendLine: ("(declare " + (functionNames joinWith: " ") + ")")
     ]
     header appendLine: ""
+
+    ctx debug ifTrue: [
+      header appendLine: "(declare __niva_source_map)"
+      header appendLine: "(defn- __niva_sci_stacktrace [e]"
+      header appendLine: "  (try"
+      header appendLine: "    (when-let [f (requiring-resolve 'sci.core/stacktrace)]"
+      header appendLine: "      (seq (f e)))"
+      header appendLine: "    (catch Throwable _ nil)))"
+      header appendLine: "(defn- __niva_debug_print [e]"
+      header appendLine: "  (let [actual-error (or (.getCause e) e)]"
+      header appendLine: "    (println (str \"Exception: \" (.getMessage actual-error))))"
+      header appendLine: "  (if-let [frames (__niva_sci_stacktrace e)]"
+      header appendLine: "    (loop [frames frames last-info nil]"
+      header appendLine: "      (when frames"
+      header appendLine: "        (let [frame (first frames)"
+      header appendLine: "              file (some-> (:file frame) java.io.File. .getName)"
+      header appendLine: "              line (:line frame)"
+      header appendLine: "              info (when (and file line) (get __niva_source_map [file line]))]"
+      header appendLine: "          (when (and info (not= info last-info))"
+      header appendLine: "            (println (str \"Method: \" (nth info 2) \" File: \" (nth info 0) \":\" (nth info 1))))"
+      header appendLine: "          (recur (next frames) (if info info last-info)))))"
+      header appendLine: "    (loop [frames (seq (.getStackTrace e)) last-info nil]"
+      header appendLine: "      (when frames"
+      header appendLine: "        (let [frame (first frames)"
+      header appendLine: "              info (get __niva_source_map [(.getFileName frame) (.getLineNumber frame)])]"
+      header appendLine: "          (when (and info (not= info last-info))"
+      header appendLine: "            (println (str \"Method: \" (nth info 2) \" File: \" (nth info 0) \":\" (nth info 1))))"
+      header appendLine: "          (recur (next frames) (if info info last-info))))))"
+      header appendLine: "  (System/exit 1))"
+      bodyLineOffset = (header toString) cljLineCount + 1
+      entriesList::mut List(String) = {}!
+      ctx debugEntries forEach: [entriesList addAll: (it toCljSourceMapEntries: bodyLineOffset)]
+      entries = entriesList joinWith: " "
+      header appendLine: ("(def __niva_source_map {" + entries + "})")
+      header appendLine: ""
+    ]
     header append: (body toString)
 
     ^ header toString
   ]
+
+  on fullFromIrModule(ir): IrModule -> String =
+    CljBackend fullFromIrModule: ir debug: false
 ]

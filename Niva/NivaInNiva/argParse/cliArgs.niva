@@ -5,8 +5,9 @@ type ArgsParsed
   backend: CompilerBackend
   // flags
   verbose: Bool
+  debug: Bool
 
-constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false
+constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false debug: false
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -22,6 +23,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         info — print packages, types, fields, and methods as Markdown
         info PACKAGE.TYPE — print information about one type
         run FILE --backend go|js|lsp — select backend (default: js)
+        --debug — include Niva stack traces in the Clojure backend
     """ trimIndent
     help echo
     ^ ArgsParsed help
@@ -32,6 +34,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   //           "--lsp"     false}
 
   mut verbose = false
+  mut debug = false
   mut backend = CompilerBackend.Js
   mut filteredArgs2::mut List(String) = {}!
   mut skipNext = false
@@ -44,6 +47,10 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | arg
         | "--verbose" => [
           verbose <- true
+          ()
+        ]
+        | "--debug" => [
+          debug <- true
           ()
         ]
         | "--backend" => [
@@ -89,16 +96,16 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     | 1 => [
       arg0 = filteredArgs2 at: 0
       | arg0
-      | "run" => ArgsParsed path: null option: CompilerOption.Run backend: backend verbose: verbose
+      | "run" => ArgsParsed path: null option: CompilerOption.Run backend: backend verbose: verbose debug: debug
       | "build" => ArgsParsed help
-      | "ir" => ArgsParsed path: null option: CompilerOption.Ir backend: backend verbose: verbose
-      | "info" => ArgsParsed path: null option: CompilerOption.Info backend: backend verbose: verbose
+      | "ir" => ArgsParsed path: null option: CompilerOption.Ir backend: backend verbose: verbose debug: debug
+      | "info" => ArgsParsed path: null option: CompilerOption.Info backend: backend verbose: verbose debug: debug
       |=> ArgsParsed help
     ]
     | 2 => [
       arg1 = getFirstArg do
       arg2 = filteredArgs2 at: 1
-      ArgsParsed path: arg2 option: arg1 :backend :verbose
+      ArgsParsed path: arg2 option: arg1 :backend :verbose :debug
     ]
     |=> ArgsParsed help
 ]

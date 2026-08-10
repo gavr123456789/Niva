@@ -576,7 +576,9 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   // so skipping
   declaredReturnType = returnType unpack: [it toNivaTypefromDB: db inPkg: null]
                                   or: null
-  (hasAnyReturnErrors not), ifTrue: [
+  // empty declaration in a .bind.niva file is implemented by the target runtime, so its synthetic Unit body must not be checked as the function's declared return type.
+  isExternalBind = (db isBindMessageDecl: this) && (isSingleExpr not) && (body unTypedBody isEmpty)
+  (hasAnyReturnErrors not) && (isExternalBind not), ifTrue: [
     declaredReturnType unpack: [declaredType ->
       // generic return types are checked after method specialization,
       // when their concrete mapping is known

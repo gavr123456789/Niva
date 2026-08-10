@@ -2,16 +2,58 @@ type CljBackend
 
 type CljContext
   imports: mut Set(String)
+  debug: Bool
+  debugEntries: mut List(CljDebugEntry)
 
-constructor CljContext new -> CljContext = CljContext imports: #()!
+type CljDebugEntry
+  generatedLine: Int
+  generatedEndLine: Int
+  sourceFile: String
+  sourceLine: Int
+  method: String
+
+constructor CljContext newDebug(debug): Bool -> CljContext =
+  CljContext imports: #()! debug: debug debugEntries: {}!
 
 CljContext addImport(name): String -> Unit = [
   imports add: name
 ]
 
+String cljDebugQuoted -> String =
+  "\"" + (.replace: "\\" with: "\\\\", replace: "\"" with: "\\\"") + "\""
+
+CljContext addDebugEntry(generatedLine): Int endLine: Int token: Token method: String -> Unit = [
+  debug ifTrue: [
+    file = token file path
+    file != "" ifTrue: [
+      debugEntries add: (CljDebugEntry :generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line :method)
+    ]
+  ]
+]
+
+String cljLineCount -> Int = [
+  mut result = 1
+  mut i = 0
+  [i < this count] whileTrue: [
+    (this at: i) == '\n', ifTrue: [result <- result + 1]
+    i <- i + 1
+  ]
+  ^ result
+]
+
+CljDebugEntry toCljSourceMapEntries(bodyLineOffset): Int -> List(String) = [
+  entries::mut List(String) = {}!
+  mut line = generatedLine
+  [line <= generatedEndLine] whileTrue: [
+    entries add: ("[\"main.clj\" " + (line + bodyLineOffset) toString + "] [" +
+      (sourceFile cljDebugQuoted) + " " + sourceLine toString + " " + (method cljDebugQuoted) + "]")
+    line <- line + 1
+  ]
+  ^ entries toList
+]
+
 // tracks which locals were declared as mut (so refs to them emit @name)
-type CljScope
-  mutLocals: mut Set(String)
+type CljScope mutLocals: mut Set(String)
 
 constructor CljScope new = CljScope mutLocals: #()!
 
@@ -23,12 +65,8 @@ CljScope copy -> CljScope = [
 
 CljScope isMut(name): String -> Bool = mutLocals contains: name
 
-// A single `(let [name value ...])` binding pair.
+// single `(let [name value ...])` binding pair
 type CljBinding name: String value: String
-
-// ---------------------------------------------------------------------------
-// name sanitization
-// ---------------------------------------------------------------------------
 
 extend String [
   on cljSanitizeIdent -> String =
@@ -94,9 +132,6 @@ extend String [
 
 ]
 
-// ---------------------------------------------------------------------------
-// core function name matching (core.Any__echo, core.Int__plus, etc.)
-// ---------------------------------------------------------------------------
 IrTypeRef coreFuncNameFromCljCall(name): String -> String = [
   baseId = typeId cljNormalizeTypeId
   recvBase = baseId stripCljPkgPrefix: "core"
@@ -136,9 +171,6 @@ String cljOperator -> String =
 // literals
 // ---------------------------------------------------------------------------
 String toCljRawStringLiteral -> String = [
-  // Raw Niva strings keep their triple-quote delimiters in the lexeme and
-  // do not interpret backslash escapes. Clojure has no triple-quoted string
-  // syntax, so emit an ordinary string while preserving the raw value.
   content = (this drop: 3) dropLast: 3
   sb = StringBuilder new
   mut i = 0
@@ -166,14 +198,24 @@ IrLiteral toCljLiteral -> String =
   | IrLiteralKind.Float  => lexeme endsWith: "f",
                                   ifTrue:  [lexeme dropLast: 1]
                                  ifFalse: [lexeme]
-  | IrLiteralKind.Char   => "\\" + (lexeme drop: 1, dropLast: 1)
+  | IrLiteralKind.Char   => lexeme toCljCharLiteral
   | IrLiteralKind.String    => lexeme
   | IrLiteralKind.RawString => lexeme toCljRawStringLiteral
   | IrLiteralKind.Atom   => ":" + lexeme
 
-// ---------------------------------------------------------------------------
-// indent helper
-// ---------------------------------------------------------------------------
+String toCljCharLiteral -> String = [
+  content = (this drop: 1) dropLast: 1
+  ^ | content
+    | "\\n"  => "\\newline"
+    | "\\t"  => "\\tab"
+    | "\\r"  => "\\return"
+    | "\\b"  => "\\backspace"
+    | "\\f"  => "\\formfeed"
+    | " "    => "\\space"
+    | "\\\\" => "\\\\"
+    |=> "\\" + content
+]
+
 Int cljIndent -> String = [
   sb = StringBuilder new
   mut i = 0

@@ -72,6 +72,20 @@ Test declaredReturnTypeMustMatchLastExpression = [
   Assert that: result db listOfErrors count equals: 1
 ]
 
+Test nothingReturnMatchesDeclaredReturnType = [
+  fileMain = """
+    errordomain MyError =
+    | Error2 code: Int
+
+    Unit fail -> Int!{Error2} = [
+      (Error2 code: 404) throw
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
 Test errorEffectsDeclared = [
   fileMain = """
     Unit sas -> Int!Error = [

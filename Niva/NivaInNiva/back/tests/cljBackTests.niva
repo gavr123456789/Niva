@@ -248,6 +248,23 @@ Test cljRawStringLiteral = [
   Assert that: (clj contains: "\"hello\\nworld\"") equals: true
 ]
 
+Test cljEscapedCharLiterals = [
+  fileMain = """
+    newline = '\n'
+    tab = '\t'
+    space = ' '
+    backslash = '\\'
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "\\newline", assertTrue
+  clj contains: "\\tab", assertTrue
+  clj contains: "\\space", assertTrue
+  clj contains: "\\\\", assertTrue
+]
+
 Test cljFieldGetUsesKeyword = [
   fileMain = """
     type Person
@@ -316,34 +333,36 @@ Test cljBindAddImport = [
   clj contains: "(clojure.java.io/slurp readFile)", assertTrue
 ]
 
-// New bind design: an empty body in a .bind.niva file calls the external
-// function by its first keyword name. The receiver is the first Clojure arg.
+// Clojure preserves the declared external function name. The receiver is the
+// first Clojure arg.
 Test cljBindByNameInstance = [
   bindFile = """
-    String toUpper -> String = []
+    String upper-case -> String = []
   """
   fileMain = """
-    a = "hi" toUpper
+    a = "hi" upper-case
   """
   result = ResolverHelper resolve: #{"main" fileMain "clojure.string.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
-  clj contains: "(clojure.string/ToUpper \"hi\")", assertTrue
+  clj contains: "(clojure.string/upper-case \"hi\")", assertTrue
   clj contains: "[clojure.string]", assertTrue
 ]
 
 // Static bind: the receiver type is not part of the external call arguments.
 Test cljBindByNameStatic = [
   bindFile = """
-    static String parse: String -> Int = []
+    static String parse-long: String -> Int = []
   """
   fileMain = """
-    x = String parse: "42"
+    x = String parse-long: "42"
   """
   result = ResolverHelper resolve: #{"main" fileMain "clojure.core.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
-  clj contains: "(clojure.core/Parse \"42\")", assertTrue
+  clj contains: "(clojure.core/parse-long \"42\")", assertTrue
   clj contains: "[clojure.core]", assertTrue
 ]
 
@@ -472,7 +491,7 @@ Test cljErrorDomainMatchByCoreErrorCodegen = [
 
   // the base `Error` type has no runtime class, so Object is the catch-all
   clj contains: "(niva.core/handling [it", assertTrue
-  clj contains: "Throwable 0", assertTrue
+  clj contains: "Object 0", assertTrue
   clj contains: ":niva.core/miss", assertTrue
 ]
 

@@ -108,14 +108,14 @@ union IrStmt token: Token =
 | IrWhile cond: IrExpr body: IrExpr
 | IrThrow errExpr: IrExpr
 
-// Inlineable binding info attached to an IrCall.
-// IrBindByName: empty-body bind in a .bind.niva file -> emitted as goPkg.goName(args)
+// inlineable binding info attached to an IrCall
+// IrBindByName: empty body bind in a .bind.niva file `goName` stores declared foreign name each backend use its own naming convention
 // IrBindEmit:   single `Bind emit:` body -> template inlined at each call site
-//               ($0 = receiver/this, $1 = first keyword arg, ...)
+//               ($0 = receiver(this), $1 = first keyword arg)
 union IrBind =
 | IrBindByName goPkg: String goName: String isStatic: Bool
-// goPkg: non-null when the emit lives in a .bind.niva file -> that Go package is
-// auto-imported at the call site (so no manual `Bind addImport:` is needed)
+// goPkg: non null when the emit lives in a .bind.niva file -> that Go package is
+// auto imported at the call site (so no manual `Bind addImport:` is needed)
 | IrBindEmit template: String goPkg: String?
 
 // Backend-specific constructor emit for external types.
@@ -130,7 +130,7 @@ union IrExpr typeRef: IrTypeRef token: Token =
 | IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
-// typeAlias name of the variable that will change its type inside different match branches (usually this, or it)
+// typeAlias is for making `this` or `it` inside branches
 // subjectIsUnit if its match on error, and func returns only error, no value, then we emit `err := call()` not `val, err := call()`
 | IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock? typeAlias: String? subjectIsUnit: Bool
 | IrNewExpr typeId: String args: List(IrExpr) constructorBind: IrConstructorBind?
