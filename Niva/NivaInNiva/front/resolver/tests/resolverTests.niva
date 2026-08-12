@@ -132,6 +132,45 @@ Test errorEffectsInferFromBang = [
   |=> [TO DO: "MessageDeclT expected"]
 ]
 
+Test declaredErrorEffectsRequireBodyErrors = [
+  fileMain = """
+    Unit inferredButClean -> Int! = [42]
+    Unit explicitButClean -> Int!Error = [42]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+
+  Assert that: errors count equals: 2
+  errors forEach: [err ->
+    err msg contains: "body cannot produce an error", assertTrue
+  ]
+]
+
+Test callbackErrorsPropagateToEnclosingDeclarationAndMatch = [
+  fileMain = """
+    Int sas -> Int! = [
+      1 > 2 ifTrue: [Error throwWithMsg: "hello"]
+      1
+    ]
+
+    | 1 sas
+    | Error => [0]
+    |=> [1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  typedMatch = result entryPointExpressions last
+  | typedMatch
+  | MatchT => [
+    Assert that: typedMatch subject typeInfo listOfErrors count equals: 1
+    Assert that: typedMatch subject typeInfo listOfErrors first name equals: "Error"
+  ]
+  |=> [TO DO: "MatchT expected"]
+]
+
 Test errorEffectsPropagateFromCall = [
   fileMain = """
     Unit throwing -> Int!Error = [
@@ -154,6 +193,7 @@ Test errorEffectsPropagateFromCall = [
 Test errorableReceiverOnlyAllowsAnyMethods = [
   fileMain = """
     Unit readFile -> String!Error = [
+      Error throw
       ^ "text"
     ]
 

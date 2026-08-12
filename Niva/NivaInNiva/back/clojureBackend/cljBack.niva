@@ -1,5 +1,11 @@
 type CljBackend
 
+// Selects the shape of the generated Clojure module.  Program output keeps
+// the normal `main` namespace and `-main` entry point; REPL output is a
+// loadable session namespace whose entry expression is evaluated at load
+// time.
+enum CljEmitMode = Program | Repl
+
 type CljContext
   imports: mut Set(String)
   debug: Bool

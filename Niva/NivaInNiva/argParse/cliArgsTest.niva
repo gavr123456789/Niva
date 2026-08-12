@@ -21,6 +21,15 @@ Test cliArgsRunGoBackend = [
   Assert that: result backend equals: CompilerBackend.Go
 ]
 
+Test cliArgsReplEmission = [
+  args = {"build" "main.niva" "--backend" "clojure" "--repl" "--repl-line" "7"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Build
+  Assert that: result backend equals: CompilerBackend.Clj
+  Assert that: result repl equals: true
+  Assert that: result replLine equals: 7
+]
+
 Test cliArgsInfoTypePath = [
   result = ArgParser args: {"info" "main.Person"} toList
   Assert that: result option equals: CompilerOption.Info

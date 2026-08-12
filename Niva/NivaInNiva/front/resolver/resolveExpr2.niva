@@ -408,6 +408,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
     typeInfo: (FuntionT
                 fields: typeTFields toMutableList
                 returnType: returnType
+                returnErrors: typedBody listOfErrors
                 genericArgs: genericList toMutableList
                 name: name
                 pkgName: c currentPkg name) toTypeInfoDefault
@@ -841,6 +842,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       typeInfo: (FuntionT
                   fields: typeTFields toMutableList
                   returnType: returnType
+                  returnErrors: typedBody listOfErrors
                   genericArgs: genericList toMutableList
                   name: name
                   pkgName: c currentPkg name) toTypeInfoDefault
