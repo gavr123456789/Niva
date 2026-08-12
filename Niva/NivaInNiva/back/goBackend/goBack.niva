@@ -132,6 +132,50 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
 
 ]
 
+IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
+  input = args first
+  inputType = input typeRef
+  hasErrors = inputType errors isNotEmpty
+  isNullable = inputType nullable
+  inputHasNoValue = inputType isGoUnitType && (isNullable not)
+  inputStr = input toGoExpr: ctx scope: scope
+  outputType = typeRef
+
+  sb = StringBuilder new
+  sb append: "func()"
+  sb append: (" " + (outputType toGoType: ctx))
+  sb appendLine: " {"
+
+  valueName = "__tryValue"
+  errName = "__tryErr"
+  hasErrors ifTrue: [
+    inputHasNoValue
+      ifTrue: [sb appendIndent: 1 line: (errName + " := " + inputStr)]
+      ifFalse: [sb appendIndent: 1 line: (valueName + ", " + errName + " := " + inputStr)]
+    sb appendIndent: 1 line: ("if " + errName + " != nil { panic(" + errName + ") }")
+  ] ifFalse: [
+    sb appendIndent: 1 line: (valueName + " := " + inputStr)
+  ]
+
+  isNullable ifTrue: [
+    sb appendIndent: 1 line: ("if " + valueName + " == nil { panic(\"try on null\") }")
+    outputType isGoUnitType
+      ifTrue: [sb appendIndent: 1 line: "return core.UnitInstance"]
+      ifFalse: [
+        inputType isGoNullableReferenceValue
+          ifTrue: [sb appendIndent: 1 line: ("return " + valueName)]
+          ifFalse: [sb appendIndent: 1 line: ("return *" + valueName)]
+      ]
+  ] ifFalse: [
+    outputType isGoUnitType
+      ifTrue: [sb appendIndent: 1 line: "return core.UnitInstance"]
+      ifFalse: [sb appendIndent: 1 line: ("return " + valueName)]
+  ]
+
+  sb append: "}()"
+  ^ sb toString
+]
+
 GoContext goTypeNameFor(typeId): String -> String = [
   baseId = typeId goNormalizeTypeId
   existing = symbols typeNames at: baseId
@@ -204,6 +248,12 @@ GoImportPlan importsForFile(fileKey): String -> List(String) = [
 ]
 
 extend IrTypeRef [
+
+  on isGoNullableReferenceValue -> Bool =
+    | kind
+    | IrTypeRefKind.Function => true
+    | IrTypeRefKind.Builtin => (.isGoRefLike) || ((typeId goNormalizeTypeId) == "core_Any") || ((typeId goNormalizeTypeId) == "core_Error")
+    |=> false
 
   on isGoUnitType -> Bool =
     (kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_Unit")
@@ -480,6 +530,9 @@ extend IrExpr [
         "(" + l + " " + op + " " + r + ")"
       ]
     | IrCall => [
+        isTry = msgName unpack: [it == "try"] or: false
+        isTry ifTrue: [^ this toGoTryExpr: ctx scope: scope]
+
         // new bind design: inlineable bind plan attached during IR generation
         bind unpack: [bp ->
           | bp

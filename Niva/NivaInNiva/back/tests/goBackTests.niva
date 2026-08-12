@@ -489,6 +489,90 @@ Test goErrorDomainMatchByCoreErrorCodegen = [
   go contains: "it := __matchErr.(error)", assertTrue
 ]
 
+Test goTryPanicsOnError = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Int!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ 42
+    ]
+
+    value = () foo try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryErr != nil { panic(__tryErr) }", assertTrue
+  go contains: "return __tryValue", assertTrue
+]
+
+Test goTryPanicsOnNull = [
+  fileMain = """
+    value::Int? = null
+    unwrapped = value try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  go contains: "return *__tryValue", assertTrue
+]
+
+Test goTryNullableReferenceValues = [
+  fileMain = """
+    anyValue::Any? = null
+    listValue::List?(Int) = null
+    mapValue::Map?(String, Int) = null
+    anyResult = anyValue try
+    listResult = listValue try
+    mapResult = mapValue try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  Assert that: (go contains: "return *__tryValue") equals: false
+]
+
+Test goTryUnitNullableChecksNull = [
+  fileMain = """
+    value::Unit? = null
+    result = value try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  go contains: "return core.UnitInstance", assertTrue
+]
+
+Test goTryErrorableNullableValue = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Unit?!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ null
+    ]
+
+    value = () foo try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryErr != nil { panic(__tryErr) }", assertTrue
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+]
+
 Test goBindPlaceholder10 = [
   fileMain = """
     Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int = [

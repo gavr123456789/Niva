@@ -136,14 +136,17 @@ IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String? = [
   ]
 ]
 
-// (irStringLiteralValue and irListLiteralItems are shared with the Go backend
-//  and defined in back/goBackend/goBack.niva)
-
-// ---------------------------------------------------------------------------
-// IrCall
-// ---------------------------------------------------------------------------
-
 IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  isTry = msgName unpack: [it == "try"] or: false
+  isTry ifTrue: [
+    input = args first
+    inputStr = input toCljExpr: ctx scope: scope
+    input typeRef nullable ifTrue: [
+      ^ "(let [__tryValue " + inputStr + "] (if (nil? __tryValue) (throw (ex-info \"try on null\" {})) __tryValue))"
+    ]
+    ^ inputStr
+  ]
+
   // new-style bind attached during IR generation
   bind unpack: [bp ->
     | bp
@@ -698,7 +701,7 @@ constructor CljBackend [
       header appendLine: "    (catch Throwable _ nil)))"
       header appendLine: "(defn- __niva_debug_print [e]"
       header appendLine: "  (let [actual-error (or (.getCause e) e)]"
-      header appendLine: "    (println (str \"Exception: \" (.getMessage actual-error))))"
+      header appendLine: "    (println (str \"---\\nException: \" (.getMessage actual-error) \"\\n---\" )))"
       header appendLine: "  (if-let [frames (__niva_sci_stacktrace e)]"
       header appendLine: "    (loop [frames frames last-info nil]"
       header appendLine: "      (when frames"

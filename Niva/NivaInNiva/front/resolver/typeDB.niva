@@ -956,6 +956,37 @@ extend TyperDB [
     ^ null
   ]
 
+  /// `try` unwraps nullable/errorable, so its pretty special
+  on findTryMethod(receiver): TypedExpr2 byName(name): String -> NivaMethod? = [
+    name == "try" ifFalse: [^ null]
+
+    receiverType = receiver typeInfo t
+    hasErrors = receiver typeInfo listOfErrors isNotEmpty
+    isNullable = | receiverType
+      | NullableT => true
+      |=> false
+
+    (hasErrors || isNullable) ifFalse: [
+      this addErrorMessage: (ErrorInvalidTry
+        tok: receiver token
+        msg: "try can only be used on errorable or nullable values, got $receiverType")
+      ^ null
+    ]
+
+    ^ NivaMethod
+      name: "try"
+      receiverType: receiverType
+      args: {}
+      returnType: receiverType unwrapNullable
+      returnErrors: {}!
+      forMut: false
+      possibleErrors: {}
+      kind: MessageSendKind.Call
+      decl: null
+      protocolName: "intrinsic"
+      pkgName: "core"
+  ]
+
   on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2  -> NivaMethod? = [
     lookupType = forType
     receiver isIdentifierConstructor ifTrue: [
@@ -1049,11 +1080,22 @@ extend TyperDB [
 
   on findMsgFromReceiver(receiver): TypedExpr2
     byName(name): String
-    currentPkg::NivaPkg -> NivaMethod = [
+    currentPkg: NivaPkg -> NivaMethod = [
 
     receiverType = receiver typeInfo t
+    tryMethod = this findTryMethod: receiver byName: name
+    tryMethod unpack: [^ it]
+    name == "try" ifTrue: [
+      // Keep resolving after reporting the error. The compiler stops before
+      // IR/backend generation when db.listOfErrors is non-empty.
+      recoveryMethod = this findMethodInAllProtocols: "toString" forType: dtc any :receiver
+      ^ recoveryMethod unpackOrPANIC
+    ]
+    receiverHasErrors = receiver typeInfo listOfErrors isNotEmpty
+
     // resolve do if this is message for a codeblock
-    | receiverType
+    receiverHasErrors ifFalse: [
+      | receiverType
     | FuntionT => [
       name == "whileTrue" ifTrue: [
         {unit bool} = dtc
@@ -1079,20 +1121,36 @@ extend TyperDB [
     ]
 
       ^ result
+      ]
+      |=> []
     ]
-    |=> []
-    pkg = packages at: receiverType pkgName, unpackOrPANIC
+    // Errorable values are opaque: only methods declared on Any are available until the error effect handled `try`
+    lookupType = receiverHasErrors ifTrue: [dtc any] ifFalse: [receiverType]
+    pkg = packages at: lookupType pkgName, unpackOrPANIC
 
-    methodMaybe = this findMethodInAllProtocols: name forType: receiverType :receiver
+    methodMaybe = this findMethodInAllProtocols: name forType: lookupType :receiver
     method =
       | methodMaybe
       | null => [
-          {any} = dtc
-          foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver
-          | foundInAnyMaybe
-          | null => [ // TODO check for nullable, and suggest unpacking methods
-                      TO DO: "Searching for $name method but its not found for type $receiverType"]
-          |=> foundInAnyMaybe
+          receiverHasErrors
+            ifTrue: [
+              // Keep the real method for error recovery and further type checking, but reject calling it on an errorable receiver.
+              forbiddenMethod = this findMethodInAllProtocols: name forType: receiverType :receiver
+              | forbiddenMethod
+              | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
+              |=> [
+                this addErrorFromTok: receiver token withMsg: "Cannot call $name on an errorable value $receiverType use try first"
+                forbiddenMethod
+              ]
+            ]
+            ifFalse: [
+              {any} = dtc
+              foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver
+              | foundInAnyMaybe
+              | null => [ // TODO check for nullable, and suggest unpacking methods
+                          TO DO: "Searching for $name method but its not found for type $receiverType"]
+              |=> foundInAnyMaybe
+            ]
         ]
       |=> methodMaybe
 

@@ -152,7 +152,12 @@ IrTypeRef isCljUnitType -> Bool =
   (kind == IrTypeRefKind.Builtin) && (typeId cljNormalizeTypeId == "core_Unit")
 
 IrTypeRef cljTypeName -> String = [
-  ^ typeId cljNormalizeTypeId cljSanitizeIdent
+  baseId = typeId cljNormalizeTypeId
+  // `Error` is an abstract core type stupid hack to replace it for `Error throw`/`throwWithMsg`
+  // TODO
+  ^ baseId == "core_Error"
+      ifTrue: [":niva.core/Error"]
+      ifFalse: [baseId cljSanitizeIdent]
 ]
 
 // ---------------------------------------------------------------------------

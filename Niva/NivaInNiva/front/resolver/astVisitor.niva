@@ -3,6 +3,7 @@ union ResolveErrors tok: Token msg: String =
 | ErrorNoSuchType
 | ErrorWrongArgType
 | ErrorWrongArgCount
+| ErrorInvalidTry
 | LazyError
 
 ResolveErrors toConsoleMsg = [
