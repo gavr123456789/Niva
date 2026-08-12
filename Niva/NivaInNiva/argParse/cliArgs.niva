@@ -8,8 +8,9 @@ type ArgsParsed
   debug: Bool
   repl: Bool
   replLine: Int
+  nativeBuild: Bool
 
-constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false debug: false repl: false replLine: 0
+constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false debug: false repl: false replLine: 0 nativeBuild: false
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -28,6 +29,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         --debug — include Niva stack traces in the Clojure backend
         --repl — emit a loadable Clojure REPL module without -main (build + Clojure only)
         --repl-line N — emit entry expressions starting at source line N
+        --native — compile a Clojure build to a native executable with GraalVM native-image
     """ trimIndent
     help echo
     ^ ArgsParsed help
@@ -41,6 +43,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut debug = false
   mut repl = false
   mut replLine = 0
+  mut nativeBuild = false
   mut backend = CompilerBackend.Js
   mut filteredArgs2::mut List(String) = {}!
   mut skipNext = false
@@ -61,6 +64,10 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         ]
         | "--repl" => [
           repl <- true
+          ()
+        ]
+        | "--native" => [
+          nativeBuild <- true
           ()
         ]
         | "--repl-line" => [
@@ -116,16 +123,16 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     | 1 => [
       arg0 = filteredArgs2 at: 0
       | arg0
-      | "run" => ArgsParsed path: null option: CompilerOption.Run backend: backend verbose: verbose debug: debug repl: repl replLine: replLine
+      | "run" => ArgsParsed path: null option: CompilerOption.Run backend: backend verbose: verbose debug: debug repl: repl replLine: replLine nativeBuild: nativeBuild
       | "build" => ArgsParsed help
-      | "ir" => ArgsParsed path: null option: CompilerOption.Ir backend: backend verbose: verbose debug: debug repl: repl replLine: replLine
-      | "info" => ArgsParsed path: null option: CompilerOption.Info backend: backend verbose: verbose debug: debug repl: repl replLine: replLine
+      | "ir" => ArgsParsed path: null option: CompilerOption.Ir backend: backend verbose: verbose debug: debug repl: repl replLine: replLine nativeBuild: nativeBuild
+      | "info" => ArgsParsed path: null option: CompilerOption.Info backend: backend verbose: verbose debug: debug repl: repl replLine: replLine nativeBuild: nativeBuild
       |=> ArgsParsed help
     ]
     | 2 => [
       arg1 = getFirstArg do
       arg2 = filteredArgs2 at: 1
-      ArgsParsed path: arg2 option: arg1 :backend :verbose :debug :repl replLine: replLine
+      ArgsParsed path: arg2 option: arg1 :backend :verbose :debug :repl replLine: replLine nativeBuild: nativeBuild
     ]
     |=> ArgsParsed help
 ]

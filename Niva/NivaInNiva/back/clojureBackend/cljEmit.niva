@@ -720,10 +720,15 @@ constructor CljBackend [
     nsName = isRepl ifTrue: ["niva.repl.session"] ifFalse: ["main"]
     importsList = ctx imports toList
     importsList count == 0
-      ifTrue:  [header appendLine: ("(ns " + nsName + ")")]
+      ifTrue:  [
+        // programs need a Java main class for native-image, REPL does not.
+        nsSuffix = isRepl ifTrue: [")"] ifFalse: [" (:gen-class))"]
+        header appendLine: ("(ns " + nsName + nsSuffix)
+      ]
       ifFalse: [
         reqs = importsList joinWith: " " transform: [it -> "[" + it + "]"]
-        header appendLine: ("(ns " + nsName + " (:require " + reqs + "))")
+        genClass = isRepl ifTrue: [""] ifFalse: [" (:gen-class)"]
+        header appendLine: ("(ns " + nsName + genClass + " (:require " + reqs + "))")
       ]
     functionNames isNotEmpty ifTrue: [
       header appendLine: ("(declare " + (functionNames joinWith: " ") + ")")

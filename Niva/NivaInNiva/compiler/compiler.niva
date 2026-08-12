@@ -41,7 +41,14 @@ constructor NivaCompiler [
 
 
         argsParsed = ArgParser args: args
-        {option path backend debug repl replLine} = argsParsed
+        {option path backend debug repl replLine nativeBuild} = argsParsed
+
+        nativeBuild ifTrue: [
+          ((option != CompilerOption.Build) || (backend != CompilerBackend.Clj)) ifTrue: [
+            TO DO: "--native is only supported for Clojure builds"
+          ]
+          repl ifTrue: [TO DO: "--native cannot be combined with --repl"]
+        ]
 
 
         realJSPath = io currentDir + "/.niva_js"
@@ -161,6 +168,58 @@ constructor NivaCompiler [
                   io runProgram args: {"bb" "-cp" realCljPath "-m" "main" }
 
                   t7 = measureTimeFrom from: t6 text: "run binary"
+                ]
+                option == CompilerOption.Build ifTrue: [
+                  // REPL builds intentionally only emit a loadable Clojure module.
+                  repl ifFalse: [
+                    nativeBuild ifTrue: [
+                      nativeImageVersionResult = io runProgram args: {"sh" "-c" "native-image --version"}
+                      nativeImageVersionResult != 0 ifTrue: [
+                        TO DO: "native-image is not installed or unavailable in PATH"
+                      ]
+                    ]
+
+                    nativeBuild
+                      ifTrue: [
+                      // native-image needs JVM bytecode, while `bb uberjar` contains
+                      // Babashka-loadable Clojure sources only. Use Babashka to invoke
+                      // a small tools.build AOT build for the native-image input JAR.
+                      nativeBuildScript = """
+                        (ns build (:require [clojure.tools.build.api :as b]))
+
+                        (def class-dir "target/classes")
+                        (def basis (delay (b/create-basis {})))
+
+                        (defn native-jar [_]
+                          (b/delete {:path "target"})
+                          (b/copy-dir {:src-dirs ["."] :target-dir class-dir})
+                          (b/compile-clj {:basis @basis
+                                          :src-dirs ["."]
+                                          :class-dir class-dir
+                                          :ns-compile '[main]})
+                          (b/uber {:class-dir class-dir
+                                   :uber-file "../main.jar"
+                                   :basis @basis
+                                   :main 'main}))
+                      """ trimIndent
+                      io writeFile file: realCljPath + "/build.clj" content: nativeBuildScript
+
+                      nativeDeps = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+                      jarBuildResult = io runProgramFromPath path: realCljPath args: {"bb" "clojure" "-Sdeps" nativeDeps "-T:build" "native-jar"}
+                      jarBuildResult != 0 ifTrue: [TO DO: "Babashka failed to build the JVM main.jar"]
+
+                      nativeBuildResult = io runProgram args: {
+                        "native-image"
+                        "--initialize-at-build-time"
+                        "-H:IncludeResources=.*\\.(clj|cljc|edn)$"
+                        "-jar" "main.jar" "main"
+                      }
+                      nativeBuildResult != 0 ifTrue: [TO DO: "native-image failed to build main"]
+                    ] ifFalse: [
+                      buildResult = io runProgram args: {"bb" "-cp" realCljPath "uberjar" "main.jar" "-m" "main"}
+                      buildResult != 0 ifTrue: [TO DO: "Babashka failed to build main.jar"]
+                    ]
+                  ]
                 ]
               ]
             | CompilerBackend.Lsp => []

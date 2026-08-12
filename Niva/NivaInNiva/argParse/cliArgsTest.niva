@@ -30,6 +30,14 @@ Test cliArgsReplEmission = [
   Assert that: result replLine equals: 7
 ]
 
+Test cliArgsNativeCljBuild = [
+  args = {"build" "main.niva" "--backend" "clj" "--native"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Build
+  Assert that: result backend equals: CompilerBackend.Clj
+  Assert that: result nativeBuild equals: true
+]
+
 Test cliArgsInfoTypePath = [
   result = ArgParser args: {"info" "main.Person"} toList
   Assert that: result option equals: CompilerOption.Info
