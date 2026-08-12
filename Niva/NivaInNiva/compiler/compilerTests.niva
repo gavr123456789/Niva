@@ -1,0 +1,49 @@
+Test nestedSourcePathBecomesStableModuleId = [
+  moduleId = "model/user.niva" nivaModuleIdFromRelativePath
+  Assert that: moduleId equals: "model.user"
+
+  windowsModuleId = "model\\user.niva" nivaModuleIdFromRelativePath
+  Assert that: windowsModuleId equals: "model.user"
+]
+
+Test moduleCollisionNormalizationIsExplicit = [
+  files = {
+    (NivaSourceFile path: "/project/Foo-Bar.niva" relativePath: "Foo-Bar.niva")
+    (NivaSourceFile path: "/project/foo_bar.niva" relativePath: "foo_bar.niva")
+  }
+
+  collision = files nivaModuleCollisionError
+  Assert that: (collision != null) equals: true
+  collision unpack: [
+    Assert that: (it contains: "foo_bar") equals: true
+    Assert that: (it contains: "Foo-Bar.niva") equals: true
+    Assert that: (it contains: "foo_bar.niva") equals: true
+  ]
+]
+
+Test sameBasenameInDifferentDirectoriesHasDistinctModuleIds = [
+  first = NivaSourceFile path: "/project/model/user.niva" relativePath: "model/user.niva"
+  second = NivaSourceFile path: "/project/admin/user.niva" relativePath: "admin/user.niva"
+
+  Assert that: first nivaModuleId equals: "model.user"
+  Assert that: second nivaModuleId equals: "admin.user"
+  Assert that: ({first second} nivaModuleCollisionError) equals: null
+]
+
+Test resolverKeepsRealSourcePath = [
+  realPath = "/project/model/user.niva"
+  sources = {
+    (NivaSourceInput
+      moduleId: "model.user"
+      relativePath: "model/user.niva"
+      path: realPath
+      content: "type User name: String")
+  }
+
+  result = ResolverHelper resolveSources: sources entryPoint: "model.user" backend: "clj"
+  statement = result fileToStatements at: "model.user", unpackOrPANIC, first
+
+  | statement
+  | TypeDeclT => Assert that: statement token file path equals: realPath
+  |=> [TO DO: "Expected TypeDeclT"]
+]

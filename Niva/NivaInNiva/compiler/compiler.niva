@@ -1,23 +1,58 @@
 /// takes main/entry file and collects all the files for compilation
 type NivaBuildSystem
+
+String nivaModuleIdFromRelativePath -> String =
+  .replace: "\\" with: "/"
+  ,dropLast: ".niva" count
+  ,replace: "/" with: "."
+
+String nivaModuleCollisionKey -> String =
+  .lowercase, replace: "-" with: "_"
+
+NivaSourceFile nivaModuleId -> String =
+  relativePath nivaModuleIdFromRelativePath
+
+List(NivaSourceFile) nivaModuleCollisionError -> String? = [
+  seen::mut Map(String, String) = #{}!
+  this sortedBy: [it relativePath], forEach: [source ->
+    moduleId = source nivaModuleId
+    collisionKey = moduleId nivaModuleCollisionKey
+    existingPath = seen at: collisionKey
+    | existingPath
+    | null => [seen at: collisionKey put: source relativePath]
+    |=> [
+      existingPath != source relativePath ifTrue: [
+        ^ "Niva module id collision: `" + existingPath + "` and `" +
+          source relativePath + "` both normalize to `" + collisionKey + "`"
+      ]
+    ]
+  ]
+  ^ null
+]
+
 constructor NivaBuildSystem [
-    on findAllFilesFrom(path): String? withIO(io): IO_Container -> Map(String, String) = [
+    on findAllFilesFrom(path): String? withIO(io): IO_Container -> List(NivaSourceInput) = [
         // path is to main.niva, need to get its paret to start search
         p = path unpack: [str -> io getParent path: str]
                  or: io currentDir
 
         files = io walkDir path: p,
-            filter: [it path endsWith: ".niva"]
+            filter: [it relativePath endsWith: ".niva"],
+            sortedBy: [it relativePath]
 
+        files nivaModuleCollisionError unpack: [TO DO: it]
 
-        pathToContent = Map(String, String) val: #{}, toMut
-        files forEach: [
-            content = io readFile path: it path
-            pathToContent at: it nameWithoutExt put: content
+        sources::mut List(NivaSourceInput) = {}!
+        files forEach: [source ->
+            content = io readFile path: source path
+            sources add: (NivaSourceInput
+              moduleId: source nivaModuleId
+              relativePath: source relativePath
+              path: source path
+              content: content)
         ]
 
-
-        ^ pathToContent
+        ^ sources toList
     ]
 ]
 
@@ -112,10 +147,10 @@ constructor NivaCompiler [
 
         runOrBuild = [
 
-          pathToContent = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
+          sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
           //t3 = measureTimeFrom from: t2 text: "collect-files"
 
-          resolver = ResolverHelper resolve: pathToContent entryPoint: entryPoint backend: backendStr
+          resolver = ResolverHelper resolveSources: sources entryPoint: entryPoint backend: backendStr
           resolver db listOfErrors isNotEmpty ifTrue: [
             resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
             TO DO: "Resolver errors: " + resolver_errors
