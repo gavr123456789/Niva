@@ -151,6 +151,36 @@ Test errorEffectsPropagateFromCall = [
   Assert that: db listOfErrors count equals: 1
 ]
 
+Test errorableReceiverOnlyAllowsAnyMethods = [
+  fileMain = """
+    Unit readFile -> String!Error = [
+      ^ "text"
+    ]
+
+    text = () readFile
+    text echo
+    text + " new text!"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test tryRequiresErrorableOrNullableReceiver = [
+  fileMain = """
+    value = 42 try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+  Assert that: errors count equals: 1
+  | errors first
+  | ErrorInvalidTry => [
+      Assert that: (errors first msg contains: "try can only be used on errorable or nullable values") equals: true
+    ]
+  |=> [Assert that: false equals: true]
+]
+
 Test errorDomainDeclaredErrors = [
   fileMain = """
     errordomain MyError =

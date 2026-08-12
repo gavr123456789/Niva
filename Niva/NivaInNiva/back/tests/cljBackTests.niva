@@ -529,3 +529,48 @@ Test cljErrorDomainNoElseMatchCodegen = [
   Assert that: (clj contains: "niva.core/handling") equals: false
   Assert that: (clj contains: ":niva-ok") equals: false
 ]
+
+Test cljTryKeepsExpression = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Int!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ 42
+    ]
+
+    value = () foo try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(main__core_Unit__foo :unit)", assertTrue
+  Assert that: (clj contains: "niva.core/Unit__try") equals: false
+]
+
+Test cljTryPanicsOnNull = [
+  fileMain = """
+    value::Int? = null
+    result = value try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(nil? __tryValue)", assertTrue
+  clj contains: "try on null", assertTrue
+]
+
+Test cljCoreErrorThrowUsesSentinel = [
+  fileMain = """
+    Error throw
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Error__throw :niva.core/Error)", assertTrue
+  Assert that: (clj contains: "core_Error") equals: false
+]
