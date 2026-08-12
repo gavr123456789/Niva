@@ -39,7 +39,7 @@ extend NivaType [
            |=> {IrTypeRef}
 
     returnType = | base
-                 | FuntionT => base returnType toIrType-immut-no-errors
+                 | FuntionT => base returnType toIrTypeRefWithMutErrors: false errorsList: base returnErrors
                  |=> null
 
     errRefs = errorsList map: [it toIrType-immut-no-errors]
@@ -194,7 +194,15 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
       ownerMethodVal = ownerMethod unpackOrValue: this
       ^ ownerMethodVal toIrFunctionId
     ]
-    |=> this toIrFunctionId
+    |=> [
+      // after specialization the method has a concrete receiver, but decl
+      // still points to the original generic declaration. use that
+      // declaration as the function owner, otherwise the call and the
+      // generated function get different ids.
+      ownerFromDecl = db declToMethod at: declVal
+      ownerFromDecl unpack: [^ it toIrFunctionId]
+      ^ this toIrFunctionId
+    ]
 ]
 
 LiteralExprT toIrLiteralKind -> IrLiteralKind =
@@ -985,7 +993,7 @@ List::TypedStatement collectInstantiationsFromStatements(db): TyperDB currentPkg
   ]
 ]
 
-ResolverHelper toIrModule -> IrModule = [
+ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule = [
   resolverDb = this db
   packages = resolverDb packages
 
@@ -1031,12 +1039,17 @@ ResolverHelper toIrModule -> IrModule = [
   ]
 
   // entry point
-  entryExprs = entryPointExpressions
+  entryExprs = entryPointExpressions filter: [it token line >= startLine]
   entryType = entryExprs isEmpty
     ifTrue: [resolverDb dtc unit]
     ifFalse: [(entryExprs last) typeInfo t]
 
   entryBody = TypedBody v: entryExprs t: entryType listOfErrors: {}
+  // top-level expressions are not MessageDeclT, so collect their generic
+  // method instantiations separately.
+  entryExprs forEach: [it collectInstantiationsFromExpr: resolverDb
+                                      currentPkg: entryPointName
+                                      instMap: instMap]
   rawEntryBlock = entryBody toIrBlock: resolverDb currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
 
   entryBlock = rawEntryBlock
@@ -1133,3 +1146,6 @@ ResolverHelper toIrModule -> IrModule = [
       packages: packagesIr toList
       entry: entryBlock
 ]
+
+ResolverHelper toIrModule -> IrModule =
+  .toIrModuleFromEntryLine: 0

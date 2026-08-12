@@ -579,6 +579,17 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
                                   or: null
   // empty declaration in a .bind.niva file is implemented by the target runtime, so its synthetic Unit body must not be checked as the function's declared return type.
   isExternalBind = (db isBindMessageDecl: this) && (isSingleExpr not) && (body unTypedBody isEmpty)
+
+  declaresErrorEffect = hasAnyReturnErrors || declaredReturnErrors isNotEmpty
+  (declaresErrorEffect && actualReturnErrors isEmpty && (isExternalBind not)) ifTrue: [
+    declaredShown = hasAnyReturnErrors
+      ifTrue: ["! (at least one inferred error)"]
+      ifFalse: [declaredReturnErrors errorsToString]
+    db addErrorMessage: (LazyError
+      tok: token
+      msg: "Function " + name + " declares error effects " + declaredShown + ", but its body cannot produce an error")
+  ]
+
   (hasAnyReturnErrors not) && (isExternalBind not), ifTrue: [
     declaredReturnType unpack: [declaredType ->
       // generic return types are checked after method specialization,

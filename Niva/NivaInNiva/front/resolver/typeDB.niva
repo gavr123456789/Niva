@@ -963,8 +963,8 @@ extend TyperDB [
     receiverType = receiver typeInfo t
     hasErrors = receiver typeInfo listOfErrors isNotEmpty
     isNullable = | receiverType
-      | NullableT => true
-      |=> false
+                 | NullableT => true
+                 |=> false
 
     (hasErrors || isNullable) ifFalse: [
       this addErrorMessage: (ErrorInvalidTry

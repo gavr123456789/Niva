@@ -98,6 +98,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map(String, T
       name: name
       pkgName: "core"
       returnType: returnT
+      returnErrors: (returnType toErrorsFromDb: db inPkg: inPkg)
   ]
 
   ^ x

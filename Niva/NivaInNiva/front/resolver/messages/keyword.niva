@@ -332,6 +332,29 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "db isAssignable: realType toExpected: argTypeFromDb"
 
   canonicalReturnType = db addCollectionInstantiationIfAbsent: kwMsgDB returnType
+  callErrors::mut List(NivaType) = {}!
+  kwMsgDB returnErrors forEach: [callErrors add: it]
+
+  // Evaluating receiver/arguments can fail before the method is entered.
+  // Function errors are latent: creating a block is harmless; invoking it via
+  // a call propagates the errors from its body. `try` consumes the receiver's
+  // immediate errors instead of propagating them.
+  msgName == "try" ifFalse: [
+    receiverTypedExpr typeInfo listOfErrors forEach: [callErrors add: it]
+    receiverEffectType = receiverTypedExpr typeInfo t
+    | receiverEffectType
+    | FuntionT => receiverEffectType returnErrors forEach: [callErrors add: it]
+    |=> []
+  ]
+
+  typedArgs forEach: [arg ->
+    arg expr typeInfo listOfErrors forEach: [callErrors add: it]
+    argEffectType = arg expr typeInfo t
+    | argEffectType
+    | FuntionT => argEffectType returnErrors forEach: [callErrors add: it]
+    |=> []
+  ]
+
   newKeyword = KeywordMsgT
     args: typedArgs
     kind: kwMsgDB kind
@@ -340,7 +363,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     typeInfo: (TypeInfo
                   t: canonicalReturnType
                   isMut: kwMsgDB forMut
-                  listOfErrors: kwMsgDB returnErrors)
+                  listOfErrors: (callErrors normalizeErrorList))
     dbMsg: kwMsgDB
 
   // receiver stays non instaciated when its constructor, its pretty logical

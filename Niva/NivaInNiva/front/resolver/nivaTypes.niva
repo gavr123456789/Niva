@@ -38,6 +38,7 @@ union Complex
 | TypeT
 | FuntionT
   returnType: NivaType // method or lambda
+  returnErrors: List(NivaType) // latent errors produced when the function is called
 // for now unions are just TypeT, u should look into a table from TyperDB to see does it have childrens
 //| UnionT  branches: List::UnionTBranch
 
@@ -56,7 +57,10 @@ extend NivaType [
       ]
       | FuntionT => [
         argsStr = fields joinWith: ", " transform: [it typeT nameForInfo]
-        "[" + argsStr + " -> " + returnType nameForInfo + "]"
+        errorsStr = returnErrors isEmpty
+          ifTrue: [""]
+          ifFalse: ["!{" + (returnErrors joinWith: " " transform: [it nameForInfo]) + "}"]
+        "[" + argsStr + " -> " + returnType nameForInfo + errorsStr + "]"
       ]
       | ListT => "List(" + t nameForInfo + ")"
       | SetT => "Set(" + t nameForInfo + ")"
@@ -127,12 +131,14 @@ extend NivaType [
       ]
       newGenericArgs = genericArgs map: [it replaceGenericsFromTableDeep: letterToType db: db]
       newReturnType = returnType replaceGenericsFromTableDeep: letterToType db: db
+      newReturnErrors = returnErrors map: [it replaceGenericsFromTableDeep: letterToType db: db]
       FuntionT
         fields: newFields toMutableList
         name: name
         genericArgs: newGenericArgs toMutableList
         pkgName: pkgName
         returnType: newReturnType
+        returnErrors: newReturnErrors
     ]
     | NullableT => [
       NullableT v: (this v replaceGenericsFromTableDeep: letterToType db: db)
@@ -149,8 +155,9 @@ extend NivaType [
     | FuntionT => [
       hasGenericInFields = fields any: [ it typeT isContainsUnresolvedGenerics ]
       hasGenericInReturn = returnType isContainsUnresolvedGenerics
+      hasGenericInErrors = returnErrors any: [it isContainsUnresolvedGenerics]
 
-      hasGenericInFields || hasGenericInReturn
+      hasGenericInFields || hasGenericInReturn || hasGenericInErrors
     ]
     | TypeT => [
       genericArgs any: [ it isContainsUnresolvedGenerics ]
@@ -174,6 +181,7 @@ extend NivaType [
         res::mut List::NivaType = {}!
         fields forEach: [it typeT collectUnresolvedGenerics forEach: [res add: it]]
         returnType collectUnresolvedGenerics forEach: [res add: it]
+        returnErrors forEach: [it collectUnresolvedGenerics forEach: [res add: it]]
         res toList
       ]
       | TypeT => [
@@ -336,6 +344,14 @@ constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: 
 constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: "core"
 
 constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgName
+
+// Core protocol signatures historically construct error-free function types.
+// Keep that concise constructor while the full generated constructor is used
+// for blocks whose body has latent error effects.
+constructor FuntionT [
+  on fields(fields): mut List::TypeTField name(name): String genericArgs(genericArgs): mut List::NivaType pkgName(pkgName): String returnType(returnType): NivaType -> FuntionT =
+    FuntionT :fields :name :genericArgs :pkgName :returnType returnErrors: {}
+]
 
 
   // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver

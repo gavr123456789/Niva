@@ -77,6 +77,48 @@ Test cljEntryUsesLetAtTopLevel = [
     clj contains: "y 2]", assertTrue
 ]
 
+Test cljReplEmissionMode = [
+  fileMain = """
+    x = 1
+    x + 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+          debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(ns niva.repl.session)", assertTrue
+  clj contains: "(def x 1)", assertTrue
+  clj contains: "(+ x 2)", assertTrue
+  Assert that: (clj contains: "(defn -main") equals: false
+]
+
+Test cljReplEmitsOnlyCurrentEntryLines = [
+  fileMain = """
+    q = 42
+    q + 8
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModuleFromEntryLine: 3
+  clj = CljBackend fullFromIrModule: ir debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(+ q 8)", assertTrue
+  Assert that: (clj contains: "(def q 42)") equals: false
+]
+
+Test cljReplTopLevelMutationUsesDef = [
+  fileMain = """
+    mut q = 1
+    q <- q + 2
+    q
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModuleFromEntryLine: 3
+  clj = CljBackend fullFromIrModule: ir debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(def q (+ q 2))", assertTrue
+  clj contains: "\nq\n", assertTrue
+]
+
 Test cljMutVarAsAtom = [
   fileMain = """
     mut c = 3
@@ -151,8 +193,8 @@ Test cljGenericReceiverGetsSpecializedFunction = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
   Assert that: result db listOfErrors count equals: 0
   clj = CljBackend fullFromIrModule: (result toIrModule)
-
-  clj contains: "(declare main__T__sas main_Person__sas)", assertTrue
+  clj echo
+  clj contains: "(declare main__T__sas main__main_Person__sas main_Person__sas)", assertTrue
   clj contains: "(defn main_Person__sas [this]", assertTrue
 ]
 
@@ -573,4 +615,25 @@ Test cljCoreErrorThrowUsesSentinel = [
 
   clj contains: "(niva.core/Error__throw :niva.core/Error)", assertTrue
   Assert that: (clj contains: "core_Error") equals: false
+]
+
+Test cljCoreErrorFromCallbackUsesErrorMatch = [
+  fileMain = """
+    Int sas -> Int! = [
+      1 > 2 ifTrue: [Error throwWithMsg: "hello"]
+      1
+    ]
+
+    | 1 sas
+    | Error => ["handled" echo]
+    |=> ["success" echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/handling [it", assertTrue
+  clj contains: "Object (niva.core/Any__echo \"handled\")", assertTrue
+  Assert that: (clj contains: ":niva.core/Error (let") equals: false
 ]
