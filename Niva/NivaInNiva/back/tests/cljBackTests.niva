@@ -77,6 +77,13 @@ Test cljEntryUsesLetAtTopLevel = [
     clj contains: "y 2]", assertTrue
 ]
 
+Test cljProgramNamespaceGeneratesJavaMainClass = [
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(ns main (:gen-class) (:require [niva.core]))", assertTrue
+]
+
 Test cljReplEmissionMode = [
   fileMain = """
     x = 1
