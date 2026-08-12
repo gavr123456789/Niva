@@ -1377,8 +1377,27 @@ type ResolverHelper
   entryPointExpressions: List::TypedExpr2
   entryPointName: String
 
+type NivaSourceInput
+  moduleId: String
+  relativePath: String
+  path: String
+  content: String
+
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
   ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
+]
+
+Map(String, String) toNivaSourceInputs -> List(NivaSourceInput) = [
+  sources::mut List(NivaSourceInput) = {}!
+  this forEach: [moduleId, content ->
+    relativePath = moduleId + ".niva"
+    sources add: (NivaSourceInput
+      moduleId: moduleId
+      relativePath: relativePath
+      path: relativePath
+      content: content)
+  ]
+  ^ sources toList
 ]
 
 // A bind file is named `<pkgpath>.bind.niva`; the map key has `.niva` already
@@ -1394,6 +1413,11 @@ String parseBindFileName -> String? = [
 ]
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String backend: String -> ResolverHelper  = [
+  ^ ResolverHelper resolveSources: (fileToContent toNivaSourceInputs)
+      entryPoint: entryPoint backend: backend
+]
+
+constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverHelper  = [
   fileToStatements::mut Map(String, mut List::Statement) = #{}!
   db = TyperDB new
 
@@ -1409,14 +1433,16 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   ]
 
   // scan bind files first
-  fileToContent forEach: [ file, content ->
+  sources forEach: [source ->
+    file = source moduleId
+    content = source content
     pkgNameMaybe = file parseBindFileName
     | pkgNameMaybe
     | null => []
     |=> [
       pkgName = pkgNameMaybe
       db addBindFile: file pkgName: pkgName
-      statements = TestParse withInput: content file: (SourceFile path: (file + ".bind.niva")) expectedCount: -1
+      statements = TestParse withInput: content file: (SourceFile path: source path) expectedCount: -1
       list = getStatementsList pkgName: pkgName
       statements forEach: [
         | it
@@ -1440,10 +1466,12 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
   ]
 
   // scan normal files
-  fileToContent forEach: [ file, content ->
+  sources forEach: [source ->
+    file = source moduleId
+    content = source content
     bindInfo = file parseBindFileName
     bindInfo == null ifTrue: [
-      statements = TestParse withInput: content file: (SourceFile path: (file + ".niva")) expectedCount: -1
+      statements = TestParse withInput: content file: (SourceFile path: source path) expectedCount: -1
       list = getStatementsList pkgName: file
       statements forEach: [list add: it]
     ]
