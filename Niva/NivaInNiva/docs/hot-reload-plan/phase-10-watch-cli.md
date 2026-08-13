@@ -7,7 +7,7 @@
 ```bash
 niva watch main.niva                         # JVM по умолчанию
 niva watch main.niva --runtime jvm
-niva watch main.niva --runtime bb            # после compatibility phase
+niva watch main.niva --runtime bb            # Babashka fswatcher pod
 
 niva run main.niva --backend=clojure --runtime=jvm
 niva run main.niva --backend=clojure --runtime=bb
@@ -16,8 +16,8 @@ niva build main.niva --backend=clojure --target=bb
 ```
 
 `--runtime` выбирает процесс для `run/watch`, а `--target` — формат build и
-packaging. На первом этапе допустимо поддержать для `watch` только JVM и
-возвращать понятную ошибку для `--runtime bb`.
+packaging. Для Babashka watcher используется `org.babashka/fswatcher` pod;
+JVM и BB сохраняют общий reload host и build queue.
 
 Не следует создавать два расходящихся emitter'а. Вместо этого Clojure backend
 получает capabilities target'а, например:
@@ -31,8 +31,10 @@ CljTarget
 
 ### Watch loop
 
-1. Рекурсивно зарегистрировать project directories в Java `WatchService`.
-2. Следить за create/modify/delete `.niva`.
+1. Для JVM рекурсивно зарегистрировать project directories в Java
+   `WatchService`; для BB загрузить `org.babashka/fswatcher` pod.
+2. В обоих runtime следить за событиями `.niva` (create/modify/delete,
+   включая BB `:chmod`/`:rename`).
 3. Debounce серию editor events, например на 100–200 ms.
 4. Не запускать две компиляции одновременно; если во время build пришло новое
    событие, выполнить ещё один build после текущего.

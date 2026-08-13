@@ -4,9 +4,11 @@ type CljOutput
   files: Map(String, String)
   entryNamespace: String
   manifest: CljManifest
+  target: CljTarget
 
 CljOutput legacyMainShim -> String = [
-  ^ "(ns main (:gen-class) (:require [" + entryNamespace + "]))\n" +
+  genClass = target == CljTarget.Jvm ifTrue: [" (:gen-class)"] ifFalse: [""]
+  ^ "(ns main" + genClass + " (:require [" + entryNamespace + "]))\n" +
     "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
 ]
 
@@ -15,6 +17,7 @@ CljOutput legacyMainShim -> String = [
 // loadable session namespace whose entry expression is evaluated at load
 // time.
 enum CljEmitMode = Program | Repl
+enum CljTarget = Jvm | Bb
 
 type CljContext
   imports: mut Set(String)

@@ -2,10 +2,62 @@
 
 ## Текущий этап
 
-Фаза 8: generated manifest и атомарная публикация.
+Фазы 9–10: JVM `clj-reload` host и `watch` lifecycle.
 
-Статус: в работе; staging и публикация Clojure output реализованы, интеграция
-с полным watch/clj-reload runtime ещё впереди.
+Статус: JVM и Babashka lifecycle реализованы в self-hosted Clojure compiler
+path; bootstrap launcher/process-level integration остаётся отдельным этапом.
+
+### Завершены фазы 9–10: JVM/BB host и watch
+
+- Добавлен стабильный Clojure namespace `niva.hot-reload.host`, который
+  публикуется рядом с `.niva_clj/generated` и получает dependency
+  `io.github.tonsky/clj-reload` через `deps.edn`.
+- `reload/init` вызывается один раз с generated directory и
+  `:no-reload '#{niva.hot-reload.host}`.
+- Initial load использует `reload/reload {:only :all}`, затем динамически
+  находит `__niva_entry!` через `find-ns`/`ns-resolve` и выполняет его только
+  один раз. Обычный `reload {:only :changed}` entry hook не вызывает.
+- После compile diagnostics публикация и reload не выполняются. После
+  успешной publication вызывается changed reload; initial/load errors
+  печатаются и не завершают watcher, а следующая успешная generation может
+  восстановить runtime.
+- Watcher рекурсивно регистрирует Java `WatchService`, фильтрует `.niva`,
+  debounce'ит события окном 150 ms и выполняет callback последовательно;
+  события, пришедшие во время build, остаются в очереди до следующего build.
+  Shutdown закрывает service и снимает shutdown hook.
+- CLI parser получил `watch`, `--runtime jvm|bb` и `--target jvm|bb`.
+  `watch` по умолчанию выбирает JVM, а BB runtime использует BB-compatible
+  generated target.
+- Watch adapter использует `WorkspaceSnapshot`, `CompilerSession`,
+  `CompilerCompilationResult`, `CljGenerationResult`, staging/publish и
+  manifest API; Go backend не менялся.
+- Добавлены тесты parser, debounce/serial queue invariants, host lifecycle
+  markers и публикации host/deps. Existing state/manifest tests покрывают
+  сохранение top-level `mut` и reload-safe declarations.
+- `CljTarget` теперь реально выбирает JVM или Babashka source emission:
+  Babashka output не добавляет `:gen-class`, а normal Clojure `run` выбирает
+  процесс через `--runtime jvm|bb`.
+- Для published generations добавлен `bb.edn` рядом с `deps.edn`; BB target
+  запускается как loadable source и получает `clj-reload` dependency через
+  свой native config format.
+
+### Babashka compatibility
+
+Babashka source и `clj-reload` lifecycle совместимы и проверены
+отдельным long-lived BB harness:
+
+- initial load и explicit entry execution проходят;
+- changed reload применяет новую функцию без повторного entry;
+- `^:clj-reload/keep` Atom сохраняет state;
+- broken generation возвращает load error, следующая исправленная generation
+  восстанавливается.
+
+Babashka WatchService несовместим с `java.nio.file.StandardWatchEventKinds`,
+но для BB выбран штатный pod `org.babashka/fswatcher` `0.0.7`. Host динамически
+загружает `babashka.pods`, следит за recursive `.niva` events с debounce
+200 ms и сериализует callback через lock. `watch --runtime bb` теперь
+поддержан; `stop-watch!` завершает promise-based BB watcher в тестах и даёт
+контролируемый lifecycle.
 
 ### Завершена фаза 6: declarations отдельно от entry execution
 
@@ -162,7 +214,7 @@
 - [x] Покрыть unchanged shape, изменённые record fields, union branches и
   enum values; clean и incremental Clojure output сравниваются вместе с
   manifest.
-- [ ] Подключить state definitions к реальному initial-load/reload lifecycle.
+- [x] Подключить state definitions к реальному initial-load/reload lifecycle.
 
 ### Частично начата фаза 8
 
@@ -170,7 +222,7 @@
 - [x] Перевести compiler output на staging directory и directory-swap
   публикацию с generation result.
 - [x] Сохранить старый generated output и manifest при failed compilation.
-- [ ] Подключить manifest к реальному watch/clj-reload lifecycle и обработать
+- [x] Подключить manifest к реальному watch/clj-reload lifecycle и обработать
   generation id/load errors.
 
 ### Оставшаяся работа фазы 4
@@ -189,6 +241,13 @@
   передавать это значение в готовый session API при появлении entry points.
 
 ### Изменённые файлы текущего подэтапа
+
+- `argParse/cliArgs.niva`
+- `argParse/cliArgsTest.niva`
+- `compiler/compiler.niva`
+- `compiler/compilerTests.niva`
+- `back/clojureBackend/cljEmit.niva`
+- `docs/hot-reload-plan/progress.md`
 
 - `compiler/incremental.niva`
 - `compiler/compiler.niva`
@@ -212,20 +271,28 @@
 
 ### Проверки текущего подэтапа
 
-- `niva test cljBackTests` — 54/54 теста успешно, включая deterministic
+- `niva build` — успешно после добавления JVM host, parser и watch adapter.
+- `niva test cliArgsTest` — успешно, включая `watch` и runtime/target
+  selection.
+- `niva test compilerTests` — успешно, включая debounce/serial queue
+  invariants, host lifecycle markers и публикацию host/deps.
+- `niva run` — успешно.
+- `niva test` — полный suite успешно.
+
+- `niva test cljBackTests` — успешно, включая deterministic
   manifest, shape compatibility и hard-restart coverage.
-- `niva test compilerTests` — 22/22 теста успешно, включая staging publication,
+- `niva test compilerTests` — успешно, включая staging publication,
   stale generated deletion и сохранение старого output при failed compilation.
 - `niva test compilerTests` — предыдущие 19/19 тестов успешно, включая
   snapshot-aware compile entry point, повторное независимое body resolution
   из одного interface snapshot, transactional result commit, shape diagnostic
   и routing persistent/clean session по единому incremental flag.
-- `niva test cliArgsTest` — 13/13 тестов успешно, включая opt-in/default
+- `niva test cliArgsTest` — успешно, включая opt-in/default
   семантику `--incremental` и сохранение флага для LSP backend selection.
 - `niva test resolverTests` — весь suite успешно.
 - `niva test irTests` — 8/8 тестов успешно.
 - `niva test genericTests` — 3/3 теста успешно.
-- `niva test` — 275/275 тестов успешно.
+- `niva test` — полный suite предыдущего подэтапа также успешно.
 - `niva build` — успешно.
 - `niva run main.niva` — успешно.
 
@@ -423,9 +490,33 @@
   generation и directory swap, добавлен `CljGenerationResult`, stale output
   удаляется только после успешной публикации, а failed result сохраняет старый
   output и manifest.
+- 2026-08-13: завершены JVM фазы 9–10; добавлены стабильный
+  `niva.hot-reload.host`, одноразовый initial load с entry invocation,
+  changed reload без повторного entry, load-error recovery, WatchService с
+  debounce/serial queue/shutdown и `watch` runtime selection.
+- 2026-08-13: CLI parsing для `--runtime` и `--target` очищен через общие
+  String-конвертеры и единый разбор separated values; добавлены проверки
+  missing/flag/invalid values, targeted и полный test suite прошли.
+- 2026-08-13: Babashka compatibility проверена по текущему плану как blocker:
+  добавлены `CljTarget`, `bb.edn`, BB target smoke и long-lived BB harness для
+  clj-reload/state/recovery. Source lifecycle проходит, но WatchService
+  блокируется отсутствующим в BB `java.nio.file.StandardWatchEventKinds`; BB
+  watch не включён.
+- 2026-08-13: после проверки документации подтверждено, что JVM lifecycle
+  покрывает initial/changed reload, dependants, state preservation, entry
+  semantics, load-error recovery, debounce, serial queue и shutdown. Для BB
+  остаётся только нерешённый механизм file watching; launcher/process-level
+  end-to-end integration остаётся отдельной работой и `main.jar` не запускался.
+- 2026-08-13: финально прошли `niva test`, `niva run` и `niva build`;
+  полный suite подтвердил BB lifecycle regression и JVM lifecycle tests.
+- 2026-08-13: по предоставленному BB примеру подключён pod
+  `org.babashka/fswatcher` `0.0.7`; BB watcher теперь фильтрует `.niva`,
+  debounce'ит events и поддерживает controlled stop. Реальный
+  `babashkaHostLoadsRecoversAndWatchesSources` прошёл.
 
 ## Следующий этап
 
-Staging/publish boundary фазы 8 готова для будущего host. Следующий этап —
-реальный watch/clj-reload lifecycle: adapters, initial load/reload order,
-load-error handling и корректное завершение watcher.
+Следующий этап — интеграция launcher'а, который будет запускать этот
+self-hosted path как публичный `niva watch main.niva`, и process-level tests
+на долгоживущем JVM/BB процессе, включая Ctrl-C и полный lifecycle packaging.
+Запуск `main.jar` для этого не требуется и не выполнялся.

@@ -221,8 +221,12 @@ CompilerCandidate emitBackend -> CompilerBackendArtifact = [
     | backend
     | "clj" => [CljBackend fullFromIrModule: irModule]
     |=> [TO DO: "incremental backend is not available for " + backend]
+  cljTarget = compilerConfig target == "bb"
+    ifTrue: [CljTarget.Bb]
+    ifFalse: [CljTarget.Jvm]
   output = backend == "clj"
-    ifTrue: [(CljBackend fullOutputFromIrModule: irModule debug: false mode: CljEmitMode.Program)]
+    ifTrue: [CljBackend fullOutputFromIrModuleForTarget: irModule
+      debug: false mode: CljEmitMode.Program target: cljTarget]
     ifFalse: [null]
   ^ CompilerBackendArtifact
     backend: backend

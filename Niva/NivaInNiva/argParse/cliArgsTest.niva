@@ -87,3 +87,40 @@ Test cliArgsRejectsSeparatedOptionValue = [
   result = ArgParser args: {"run" "--backend" "go"} toList
   Assert that: result option equals: CompilerOption.Help
 ]
+
+Test cliArgsWatchDefaultsToJvm = [
+  result = ArgParser args: {"watch" "main.niva"} toList
+  Assert that: result option equals: CompilerOption.Watch
+  Assert that: result runtime equals: CompilerRuntime.Jvm
+  Assert that: result target equals: CompilerTarget.Jvm
+]
+
+Test cliArgsWatchRuntimeSelection = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime" "jvm" "--target=bb"} toList
+  Assert that: result option equals: CompilerOption.Watch
+  Assert that: result runtime equals: CompilerRuntime.Jvm
+  Assert that: result target equals: CompilerTarget.Bb
+
+  rejected = ArgParser args: {"watch" "main.niva" "--runtime=bb"} toList
+  Assert that: rejected runtime equals: CompilerRuntime.Bb
+]
+
+Test cliArgsRejectsMissingRuntimeValue = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsFlagAsRuntimeValue = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime" "--target=jvm"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsInvalidRuntime = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime" "native"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsInvalidTarget = [
+  result = ArgParser args: {"watch" "main.niva" "--target=cloud"} toList
+  Assert that: result option equals: CompilerOption.Help
+]

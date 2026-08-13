@@ -72,9 +72,10 @@
 1. Прогнать тот же integration suite на актуальной Babashka. В репозитории
    `clj-reload` есть Babashka test configuration, но совместимость конкретного
    Niva output всё равно должна проверяться отдельно.
-2. Проверить `Compiler/load`, class identity, keep для records и WatchService.
-3. Включить `--runtime bb`, если нет несовместимостей; иначе оставить JVM
-   официальной watch runtime.
+2. Проверить `Compiler/load`, class identity, keep для records и BB
+   `fswatcher` pod.
+3. Включить `--runtime bb`, если compatibility suite проходит; JVM и BB
+   используют общий reload lifecycle.
 
 ### Этап G. Возможные оптимизации
 

@@ -178,6 +178,18 @@ IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
   argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
 
   funcIdLocal = funcId
+  jvmHostCall = (funcIdLocal unpack: [it contains: "JvmReloadHost"] or: false)
+  jvmHostCall ifTrue: [
+    msgNameLocal = msgName unpackOrPANIC
+    | msgNameLocal
+    | "start" => [
+        ^ "((requiring-resolve 'niva.hot-reload.host/start!)" + argsPart + ")"
+      ]
+    | "reloadChanged" => [
+        ^ "((requiring-resolve 'niva.hot-reload.host/reload-changed!))"
+      ]
+    |=> []
+  ]
   ^ | funcIdLocal
     | null => [
         calleeLocal = callee
@@ -687,7 +699,8 @@ constructor CljBackend [
     sb appendLine: ""
   ]
 
-  on fullOutputFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> CljOutput = [
+  on fullOutputFromIrModuleForTarget(ir): IrModule debug: Bool mode: CljEmitMode
+      target(target): CljTarget -> CljOutput = [
     files::mut Map(String, String) = #{}!
 
     ir packages sortedBy: [it name], forEach: [pkg ->
@@ -697,7 +710,7 @@ constructor CljBackend [
       packageIr = IrModule version: ir version pkg: pkg name packages: {pkg} entry: packageEntry
       content = CljBackend fullFromIrModule: packageIr debug: debug mode: mode
         namespace: (pkg cljGeneratedNamespace) initialImports: localImports
-        mainClass: (pkg name == ir pkg)
+        mainClass: ((pkg name == ir pkg) && (target == CljTarget.Jvm))
       files at: (pkg cljGeneratedPath) put: content
     ]
 
@@ -743,7 +756,12 @@ constructor CljBackend [
 
     ^ CljOutput files: files toMap
       entryNamespace: (ir pkg cljGeneratedNamespace)
-      manifest: manifest
+      manifest: manifest target: target
+  ]
+
+  on fullOutputFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> CljOutput = [
+    ^ CljBackend fullOutputFromIrModuleForTarget: ir debug: debug mode: mode
+      target: CljTarget.Jvm
   ]
 
   on manifestFromIrModule(ir): IrModule -> CljManifest =
