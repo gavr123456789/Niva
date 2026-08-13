@@ -89,11 +89,12 @@ environment реализованы.
 
 - [x] Подключить `CljOutput.files` к compiler/build writer, сохранив legacy
   `main.clj` shim для CLI/native build.
-- [ ] Довести qualification для всех union/enum/error references и bind
-  requirements.
+- [x] Довести qualification для union branches, enum Vars, error records и
+  bind requirements; покрыть cross-package calls/constructors и direct
+  external requires regression tests.
 - [x] Writer удаляет stale files только внутри `niva/generated/` по текущему
   output manifest.
-- [ ] Добавить clean-vs-multi-file differential и ручной запуск generated
+- [x] Добавить clean-vs-multi-file differential и ручной запуск generated
   Clojure project.
 
 ### Оставшаяся работа фазы 4
@@ -315,6 +316,9 @@ environment реализованы.
 - 2026-08-13: `niva` compiler writer начал писать multi-file output, удалять
   stale generated files по `niva/generated/` и сохранять CLI/native entry через
   dynamic namespace shim.
+- 2026-08-13: добавлен runtime differential для single-string и multi-file
+  Clojure output; проверены cross-package enum Vars, error branches и bind
+  requirements.
 
 ## Следующий этап
 

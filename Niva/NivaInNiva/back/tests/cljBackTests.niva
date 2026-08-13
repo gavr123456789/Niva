@@ -47,6 +47,102 @@ Test cljPackageOutputQualifiesUnionBranches = [
   main contains: "niva.generated.model/model_Circle", assertTrue
 ]
 
+Test cljPackageOutputQualifiesEnumAtom = [
+  enumRef = IrTypeRef
+    kind: IrTypeRefKind.Custom
+    typeId: "model_Color"
+    ownerPkg: "model"
+    args: {}
+    returnType: null
+    isMut: false
+    nullable: false
+    errors: {}
+  atom = IrLiteralExpr
+    literal: (IrLiteral kind: IrLiteralKind.Atom lexeme: "red")
+    typeRef: enumRef
+    token: FAKE_TOKEN
+  ctx = CljContext newDebug: false imports: #() pkg: "main"
+  clj = atom toCljExpr: ctx scope: CljScope new
+
+  Assert that: clj equals: "niva.generated.model/model_Color_red"
+]
+
+Test cljPackageOutputQualifiesErrorBranches = [
+  sources = #{
+    "model" "errordomain ModelError =\n| Missing code: Int\n\nUnit fail -> Int!{Missing} = [\n  (Missing code: 404) throw\n  ^ 0\n]"
+    "main" "value = | () fail\n| Missing => [1]\n|=> [0]"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  model = output files at: "niva/generated/model.clj", unpackOrPANIC
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+
+  model contains: "(->model_Missing 404)", assertTrue
+  main contains: "niva.generated.model/model_Missing", assertTrue
+]
+
+Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
+  sources = #{
+    "model" "String shout -> String = [^ this upper-case]"
+    "main" "value = \"hi\" shout"
+    "clojure.string.bind" "String upper-case -> String = []"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  model = output files at: "niva/generated/model.clj", unpackOrPANIC
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+
+  model contains: "(:require [clojure.string]", assertTrue
+  model contains: "(clojure.string/upper-case this)", assertTrue
+  main contains: "niva.generated.model/model__core_String__shout", assertTrue
+]
+
+Test cljPackageOutputMatchesSingleStringAtRuntime = [
+  sources = #{
+    "model" "type Person name: String\nPerson score -> Int = [^ 42]"
+    "main" "p = Person name: \"Ada\"\nvalue = p score\nInt print -> Unit = Bind emit: \"(println $0)\"\nvalue print"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  ir = result toIrModule
+  io = IO_Container new
+  cleanRoot = ".niva_clj/differential-clean"
+  multiRoot = ".niva_clj/differential-multi"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/differential-clean .niva_clj/differential-multi && mkdir -p .niva_clj/differential-clean .niva_clj/differential-multi/niva/generated"}
+  Assert that: setupExit equals: 0
+
+  clean = CljBackend fullFromIrModule: ir
+  io writeFile file: cleanRoot + "/main.clj" content: clean
+  io writeFile file: cleanRoot + "/deps.edn" content: "{:paths [\".\"]}\n"
+  cleanExit = io runProgramFromPath path: cleanRoot
+    args: {"sh" "-c" "clojure -M -m main > result.txt"}
+  Assert that: cleanExit equals: 0
+  cleanResult = io readFile path: cleanRoot + "/result.txt"
+
+  output = CljBackend fullOutputFromIrModule: ir
+    debug: false mode: CljEmitMode.Program
+  output files forEach: [relativePath, content ->
+    destination = multiRoot + "/" + relativePath
+    io writeFile file: destination content: content
+  ]
+  io writeFile file: multiRoot + "/deps.edn" content: "{:paths [\".\"]}\n"
+  multiExit = io runProgramFromPath path: multiRoot
+    args: {"sh" "-c" "clojure -M -m niva.generated.main > result.txt"}
+  Assert that: multiExit equals: 0
+  multiResult = io readFile path: multiRoot + "/result.txt"
+
+  Assert that: cleanResult equals: multiResult
+  Assert that: cleanResult equals: "42\n"
+  cleanupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/differential-clean .niva_clj/differential-multi"}
+  Assert that: cleanupExit equals: 0
+]
+
 Test cljUnionShapesAsRecords = [
   fileMain = """
     union Shape =
