@@ -61,6 +61,10 @@ type IrDependency
   token: Token
   symbol: String
 
+type IrDependencyCycle
+  packages: List(String)
+  edges: List(IrDependency)
+
 type IrArg
   name: String
   typeRef: IrTypeRef
@@ -225,11 +229,8 @@ IrModule enums -> List(IrEnumDef) = [
   ^ result toList
 ]
 
-IrPackage dependencyPackageNames -> List(String) = [
-  names::mut Set(String) = #()!
-  dependencies forEach: [names add: it toPkg]
-  ^ names toList sortedBy: [it]
-]
+IrPackage dependencyPackageNames -> List(String) =
+  dependencies map: [it toPkg], toSet, toList, sortedBy: [it]
 
 IrModule functions -> List(IrFunction) = [
   result::mut List::IrFunction = {}!

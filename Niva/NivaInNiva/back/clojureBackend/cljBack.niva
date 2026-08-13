@@ -29,11 +29,9 @@ String cljDebugQuoted -> String =
   "\"" + (.replace: "\\" with: "\\\\", replace: "\"" with: "\\\"") + "\""
 
 CljContext addDebugEntry(generatedLine): Int endLine: Int token: Token method: String -> Unit = [
-  debug ifTrue: [
-    file = token file path
-    file != "" ifTrue: [
-      debugEntries add: (CljDebugEntry :generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line :method)
-    ]
+  file = token file path
+  (debug && (file != "")) ifTrue: [
+    debugEntries add: (CljDebugEntry :generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line :method)
   ]
 ]
 
@@ -78,24 +76,6 @@ extend String [
   on cljSanitizeIdent -> String =
         .replace: ".." with: "rangeTo"
         ,replace: "?" with: "_QM"
-        //,replace: "==" with: "equals"
-        //,replace: "!=" with: "notEquals"
-        //,replace: ">=" with: "gte"
-        //,replace: "<=" with: "lte"
-        //,replace: ">" with: "gt"
-        //,replace: "<" with: "lt"
-        //,replace: "||" with: "or"
-        //,replace: "&&" with: "and"
-        //,replace: "+" with: "plus"
-        //,replace: "-" with: "minus"
-        //,replace: "*" with: "times"
-        //,replace: "/" with: "div"
-        //,replace: "%" with: "rem"
-        //,replace: "." with: "_"
-        //,replace: "(" with: "_"
-        //,replace: ")" with: "_"
-        //,replace: "," with: "_"
-        //,replace: " " with: "_"
 
 ]
 
@@ -128,10 +108,8 @@ extend String [
     ^ (.count >= prefixLen) && ((.slice: 0..<prefixLen) == prefix)
   ]
 
-  on cljNormalizeTypeId -> String = [
-    hasGeneric = .contains: "__"
-    ^ hasGeneric ifTrue: [.substringBefore: "__"] ifFalse: [this]
-  ]
+  on cljNormalizeTypeId -> String =
+    (.contains: "__") ifTrue: [.substringBefore: "__"] ifFalse: [this]
 
   on cljPadTo(width): Int -> String =
     this + (" " repeat: width - this count)
@@ -141,7 +119,6 @@ extend String [
 IrTypeRef coreFuncNameFromCljCall(name): String -> String = [
   baseId = typeId cljNormalizeTypeId
   recvBase = baseId stripCljPkgPrefix: "core"
-//   ^ (recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)
 
   // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
   // this should be solved by lazily generating ?__echo methods for everything or something elce
@@ -227,15 +204,7 @@ String toCljCharLiteral -> String = [
     |=> "\\" + content
 ]
 
-Int cljIndent -> String = [
-  sb = StringBuilder new
-  mut i = 0
-  [i < this] whileTrue: [
-    sb append: "  "
-    i <- i inc
-  ]
-  ^ sb toString
-]
+Int cljIndent -> String = "  " repeat: this
 
 StringBuilder appendCljIndent(level): Int line: String -> Unit = [
   this append: (level cljIndent)

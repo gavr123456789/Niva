@@ -239,27 +239,14 @@ Bool toIrBoolLiteralExpr(db): TyperDB -> IrExpr = [
 
 TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrExpr = [
   exprType = typeInfo toIrTypeRef
-  result = | this
+  ^ | this
     | LiteralExprT => [
       IrLiteralExpr literal: (this toIrLiteral) typeRef: exprType token: token
     ]
     | IdentifierT => [
-      | isNameOfTheType
-      | true => IrTypeRefExpr ref: (typeInfo toIrTypeRef) typeRef: exprType token: token
-      | false => [
-        | name == "this"
-        | true => [
-          IrThisRef typeRef: (thisTypeRef unpackOrValue: (Unknown new
-                                                            toIrTypeRefWithMutErrors: false
-                                                            errorsList: {})) token: token
-        ]
-        | false => IrVarRef name: name typeRef: exprType token: token
-      ]
       isNameOfTheType
-        ifTrue: [
-          typeRefExpr = IrTypeRefExpr ref: (typeInfo toIrTypeRef) typeRef: exprType token: token
-          typeRefExpr
-        ] ifFalse: [
+        ifTrue: [IrTypeRefExpr ref: (typeInfo toIrTypeRef) typeRef: exprType token: token]
+        ifFalse: [
           name == "this"
             ifTrue: [IrThisRef typeRef: (thisTypeRef unpackOrValue: ((Unknown new) toIrTypeRefWithMutErrors: false errorsList: {})) token: token]
             ifFalse: [IrVarRef name: name typeRef: exprType token: token]
@@ -285,7 +272,6 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
     | MessageSendT => this toIrExprFromMsg: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
     | CodeBlockT => this toIrLambdaExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
     | MatchT => this toIrMatchExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
-  ^ result
 ]
 
 TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrStmt = [
@@ -744,13 +730,10 @@ TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: Stri
   ^ IrBlock stmts: stmts toList result: resultExpr resultType: blockType
 ]
 
-TypeFieldT toIrField -> IrField = [
-  ^ IrField name: name typeRef: (typeInfo toIrTypeRef)
-]
+TypeFieldT toIrField -> IrField = IrField name: name typeRef: (typeInfo toIrTypeRef)
 
-UnionBranchT toIrUnionBranch -> IrUnionBranch = [
-  ^ IrUnionBranch name: name fields: (fields map: [it toIrField]) isInclude: isInclude token: token
-]
+UnionBranchT toIrUnionBranch -> IrUnionBranch =
+  IrUnionBranch name: name fields: (fields map: [it toIrField]) isInclude: isInclude token: token
 
 MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) -> IrFunction = [
   receiverType = receiver
@@ -805,10 +788,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
 
   returnTypeRef = returnType toIrTypeRef
 
-  genericTypes::mut List::NivaType = {}!
-  genericTypes add: receiverType
-  args forEach: [genericTypes add: it typeInfo t]
-  genericTypes add: returnType t
+  genericTypes = {receiverType} + (args map: [it typeInfo t]) + {(returnType t)}
 
   genericsSet::mut Set(String) = #()!
   genericsList::mut List(String) = {}!
@@ -840,9 +820,7 @@ TypedStatement toIrFunctions(db): TyperDB currentPkg: String typeFieldsById: Map
   | MessageDeclT => [
       // single `Bind emit:`/`goCode:` body is inlined at call sites -> no Go function
       this isInlineBindEmit ifTrue: [^ {IrFunction}]
-      res::mut List::IrFunction = {}!
-      res add: (this toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById)
-      res toList
+      {(this toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById)}
     ]
   | ExtendDeclT => (messages filter: [it isInlineBindEmit not])
                      map: [it toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById]
@@ -858,9 +836,7 @@ TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map
     fieldsIr = fields map: [it toIrField]
     typeId = typeFromDb toIrTypeId
     typeFieldsById at: typeId put: fieldsIr
-    res::mut List::IrTypeDef = {}!
-    res add: (IrTypeDef id: typeId pkgId: currentPkg name: name typeParams: typeParams fields: fieldsIr token: token)
-    res toList
+    {(IrTypeDef id: typeId pkgId: currentPkg name: name typeParams: typeParams fields: fieldsIr token: token)}
   ]
   |=> {IrTypeDef}
 
@@ -887,8 +863,7 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
       branchIr
     ]
 
-    res::mut List::IrUnionDef = {}!
-    res add: (IrUnionDef
+    {(IrUnionDef
       id: rootTypeId
       pkgId: currentPkg
       name: name
@@ -897,8 +872,7 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
       branches: branchesIr
       isErrorDomain: (token kind == TokenType.ErrorDomain)
       token: token
-    )
-    res toList
+    )}
   ]
   |=> {IrUnionDef}
 
@@ -907,9 +881,7 @@ TypedStatement toIrEnums(db): TyperDB currentPkg: String -> List(IrEnumDef) =
   | EnumDeclT => [
     enumType = db findByTypeName: "" + token lexeme inPkg: currentPkg
     enumId = enumType toIrTypeId
-    res::mut List(IrEnumDef) = {}!
-    res add: (IrEnumDef id: enumId pkgId: currentPkg name: "" + token lexeme values: {String} token: token)
-    res toList
+    {(IrEnumDef id: enumId pkgId: currentPkg name: "" + token lexeme values: {String} token: token)}
   ]
   |=> {IrEnumDef}
 
@@ -941,23 +913,15 @@ TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap
     argTypes = argExprs map: [it typeInfo t]
     returnType = this dbMsg returnType
 
-    mut instList = instMap at: funcId
-    | instList
-    | null => [
-      newList::mut List::IrInstantiation = {}!
-      instMap at: funcId put: newList
-      instList <- newList
-    ]
-    |=> []
+    instList::mut List::IrInstantiation = instMap get: funcId orPut: [{}!]
 
     inst = IrInstantiation
       receiverType: (receiverType toIrTypeRefWithMutErrors: false errorsList: {})
       argTypes: (argTypes map: [it toIrTypeRefWithMutErrors: false errorsList: {}])
       returnType: (returnType toIrTypeRefWithMutErrors: false errorsList: {})
 
-    instListFinal = instList unpackOrPANIC
-    exists = instListFinal any: [it toKey == inst toKey]
-    exists ifFalse: [instListFinal add: inst]
+    exists = instList any: [it toKey == inst toKey]
+    exists ifFalse: [instList add: inst]
 
     receiver collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
     argExprs forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
@@ -994,28 +958,9 @@ List::TypedStatement collectInstantiationsFromStatements(db): TyperDB currentPkg
   ]
 ]
 
-ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule = [
+ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   resolverDb = this db
   packages = resolverDb packages
-
-  imports::mut List::IrImport = {}!
-  seenLocalImports::mut Set(String) = #()!
-  seenPackageImports::mut Set(String) = #()!
-
-  packages forEach: [pkgName, pkg ->
-    pkg imports forEach: [imp ->
-      seenLocalImports contains: imp, ifFalse: [
-        seenLocalImports add: imp
-        imports add: (IrImport name: imp kind: IrImportKind.Local)
-      ]
-    ]
-    pkg packageImports forEach: [imp ->
-      seenPackageImports contains: imp, ifFalse: [
-        seenPackageImports add: imp
-        imports add: (IrImport name: imp kind: IrImportKind.Package)
-      ]
-    ]
-  ]
 
   typeFieldsById::mut Map(String, List(IrField)) = #{}!
   types::mut List::IrTypeDef = {}!
@@ -1053,8 +998,6 @@ ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule = [
                                       instMap: instMap]
   rawEntryBlock = entryBody toIrBlock: resolverDb currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
 
-  entryBlock = rawEntryBlock
-
   // attach instantiations
   functionsWithInst = functions map: [f ->
     instForFn = instMap at: f id
@@ -1078,63 +1021,26 @@ ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule = [
   enumsByPkg::mut Map(String, mut List::IrEnumDef)      = #{}!
   functionsByPkg::mut Map(String, mut List::IrFunction) = #{}!
 
-  types forEach: [ t ->
-    list = typesByPkg get: t pkgId orPut: [{}!]
-
-
-    list add: t
-  ]
-
-  unions forEach: [ u ->
-    list = unionsByPkg get: u pkgId orPut: [{}!]
-    list add: u
-  ]
-
-
-  enums forEach: [ e ->
-    list = enumsByPkg get: e pkgId orPut: [{}!]
-    list add: e
-  ]
-
-  functionsWithInst forEach: [ f ->
-    list = functionsByPkg get: f pkgId orPut: [{}!]
-    list add: f
-  ]
+  types forEach: [t -> typesByPkg get: t pkgId orPut: [{}!], add: t]
+  unions forEach: [u -> unionsByPkg get: u pkgId orPut: [{}!], add: u]
+  enums forEach: [e -> enumsByPkg get: e pkgId orPut: [{}!], add: e]
+  functionsWithInst forEach: [f -> functionsByPkg get: f pkgId orPut: [{}!], add: f]
 
   packagesIr::mut List::IrPackage = {}!
   // preserve per-pkg imports and membership
   fileToStatements forEach: [file, statements ->
     pkg = packages at: file, unpackOrPANIC
-    pkgImports::mut List::IrImport = {}!
-    seenLocal::mut Set(String) = #()!
-    seenPackage::mut Set(String) = #()!
+    pkgImports = (pkg imports map: [IrImport name: it kind: IrImportKind.Local]) +
+      (pkg packageImports map: [IrImport name: it kind: IrImportKind.Package])
 
-    pkg imports forEach: [imp ->
-      seenLocal contains: imp, ifFalse: [
-        seenLocal add: imp
-        pkgImports add: (IrImport name: imp kind: IrImportKind.Local)
-      ]
-    ]
-    pkg packageImports forEach: [imp ->
-      seenPackage contains: imp, ifFalse: [
-        seenPackage add: imp
-        pkgImports add: (IrImport name: imp kind: IrImportKind.Package)
-      ]
-    ]
-
-    typesMaybe = typesByPkg at: file
-    unionsMaybe = unionsByPkg at: file
-    enumsMaybe = enumsByPkg at: file
-    functionsMaybe = functionsByPkg at: file
-
-    typesList = typesMaybe unpack: [it toList] or: {}
-    unionsList = unionsMaybe unpack: [it toList] or: {}
-    enumsList = enumsMaybe unpack: [it toList] or: {}
-    functionsList = functionsMaybe unpack: [it toList] or: {}
+    typesList = typesByPkg at: file, unpack: [it toList] or: {}
+    unionsList = unionsByPkg at: file, unpack: [it toList] or: {}
+    enumsList = enumsByPkg at: file, unpack: [it toList] or: {}
+    functionsList = functionsByPkg at: file, unpack: [it toList] or: {}
 
     packagesIr add: (IrPackage
       name: file
-      imports: pkgImports toList
+      imports: pkgImports
       dependencies: {}
       types: typesList
       unions: unionsList
@@ -1146,10 +1052,13 @@ ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule = [
       version: "nir/v0"
       pkg: entryPointName
       packages: packagesIr toList
-      entry: entryBlock
+      entry: rawEntryBlock
 
   ^ rawModule withNormalizedDependencies
 ]
 
 ResolverHelper toIrModule -> IrModule =
-  .toIrModuleFromEntryLine: 0
+  .toIrModuleUncheckedFromEntryLine: 0, validateNoDependencyCycles
+
+ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule =
+  .toIrModuleUncheckedFromEntryLine: startLine, validateNoDependencyCycles

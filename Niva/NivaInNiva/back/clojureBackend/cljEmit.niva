@@ -226,8 +226,7 @@ IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> Stri
   | IrCollectionKind.Set  => "#{" + (items joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
   | IrCollectionKind.Map  => [
       items count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
-      chunkedItems = items asSequence chunked: 2, toList
-      pairs = chunkedItems joinWith: " " transform: [chunk ->
+      pairs = items asSequence chunked: 2, toList, joinWith: " " transform: [chunk ->
         key = chunk at: 0
         value = chunk at: 1
         (key toCljExpr: ctx scope: scope) + " " + (value toCljExpr: ctx scope: scope)
@@ -273,7 +272,6 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   innerScope = scope copy
 
   elseBranchLocal = elseBranch
-  hasElse = elseBranchLocal != null
 
   | kind
   | IrMatchKind.ByError => [
@@ -435,11 +433,10 @@ extend IrBlock [
                              bindName: String bindValue: String -> String = [
     // If the last statement is an IrReturn, treat its expression as the body's
     // result. IrReturn anywhere else is not allowed on this backend.
-    stmtsLocal = stmts
-    lastIdx = stmtsLocal count - 1
+    lastIdx = stmts count - 1
     mut trailingReturnExpr::IrExpr? = null
     stmtsToEmit::mut List(IrStmt) = {}!
-    stmtsLocal forEachIndexed: [i, st ->
+    stmts forEachIndexed: [i, st ->
       | st
       | IrReturn => [
           i == lastIdx
@@ -450,23 +447,15 @@ extend IrBlock [
             ()]
     ]
 
-    bindings::mut List(CljBinding) = {}!
-    bindName != "" ifTrue: [
-      bindings add: (CljBinding name: (bindName cljSanitizeIdent) value: bindValue)
-    ]
-    stmtsToEmit forEach: [st ->
-      bindings add: (st toCljStmtBinding: ctx scope: scope)
-    ]
+    injectedBinding = bindName != ""
+      ifTrue: [{(CljBinding name: (bindName cljSanitizeIdent) value: bindValue)}]
+      ifFalse: [{CljBinding}]
+    bindings = injectedBinding + (stmtsToEmit map: [it toCljStmtBinding: ctx scope: scope])
 
     // trailing IrReturn or block result
-    mut resultExpr::IrExpr? = null
-    | trailingReturnExpr
-    | null => [
-        | result
-        | null => []
-        |=> [resultExpr <- result]
-    ]
-    |=> [resultExpr <- trailingReturnExpr]
+    resultExpr::IrExpr? = | trailingReturnExpr
+      | null => result
+      |=> trailingReturnExpr
 
     resultStr = | resultExpr
                 | null => [resultType isCljUnitType ifTrue: [":unit"] ifFalse: ["nil"]]
@@ -491,10 +480,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         goName = name cljSanitizeIdent
         scope mutLocals remove: name
         isMut ifTrue: [scope mutLocals add: name]
-        valueLocal = value
-        raw = | valueLocal
-              | null => "nil"
-              |=> valueLocal toCljExpr: ctx scope: scope
+        raw = value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
         valStr = isMut ifTrue: ["(atom " + raw + ")"] ifFalse: [raw]
         CljBinding name: goName value: valStr
       ]
@@ -545,11 +531,9 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
 
 // Unwrap the body of an IrLambda: expose its statements + result inline so that
 // (while (fn [] cond)) becomes (while cond) instead of paying the closure cost.
-IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String = [
-  | this | IrLambda => [
-    ^ body toCljBlockBody: ctx scope: scope
-  ] |=> [TO DO: "cljUnwrapLambdaBody: expected IrLambda"]
-]
+IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String =
+  | this | IrLambda => body toCljBlockBody: ctx scope: scope
+  |=> [TO DO: "cljUnwrapLambdaBody: expected IrLambda"]
 
 // ---------------------------------------------------------------------------
 // top-level definitions
@@ -590,10 +574,8 @@ constructor CljBackend [
     sb appendLine: ""
   ]
 
-  on emitFunction(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
-    name = fn cljFuncNameFromIr
-    CljBackend emitFunctionNamed: name fn: fn ctx: ctx sb: sb
-  ]
+  on emitFunction(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit =
+    CljBackend emitFunctionNamed: (fn cljFuncNameFromIr) fn: fn ctx: ctx sb: sb
 
   // Generic receiver methods are represented by one IR function and a list of
   // concrete call-site instantiations. Clojure has no dispatch by static type,
@@ -605,16 +587,15 @@ constructor CljBackend [
 
     scope = CljScope new
     body = fn body toCljBlockBody: ctx scope: scope
-    bodyToEmit = body
 
-    (bodyToEmit contains: "\n")
+    (body contains: "\n")
       ifTrue: [
-        indented = bodyToEmit replace: "\n" with: "\n  "
+        indented = body replace: "\n" with: "\n  "
         sb appendLine: ("(defn " + name + " [" + fullArgs + "]")
         sb appendLine: ("  " + indented + ")")
       ]
       ifFalse: [
-        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + bodyToEmit + ")")
+        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
     ]
     sb appendLine: ""
     generatedEndLine = ((sb toString) cljLineCount) - 2
@@ -653,10 +634,7 @@ constructor CljBackend [
     entry stmts forEach: [stmt ->
       | stmt
       | IrLet => [
-        valueMaybe = stmt value
-        value = | valueMaybe
-          | null => "nil"
-          |=> valueMaybe toCljExpr: ctx scope: scope
+        value = stmt value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
         sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")
       ]
       | IrSetLocal => [
@@ -670,10 +648,8 @@ constructor CljBackend [
         sb appendLine: wrapped
       ]
     ]
-    resultMaybe = entry result
-    | resultMaybe
-    | null => [sb appendLine: ":unit"]
-    |=> [sb appendLine: (resultMaybe toCljExpr: ctx scope: scope)]
+    resultValue = entry result unpack: [it toCljExpr: ctx scope: scope] or: ":unit"
+    sb appendLine: resultValue
     sb appendLine: ""
   ]
 
@@ -682,7 +658,7 @@ constructor CljBackend [
     ctx = CljContext newDebug: debug
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
-    functionNames::mut List(String) = {}!
+    functionNames::mut Set(String) = #()!
 
     ir packages forEach: [pkg ->
       pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
@@ -690,19 +666,13 @@ constructor CljBackend [
       pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
       pkg functions forEach: [fn ->
         baseName = fn cljFuncNameFromIr
-        functionNames contains: baseName, ifFalse: [functionNames add: baseName]
-        fn instantiations forEach: [inst ->
-          specializedId = (fn id replace: (fn receiverType typeId) with: (inst receiverType typeId))
-          specializedName = specializedId cljFuncIdToName
-          functionNames contains: specializedName, ifFalse: [functionNames add: specializedName]
-        ]
-      ]
-      pkg functions forEach: [fn ->
+        functionNames add: baseName
         CljBackend emitFunction: fn ctx: ctx sb: body
         fn instantiations forEach: [inst ->
           specializedId = (fn id replace: (fn receiverType typeId) with: (inst receiverType typeId))
           specializedName = specializedId cljFuncIdToName
-          specializedName == (fn cljFuncNameFromIr) ifFalse: [
+          functionNames add: specializedName
+          specializedName == baseName ifFalse: [
             CljBackend emitFunctionNamed: specializedName fn: fn ctx: ctx sb: body
           ]
         ]
@@ -719,7 +689,7 @@ constructor CljBackend [
     header appendLine: ";; Code generated by Niva. DO NOT EDIT."
     nsName = isRepl ifTrue: ["niva.repl.session"] ifFalse: ["main"]
     importsList = ctx imports toList
-    importsList count == 0
+    importsList isEmpty
       ifTrue:  [
         // programs need a Java main class for native-image, REPL does not.
         nsSuffix = isRepl ifTrue: [")"] ifFalse: [" (:gen-class))"]
@@ -730,8 +700,9 @@ constructor CljBackend [
         genClass = isRepl ifTrue: [""] ifFalse: [" (:gen-class)"]
         header appendLine: ("(ns " + nsName + genClass + " (:require " + reqs + "))")
       ]
-    functionNames isNotEmpty ifTrue: [
-      header appendLine: ("(declare " + (functionNames joinWith: " ") + ")")
+    functionNamesList = functionNames toList
+    functionNamesList isNotEmpty ifTrue: [
+      header appendLine: ("(declare " + (functionNamesList joinWith: " ") + ")")
     ]
     header appendLine: ""
 
