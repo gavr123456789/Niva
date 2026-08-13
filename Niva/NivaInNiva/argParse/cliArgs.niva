@@ -9,8 +9,9 @@ type ArgsParsed
   repl: Bool
   replLine: Int
   nativeBuild: Bool
+  incremental: Bool
 
-constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false debug: false repl: false replLine: 0 nativeBuild: false
+constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help backend: CompilerBackend.Js verbose: false debug: false repl: false replLine: 0 nativeBuild: false incremental: false
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -32,6 +33,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         --repl — emit a loadable Clojure REPL module without -main (build + Clojure only)
         --repl-line=N — emit entry expressions starting at source line N
         --native — compile a Clojure build to a native executable with GraalVM native-image
+        --incremental — opt in to the persistent compiler session in watch/LSP
         --verbose
         --help
     """ trimIndent
@@ -59,6 +61,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut repl = false
   mut replLine = 0
   mut nativeBuild = false
+  mut incremental = false
   mut backend = CompilerBackend.Clj
   mut path::String? = null
   mut optionStart = 1
@@ -80,6 +83,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | "--debug" => debug <- true
         | "--repl" => repl <- true
         | "--native" => nativeBuild <- true
+        | "--incremental" => incremental <- true
         | "--help" => explicitHelp <- true
         |=> [
           arg startsWith: "--backend=", ifTrue: [
@@ -101,7 +105,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
 
   explicitHelp ifTrue: [help echo; ^ ArgsParsed help]
   invalid ifTrue: [^ ArgsParsed help]
-  ^ ArgsParsed :path :option :backend :verbose :debug :repl replLine: replLine nativeBuild: nativeBuild
+  ^ ArgsParsed :path :option :backend :verbose :debug :repl replLine: replLine nativeBuild: nativeBuild incremental: incremental
 ]
 
 enum CompilerOption = Run | Build | Ir | Daemon | RunTests | Info | Help
