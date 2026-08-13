@@ -494,6 +494,13 @@ Test cljPublishingUsesGenerationDirectory = [
   Assert that: (published generationId count > 0) equals: true
   Assert that: (io readFile path: root + "/manifest.edn") equals: output manifest edn
   Assert that: (io readFile path: root + "/main.clj") equals: output legacyMainShim
+  host = io readFile path: root + "/niva/hot_reload/host.clj"
+  Assert that: (host contains: "(reload/reload {:only :all})") equals: true
+  Assert that: (host contains: "(reload/reload {:only :changed})") equals: true
+  Assert that: ((io readFile path: root + "/deps.edn")
+    contains: "io.github.tonsky/clj-reload") equals: true
+  Assert that: ((io readFile path: root + "/bb.edn")
+    contains: "io.github.tonsky/clj-reload") equals: true
   generatedFiles = io walkDir path: root + "/generated"
   Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
 
@@ -542,4 +549,142 @@ Test failedCljCompilationDoesNotReplacePublishedOutput = [
   Assert that: (io readFile path: root + "/manifest.edn") equals: "old manifest"
 
   io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
+Test watchDebouncesAndPreservesDistinctFiles = [
+  empty = WatchChangeBatch empty
+  batch1 = empty add: "main.niva"
+  batch2 = batch1 add: "main.niva"
+  batch3 = batch2 add: "model.niva"
+
+  Assert that: batch3 count equals: 2
+  Assert that: (batch3 paths contains: "main.niva") equals: true
+  Assert that: (batch3 paths contains: "model.niva") equals: true
+]
+
+Test watchQueueSerializesBuildsAndKeepsPendingEvents = [
+  empty = WatchQueueState empty
+  building = empty event
+  pending = building event
+  next = pending buildFinished
+  idle = next buildFinished
+
+  Assert that: building building equals: true
+  Assert that: building pending equals: false
+  Assert that: pending building equals: true
+  Assert that: pending pending equals: true
+  Assert that: next building equals: true
+  Assert that: next pending equals: false
+  Assert that: idle building equals: false
+  Assert that: idle pending equals: false
+]
+
+Test jvmHostHasReloadSafeLifecycle = [
+  Assert that: (JVM_HOST_SOURCE contains: "(reload/init") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "{:only :all}") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "{:only :changed}") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "requiring-resolve") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "__niva_entry!") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: ":entry-executed?") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "(catch Throwable _ nil)") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "150") equals: true
+]
+
+Test jvmHostDoesNotRequireGeneratedNamespaces = [
+  Assert that: (JVM_HOST_SOURCE contains: "(:require [niva.generated") equals: false
+  Assert that: (JVM_HOST_SOURCE contains: ":no-reload '#{niva.hot-reload.host}") equals: true
+]
+
+Test babashkaHostLoadsRecoversAndWatchesSources = [
+  io = IO_Container new
+  root = ".niva_clj/babashka-host"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/babashka-host babashka-watch-project && mkdir -p .niva_clj/babashka-host/generated/niva/generated .niva_clj/babashka-host/niva/hot_reload babashka-watch-project"}
+  Assert that: setupExit equals: 0
+
+  initialSource = """
+    (ns niva.generated.main)
+    (def ^:clj-reload/keep state (atom 0))
+    (def ^:clj-reload/keep entries (atom 0))
+    (defn __niva_entry! [] (swap! entries inc) (reset! state 7))
+    (defn value [] 1)
+  """ trimIndent
+  changedSource = """
+    (ns niva.generated.main)
+    (def ^:clj-reload/keep state (atom 0))
+    (def ^:clj-reload/keep entries (atom 0))
+    (defn __niva_entry! [] (swap! entries inc) (reset! state 7))
+    (defn value [] 2)
+  """ trimIndent
+  brokenSource = """
+    (ns niva.generated.main)
+    (defn broken [)
+  """ trimIndent
+  recoveredSource = """
+    (ns niva.generated.main)
+    (def ^:clj-reload/keep state (atom 0))
+    (def ^:clj-reload/keep entries (atom 0))
+    (defn __niva_entry! [] (swap! entries inc) (reset! state 7))
+    (defn value [] 3)
+  """ trimIndent
+  hostTest = """
+    (ns host-test
+      (:require [niva.hot-reload.host :as host]))
+
+    (defn value-of [name]
+      (deref (deref (requiring-resolve (symbol "niva.generated.main" name)))))
+
+    (defn call-value []
+      ((requiring-resolve 'niva.generated.main/value)))
+
+    (defn print-state [result]
+      (println (:ok result) (value-of "state") (value-of "entries") (call-value)))
+
+    (defn -main [& _]
+      (host/init! "generated" "niva.generated.main")
+      (print-state (host/initial-load!))
+      (Thread/sleep 1100)
+      (spit "generated/niva/generated/main.clj" (slurp "changed.clj"))
+      (print-state (host/reload-changed!))
+      (Thread/sleep 1100)
+      (spit "generated/niva/generated/main.clj" (slurp "broken.clj"))
+      (println (:ok (host/reload-changed!)))
+      (Thread/sleep 1100)
+      (spit "generated/niva/generated/main.clj" (slurp "recovered.clj"))
+      (print-state (host/reload-changed!))
+        (let [ready (promise)
+            worker (future
+                     (host/watch! "../../babashka-watch-project"
+                       #(deliver ready true) "bb"))]
+        (Thread/sleep 300)
+        (spit "../../babashka-watch-project/change.niva" "")
+        (println "watch" (deref ready 5000 false))
+        (host/stop-watch!)
+        (let [watch-stopped? (not= ::timeout (deref worker 5000 ::timeout))]
+          (println "watch-stopped" watch-stopped?))))
+  """ trimIndent
+
+  io writeFile file: root + "/generated/niva/generated/main.clj" content: initialSource
+  io writeFile file: root + "/changed.clj" content: changedSource
+  io writeFile file: root + "/broken.clj" content: brokenSource
+  io writeFile file: root + "/recovered.clj" content: recoveredSource
+  io writeFile file: root + "/host_test.clj" content: hostTest
+  io writeFile file: root + "/niva/hot_reload/host.clj" content: JVM_HOST_SOURCE
+  io writeFile file: root + "/deps.edn"
+    content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+  io writeFile file: root + "/bb.edn"
+    content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+
+  runExit = io runProgramFromPath path: root args: {"sh" "-c"
+    "bb -m host-test > result.txt"}
+  Assert that: runExit equals: 0
+  result = io readFile path: root + "/result.txt"
+  Assert that: (result contains: "true 7 1 1") equals: true
+  Assert that: (result contains: "true 7 1 2") equals: true
+  Assert that: (result contains: "false") equals: true
+  Assert that: (result contains: "true 7 1 3") equals: true
+  Assert that: (result contains: "watch true") equals: true
+  Assert that: (result contains: "watch-stopped true") equals: true
+
+  io deleteRecursively path: root
 ]

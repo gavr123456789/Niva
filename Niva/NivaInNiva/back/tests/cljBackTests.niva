@@ -33,6 +33,35 @@ Test cljPackageOutputUsesStableNamespacesAndPaths = [
   main contains: "(defn -main", assertTrue
 ]
 
+Test cljBabashkaTargetRunsGeneratedProgram = [
+  fileMain = "type Person name: String\np = Person name: \"Ada\""
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModuleForTarget: (result toIrModule)
+    debug: false mode: CljEmitMode.Program target: CljTarget.Bb
+  root = ".niva_clj/babashka-target"
+  setupExit = (IO_Container new) runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/babashka-target && mkdir -p .niva_clj/babashka-target/generated/niva/generated"}
+  Assert that: setupExit equals: 0
+
+  io = IO_Container new
+  output files forEach: [relativePath, content ->
+    destination = root + "/generated/" + relativePath
+    io writeFile file: destination content: content
+  ]
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  io writeFile file: root + "/main.clj" content: output legacyMainShim
+  io writeFile file: root + "/deps.edn" content: "{:paths [\"generated\" \".\"]}\n"
+
+  Assert that: output target equals: CljTarget.Bb
+  Assert that: (main contains: ":gen-class") equals: false
+  Assert that: (output legacyMainShim contains: ":gen-class") equals: false
+  exit = io runProgramFromPath path: root args: {"bb" "-cp" "generated:." "-m" "main"}
+  Assert that: exit equals: 0
+
+  io deleteRecursively path: root
+]
+
 Test cljManifestIsDeterministicAndUnchangedShapeIsCompatible = [
   sources = #{
     "model" "type Person name: String"
