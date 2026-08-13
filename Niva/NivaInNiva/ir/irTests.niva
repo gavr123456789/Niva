@@ -59,3 +59,123 @@ Test irFieldAliasesAreIrLetBindings = [
     |=> [TO DO: "expected IrLet for name field"]
   ]
 ]
+
+Test irDependenciesCoverCrossPackageTypesCallsConstructorsAndGenerics = [
+  personFile = """
+    type Person name: String
+
+    Person greet -> String = [
+      ^ name
+    ]
+  """
+  boxFile = """
+    type Box(T) value: T
+
+    Box(T) unwrap -> T = [
+      ^ value
+    ]
+  """
+  envelopeFile = """
+    type Envelope payload: Box(Person)
+  """
+  mainFile = """
+    alice = Person name: "Alice"
+    greeting = alice greet
+    boxed = Box value: alice
+    unwrapped = boxed unwrap
+    envelope = Envelope payload: boxed
+    envelope
+  """
+
+  result = ResolverHelper resolve: #{
+    "main" mainFile
+    "person" personFile
+    "box" boxFile
+    "envelope" envelopeFile
+  } entryPoint: "main"
+  ir = result toIrModule
+
+  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+  Assert that: mainPkg dependencyPackageNames equals: {"box" "envelope" "person"}
+
+  personCall = mainPkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Call)
+  ]
+  | personCall
+  | null => [TO DO: "Expected a call dependency from main to person"]
+  |=> [
+    Assert that: (personCall symbol contains: "greet") equals: true
+    Assert that: personCall token file path equals: "main.niva"
+  ]
+
+  personConstructor = mainPkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Constructor)
+  ]
+  Assert that: (personConstructor != null) equals: true
+
+  envelopePkg = ir packages find: [it name == "envelope"], unpackOrPANIC
+  Assert that: envelopePkg dependencyPackageNames equals: {"box" "person"}
+  genericPersonType = envelopePkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Type)
+  ]
+  Assert that: (genericPersonType != null) equals: true
+
+  boxPkg = ir packages find: [it name == "box"], unpackOrPANIC
+  Assert that: boxPkg dependencyPackageNames equals: {"person"}
+  genericInstantiationType = boxPkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Type)
+  ]
+  Assert that: (genericInstantiationType != null) equals: true
+
+  personPkg = ir packages find: [it name == "person"], unpackOrPANIC
+  Assert that: personPkg dependencyPackageNames isEmpty equals: true
+]
+
+Test irDependenciesCoverTypeMatchAndKeepProvenance = [
+  shapeFile = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+  """
+  mainFile = """
+    shape::Shape = Rectangle width: 2 height: 3
+
+    | shape
+    | Rectangle => shape width
+    | Circle => shape radius
+  """
+
+  result = ResolverHelper resolve: #{"main" mainFile "shapes" shapeFile} entryPoint: "main"
+  ir = result toIrModule
+  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+
+  Assert that: mainPkg dependencyPackageNames equals: {"shapes"}
+  matchType = mainPkg dependencies find: [
+    (it toPkg == "shapes") &&
+    (it kind == IrDependencyKind.Type) &&
+    (it symbol contains: "Rectangle")
+  ]
+  | matchType
+  | null => [TO DO: "Expected a type-match dependency from main to shapes"]
+  |=> [
+    Assert that: matchType token file path equals: "main.niva"
+    Assert that: (matchType token line > 1) equals: true
+  ]
+]
+
+Test irDependenciesExcludeExternalBindPackages = [
+  bindFile = """
+    type Clock
+    static Clock now -> Clock = []
+  """
+  mainFile = """
+    Clock now
+  """
+
+  result = ResolverHelper resolve: #{"main" mainFile "java.time.bind" bindFile}
+    entryPoint: "main" backend: "clj"
+  ir = result toIrModule
+  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+
+  Assert that: mainPkg dependencyPackageNames isEmpty equals: true
+]
