@@ -89,7 +89,7 @@ constructor TyperDB new -> TyperDB = [
     int intProtocol
     double doubleProtocol
 
-    // each literal must stay separate: sharing a map makes methods leak between types
+    // Each literal must stay separate: sharing a map makes methods leak between types.
     float (#{}!)
 
     str strProtocol
