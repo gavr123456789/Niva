@@ -7,7 +7,7 @@ type FileContent = String
 
 type NivaSourceFile
   path: String
-  nameWithoutExt: String
+  relativePath: String
 
 type IO_Container
   readFile:   [FilePath -> String]
@@ -31,10 +31,14 @@ constructor IO_Container new -> IO_Container = [
   ]
 
   walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
-    x = FileSystem listRecursively: path toPath
+    root = path toPath normalized
+    rootSegmentCount = root segments count
+    x = FileSystem listRecursively: root
 
     x map: [
-      NivaSourceFile path: it toString nameWithoutExt: (it name substringBeforeLast: ".")
+      normalized = it normalized
+      relativePath = (normalized segments drop: rootSegmentCount) joinWith: "/"
+      NivaSourceFile path: normalized toString relativePath: relativePath
     ]
   ]
 
@@ -50,28 +54,23 @@ constructor IO_Container new -> IO_Container = [
     processBuilder redirectAll start waitFor
   ]
 
-  ^ IO_Container :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram :runProgramFromPath
+  ^ IO_Container :readFile :writeFile :walkDir :getParent
+    currentDir: "." :runProgram :runProgramFromPath
 ]
 
 
 
 compilerTry = [
   path = Compiler cliArgs
-  NivaCompiler runArgs: path withIO: IO_Container new
-] do
+  NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
+]
 
 compilerTry2 = [
   //path = {"run" ".niva_js/testss.niva"}
   //path = {"run" ".niva_go/_testss.niva" "--backend" "go"}
-  path = {"run" ".niva_clj/main.niva" "--backend" "clj"}
+  path = {"run" ".niva_clj/main.niva" "--backend=clj" } // "--debug"
   t1 = System currentTimeMillis
-  NivaCompiler runArgs: path withIO: IO_Container new measureTime: true
+  NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
   diff = System currentTimeMillis - t1
   //diff echo // 60 toLong / 1000 toLong, echo
-]
-
-
-
-// enum inside triple-quoted strings is not accepted by the current parser
-// (same limitation blocks goEnumCodegen in goBackTests.niva). Test manually
-// against a real .niva file via `niva run main.niva --backend clj`.
+] do

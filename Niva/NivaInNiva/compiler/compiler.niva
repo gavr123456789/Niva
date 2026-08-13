@@ -135,6 +135,16 @@ constructor NivaCompiler [
                 io writeFile file: destination content: content
               ]
 
+              generatedPrefix = "niva/generated/"
+              allGeneratedFiles = io walkDir path: realCljPath
+              staleGeneratedFiles = allGeneratedFiles filter: [it relativePath startsWith: generatedPrefix]
+              staleGeneratedFiles forEach: [file ->
+                generatedContent = output files at: file relativePath, unpackOrValue: "<missing>"
+                generatedContent == "<missing>" ifTrue: [
+                  FileSystem delete: file path toPath
+                ]
+              ]
+
               // keep the old cli and native build entry namespace stable
               shim = """
                 (ns main (:gen-class) (:require [niva.generated.main]))
