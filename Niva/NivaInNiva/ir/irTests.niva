@@ -179,3 +179,63 @@ Test irDependenciesExcludeExternalBindPackages = [
 
   Assert that: mainPkg dependencyPackageNames isEmpty equals: true
 ]
+
+Test irDependencyCyclesReportTwoNodeCycleWithSourceEvidence = [
+  aFile = """
+    type Alpha beta: Beta
+  """
+  bFile = """
+    type Beta alpha: Alpha
+  """
+
+  result = ResolverHelper resolve: #{"a" aFile "b" bFile} entryPoint: "a"
+  ir = result toIrModuleUncheckedFromEntryLine: 0
+  cycles = ir dependencyCycles
+
+  Assert that: cycles count equals: 1
+  cycle = cycles first
+  Assert that: cycle packages equals: {"a" "b"}
+  Assert that: cycle edges count equals: 2
+  diagnostic = cycle diagnostic
+  Assert that: (diagnostic contains: "Cyclic Niva module dependency:") equals: true
+  Assert that: (diagnostic contains: "a.niva:2  a -> b  (type b_Beta)") equals: true
+  Assert that: (diagnostic contains: "b.niva:2  b -> a  (type a_Alpha)") equals: true
+]
+
+Test irDependencyCyclesReportConcretePathForThreeNodeCycle = [
+  aFile = """
+    Int aStep -> Int = [^ this bStep]
+  """
+  bFile = """
+    Int bStep -> Int = [^ this cStep]
+  """
+  cFile = """
+    Int cStep -> Int = [^ this aStep]
+  """
+
+  result = ResolverHelper resolve: #{"a" aFile "b" bFile "c" cFile} entryPoint: "a"
+  ir = result toIrModuleUncheckedFromEntryLine: 0
+  cycles = ir dependencyCycles
+
+  Assert that: cycles count equals: 1
+  cycle = cycles first
+  Assert that: cycle packages equals: {"a" "b" "c"}
+  Assert that: cycle edges count equals: 3
+  Assert that: (cycle diagnostic contains: "c -> a") equals: true
+]
+
+Test irDependencyCyclesIgnoreAcyclicGraphAndSamePackageReferences = [
+  modelFile = """
+    type Node next: Node?
+
+    Node identity -> Node = [^ this]
+  """
+  mainFile = """
+    type App node: Node
+  """
+
+  result = ResolverHelper resolve: #{"main" mainFile "model" modelFile} entryPoint: "main"
+  ir = result toIrModuleUncheckedFromEntryLine: 0
+
+  Assert that: ir dependencyCycles isEmpty equals: true
+]

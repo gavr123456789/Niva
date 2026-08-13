@@ -166,32 +166,41 @@ extend NivaType [
     |=> false
   ]
 
-  on collectUnresolvedGenerics -> List(NivaType) = [
+  on collectUnresolvedGenericsInto(visitedTypes): mut Set(String) -> List(NivaType) = [
     ^ | this
       | UnresolvedGenericT => {this}
-      | ListT => this t collectUnresolvedGenerics
-      | SetT => this t collectUnresolvedGenerics
+      | ListT => this t collectUnresolvedGenericsInto: visitedTypes
+      | SetT => this t collectUnresolvedGenericsInto: visitedTypes
       | MapT => [
         res::mut List::NivaType = {}!
-        this k collectUnresolvedGenerics forEach: [res add: it]
-        this v collectUnresolvedGenerics forEach: [res add: it]
+        this k collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]
+        this v collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]
         res toList
       ]
       | FuntionT => [
         res::mut List::NivaType = {}!
-        fields forEach: [it typeT collectUnresolvedGenerics forEach: [res add: it]]
-        returnType collectUnresolvedGenerics forEach: [res add: it]
-        returnErrors forEach: [it collectUnresolvedGenerics forEach: [res add: it]]
+        fields forEach: [it typeT collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
+        returnType collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]
+        returnErrors forEach: [it collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
         res toList
       ]
       | TypeT => [
+        typeKey = pkgName + "." + name
+        visitedTypes contains: typeKey, ifTrue: [^ {NivaType}]
+        visitedTypes add: typeKey
         res::mut List::NivaType = {}!
-        genericArgs forEach: [it collectUnresolvedGenerics forEach: [res add: it]]
-        fields forEach: [it typeT collectUnresolvedGenerics forEach: [res add: it]]
+        genericArgs forEach: [it collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
+        fields forEach: [it typeT collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
+        visitedTypes remove: typeKey
         res toList
       ]
-      | NullableT => this v collectUnresolvedGenerics
+      | NullableT => this v collectUnresolvedGenericsInto: visitedTypes
       |=> {NivaType} // empty list
+  ]
+
+  on collectUnresolvedGenerics -> List(NivaType) = [
+    visitedTypes::mut Set(String) = #()!
+    ^ this collectUnresolvedGenericsInto: visitedTypes
   ]
 
   on collectGenericMappingsFrom(actual): NivaType into: mut Map(String, NivaType) db: TyperDB = [

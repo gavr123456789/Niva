@@ -168,3 +168,121 @@ IrModule withNormalizedDependencies -> IrModule = [
 
   ^ IrModule version: version pkg: pkg packages: normalizedPackages entry: entry
 ]
+
+type IrTarjanState
+  nextIndex: Int
+  indices: mut Map(String, Int)
+  lowLinks: mut Map(String, Int)
+  stack: mut List(String)
+  onStack: mut Set(String)
+  components: mut List(List(String))
+  packagesByName: Map(String, IrPackage)
+
+constructor IrTarjanState forPackages(packages): List(IrPackage) -> IrTarjanState = [
+  packagesByName::mut Map(String, IrPackage) = #{}!
+  packages forEach: [packagesByName at: it name put: it]
+  ^ IrTarjanState nextIndex: 0 indices: #{}! lowLinks: #{}! stack: {}! onStack: #()! components: {}! packagesByName: packagesByName
+]
+
+mut IrTarjanState strongConnect(node): String -> Unit = [
+  nodeIndex = nextIndex
+  nextIndex <- nextIndex + 1
+  indices at: node put: nodeIndex
+  lowLinks at: node put: nodeIndex
+  stack add: node
+  onStack add: node
+
+  modulePkg = packagesByName at: node, unpackOrPANIC
+  modulePkg dependencyPackageNames forEach: [target ->
+    targetIndex = indices at: target
+    | targetIndex
+    | null => [
+      this strongConnect: target
+      nodeLow = lowLinks at: node, unpackOrPANIC
+      targetLow = lowLinks at: target, unpackOrPANIC
+      targetLow < nodeLow ifTrue: [lowLinks at: node put: targetLow]
+    ]
+    |=> [
+      onStack contains: target, ifTrue: [
+        nodeLow = lowLinks at: node, unpackOrPANIC
+        targetIndex < nodeLow ifTrue: [lowLinks at: node put: targetIndex]
+      ]
+    ]
+  ]
+
+  nodeLow = lowLinks at: node, unpackOrPANIC
+  nodeLow == nodeIndex ifTrue: [
+    component::mut List(String) = {}!
+    mut complete = false
+    [complete not] whileTrue: [
+      member = stack last
+      stack remove: member
+      onStack remove: member
+      component add: member
+      complete <- member == node
+    ]
+    components add: (component toList sortedBy: [it])
+  ]
+]
+
+IrModule stronglyConnectedPackageComponents -> List(List(String)) = [
+  state::mut IrTarjanState = IrTarjanState forPackages: packages
+  packages map: [it name], sortedBy: [it], forEach: [packageName ->
+    existingIndex = state indices at: packageName
+    existingIndex == null ifTrue: [state strongConnect: packageName]
+  ]
+  ^ state components toList sortedBy: [it first]
+]
+
+IrModule dependencyCycleFor(component): List(String) -> IrDependencyCycle = [
+  packagesByName::mut Map(String, IrPackage) = #{}!
+  packages forEach: [packagesByName at: it name put: it]
+  componentSet = component toSet
+  visitedAt::mut Map(String, Int) = #{}!
+  pathNodes::mut List(String) = {}!
+  pathEdges::mut List(IrDependency) = {}!
+  mut current = component first
+
+  [(visitedAt at: current) == null] whileTrue: [
+    visitedAt at: current put: pathNodes count
+    pathNodes add: current
+    modulePkg = packagesByName at: current, unpackOrPANIC
+    edge = modulePkg dependencies
+      filter: [componentSet contains: it toPkg]
+      ,sortedBy: [it stableKey]
+      ,first
+    pathEdges add: edge
+    current <- edge toPkg
+  ]
+
+  cycleStart = visitedAt at: current, unpackOrPANIC
+  ^ IrDependencyCycle
+    packages: (pathNodes toList drop: cycleStart)
+    edges: (pathEdges toList drop: cycleStart)
+]
+
+IrModule dependencyCycles -> List(IrDependencyCycle) =
+  this stronglyConnectedPackageComponents
+    filter: [it count > 1]
+    ,map: [this dependencyCycleFor: it]
+
+IrDependency diagnosticLine -> String = [
+  path = token file path == "" ifTrue: [fromPkg + ".niva"] ifFalse: [token file path]
+  ^ "  " + path + ":" + token line toString + "  " + fromPkg + " -> " + toPkg +
+    "  (" + kind stableName + " " + symbol + ")"
+]
+
+IrDependencyCycle diagnostic -> String =
+  "Cyclic Niva module dependency:\n" +
+    (edges joinWith: "\n" transform: [it diagnosticLine])
+
+IrModule dependencyCycleDiagnostics -> List(String) =
+  this dependencyCycles map: [it diagnostic]
+
+IrModule validateNoDependencyCycles -> IrModule = [
+  diagnostics = this dependencyCycleDiagnostics
+  diagnostics isNotEmpty ifTrue: [
+    TO DO: (diagnostics joinWith: "\n\n")
+  ]
+  ^ this
+]
