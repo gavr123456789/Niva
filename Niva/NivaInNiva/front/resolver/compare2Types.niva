@@ -43,7 +43,7 @@ NivaType sameDeclaredTypeAs(nivaType): TypeT -> Bool = | this
 
 
 NivaType sameTypeAs(nivaType): NivaType -> Bool = [
-  result = nivaType needsDeepTypeCompare ifTrue: [
+  ^ nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
     | TypeT => this sameDeclaredTypeAs: nivaType
     | FuntionT => [
@@ -85,7 +85,6 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
   ] ifFalse: [
     .sameSimpleTypeAs: nivaType
   ]
-  ^ result
 ]
 
 /// sameTypeAs: is asymmetric, NothingT and AnyT on the right match everything,
@@ -99,7 +98,7 @@ NivaType sameTypeStrictAs(nivaType): NivaType -> Bool =
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
   // Nothing is the bottom type (for example `throw`) is valid wherever a value is expected
   this isNothingType ifTrue: [^ true]
-  result = nivaType needsDeepTypeCompare ifTrue: [
+  ^ nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
     | TypeT =>  | this
                 | TypeT => [
@@ -165,5 +164,4 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
   ] ifFalse: [
     this sameSimpleTypeAs: nivaType
   ]
-  ^ result
 ]

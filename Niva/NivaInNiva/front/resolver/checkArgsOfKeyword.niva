@@ -2,8 +2,4 @@
 
 type Tuple x: T y: G 
 
-KeywordMsg getNameFromArgs -> String = [
-  ^ args joinWith: "__" transform: [
-    it name name
-  ]
-]
+KeywordMsg getNameFromArgs -> String = args joinWith: "__" transform: [it name name]

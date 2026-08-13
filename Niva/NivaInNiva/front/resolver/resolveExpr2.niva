@@ -188,10 +188,7 @@ List(NivaType) errorsToString -> String =
 // returns the number of wrong type element, if all good returns null
 NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
   types forEachIndexed: [i, it ->
-    x = this sameTypeAs: it
-    x ifFalse: [
-      ^ i
-    ]
+    this sameTypeAs: it, ifFalse: [^ i]
   ]
   ^ null
 ]

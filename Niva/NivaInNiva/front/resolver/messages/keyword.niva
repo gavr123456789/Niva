@@ -355,7 +355,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     |=> []
   ]
 
-  newKeyword = KeywordMsgT
+  ^ KeywordMsgT
     args: typedArgs
     kind: kwMsgDB kind
     receiver: receiverTypedExpr
@@ -370,5 +370,4 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   // Box t: 42
   // Box(Box t: T) t: 42(Int)
 
-  ^ newKeyword
 ]

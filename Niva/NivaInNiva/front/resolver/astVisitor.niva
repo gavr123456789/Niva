@@ -35,14 +35,6 @@ TypeDeclVisitor
   unionIncludes::mut Map(String, mut List(Tuple(String, Token))) = #{}!
   unionRoots::mut Set::String = #()!
 
-  // expressions of the main file
-  entryPointExpressions:: mut List::Expr = {}!
-  entryPointStatements forEach: [
-    | it
-    | Expr => entryPointExpressions add: it
-    |=> []
-  ]
-
   // collect union roots before processing branches
   fileToStatements forEach: [file, statements ->
     statements forEach: [
@@ -174,8 +166,7 @@ TypeDeclVisitor
     processDeclarations file: file statements: statements
   ]
 
-  fillTypesAndMessages =
-  [
+  fillTypesAndMessages = [
     pkgTotypeDecls2 forEach: [ tuple ->
       pkgName = tuple x
       typeDecl = tuple y
@@ -399,19 +390,6 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
       field = TypeTField name: it name typeT: fieldType isMut: isMut
       typeStub fields add: field
 
-      // getter = NivaMethod
-      //   name: it name
-      //   receiverType: typeStub
-      //   args: {}
-      //   returnType: fieldType
-      //   forMut: false // false because its getter
-      //   possibleErrors: {}
-      //   kind: MessageSendKind.Getter
-      //   decl: null
-      //   protocolName: "getters"
-      //   pkgName: "core" // this is getter
-
-      // db addNewMethod: getter forType: typeStub inProtocol: "getters"
     ]
 
 
