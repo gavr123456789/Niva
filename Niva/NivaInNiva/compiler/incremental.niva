@@ -70,6 +70,9 @@ IrUnionDef canonicalInterfaceString -> String =
 IrEnumDef canonicalInterfaceString -> String =
   "enum|" + id + "|" + (values joinWith: ",")
 
+IrStateDef canonicalInterfaceString -> String =
+  "state|" + name + "|" + typeRef canonicalInterfaceString
+
 IrFunction canonicalInterfaceString -> String =
   "fn|" + id + "|" + (generics joinWith: ",") + "|" +
     receiverType canonicalInterfaceString + "|" +
@@ -82,6 +85,7 @@ IrPackage canonicalInterfaceString -> String = [
   types map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
   unions map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
   enums map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
+  stateDefs map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
   functions map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
   ^ parts joinWith: "\n"
 ]
@@ -109,11 +113,12 @@ type CompilerSession
   reverseDependencies: Map(String, IncrementalDependencyTargets)
   specializationUses: Map(String, Set(String))
   compilerConfig: CompilerConfigFingerprint?
+  cljManifest: CljManifest?
 
 constructor CompilerSession empty -> CompilerSession =
   CompilerSession revision: 0 committedSnapshot: null modules: #{} entry: null
     dependencies: #{} reverseDependencies: #{} specializationUses: #{}
-    compilerConfig: null
+    compilerConfig: null cljManifest: null
 
 Map(String, IncrementalDependencyTargets) incrementalReverseGraph -> Map(String, IncrementalDependencyTargets) = [
   reverseLists::mut Map(String, IncrementalDependencyTargets) = #{}!
@@ -202,11 +207,13 @@ type CompilerCandidate
   interfaceInvalidated: Set(String)
   bodyInvalidated: Set(String)
   outputInvalidated: Set(String)
+  cljManifest: CljManifest?
 
 type CompilerBackendArtifact
   backend: String
   target: String
   content: String
+  cljOutput: CljOutput?
 
 CompilerCandidate emitBackend -> CompilerBackendArtifact = [
   backend = compilerConfig backend
@@ -214,7 +221,14 @@ CompilerCandidate emitBackend -> CompilerBackendArtifact = [
     | backend
     | "clj" => [CljBackend fullFromIrModule: irModule]
     |=> [TO DO: "incremental backend is not available for " + backend]
-  ^ CompilerBackendArtifact backend: backend target: compilerConfig target content: content
+  output = backend == "clj"
+    ifTrue: [(CljBackend fullOutputFromIrModule: irModule debug: false mode: CljEmitMode.Program)]
+    ifFalse: [null]
+  ^ CompilerBackendArtifact
+    backend: backend
+    target: compilerConfig target
+    content: content
+    cljOutput: output
 ]
 
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(specializationUses): Map(String, Set(String)) apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
@@ -326,6 +340,9 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
     specializationUses: specializationUses compilerConfig: config
     sourceInvalidated: sourceInvalidated interfaceInvalidated: interfaceInvalidated
     bodyInvalidated: bodyInvalidated outputInvalidated: outputInvalidated
+    cljManifest: (config backend == "clj"
+      ifTrue: [CljBackend manifestFromIrModule: ir]
+      ifFalse: [null])
 ]
 
 CompilerSession commit(candidate): CompilerCandidate -> CompilerSession = [
@@ -339,6 +356,7 @@ CompilerSession commit(candidate): CompilerCandidate -> CompilerSession = [
     reverseDependencies: candidate reverseDependencies
     specializationUses: candidate specializationUses
     compilerConfig: candidate compilerConfig
+    cljManifest: candidate cljManifest
 ]
 
 type CompilerDiagnostic
@@ -459,6 +477,26 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
   candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
     bodyResolver: bodyResolver bodyModules: bodyModules config: config
   artifact = candidate emitBackend
+  shapeChanges = config backend == "clj"
+    ifTrue: [
+      candidate cljManifest unpack: [currentManifest ->
+        cljManifest unpack: [previousManifest ->
+          currentManifest incompatibleChanges: previousManifest
+        ] or: {String}
+      ] or: {String}
+    ]
+    ifFalse: [{String}]
+  shapeChanges forEach: [change ->
+    diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+      path: snapshot entryPoint + ".niva"
+      message: "hard restart required: " + change +
+        "; automatic state migration is not supported")
+  ]
+  diagnostics isEmpty ifFalse: [
+    ^ CompilerCompilationResult
+      requestVersion: requestVersion candidate: null backendArtifact: null
+      diagnostics: diagnostics toList cancelled: false
+  ]
   ^ CompilerCompilationResult requestVersion: requestVersion candidate: candidate
     backendArtifact: artifact diagnostics: {} cancelled: false
 ]

@@ -11,13 +11,18 @@ mut counter = 4
 
 ```clojure
 ^:clj-reload/keep
-(def counter (atom 4))
+(def counter (atom __niva_state_uninitialized))
 ```
 
 Чтение и assignment продолжают генерировать `@counter` и `reset!`/`swap!` в
-соответствии с семантикой Niva. При unload `clj-reload` переносит старый Var и
-тот же Atom в загруженный заново namespace, поэтому initializer не сбрасывает
-значение.
+соответствии с семантикой Niva. При первом вызове entry hook sentinel заменяется
+на вычисленный initializer через `reset!`; последующие вызовы initializer не
+повторяют. При unload `clj-reload` переносит старый Var и тот же Atom в
+загруженный заново namespace, поэтому state не сбрасывается.
+
+Initializer вычисляется внутри entry hook, а не при `require`: это сохраняет
+доступ к предшествующим entry bindings и не превращает произвольный
+top-level side effect в namespace load effect.
 
 Нужно явно разделить:
 

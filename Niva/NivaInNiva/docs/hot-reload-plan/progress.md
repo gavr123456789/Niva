@@ -2,12 +2,48 @@
 
 ## Текущий этап
 
-Фаза 4: module-level incremental compilation.
+Фаза 7: сохранение `mut`-состояния.
 
-Статус: в работе; foundation сессии, invalidation planner и immutable lookup
-environment реализованы.
+Статус: в работе; entry hooks, persistent state, type-shape manifest и
+hard-restart diagnostics реализованы, интеграция с полным watch/clj-reload
+runtime ещё впереди.
 
-### Реализовано в текущем подэтапе фазы 4
+### Завершена фаза 6: declarations отдельно от entry execution
+
+- Program Clojure output теперь определяет `__niva_entry!` как единственный
+  hook для произвольных top-level expressions.
+- `-main` оставлен тонким CLI/native compatibility wrapper'ом и делегирует в
+  `__niva_entry!`.
+- Загрузка generated namespace через `require` не выполняет entry code; это
+  проверено runtime regression test.
+- REPL mode сохранён отдельным load/evaluate control path.
+
+### Начата фаза 7: namespace-level `mut` state
+
+- Добавлен `IrStateDef`; top-level `IrLet(isMut: true)` поднимается из entry
+  block и больше не выполняется внутри hook как локальный initializer.
+- `IrPackage` хранит state definitions; они входят в interface hash и
+  dependency evidence.
+- Clojure Program backend испускает `^:clj-reload/keep` state Var с private
+  object sentinel; initializer один раз вычисляется внутри entry hook.
+- Reads/writes state внутри entry используют `@name` и `reset!`; local mut
+  остаётся обычным локальным Atom.
+- Добавлен runtime test: `require` не запускает entry, явный вызов hook читает
+  сохранённый Atom.
+- Generated records и union branch records помечаются
+  `^:clj-reload/keep`, чтобы method-only reload сохранял class identity.
+- Для `IrTypeDef`, `IrUnionDef` и `IrEnumDef` определены deterministic shapes:
+  порядок полей/branches/enum values и ABI-relevant type references входят в
+  shape.
+- `CljManifest` детерминированно содержит entry namespace, modules с direct
+  deps, state Vars и type shapes; `manifest.edn` пишется рядом с generated
+  output, а существующие `CljOutput.files` и `main.clj` shim сохранены.
+- При изменении record/union/enum shape или типа уже сохранённого state Var
+  compiler result получает diagnostic с текстом `hard restart required`, не
+  коммитит candidate и явно сообщает, что автоматическая миграция state не
+  поддерживается.
+
+### Реализовано в фазе 4
 
 - Добавлены immutable-by-construction `WorkspaceSnapshot` и persistent
   `CompilerSession`: подготовка candidate не меняет committed state.
@@ -72,7 +108,7 @@ environment реализованы.
   `TO DO: "no lsp binary"`. Поэтому создание adapters и watch subsystem
   остаётся в соответствующих будущих фазах, а не входит в фазу 4.
 
-### Начата фаза 5: namespace-per-Niva-file
+### Завершена фаза 5: namespace-per-Niva-file
 
 - Добавлен `CljOutput` с map generated relative paths и entry namespace.
 - `IrPackage` получает детерминированные mappings:
@@ -103,6 +139,24 @@ environment реализованы.
 - [x] Добавить clean-vs-multi-file differential и ручной запуск generated
   Clojure project.
 
+### Оставшаяся работа фазы 7
+
+- [x] Вынести top-level `mut` в `IrStateDef` и испускать persistent Atom.
+- [x] Добавить `^:clj-reload/keep` metadata для state Var.
+- [x] Добавить deterministic state/type-shape manifest и hard-restart
+  diagnostic для несовместимого изменения record, union и enum shape.
+- [x] Покрыть unchanged shape, изменённые record fields, union branches и
+  enum values; clean и incremental Clojure output сравниваются вместе с
+  manifest.
+- [ ] Подключить state definitions к реальному initial-load/reload lifecycle.
+
+### Частично начата фаза 8
+
+- [x] Ввести общий `CljManifest` и запись `manifest.edn` после codegen.
+- [ ] Перевести compiler output на staging directory и атомарную публикацию.
+- [ ] Подключить manifest к реальному watch/clj-reload lifecycle и обработать
+  generation id/load errors.
+
 ### Оставшаяся работа фазы 4
 
 - [x] Разделить resolver API на parse/interface collection и body resolution.
@@ -121,10 +175,17 @@ environment реализованы.
 ### Изменённые файлы текущего подэтапа
 
 - `compiler/incremental.niva`
+- `compiler/compiler.niva`
 - `compiler/compilerTests.niva`
 - `argParse/cliArgs.niva`
 - `argParse/cliArgsTest.niva`
+- `back/clojureBackend/cljEmit.niva`
+- `back/clojureBackend/cljBack.niva`
+- `back/clojureBackend/cljManifest.niva`
+- `back/tests/cljBackTests.niva`
 - `ir/fromTypedAst.niva`
+- `ir/irTypes.niva`
+- `ir/irDependencies.niva`
 - `front/resolver/typeDB.niva`
 - `front/resolver/astVisitor.niva`
 - `libs/binds/hash.bind.niva`
@@ -134,16 +195,18 @@ environment реализованы.
 
 ### Проверки текущего подэтапа
 
-- `niva test compilerTests` — 18/18 тестов успешно, включая snapshot-aware
+- `niva test cljBackTests` — 54/54 теста успешно, включая deterministic
+  manifest, shape compatibility и hard-restart coverage.
+- `niva test compilerTests` — 19/19 тестов успешно, включая snapshot-aware
   compile entry point, повторное независимое body resolution из одного
-  interface snapshot, transactional result commit и routing persistent/clean
-  session по единому incremental flag.
-- `niva test cliArgsTest` — 12/12 тестов успешно, включая opt-in/default
+  interface snapshot, transactional result commit, shape diagnostic и
+  routing persistent/clean session по единому incremental flag.
+- `niva test cliArgsTest` — 13/13 тестов успешно, включая opt-in/default
   семантику `--incremental` и сохранение флага для LSP backend selection.
 - `niva test resolverTests` — весь suite успешно.
 - `niva test irTests` — 8/8 тестов успешно.
 - `niva test genericTests` — 3/3 теста успешно.
-- `niva test` — весь test suite успешно.
+- `niva test` — 272/272 теста успешно.
 - `niva build` — успешно.
 - `niva run main.niva` — успешно.
 

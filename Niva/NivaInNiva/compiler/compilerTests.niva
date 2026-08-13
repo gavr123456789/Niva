@@ -329,6 +329,30 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
   Assert that: cancelled diagnostics count equals: 0
 ]
 
+Test incompatibleReloadShapeRequiresHardRestart = [
+  initialSources = #{"main" "type Person name: String"}
+  changedSources = #{"main" "type Person name: String age: Int"}
+  config = CompilerConfigFingerprint incrementalTest
+  initialSnapshot = WorkspaceSnapshot fromSources: (initialSources toNivaSourceInputs)
+    revision: 1 entryPoint: "main" documentVersions: #{}
+  changedSnapshot = WorkspaceSnapshot fromSources: (changedSources toNivaSourceInputs)
+    revision: 2 entryPoint: "main" documentVersions: #{}
+
+  session = CompilerSession empty
+  initial = session compileSnapshot: initialSnapshot config: config
+    requestVersion: 1 cancelled: false incremental: true
+  committed = session commitResult: initial incremental: true
+  changed = committed compileSnapshot: changedSnapshot config: config
+    requestVersion: 2 cancelled: false incremental: true
+
+  Assert that: changed candidate equals: null
+  Assert that: changed diagnostics count equals: 1
+  diagnostic = changed diagnostics first
+  Assert that: (diagnostic message contains: "hard restart required") equals: true
+  Assert that: (diagnostic message contains: "automatic state migration is not supported") equals: true
+  Assert that: ((committed cljManifest unpackOrPANIC) canonical contains: "main/main_Person") equals: true
+]
+
 Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   sources = #{"app.main" "1 echo"}
   snapshot = WorkspaceSnapshot fromSources: (sources toNivaSourceInputs)
@@ -449,4 +473,9 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
 
   Assert that: changedCandidate bodyInvalidated equals: #( "person" )
   Assert that: changedArtifact content equals: changedCleanOutput
+  changedOutput = changedArtifact cljOutput unpackOrPANIC
+  cleanOutput = CljBackend fullOutputFromIrModule: (changedClean toIrModule)
+    debug: false mode: CljEmitMode.Program
+  Assert that: changedOutput files equals: cleanOutput files
+  Assert that: changedOutput manifest canonical equals: cleanOutput manifest canonical
 ]

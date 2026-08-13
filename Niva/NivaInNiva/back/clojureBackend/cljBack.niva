@@ -3,6 +3,7 @@ type CljBackend
 type CljOutput
   files: Map(String, String)
   entryNamespace: String
+  manifest: CljManifest
 
 // Selects the shape of the generated Clojure module.  Program output keeps
 // the normal `main` namespace and `-main` entry point; REPL output is a
@@ -12,6 +13,7 @@ enum CljEmitMode = Program | Repl
 
 type CljContext
   imports: mut Set(String)
+  stateNames: mut Set(String)
   debug: Bool
   debugEntries: mut List(CljDebugEntry)
   currentPackage: String
@@ -28,10 +30,19 @@ constructor CljContext newDebug(debug): Bool -> CljContext =
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
-  CljContext imports: (imports toMutableSet) debug: debug debugEntries: {}! currentPackage: pkg
+  CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
+    debugEntries: {}! currentPackage: pkg
 
 CljContext addImport(name): String -> Unit = [
   imports add: name
+]
+
+CljContext addStateName(name): String -> Unit = [
+  stateNames add: name
+]
+
+CljContext isStateName(name): String -> Bool = [
+  ^ stateNames contains: name
 ]
 
 String cljDebugQuoted -> String =

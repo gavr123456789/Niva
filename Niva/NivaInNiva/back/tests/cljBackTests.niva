@@ -33,6 +33,76 @@ Test cljPackageOutputUsesStableNamespacesAndPaths = [
   main contains: "(defn -main", assertTrue
 ]
 
+Test cljManifestIsDeterministicAndUnchangedShapeIsCompatible = [
+  sources = #{
+    "model" "type Person name: String"
+    "main" "mut counter = 1\np = Person name: \"Ada\"\np"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  firstOutput = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  secondOutput = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+
+  Assert that: firstOutput manifest canonical equals: secondOutput manifest canonical
+  Assert that: (firstOutput manifest edn contains: ":entry-ns \"niva.generated.main\"") equals: true
+  Assert that: (firstOutput manifest edn contains: "\"main\" {:file \"niva/generated/main.clj\"") equals: true
+  Assert that: (firstOutput manifest edn contains: "\"main/counter\"") equals: true
+  Assert that: (firstOutput manifest edn contains: "\"model/model_Person\"") equals: true
+  Assert that: (firstOutput manifest incompatibleChanges: secondOutput manifest) count equals: 0
+]
+
+Test cljManifestDetectsChangedRecordFields = [
+  firstSources = #{"main" "type Person name: String"}
+  changedSources = #{"main" "type Person name: String age: Int"}
+  firstResult = ResolverHelper resolve: firstSources entryPoint: "main" backend: "clj"
+  changedResult = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
+  firstManifest = (CljBackend fullOutputFromIrModule: (firstResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changedManifest = (CljBackend fullOutputFromIrModule: (changedResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changes = changedManifest incompatibleChanges: firstManifest
+
+  Assert that: changes count equals: 1
+  Assert that: (changes first contains: "type shape changed: main/main_Person") equals: true
+]
+
+Test cljManifestDetectsChangedUnionBranches = [
+  firstSources = #{"main" "union Shape =\n| Circle radius: Int"}
+  changedSources = #{"main" "union Shape =\n| Circle radius: Int diameter: Int"}
+  firstResult = ResolverHelper resolve: firstSources entryPoint: "main" backend: "clj"
+  changedResult = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
+  firstManifest = (CljBackend fullOutputFromIrModule: (firstResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changedManifest = (CljBackend fullOutputFromIrModule: (changedResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changes = changedManifest incompatibleChanges: firstManifest
+
+  Assert that: changes count equals: 1
+  Assert that: (changes first contains: "type shape changed: main/main_Shape") equals: true
+]
+
+Test cljManifestDetectsChangedEnumValues = [
+  oldEnum = IrEnumDef
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green"} token: FAKE_TOKEN
+  newEnum = IrEnumDef
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green" "Blue"} token: FAKE_TOKEN
+  oldManifest = CljManifest
+    version: 1 entryNamespace: "niva.generated.main" modules: {}
+    stateVars: {}
+    typeShapes: {(CljTypeShape key: "main/main_Color" kind: "enum"
+      shape: oldEnum cljManifestShape)}
+  newManifest = CljManifest
+    version: 1 entryNamespace: "niva.generated.main" modules: {}
+    stateVars: {}
+    typeShapes: {(CljTypeShape key: "main/main_Color" kind: "enum"
+      shape: newEnum cljManifestShape)}
+  changes = newManifest incompatibleChanges: oldManifest
+
+  Assert that: changes count equals: 1
+  Assert that: (changes first contains: "type shape changed: main/main_Color") equals: true
+]
+
 Test cljPackageOutputQualifiesUnionBranches = [
   sources = #{
     "model" "union Shape =\n| Circle radius: Int"
@@ -143,6 +213,40 @@ Test cljPackageOutputMatchesSingleStringAtRuntime = [
   Assert that: cleanupExit equals: 0
 ]
 
+Test cljPackageRequireDoesNotRunEntry = [
+  source = "base = 2\nmut counter = base\ncounter <- counter + 1\nInt announce -> Unit = Bind emit: \"(println $0)\"\ncounter announce"
+  result = ResolverHelper resolve: #{"main" source} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+
+  io = IO_Container new
+  root = ".niva_clj/entry-hook"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/entry-hook && mkdir -p .niva_clj/entry-hook/niva/generated"}
+  Assert that: setupExit equals: 0
+  output files forEach: [relativePath, content ->
+    destination = root + "/" + relativePath
+    io writeFile file: destination content: content
+  ]
+  io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
+
+  requireExit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -M -e '(require (quote niva.generated.main))' > result.txt"}
+  Assert that: requireExit equals: 0
+  requireResult = io readFile path: root + "/result.txt"
+  Assert that: requireResult equals: ""
+
+  entryExit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -M -e '(require (quote niva.generated.main)) (niva.generated.main/__niva_entry!) (niva.generated.main/__niva_entry!)' > result.txt"}
+  Assert that: entryExit equals: 0
+  entryResult = io readFile path: root + "/result.txt"
+  Assert that: entryResult equals: "3\n:unit\n4\n:unit\n"
+
+  cleanupExit = io runProgram args: {"sh" "-c" "rm -rf .niva_clj/entry-hook"}
+  Assert that: cleanupExit equals: 0
+]
+
 Test cljUnionShapesAsRecords = [
   fileMain = """
     union Shape =
@@ -198,15 +302,18 @@ Test cljDeclaresFunctionsBeforeDefinitions = [
   beforeFirstDef contains: "(declare main__core_Int__first main__core_Int__second)", assertTrue
 ]
 
-Test cljEntryUsesLetAtTopLevel = [
+Test cljEntryIsBehindReloadSafeHook = [
     fileMain = """
      x = 1
      y = 2
     """
     result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
     clj = CljBackend fullFromIrModule: (result toIrModule)
+    clj contains: "(defn __niva_entry! []", assertTrue
     clj contains: "(let [x 1", assertTrue
     clj contains: "y 2]", assertTrue
+    Assert that: (clj contains: "\n(let [x 1") equals: false
+    clj contains: "(defn -main [& args]", assertTrue
 ]
 
 Test cljProgramNamespaceGeneratesJavaMainClass = [
@@ -258,6 +365,37 @@ Test cljReplTopLevelMutationUsesDef = [
   clj contains: "\nq\n", assertTrue
 ]
 
+Test cljReplInitialMutationUsesPlainValue = [
+  fileMain = """
+    mut q = 1
+    q <- q + 2
+    q
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+          debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(def q 1)", assertTrue
+  clj contains: "(def q (+ q 2))", assertTrue
+  Assert that: (clj contains: "(atom 1)") equals: false
+  Assert that: (clj contains: "(reset! q") equals: false
+]
+
+Test cljReplStateInitializersUsePlainValues = [
+  fileMain = """
+    mut a = 1
+    mut b = a + 1
+    b
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+          debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(def a 1)", assertTrue
+  clj contains: "(def b (+ a 1))", assertTrue
+  Assert that: (clj contains: "@a") equals: false
+]
+
 Test cljMutVarAsAtom = [
   fileMain = """
     mut c = 3
@@ -266,7 +404,10 @@ Test cljMutVarAsAtom = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
-  clj contains: "c (atom 3)", assertTrue
+  clj contains: "(def ^:private __niva_state_uninitialized (Object.))", assertTrue
+  clj contains: "^:clj-reload/keep (def c (atom __niva_state_uninitialized))", assertTrue
+  Assert that: (clj contains: "(defn __niva_entry! []\n  (let [c (atom 3)") equals: false
+  clj contains: "(reset! c 3)", assertTrue
   clj contains: "(reset! c 4)", assertTrue
 ]
 

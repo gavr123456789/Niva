@@ -1016,6 +1016,28 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
                                       specializationUses: specializationUses]
   rawEntryBlock = entryBody toIrBlock: resolverDb currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
 
+  // lift entry mutations into persistent state definitions
+  stateDefs::mut List::IrStateDef = {}!
+  executableEntryStmts::mut List::IrStmt = {}!
+  rawEntryBlock stmts forEach: [stmt ->
+    | stmt
+    | IrLet => [
+        stmt isMut
+          ifTrue: [stateDefs add: (IrStateDef
+            name: stmt name
+            typeRef: stmt typeRef
+            initializer: stmt value
+            token: stmt token)
+            executableEntryStmts add: stmt]
+          ifFalse: [executableEntryStmts add: stmt]
+      ]
+    |=> [executableEntryStmts add: stmt]
+  ]
+  entryBlock = IrBlock
+    stmts: executableEntryStmts toList
+    result: rawEntryBlock result
+    resultType: rawEntryBlock resultType
+
   // attach instantiations
   functionsWithInst = functions map: [f ->
     instForFn = instMap at: f id
@@ -1063,6 +1085,7 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
       types: typesList
       unions: unionsList
       enums: enumsList
+      stateDefs: (file == entryPointName ifTrue: [stateDefs toList] ifFalse: [{}])
       functions: functionsList)
   ]
 
@@ -1070,7 +1093,7 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
       version: "nir/v0"
       pkg: entryPointName
       packages: packagesIr toList
-      entry: rawEntryBlock
+      entry: entryBlock
 
   ^ rawModule withNormalizedDependencies
 ]

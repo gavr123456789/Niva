@@ -150,6 +150,7 @@ constructor NivaCompiler [
               shim = "(ns main (:gen-class) (:require [" + entryNamespace + "]))\n" +
                 "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
               io writeFile file: realCljPath + "/main.clj" content: shim
+              io writeFile file: realCljPath + "/manifest.edn" content: output manifest edn
             ]
             io writeFile file: realCljPath + "/deps.edn" content: "{:paths [\".\"]}\n"
         ]
