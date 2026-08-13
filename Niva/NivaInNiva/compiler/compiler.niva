@@ -124,9 +124,25 @@ constructor NivaCompiler [
               ifTrue:  [res toIrModuleFromEntryLine: replLine]
               ifFalse: [res toIrModule]
             mode = repl ifTrue: [CljEmitMode.Repl] ifFalse: [CljEmitMode.Program]
-            cljContent = CljBackend fullFromIrModule: irModule debug: debug mode: mode
-            destanation = realCljPath + "/main.clj"
-            io writeFile file: destanation content: cljContent
+            repl ifTrue: [
+              cljContent = CljBackend fullFromIrModule: irModule debug: debug mode: mode
+              io writeFile file: realCljPath + "/main.clj" content: cljContent
+            ] ifFalse: [
+              output = CljBackend fullOutputFromIrModule: irModule debug: debug mode: mode
+              output files forEach: [relativePath, content ->
+                destination = realCljPath + "/" + relativePath
+                FileSystem createDirectories: (io getParent path: destination) toPath
+                io writeFile file: destination content: content
+              ]
+
+              // keep the old cli and native build entry namespace stable
+              shim = """
+                (ns main (:gen-class) (:require [niva.generated.main]))
+                (defn -main [& args]
+                  (apply niva.generated.main/-main args))
+              """ trimIndent
+              io writeFile file: realCljPath + "/main.clj" content: shim
+            ]
             io writeFile file: realCljPath + "/deps.edn" content: "{:paths [\".\"]}\n"
         ]
 
