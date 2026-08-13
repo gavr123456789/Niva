@@ -77,6 +77,8 @@ environment реализованы.
   `fullFromIrModule` single-string control path.
 - Compiler Clojure writer подключён к `CljOutput.files`; legacy `main.clj`
   сохраняется как небольшой forwarding shim на generated entry namespace.
+- Shim строится из `CljOutput.entryNamespace`, поэтому не предполагает, что
+  entry package всегда называется `main`.
 - Generated non-entry packages больше не получают `:gen-class`.
 - В package output квалифицируются cross-package function calls, record
   constructors, type references и type-match branches.
@@ -310,6 +312,9 @@ environment реализованы.
 - 2026-08-13: начата фаза 5; Clojure backend получил `CljOutput`, deterministic
   package paths/namespaces, direct local requires и qualified cross-package
   calls/constructors/type references.
+- 2026-08-13: `niva` compiler writer начал писать multi-file output, удалять
+  stale generated files по `niva/generated/` и сохранять CLI/native entry через
+  dynamic namespace shim.
 
 ## Следующий этап
 
