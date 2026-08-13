@@ -14,6 +14,8 @@ type IO_Container
   writeFile:  [FilePath, FileContent -> Unit]
   walkDir:    [FilePath -> List(NivaSourceFile)]
   getParent:  [String -> String]
+  createDirectories: [String -> Unit]
+  deleteRecursively: [String -> Unit]
   currentDir: String
   runProgram: [List(String) -> Int]
   runProgramFromPath: [String, List(String) -> Int]
@@ -44,6 +46,16 @@ constructor IO_Container new -> IO_Container = [
 
   getParent = [path: String -> path toPath parent unpackOrPANIC toString]
 
+  createDirectories = [path: String ->
+    FileSystem createDirectories: (path toPath)
+    ()
+  ]
+
+  deleteRecursively = [path: String ->
+    FileSystem deleteRecursively: (path toPath)
+    ()
+  ]
+
   runProgram = [args: List(String) ->
     processBuilder = ProcessBuilder command: args
     processBuilder redirectOutput start waitFor
@@ -55,6 +67,7 @@ constructor IO_Container new -> IO_Container = [
   ]
 
   ^ IO_Container :readFile :writeFile :walkDir :getParent
+    :createDirectories :deleteRecursively
     currentDir: "." :runProgram :runProgramFromPath
 ]
 
