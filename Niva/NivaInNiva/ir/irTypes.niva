@@ -52,6 +52,12 @@ type IrEnumDef
   values: List(String)
   token: Token
 
+type IrStateDef
+  name: String
+  typeRef: IrTypeRef
+  initializer: IrExpr?
+  token: Token
+
 enum IrDependencyKind = Type | Call | Constructor | Explicit
 
 type IrDependency
@@ -163,6 +169,7 @@ type IrPackage
   types: List(IrTypeDef)
   unions: List(IrUnionDef)
   enums: List(IrEnumDef)
+  stateDefs: List(IrStateDef)
   functions: List(IrFunction)
 
 type IrModule

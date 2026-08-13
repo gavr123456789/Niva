@@ -489,6 +489,13 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
   ^ | this
     | IrLet => [
         goName = name cljSanitizeIdent
+        isPersistent = ctx isStateName: name
+        isPersistent ifTrue: [
+          raw = value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
+          init = "(if (identical? @" + goName + " __niva_state_uninitialized) (reset! " +
+            goName + " " + raw + ") nil)"
+          ^ CljBinding name: "_" value: init
+        ]
         scope mutLocals remove: name
         isMut ifTrue: [scope mutLocals add: name]
         raw = value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
@@ -554,7 +561,7 @@ constructor CljBackend [
   on emitTypeDef(def): IrTypeDef ctx: CljContext sb: StringBuilder -> Unit = [
     name = def id cljNormalizeTypeId cljSanitizeIdent
     fields = def fields joinWith: " " transform: [it name cljSanitizeIdent]
-    sb appendLine: ("(defrecord " + name + " [" + fields + "])")
+    sb appendLine: ("^:clj-reload/keep (defrecord " + name + " [" + fields + "])")
     sb appendLine: ""
   ]
 
@@ -569,7 +576,7 @@ constructor CljBackend [
         fieldsStr = commonStr == ""
           ifTrue: [branchStr]
           ifFalse: [branchStr == "" ifTrue: [commonStr] ifFalse: [commonStr + " " + branchStr]]
-        sb appendLine: ("(defrecord " + branchName + " [" + fieldsStr + "])")
+        sb appendLine: ("^:clj-reload/keep (defrecord " + branchName + " [" + fieldsStr + "])")
       ]
     ]
     sb appendLine: ""
@@ -597,6 +604,7 @@ constructor CljBackend [
     fullArgs = fn args joinWith: " " transform: [it name cljSanitizeIdent]
 
     scope = CljScope new
+    ctx stateNames forEach: [it -> scope mutLocals add: it]
     body = fn body toCljBlockBody: ctx scope: scope
 
     (body contains: "\n")
@@ -613,16 +621,24 @@ constructor CljBackend [
     ctx addDebugEntry: generatedLine endLine: generatedEndLine token: fn token method: fn name
   ]
 
-  on emitEntry(entry): IrBlock ctx: CljContext sb: StringBuilder -> Unit = [
-    // wrap the entry as (defn -main [& args] ...) so `clojure -M -m main` finds it
+  on emitStateDef(def): IrStateDef ctx: CljContext sb: StringBuilder -> Unit = [
+    name = def name cljSanitizeIdent
+    sb appendLine: "^:clj-reload/keep (def " + name + " (atom __niva_state_uninitialized))"
+    sb appendLine: ""
+  ]
+
+  on emitEntry(entry): IrBlock stateDefs(stateDefs): List(IrStateDef)
+      ctx(ctx): CljContext sb(sb): StringBuilder -> Unit = [
+    // keep entry execution behind a reload-safe hook
     entryToken = entry stmts isNotEmpty
       ifTrue: [(entry stmts first) token]
       ifFalse: [entry result unpack: [it token] or: FAKE_TOKEN]
     generatedLine = (sb toString) cljLineCount
     scope = CljScope new
+    stateDefs forEach: [it -> scope mutLocals add: it name]
     body = entry toCljBlockBody: ctx scope: scope
     indented = body replace: "\n" with: "\n  "
-    sb appendLine: "(defn -main [& args]"
+    sb appendLine: "(defn __niva_entry! []"
     ctx debug
       ifTrue: [
         sb appendLine: "  (try"
@@ -633,8 +649,12 @@ constructor CljBackend [
       ]
       ifFalse: [sb appendLine: ("  " + indented + ")")]
     sb appendLine: ""
+    // keep the cli entry point as a thin compatibility wrapper
+    sb appendLine: "(defn -main [& args]"
+    sb appendLine: "  (__niva_entry!))"
+    sb appendLine: ""
     generatedEndLine = ((sb toString) cljLineCount) - 2
-    ctx addDebugEntry: generatedLine endLine: generatedEndLine token: entryToken method: "main"
+    ctx addDebugEntry: generatedLine endLine: generatedEndLine token: entryToken method: "__niva_entry!"
   ]
 
   // REPL modules have no `-main`: the entry block is emitted as a top-level
@@ -650,7 +670,10 @@ constructor CljBackend [
       ]
       | IrSetLocal => [
         value = stmt value toCljExpr: ctx scope: scope
-        sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")
+        isPersistent = scope isMut: stmt name
+        isPersistent
+          ifTrue: [sb appendLine: ("(reset! " + (stmt name cljSanitizeIdent) + " " + value + ")")]
+          ifFalse: [sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")]
       ]
       | IrExprStmt => [sb appendLine: (stmt expr toCljExpr: ctx scope: scope)]
       |=> [
@@ -678,8 +701,53 @@ constructor CljBackend [
       files at: (pkg cljGeneratedPath) put: content
     ]
 
-    ^ CljOutput files: files toMap entryNamespace: (ir pkg cljGeneratedNamespace)
+    modules::mut List(CljModuleManifest) = {}!
+    stateVars::mut List(CljStateManifest) = {}!
+    typeShapes::mut List(CljTypeShape) = {}!
+    ir packages sortedBy: [it name], forEach: [pkg ->
+      modules add: (CljModuleManifest
+        moduleId: pkg name
+        file: pkg cljGeneratedPath
+        deps: ((pkg dependencyPackageNames filter: [it != "core"]) sortedBy: [it]))
+      pkg stateDefs forEach: [state ->
+        stateVars add: (CljStateManifest
+          key: pkg name + "/" + state name
+          varName: state name
+          typeShape: state typeRef canonicalInterfaceString)
+      ]
+      pkg types forEach: [def ->
+        typeShapes add: (CljTypeShape
+          key: pkg name + "/" + def id
+          kind: "record"
+          shape: def cljManifestShape)
+      ]
+      pkg unions forEach: [def ->
+        typeShapes add: (CljTypeShape
+          key: pkg name + "/" + def id
+          kind: "union"
+          shape: def cljManifestShape)
+      ]
+      pkg enums forEach: [def ->
+        typeShapes add: (CljTypeShape
+          key: pkg name + "/" + def id
+          kind: "enum"
+          shape: def cljManifestShape)
+      ]
+    ]
+    manifest = CljManifest
+      version: 1
+      entryNamespace: (ir pkg cljGeneratedNamespace)
+      modules: modules toList
+      stateVars: stateVars toList
+      typeShapes: typeShapes toList
+
+    ^ CljOutput files: files toMap
+      entryNamespace: (ir pkg cljGeneratedNamespace)
+      manifest: manifest
   ]
+
+  on manifestFromIrModule(ir): IrModule -> CljManifest =
+    (CljBackend fullOutputFromIrModule: ir debug: false mode: CljEmitMode.Program) manifest
 
   // Public entry point.
   on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode
@@ -692,8 +760,22 @@ constructor CljBackend [
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut Set(String) = #()!
+    isRepl = mode == CljEmitMode.Repl
+    hasProgramStates = (isRepl not) && (ir packages any: [it stateDefs isNotEmpty])
+    hasProgramStates ifTrue: [
+      body appendLine: "(def ^:private __niva_state_uninitialized (Object.))"
+      body appendLine: ""
+    ]
 
     ir packages forEach: [pkg ->
+      pkg stateDefs forEach: [state ->
+        isRepl
+          ifTrue: [()]
+          ifFalse: [
+            ctx addStateName: state name
+            CljBackend emitStateDef: state ctx: ctx sb: body
+          ]
+      ]
       pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
       pkg unions forEach: [CljBackend emitUnionDef: it ctx: ctx sb: body]
       pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
@@ -711,11 +793,14 @@ constructor CljBackend [
         ]
       ]
     ]
-    isRepl = mode == CljEmitMode.Repl
     ir entry unpack: [entry ->
       isRepl
         ifTrue: [CljBackend emitEntryRepl: entry ctx: ctx sb: body]
-        ifFalse: [CljBackend emitEntry: entry ctx: ctx sb: body]
+        ifFalse: [
+          entryPackage = ir packages find: [it name == ir pkg]
+          entryStates = entryPackage unpack: [it stateDefs] or: {}
+          CljBackend emitEntry: entry stateDefs: entryStates ctx: ctx sb: body
+        ]
     ]
 
     header = StringBuilder new
@@ -733,10 +818,12 @@ constructor CljBackend [
         reqs = importsList joinWith: " " transform: [it -> "[" + it + "]"]
         genClass = emitsMainClass ifTrue: [" (:gen-class)"] ifFalse: [""]
         header appendLine: ("(ns " + nsName + genClass + " (:require " + reqs + "))")
-      ]
+    ]
     functionNamesList = functionNames toList
-    functionNamesList isNotEmpty ifTrue: [
-      header appendLine: ("(declare " + (functionNamesList joinWith: " ") + ")")
+    stateNamesList = (ctx stateNames toList) map: [it cljSanitizeIdent]
+    declarationNames = functionNamesList + stateNamesList
+    declarationNames isNotEmpty ifTrue: [
+      header appendLine: ("(declare " + (declarationNames joinWith: " ") + ")")
     ]
     header appendLine: ""
 

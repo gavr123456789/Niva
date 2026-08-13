@@ -146,6 +146,10 @@ IrPackage collectDependencyEvidence(localPackages): Set(String) entry(entry): Ir
     ]
   ]
   functions forEach: [it collectDependenciesInto: collector]
+  stateDefs forEach: [state ->
+    state typeRef collectDependenciesInto: collector at: state token
+    state initializer unpack: [it collectDependenciesInto: collector]
+  ]
   entry unpack: [it collectDependenciesInto: collector]
 
   ^ collector dependencies toList sortedBy: [it stableKey]
@@ -163,6 +167,7 @@ IrModule withNormalizedDependencies -> IrModule = [
       types: modulePkg types
       unions: modulePkg unions
       enums: modulePkg enums
+      stateDefs: modulePkg stateDefs
       functions: modulePkg functions
   ]
 
