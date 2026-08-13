@@ -62,9 +62,15 @@ environment реализованы.
   отбрасывается проверкой base revision.
 - Differential test сравнивает clean и incremental Clojure output для initial
   compilation и body-only изменения leaf-модуля.
-- Общий CLI parser теперь сохраняет `--incremental` в `ArgsParsed`; подключение
-  этого флага к реальным watch/LSP entry points остаётся незавершённым до их
-  появления.
+- Общий CLI parser сохраняет единый `--incremental` в `ArgsParsed`, а общий
+  `CompilerSession.compileSnapshot(... incremental:)` является точкой выбора:
+  с флагом используется переданная persistent session, без флага — новая clean
+  session как differential/control path. Симметричный
+  `commitResult(... incremental:)` не сохраняет state clean-компиляции.
+- В репозитории пока нет реальных watch/LSP entry points: `watch` отсутствует в
+  CLI parser, `CompilerOption.Daemon` пуст, а `CompilerBackend.Lsp` ведёт в
+  `TO DO: "no lsp binary"`. Поэтому создание adapters и watch subsystem
+  остаётся в соответствующих будущих фазах, а не входит в фазу 4.
 
 ### Начата фаза 5: namespace-per-Niva-file
 
@@ -108,23 +114,32 @@ environment реализованы.
   candidate только из уже успешно построенного `ResolverHelper`.
 - [x] Подключить module cache к реальному IR/backend pipeline и differential
   clean-vs-incremental tests.
-- [ ] Подключить единый `--incremental` к будущим watch и LSP entry points.
+- [x] Определить единый `--incremental` на доступной границе CLI/session и
+  сохранить clean compilation без флага. Будущие watch/LSP adapters должны
+  передавать это значение в готовый session API при появлении entry points.
 
 ### Изменённые файлы текущего подэтапа
 
 - `compiler/incremental.niva`
 - `compiler/compilerTests.niva`
+- `argParse/cliArgs.niva`
+- `argParse/cliArgsTest.niva`
 - `ir/fromTypedAst.niva`
 - `front/resolver/typeDB.niva`
 - `front/resolver/astVisitor.niva`
 - `libs/binds/hash.bind.niva`
+- `docs/hot-reload-plan/phase-04-incremental-compilation.md`
+- `docs/hot-reload-plan/implementation-and-tests.md`
 - `docs/hot-reload-plan/progress.md`
 
 ### Проверки текущего подэтапа
 
-- `niva test compilerTests` — 17/17 тестов успешно, включая snapshot-aware
+- `niva test compilerTests` — 18/18 тестов успешно, включая snapshot-aware
   compile entry point, повторное независимое body resolution из одного
-  interface snapshot и transactional result commit.
+  interface snapshot, transactional result commit и routing persistent/clean
+  session по единому incremental flag.
+- `niva test cliArgsTest` — 12/12 тестов успешно, включая opt-in/default
+  семантику `--incremental` и сохранение флага для LSP backend selection.
 - `niva test resolverTests` — весь suite успешно.
 - `niva test irTests` — 8/8 тестов успешно.
 - `niva test genericTests` — 3/3 теста успешно.
@@ -310,6 +325,9 @@ environment реализованы.
 - 2026-08-13: добавлен entrypoint-neutral `CompilerSession.compileSnapshot` с
   сохранением entry module/document versions и `commitResult` для безопасного
   подключения watch/LSP.
+- 2026-08-13: подтверждено отсутствие реальных watch/LSP entry points; единый
+  `--incremental` подключён к доступной session boundary, а clean routing и
+  эквивалентность output закреплены targeted tests.
 - 2026-08-13: начата фаза 5; Clojure backend получил `CljOutput`, deterministic
   package paths/namespaces, direct local requires и qualified cross-package
   calls/constructors/type references.
@@ -322,5 +340,7 @@ environment реализованы.
 
 ## Следующий этап
 
-Следующий подэтап фазы 4: подключить единый `--incremental` к будущим watch и
-LSP entry points, сохранив clean compilation как differential/control path.
+Минимальный доступный scope фазы 4 завершён. Конкретные watch/LSP adapters
+подключат уже готовый `incremental:` routing при появлении entry points; watch
+CLI и lifecycle относятся к фазе 10. Следующий независимый этап плана — фаза 6,
+вынесение entry execution для reload-safe emission.

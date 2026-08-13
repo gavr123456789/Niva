@@ -37,7 +37,8 @@
 3. Добавить deterministic `apiHash`, reverse dependency graph и cache keys.
 4. Реализовать transactional candidate/commit и conservative fallback.
 5. Добавить specialization-use index.
-6. Подключить единый opt-in `--incremental` к `watch` и LSP.
+6. Подключить единый opt-in `--incremental` к общей CLI/session boundary;
+   concrete watch/LSP adapters передадут его туда при появлении entry points.
 7. После EDN-сериализации подключить тот же флаг к `build`.
 8. Проверить эквивалентность результатов clean и incremental compilation.
 

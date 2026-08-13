@@ -364,6 +364,46 @@ Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   Assert that: afterFailed revision equals: committed revision
 ]
 
+Test compileSnapshotFlagSelectsPersistentOrCleanSession = [
+  initialSources = #{
+    "person" "type Person name: String\nPerson greet -> String = [^ name]"
+    "main" "alice = Person name: \"Ada\"\nalice greet"
+  }
+  changedSources = #{
+    "person" "type Person name: String\nPerson greet -> String = [^ name + name]"
+    "main" "alice = Person name: \"Ada\"\nalice greet"
+  }
+  config = CompilerConfigFingerprint incrementalTest
+  empty = CompilerSession empty
+  initialSnapshot = WorkspaceSnapshot fromSources: (initialSources toNivaSourceInputs)
+    revision: 1 entryPoint: "main" documentVersions: #{}
+  initial = empty compileSnapshot: initialSnapshot config: config
+    requestVersion: 1 cancelled: false incremental: true
+  committed = empty commitResult: initial
+  changedSnapshot = WorkspaceSnapshot fromSources: (changedSources toNivaSourceInputs)
+    revision: 2 entryPoint: "main" documentVersions: #{}
+
+  incremental = committed compileSnapshot: changedSnapshot config: config
+    requestVersion: 2 cancelled: false incremental: true
+  clean = committed compileSnapshot: changedSnapshot config: config
+    requestVersion: 2 cancelled: false incremental: false
+  incrementalCandidate = incremental candidate unpackOrPANIC
+  cleanCandidate = clean candidate unpackOrPANIC
+
+  Assert that: incrementalCandidate bodyInvalidated equals: #( "person" )
+  Assert that: cleanCandidate bodyInvalidated equals: #( "main" "person" )
+  incrementalArtifact = incremental backendArtifact unpackOrPANIC
+  cleanArtifact = clean backendArtifact unpackOrPANIC
+  Assert that: incrementalArtifact backend equals: cleanArtifact backend
+  Assert that: incrementalArtifact target equals: cleanArtifact target
+  Assert that: incrementalArtifact content equals: cleanArtifact content
+  Assert that: cleanCandidate baseRevision equals: 0
+  incrementalSession = committed commitResult: incremental incremental: true
+  cleanSession = committed commitResult: clean incremental: false
+  Assert that: incrementalSession revision equals: 2
+  Assert that: cleanSession revision equals: 0
+]
+
 Test incrementalBackendOutputMatchesCleanCompilation = [
   initialSources = #{
     "person" """

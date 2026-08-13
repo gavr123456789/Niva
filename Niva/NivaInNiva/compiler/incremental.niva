@@ -364,6 +364,11 @@ CompilerSession commitResult(result): CompilerCompilationResult -> CompilerSessi
   ^ this commit: result candidate unpackOrPANIC
 ]
 
+CompilerSession commitResult(result): CompilerCompilationResult incremental(incremental): Bool -> CompilerSession = [
+  incremental ifFalse: [^ CompilerSession empty]
+  ^ this commitResult: result
+]
+
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver): ResolverHelper config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   ir = resolver toIrModule
   genericFunctionIds = ir functions filter: [it generics isNotEmpty], map: [it id]
@@ -466,4 +471,12 @@ CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): Com
     collectSources: snapshot sources entryPoint: snapshot entryPoint backend: config backend
   ^ this compileCandidate: snapshot interfaceSnapshot: interfaceSnapshot
     config: config requestVersion: requestVersion cancelled: false
+]
+
+// shared routing point for future watch and lsp adapters
+CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): CompilerConfigFingerprint
+    requestVersion(requestVersion): Int cancelled(cancelled): Bool incremental(incremental): Bool -> CompilerCompilationResult = [
+  activeSession = incremental ifTrue: [this] ifFalse: [CompilerSession empty]
+  ^ activeSession compileSnapshot: snapshot config: config
+    requestVersion: requestVersion cancelled: cancelled
 ]

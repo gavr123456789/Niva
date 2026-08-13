@@ -146,9 +146,12 @@ Compiler API не должен быть привязан к filesystem watcher �
 2. Разделить declaration/interface collection и body resolution.
 3. Добавить `apiHash`, reverse graph и conservative invalidation.
 4. Добавить specialization-use index.
-5. Подключить единый opt-in флаг `--incremental` к `watch` и LSP; сохранить
-   clean compilation без флага как differential/control path.
-6. После появления project-local EDN-кеша поддержать тот же флаг у `build`.
+5. На общей CLI/session boundary подключить единый opt-in флаг `--incremental`:
+   persistent session с флагом, clean compilation без флага как
+   differential/control path.
+6. При появлении реальных `watch` и LSP entry points передать тот же флаг в
+   общую session boundary без отдельного compile pipeline.
+7. После появления project-local EDN-кеша поддержать тот же флаг у `build`.
 
 ### Принятые решения
 
@@ -160,3 +163,6 @@ Compiler API не должен быть привязан к filesystem watcher �
   `watch`, LSP и, после появления disk cache, `build`.
 - Будущий persistent cache — project-local `.niva-cache/` в EDN.
 - Go backend пока исключён из incremental scope и не реализуется в этой фазе.
+- В текущем репозитории нет watch/LSP entry points. Фаза 4 предоставляет общий
+  routing API; concrete adapters добавляются вместе с entry points, а watch
+  subsystem — в фазе 10.
