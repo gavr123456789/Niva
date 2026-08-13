@@ -146,11 +146,9 @@ constructor NivaCompiler [
               ]
 
               // keep the old cli and native build entry namespace stable
-              shim = """
-                (ns main (:gen-class) (:require [niva.generated.main]))
-                (defn -main [& args]
-                  (apply niva.generated.main/-main args))
-              """ trimIndent
+              entryNamespace = output entryNamespace
+              shim = "(ns main (:gen-class) (:require [" + entryNamespace + "]))\n" +
+                "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
               io writeFile file: realCljPath + "/main.clj" content: shim
             ]
             io writeFile file: realCljPath + "/deps.edn" content: "{:paths [\".\"]}\n"
