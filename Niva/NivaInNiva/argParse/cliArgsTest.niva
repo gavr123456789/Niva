@@ -3,7 +3,13 @@ Test cliArgs = [
   result = ArgParser args: args
   Assert that: (result option) equals: CompilerOption.Run
   Assert that: (result verbose) equals: true
-  Assert that: result backend equals: CompilerBackend.Js
+  Assert that: result backend equals: CompilerBackend.Clj
+]
+
+Test cliArgsEmptyMeansRunMain = [
+  result = ArgParser args: {String}
+  Assert that: result option equals: CompilerOption.Run
+  Assert that: result path equals: null
 ]
 
 
@@ -14,7 +20,7 @@ Test cliArgsHelp = [
 ]
 
 Test cliArgsRunGoBackend = [
-  args = {"run" ".niva_go/testss.niva" "--backend" "go"} toList
+  args = {"run" ".niva_go/testss.niva" "--backend=go"} toList
   result = ArgParser args: args
   Assert that: result option equals: CompilerOption.Run
   Assert that: result path equals: ".niva_go/testss.niva"
@@ -22,7 +28,7 @@ Test cliArgsRunGoBackend = [
 ]
 
 Test cliArgsReplEmission = [
-  args = {"build" "main.niva" "--backend" "clojure" "--repl" "--repl-line" "7"} toList
+  args = {"build" "main.niva" "--backend=clojure" "--repl" "--repl-line=7"} toList
   result = ArgParser args: args
   Assert that: result option equals: CompilerOption.Build
   Assert that: result backend equals: CompilerBackend.Clj
@@ -31,7 +37,7 @@ Test cliArgsReplEmission = [
 ]
 
 Test cliArgsNativeCljBuild = [
-  args = {"build" "main.niva" "--backend" "clj" "--native"} toList
+  args = {"build" "main.niva" "--backend=clj" "--native"} toList
   result = ArgParser args: args
   Assert that: result option equals: CompilerOption.Build
   Assert that: result backend equals: CompilerBackend.Clj
@@ -42,4 +48,28 @@ Test cliArgsInfoTypePath = [
   result = ArgParser args: {"info" "main.Person"} toList
   Assert that: result option equals: CompilerOption.Info
   Assert that: result path equals: "main.Person"
+]
+
+Test cliArgsBuildDefaultsToMain = [
+  result = ArgParser args: {"build"} toList
+  Assert that: result option equals: CompilerOption.Build
+  Assert that: result path equals: null
+]
+
+Test cliArgsOptionsWithoutPath = [
+  result = ArgParser args: {"run" "--backend=go" "--verbose"} toList
+  Assert that: result option equals: CompilerOption.Run
+  Assert that: result path equals: null
+  Assert that: result backend equals: CompilerBackend.Go
+  Assert that: result verbose equals: true
+]
+
+Test cliArgsRejectsExtraPositionals = [
+  result = ArgParser args: {"run" "main.niva" "extra.niva"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsSeparatedOptionValue = [
+  result = ArgParser args: {"run" "--backend" "go"} toList
+  Assert that: result option equals: CompilerOption.Help
 ]
