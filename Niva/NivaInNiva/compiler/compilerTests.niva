@@ -329,6 +329,41 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
   Assert that: cancelled diagnostics count equals: 0
 ]
 
+Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
+  sources = #{"app.main" "1 echo"}
+  snapshot = WorkspaceSnapshot fromSources: (sources toNivaSourceInputs)
+    revision: 7 entryPoint: "app.main" documentVersions: #{"app.main" 3}
+  config = CompilerConfigFingerprint incrementalTest
+  session = CompilerSession empty
+
+  result = session compileSnapshot: snapshot config: config requestVersion: 31 cancelled: false
+  Assert that: result requestVersion equals: 31
+  Assert that: result diagnostics count equals: 0
+  candidate = result candidate unpackOrPANIC
+  Assert that: candidate snapshot entryPoint equals: "app.main"
+  Assert that: (candidate snapshot documentVersions at: "app.main") equals: 3
+
+  committed = session commitResult: result
+  Assert that: committed revision equals: 1
+  committedSnapshot = committed committedSnapshot unpackOrPANIC
+  Assert that: committedSnapshot entryPoint equals: "app.main"
+
+  cancelled = committed compileSnapshot: snapshot config: config requestVersion: 32 cancelled: true
+  Assert that: cancelled cancelled equals: true
+  Assert that: cancelled candidate equals: null
+  Assert that: (committed commitResult: cancelled) revision equals: committed revision
+
+  failedSources = #{"app.main" "Int value -> Int = [^ \"bad\"]"}
+  failedSnapshot = WorkspaceSnapshot fromSources: (failedSources toNivaSourceInputs)
+    revision: 8 entryPoint: "app.main" documentVersions: #{"app.main" 4}
+  failedInterface = ResolverInterfaceSnapshot
+    collectSources: failedSnapshot sources entryPoint: failedSnapshot entryPoint backend: config backend
+  failed = committed compileCandidate: failedSnapshot interfaceSnapshot: failedInterface
+    config: config requestVersion: 33 cancelled: false
+  afterFailed = committed commitResult: failed
+  Assert that: afterFailed revision equals: committed revision
+]
+
 Test incrementalBackendOutputMatchesCleanCompilation = [
   initialSources = #{
     "person" """
