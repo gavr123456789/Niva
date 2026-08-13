@@ -5,9 +5,17 @@ type WorkspaceSnapshot
   revision: Int
   sources: List(NivaSourceInput)
   documentVersions: Map(String, Int)
+  entryPoint: String
 
 constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int -> WorkspaceSnapshot =
-  WorkspaceSnapshot :revision sources: (sources sortedBy: [it moduleId]) documentVersions: #{}
+  WorkspaceSnapshot fromSources: sources revision: revision
+    entryPoint: "main" documentVersions: #{}
+
+constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int
+    entryPoint(entryPoint): String documentVersions(documentVersions): Map(String, Int)
+    -> WorkspaceSnapshot =
+  WorkspaceSnapshot :revision sources: (sources sortedBy: [it moduleId])
+    :documentVersions :entryPoint
 
 WorkspaceSnapshot sourceFor(moduleId): String -> NivaSourceInput? =
   sources find: [it moduleId == moduleId]
@@ -348,6 +356,14 @@ type CompilerCompilationResult
 constructor CompilerCompilationResult cancelled(version): Int -> CompilerCompilationResult =
   CompilerCompilationResult requestVersion: version candidate: null backendArtifact: null diagnostics: {} cancelled: true
 
+CompilerCompilationResult commitReady -> Bool =
+  (cancelled not) && diagnostics isEmpty && (candidate != null)
+
+CompilerSession commitResult(result): CompilerCompilationResult -> CompilerSession = [
+  result commitReady ifFalse: [^ this]
+  ^ this commit: result candidate unpackOrPANIC
+]
+
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver): ResolverHelper config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   ir = resolver toIrModule
   genericFunctionIds = ir functions filter: [it generics isNotEmpty], map: [it id]
@@ -440,4 +456,14 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
   artifact = candidate emitBackend
   ^ CompilerCompilationResult requestVersion: requestVersion candidate: candidate
     backendArtifact: artifact diagnostics: {} cancelled: false
+]
+
+// entry point for watch and lsp clients
+CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): CompilerConfigFingerprint
+    requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
+  cancelled ifTrue: [^ CompilerCompilationResult cancelled: requestVersion]
+  interfaceSnapshot = ResolverInterfaceSnapshot
+    collectSources: snapshot sources entryPoint: snapshot entryPoint backend: config backend
+  ^ this compileCandidate: snapshot interfaceSnapshot: interfaceSnapshot
+    config: config requestVersion: requestVersion cancelled: false
 ]
