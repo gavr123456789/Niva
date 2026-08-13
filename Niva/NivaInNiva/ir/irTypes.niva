@@ -10,6 +10,7 @@ enum IrTypeRefKind = Builtin | Custom | Function
 type IrTypeRef
   kind: IrTypeRefKind
   typeId: String
+  ownerPkg: String
   args: List(IrTypeRef)
   returnType: IrTypeRef?
   isMut: Bool
@@ -26,11 +27,13 @@ type IrTypeDef
   name: String
   typeParams: List(String)
   fields: List(IrField)
+  token: Token
 
 type IrUnionBranch
   name: String
   fields: List(IrField)
   isInclude: Bool
+  token: Token
 
 type IrUnionDef
   id: String
@@ -40,12 +43,23 @@ type IrUnionDef
   commonFields: List(IrField)
   branches: List(IrUnionBranch)
   isErrorDomain: Bool
+  token: Token
 
 type IrEnumDef
   id: String
   pkgId: String
   name: String
   values: List(String)
+  token: Token
+
+enum IrDependencyKind = Type | Call | Constructor | Explicit
+
+type IrDependency
+  fromPkg: String
+  toPkg: String
+  kind: IrDependencyKind
+  token: Token
+  symbol: String
 
 type IrArg
   name: String
@@ -141,6 +155,7 @@ union IrExpr typeRef: IrTypeRef token: Token =
 type IrPackage
   name: String
   imports: List(IrImport)
+  dependencies: List(IrDependency)
   types: List(IrTypeDef)
   unions: List(IrUnionDef)
   enums: List(IrEnumDef)
@@ -208,6 +223,12 @@ IrModule enums -> List(IrEnumDef) = [
   result::mut List::IrEnumDef = {}!
   packages forEach: [pkg -> result addAll: pkg enums]
   ^ result toList
+]
+
+IrPackage dependencyPackageNames -> List(String) = [
+  names::mut Set(String) = #()!
+  dependencies forEach: [names add: it toPkg]
+  ^ names toList sortedBy: [it]
 ]
 
 IrModule functions -> List(IrFunction) = [

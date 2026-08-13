@@ -44,7 +44,7 @@ extend NivaType [
 
     errRefs = errorsList map: [it toIrType-immut-no-errors]
 
-    ^ IrTypeRef :kind typeId: typeId args: args returnType: returnType isMut: isMut nullable: nullable errors: errRefs
+    ^ IrTypeRef :kind typeId: typeId ownerPkg: base pkgName args: args returnType: returnType isMut: isMut nullable: nullable errors: errRefs
   ]
 ]
 
@@ -749,7 +749,7 @@ TypeFieldT toIrField -> IrField = [
 ]
 
 UnionBranchT toIrUnionBranch -> IrUnionBranch = [
-  ^ IrUnionBranch name: name fields: (fields map: [it toIrField]) isInclude: isInclude
+  ^ IrUnionBranch name: name fields: (fields map: [it toIrField]) isInclude: isInclude token: token
 ]
 
 MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) -> IrFunction = [
@@ -859,7 +859,7 @@ TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map
     typeId = typeFromDb toIrTypeId
     typeFieldsById at: typeId put: fieldsIr
     res::mut List::IrTypeDef = {}!
-    res add: (IrTypeDef id: typeId pkgId: currentPkg name: name typeParams: typeParams fields: fieldsIr)
+    res add: (IrTypeDef id: typeId pkgId: currentPkg name: name typeParams: typeParams fields: fieldsIr token: token)
     res toList
   ]
   |=> {IrTypeDef}
@@ -896,6 +896,7 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
       commonFields: commonFieldsIr
       branches: branchesIr
       isErrorDomain: (token kind == TokenType.ErrorDomain)
+      token: token
     )
     res toList
   ]
@@ -907,7 +908,7 @@ TypedStatement toIrEnums(db): TyperDB currentPkg: String -> List(IrEnumDef) =
     enumType = db findByTypeName: "" + token lexeme inPkg: currentPkg
     enumId = enumType toIrTypeId
     res::mut List(IrEnumDef) = {}!
-    res add: (IrEnumDef id: enumId pkgId: currentPkg name: "" + token lexeme values: {String})
+    res add: (IrEnumDef id: enumId pkgId: currentPkg name: "" + token lexeme values: {String} token: token)
     res toList
   ]
   |=> {IrEnumDef}
@@ -1134,17 +1135,20 @@ ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule = [
     packagesIr add: (IrPackage
       name: file
       imports: pkgImports toList
+      dependencies: {}
       types: typesList
       unions: unionsList
       enums: enumsList
       functions: functionsList)
   ]
 
-  ^ IrModule
+  rawModule = IrModule
       version: "nir/v0"
       pkg: entryPointName
       packages: packagesIr toList
       entry: entryBlock
+
+  ^ rawModule withNormalizedDependencies
 ]
 
 ResolverHelper toIrModule -> IrModule =
