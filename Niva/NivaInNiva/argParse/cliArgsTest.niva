@@ -44,6 +44,11 @@ Test cliArgsNativeCljBuild = [
   Assert that: result nativeBuild equals: true
 ]
 
+Test cliArgsIncrementalFlag = [
+  result = ArgParser args: {"run" "main.niva" "--incremental"} toList
+  Assert that: result incremental equals: true
+]
+
 Test cliArgsInfoTypePath = [
   result = ArgParser args: {"info" "main.Person"} toList
   Assert that: result option equals: CompilerOption.Info
