@@ -479,3 +479,67 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
   Assert that: changedOutput files equals: cleanOutput files
   Assert that: changedOutput manifest canonical equals: cleanOutput manifest canonical
 ]
+
+Test cljPublishingUsesGenerationDirectory = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/success"
+  io deleteRecursively path: root
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io
+
+  Assert that: published published equals: true
+  Assert that: (published generationId count > 0) equals: true
+  Assert that: (io readFile path: root + "/manifest.edn") equals: output manifest edn
+  Assert that: (io readFile path: root + "/main.clj") equals: output legacyMainShim
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
+Test cljPublishingRemovesStaleGeneratedFiles = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/stale"
+  io deleteRecursively path: root
+  io createDirectories path: (root + "/generated/niva/generated")
+  io createDirectories path: (root + "/niva/generated")
+  io writeFile file: root + "/generated/niva/generated/stale.clj" content: "stale"
+  io writeFile file: root + "/niva/generated/legacy-stale.clj" content: "legacy stale"
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io
+
+  Assert that: published published equals: true
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/stale.clj"]) equals: false
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
+  allFiles = io walkDir path: root
+  Assert that: (allFiles any: [it relativePath == "niva/generated/legacy-stale.clj"]) equals: false
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
+Test failedCljCompilationDoesNotReplacePublishedOutput = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/failed"
+  io deleteRecursively path: root
+  io createDirectories path: (root + "/generated/niva/generated")
+  io writeFile file: root + "/generated/niva/generated/main.clj" content: "old output"
+  io writeFile file: root + "/manifest.edn" content: "old manifest"
+
+  failed = CompilerCompilationResult requestVersion: 9 candidate: null
+    backendArtifact: null diagnostics: {(CompilerDiagnostic requestVersion: 9
+      path: "main.niva" message: "compile error")} cancelled: false
+  publishResult = failed publishCljOutput: root withIO: io
+
+  Assert that: publishResult published equals: false
+  Assert that: (io readFile path: root + "/generated/niva/generated/main.clj") equals: "old output"
+  Assert that: (io readFile path: root + "/manifest.edn") equals: "old manifest"
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]

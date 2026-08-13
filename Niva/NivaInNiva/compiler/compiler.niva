@@ -60,6 +60,59 @@ constructor NivaBuildSystem [
 /// takes fileNames to Content
 type NivaCompiler
 
+type CljGenerationResult
+  generationId: String
+  published: Bool
+  generatedRoot: String
+  manifestPath: String
+
+constructor CljGenerationResult notPublished -> CljGenerationResult =
+  CljGenerationResult generationId: "" published: false generatedRoot: "" manifestPath: ""
+
+CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResult = [
+  generationId = (System currentTimeMillis toString) + "-" + (System nanoTime toString)
+  stagingRoot = root + "/staging/" + generationId
+  stagingGenerated = stagingRoot + "/generated"
+  backupGenerated = stagingRoot + "/previous-generated"
+  publishedGenerated = root + "/generated"
+  stagingManifest = stagingRoot + "/manifest.edn"
+  stagingShim = stagingRoot + "/main.clj"
+  stagingDeps = stagingRoot + "/deps.edn"
+  legacyGenerated = root + "/niva/generated"
+
+  FileSystem createDirectories: stagingGenerated toPath
+  files forEach: [relativePath, content ->
+    destination = stagingGenerated + "/" + relativePath
+    FileSystem createDirectories: (io getParent path: destination) toPath
+    io writeFile file: destination content: content
+  ]
+
+  io writeFile file: stagingManifest content: manifest edn
+  io writeFile file: stagingShim content: this legacyMainShim
+  io writeFile file: stagingDeps content: "{:paths [\"generated\" \".\"]}\n"
+
+  // publish only fully written staging content
+  hadPublishedGenerated = FileSystem exists: (publishedGenerated toPath)
+  hadPublishedGenerated ifTrue: [
+    FileSystem moveFrom: publishedGenerated toPath to: backupGenerated toPath
+  ]
+  FileSystem moveFrom: stagingGenerated toPath to: publishedGenerated toPath
+  FileSystem moveFrom: stagingManifest toPath to: (root + "/manifest.edn") toPath
+  FileSystem moveFrom: stagingShim toPath to: (root + "/main.clj") toPath
+  FileSystem moveFrom: stagingDeps toPath to: (root + "/deps.edn") toPath
+  hadPublishedGenerated ifTrue: [
+    FileSystem deleteRecursively: backupGenerated toPath
+  ]
+  hadLegacyGenerated = FileSystem exists: (legacyGenerated toPath)
+  hadLegacyGenerated ifTrue: [
+    FileSystem deleteRecursively: legacyGenerated toPath
+  ]
+  FileSystem deleteRecursively: stagingRoot toPath
+
+  ^ CljGenerationResult generationId: generationId published: true
+    generatedRoot: publishedGenerated manifestPath: root + "/manifest.edn"
+]
+
 constructor NivaCompiler [
     on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: false
     on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [ // enable time
@@ -129,30 +182,9 @@ constructor NivaCompiler [
               io writeFile file: realCljPath + "/main.clj" content: cljContent
             ] ifFalse: [
               output = CljBackend fullOutputFromIrModule: irModule debug: debug mode: mode
-              output files forEach: [relativePath, content ->
-                destination = realCljPath + "/" + relativePath
-                FileSystem createDirectories: (io getParent path: destination) toPath
-                io writeFile file: destination content: content
-              ]
-
-              generatedPrefix = "niva/generated/"
-              allGeneratedFiles = io walkDir path: realCljPath
-              staleGeneratedFiles = allGeneratedFiles filter: [it relativePath startsWith: generatedPrefix]
-              staleGeneratedFiles forEach: [file ->
-                generatedContent = output files at: file relativePath, unpackOrValue: "<missing>"
-                generatedContent == "<missing>" ifTrue: [
-                  FileSystem delete: file path toPath
-                ]
-              ]
-
-              // keep the old cli and native build entry namespace stable
-              entryNamespace = output entryNamespace
-              shim = "(ns main (:gen-class) (:require [" + entryNamespace + "]))\n" +
-                "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
-              io writeFile file: realCljPath + "/main.clj" content: shim
-              io writeFile file: realCljPath + "/manifest.edn" content: output manifest edn
+              output publishTo: realCljPath withIO: io
+              ()
             ]
-            io writeFile file: realCljPath + "/deps.edn" content: "{:paths [\".\"]}\n"
         ]
 
         backendStr =
@@ -225,7 +257,8 @@ constructor NivaCompiler [
                 option == CompilerOption.Run ifTrue: [
                   t6 = measureTimeFrom from: t5 text: "IR + codegen"
                   //io runProgramFromPath path: realCljPath args: {"bb" "-m" "main"} // "clojure" "-M" "-m" "main"
-                  io runProgram args: {"bb" "-cp" realCljPath "-m" "main" }
+                  generatedPath = realCljPath + "/generated"
+                  io runProgram args: {"bb" "-cp" (generatedPath + ":" + realCljPath) "-m" "main" }
 
                   t7 = measureTimeFrom from: t6 text: "run binary"
                 ]
@@ -254,7 +287,7 @@ constructor NivaCompiler [
                           (b/delete {:path "target"})
                           (b/copy-dir {:src-dirs ["."] :target-dir class-dir})
                           (b/compile-clj {:basis @basis
-                                          :src-dirs ["."]
+                                          :src-dirs ["generated" "."]
                                           :class-dir class-dir
                                           :ns-compile '[main]})
                           (b/uber {:class-dir class-dir

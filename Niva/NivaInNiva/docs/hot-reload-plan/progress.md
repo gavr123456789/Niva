@@ -2,11 +2,10 @@
 
 ## Текущий этап
 
-Фаза 7: сохранение `mut`-состояния.
+Фаза 8: generated manifest и атомарная публикация.
 
-Статус: в работе; entry hooks, persistent state, type-shape manifest и
-hard-restart diagnostics реализованы, интеграция с полным watch/clj-reload
-runtime ещё впереди.
+Статус: в работе; staging и публикация Clojure output реализованы, интеграция
+с полным watch/clj-reload runtime ещё впереди.
 
 ### Завершена фаза 6: declarations отдельно от entry execution
 
@@ -42,6 +41,21 @@ runtime ещё впереди.
   compiler result получает diagnostic с текстом `hard restart required`, не
   коммитит candidate и явно сообщает, что автоматическая миграция state не
   поддерживается.
+
+### Продолжена фаза 8: staging и публикация Clojure output
+
+- Generated Clojure files сначала пишутся в
+  `.niva_clj/staging/<generation-id>/generated`.
+- Полностью записанный generated tree публикуется через directory swap;
+  stale namespace'ы исчезают только при успешной публикации нового набора.
+- `main.clj` остаётся legacy shim, а `manifest.edn` и `deps.edn` публикуются
+  из той же staging generation после codegen.
+- Добавлен `CljGenerationResult` с generation id и published status.
+  `CompilerCompilationResult.publishCljOutput` возвращает непубликованный
+  result при diagnostics или cancellation, поэтому старый output и manifest
+  сохраняются.
+- Runtime classpath теперь включает `.niva_clj/generated`, не меняя
+  расположение legacy shim.
 
 ### Реализовано в фазе 4
 
@@ -134,8 +148,8 @@ runtime ещё впереди.
 - [x] Довести qualification для union branches, enum Vars, error records и
   bind requirements; покрыть cross-package calls/constructors и direct
   external requires regression tests.
-- [x] Writer удаляет stale files только внутри `niva/generated/` по текущему
-  output manifest.
+- [x] Writer публикует полный generated tree через staging и удаляет stale
+  files заменой только после успешного codegen.
 - [x] Добавить clean-vs-multi-file differential и ручной запуск generated
   Clojure project.
 
@@ -153,7 +167,9 @@ runtime ещё впереди.
 ### Частично начата фаза 8
 
 - [x] Ввести общий `CljManifest` и запись `manifest.edn` после codegen.
-- [ ] Перевести compiler output на staging directory и атомарную публикацию.
+- [x] Перевести compiler output на staging directory и directory-swap
+  публикацию с generation result.
+- [x] Сохранить старый generated output и manifest при failed compilation.
 - [ ] Подключить manifest к реальному watch/clj-reload lifecycle и обработать
   generation id/load errors.
 
@@ -177,6 +193,7 @@ runtime ещё впереди.
 - `compiler/incremental.niva`
 - `compiler/compiler.niva`
 - `compiler/compilerTests.niva`
+- `main.niva`
 - `argParse/cliArgs.niva`
 - `argParse/cliArgsTest.niva`
 - `back/clojureBackend/cljEmit.niva`
@@ -197,16 +214,18 @@ runtime ещё впереди.
 
 - `niva test cljBackTests` — 54/54 теста успешно, включая deterministic
   manifest, shape compatibility и hard-restart coverage.
-- `niva test compilerTests` — 19/19 тестов успешно, включая snapshot-aware
-  compile entry point, повторное независимое body resolution из одного
-  interface snapshot, transactional result commit, shape diagnostic и
-  routing persistent/clean session по единому incremental flag.
+- `niva test compilerTests` — 22/22 теста успешно, включая staging publication,
+  stale generated deletion и сохранение старого output при failed compilation.
+- `niva test compilerTests` — предыдущие 19/19 тестов успешно, включая
+  snapshot-aware compile entry point, повторное независимое body resolution
+  из одного interface snapshot, transactional result commit, shape diagnostic
+  и routing persistent/clean session по единому incremental flag.
 - `niva test cliArgsTest` — 13/13 тестов успешно, включая opt-in/default
   семантику `--incremental` и сохранение флага для LSP backend selection.
 - `niva test resolverTests` — весь suite успешно.
 - `niva test irTests` — 8/8 тестов успешно.
 - `niva test genericTests` — 3/3 теста успешно.
-- `niva test` — 272/272 теста успешно.
+- `niva test` — 275/275 тестов успешно.
 - `niva build` — успешно.
 - `niva run main.niva` — успешно.
 
@@ -400,10 +419,13 @@ runtime ещё впереди.
 - 2026-08-13: добавлен runtime differential для single-string и multi-file
   Clojure output; проверены cross-package enum Vars, error branches и bind
   requirements.
+- 2026-08-13: продолжена фаза 8; Clojure writer переведён на staging
+  generation и directory swap, добавлен `CljGenerationResult`, stale output
+  удаляется только после успешной публикации, а failed result сохраняет старый
+  output и manifest.
 
 ## Следующий этап
 
-Минимальный доступный scope фазы 4 завершён. Конкретные watch/LSP adapters
-подключат уже готовый `incremental:` routing при появлении entry points; watch
-CLI и lifecycle относятся к фазе 10. Следующий независимый этап плана — фаза 6,
-вынесение entry execution для reload-safe emission.
+Staging/publish boundary фазы 8 готова для будущего host. Следующий этап —
+реальный watch/clj-reload lifecycle: adapters, initial load/reload order,
+load-error handling и корректное завершение watcher.

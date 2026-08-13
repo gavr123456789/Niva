@@ -5,6 +5,11 @@ type CljOutput
   entryNamespace: String
   manifest: CljManifest
 
+CljOutput legacyMainShim -> String = [
+  ^ "(ns main (:gen-class) (:require [" + entryNamespace + "]))\n" +
+    "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
+]
+
 // Selects the shape of the generated Clojure module.  Program output keeps
 // the normal `main` namespace and `-main` entry point; REPL output is a
 // loadable session namespace whose entry expression is evaluated at load
