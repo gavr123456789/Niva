@@ -1289,12 +1289,7 @@ extend TyperDB [
   on appendStructureInfoForPackage(pkg): NivaPkg to(sb): StringBuilder -> Unit = [
     sb appendLine: "## Package `" + pkg name + "`"
     types = pkg types values toList sortedBy: [it name]
-    types isEmpty
-//       ifTrue: [
-//         sb appendLine: "_No types._"
-//         ()
-//       ]
-      ifFalse: [types forEach: [this appendStructureInfoForType: it to: sb]]
+    types isEmpty ifFalse: [types forEach: [this appendStructureInfoForType: it to: sb]]
     ()
   ]
 
@@ -1302,8 +1297,8 @@ extend TyperDB [
   on structureInfo -> String = [
     sb = StringBuilder new
     projectPackages = packages values
-      filter: [it name != "core"]
-      ,sortedBy: [it name]
+      filter: [it name != "core"],
+      sortedBy: [it name]
     projectPackages forEach: [this appendStructureInfoForPackage: it to: sb]
 
     ^ sb toString
@@ -1347,13 +1342,208 @@ type NivaSourceInput
   path: String
   content: String
 
+// read-only product of declaration collection
+// Resolver bodies always run on a fresh TyperDB materialized from this value, so lookup caches from one run
+// cannot leak into another candidate or the committed interface snapshot
+type ResolverPackageInterface
+  name: String
+  types: Map(String, NivaType)
+  constructors: Map(String, NivaMethod)
+  imports: Set(String)
+  packageImports: Set(String)
+
+type ResolverBindInterface
+  bindFiles: Set(String)
+  bindFileToPkg: Map(String, String)
+  bindStatements: Set(Statement)
+  bindMessageDecls: Set(MessageDecl)
+  bindTypeIds: Set(String)
+
+type ResolverLookupEnvironment
+  errors: List(ResolveErrors)
+  packages: Map(String, ResolverPackageInterface)
+  internalTypesCache: Map(String, NivaType)
+  typesWithSameNames: Map(String, Set(NivaType))
+  typeDeclarationTokens: Map(String, Token)
+  methodDeclarationTokens: Map(String, Token)
+  unionRootToBranches: Map(String, Set(String))
+  branchIdToParentId: Map(String, String)
+  typesById: Map(String, TypeT)
+  dtc: DefaultTypesContainer
+  typeToMethodNameToMethod: Map(NivaType, Map(String, NivaMethod))
+  genericReceiverMethods: List(GenericReceiverMethodTemplate)
+  nullableMethods: Map(String, Map(String, NivaMethod))
+  constructorsTypeToMethodNameToMethod: Map(NivaType, Map(String, NivaMethod))
+  instantiatedCache: Map(NivaType, Map(String, NivaMethod))
+  canonicalCollectionInstances: Map(String, NivaType)
+  declToMethod: Map(MessageDecl, NivaMethod)
+  localGenericScope: Map(String, NivaType)
+  bindMeta: ResolverBindInterface
+
+// save immutable lookup tables after interface pass
+TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
+  packagesSnapshot::mut Map(String, ResolverPackageInterface) = #{}!
+  packages forEach: [name, pkg ->
+    packagesSnapshot at: name put: (ResolverPackageInterface
+      name: name types: pkg types toMap constructors: pkg constructorsProtocol methods toMap
+      imports: pkg imports toSet packageImports: pkg packageImports toSet)
+  ]
+
+  // usual sameNames = typesWithSameNames toMap wont work, since we need deep copy, not shadow one
+  sameNames::mut Map(String, Set(NivaType)) = #{}!
+  typesWithSameNames forEach: [key, values -> sameNames at: key put: values toSet]
+  unionBranches::mut Map(String, Set(String)) = #{}!
+  unionRootToBranches forEach: [key, values -> unionBranches at: key put: values toSet]
+
+  methods::mut Map(NivaType, Map(String, NivaMethod)) = #{}!
+  typeToMethodNameToMethod forEach: [receiverType, values ->
+    methods at: receiverType put: values toMap
+  ]
+  nullable::mut Map(String, Map(String, NivaMethod)) = #{}!
+  nullableMethods forEach: [name, values ->
+    nullable at: name put: values toMap
+  ]
+  constructors::mut Map(NivaType, Map(String, NivaMethod)) = #{}!
+  constructorsTypeToMethodNameToMethod forEach: [receiverType, values ->
+    constructors at: receiverType put: values toMap
+  ]
+  instantiations::mut Map(NivaType, Map(String, NivaMethod)) = #{}!
+  instantiatedCache forEach: [receiverType, values ->
+    instantiations at: receiverType put: values toMap
+  ]
+
+  ^ ResolverLookupEnvironment
+    errors: listOfErrors toList
+    packages: packagesSnapshot toMap
+    internalTypesCache: internalTypesCache toMap
+    typesWithSameNames: sameNames toMap
+    typeDeclarationTokens: typeDeclarationTokens toMap
+    methodDeclarationTokens: methodDeclarationTokens toMap
+    unionRootToBranches: unionBranches toMap
+    branchIdToParentId: branchIdToParentId toMap
+    typesById: typesById toMap
+    dtc: dtc
+    typeToMethodNameToMethod: methods toMap
+    genericReceiverMethods: genericReceiverMethods toList
+    nullableMethods: nullable toMap
+    constructorsTypeToMethodNameToMethod: constructors toMap
+    instantiatedCache: instantiations toMap
+    canonicalCollectionInstances: canonicalCollectionInstances toMap
+    declToMethod: declToMethod toMap
+    localGenericScope: localGenericScope toMap
+    bindMeta: (ResolverBindInterface
+      bindFiles: bindMeta bindFiles toSet
+      bindFileToPkg: bindMeta bindFileToPkg toMap
+      bindStatements: bindMeta bindStatements toSet
+      bindMessageDecls: bindMeta bindMessageDecls toSet
+      bindTypeIds: bindMeta bindTypeIds toSet)
+]
+
+// make fresh mutable db for body resolution
+ResolverLookupEnvironment newTyperDB -> TyperDB = [
+  packagesMutable::mut Map(String, NivaPkg) = #{}!
+  packages forEach: [name, pkg ->
+    packagesMutable at: name put: (NivaPkg name: name types: pkg types toMutableMap
+      constructorsProtocol: (NivaProtocol name: "constructors" methods: pkg constructors toMutableMap)
+      imports: (pkg imports toMutableSet) packageImports: (pkg packageImports toMutableSet))
+  ]
+
+  copyStringTypeSets::mut Map(String, mut Set::NivaType) = #{}!
+  typesWithSameNames forEach: [key, values ->
+    copyStringTypeSets at: key put: values toMutableSet
+  ]
+  copyUnionBranches::mut Map(String, mut Set::String) = #{}!
+  unionRootToBranches forEach: [key, values ->
+    copyUnionBranches at: key put: values toMutableSet
+  ]
+
+  copyMethods::mut Map(NivaType, mut Map(String, NivaMethod)) = #{}!
+  typeToMethodNameToMethod forEach: [receiverType, values ->
+    copyMethods at: receiverType put: values toMutableMap
+  ]
+  copyNullable::mut Map(String, mut Map(String, NivaMethod)) = #{}!
+  nullableMethods forEach: [name, values ->
+    copyNullable at: name put: values toMutableMap
+  ]
+  copyConstructors::mut Map(NivaType, mut Map(String, NivaMethod)) = #{}!
+  constructorsTypeToMethodNameToMethod forEach: [receiverType, values ->
+    copyConstructors at: receiverType put: values toMutableMap
+  ]
+  copyInstantiations::mut Map(NivaType, mut Map(String, NivaMethod)) = #{}!
+  instantiatedCache forEach: [receiverType, values ->
+    copyInstantiations at: receiverType put: values toMutableMap
+  ]
+
+  errorsMutable = errors toMutableList
+  internalTypes = internalTypesCache toMutableMap
+  typeTokens = typeDeclarationTokens toMutableMap
+  methodTokens = methodDeclarationTokens toMutableMap
+  parents = branchIdToParentId toMutableMap
+  typesByIdMutable = typesById toMutableMap
+  canonical = canonicalCollectionInstances toMutableMap
+  declMethods = declToMethod toMutableMap
+  localGenerics = localGenericScope toMutableMap
+  genericTemplates = genericReceiverMethods toMutableList
+
+  bindFiles = bindMeta bindFiles toMutableSet
+  bindFileToPkg = bindMeta bindFileToPkg toMutableMap
+  bindStatements = bindMeta bindStatements toMutableSet
+  bindMessages = bindMeta bindMessageDecls toMutableSet
+  bindTypes = bindMeta bindTypeIds toMutableSet
+
+  ^ TyperDB
+    listOfErrors: errorsMutable packages: packagesMutable
+    internalTypesCache: internalTypes typesWithSameNames: copyStringTypeSets
+    typeDeclarationTokens: typeTokens methodDeclarationTokens: methodTokens
+    unionRootToBranches: copyUnionBranches branchIdToParentId: parents
+    typesById: typesByIdMutable dtc: dtc
+    typeToMethodNameToMethod: copyMethods
+    genericReceiverMethods: genericTemplates nullableMethods: copyNullable
+    constructorsTypeToMethodNameToMethod: copyConstructors
+    instantiatedCache: copyInstantiations canonicalCollectionInstances: canonical
+    generatedMessageDecls: {}! typedBodiesCache: #{}! declToMethod: declMethods
+    localGenericScope: localGenerics
+    bindMeta: (BindMeta bindFiles: bindFiles bindFileToPkg: bindFileToPkg
+      bindStatements: bindStatements bindMessageDecls: bindMessages bindTypeIds: bindTypes)
+]
+
+ResolverLookupEnvironment findByTypeName(typeName): String inPkg(pkgName): String? -> NivaType = [
+  typeName isGeneric ifTrue: [^ UnresolvedGenericT name: typeName]
+  (typeName startsWith: NULLABLE_MANGLE_PREFIX) ifTrue: [
+    base = typeName drop: NULLABLE_MANGLE_PREFIX count
+    ^ NullableT v: (.findByTypeName: base inPkg: pkgName)
+  ]
+  localGenericScope at: typeName, unpack: [^ it]
+  internalTypesCache at: typeName, unpack: [^ it]
+
+  ^ | pkgName
+    | null => [
+      sameNameType = typesWithSameNames at: typeName
+      | sameNameType
+      | null => TO DO: "Bug: Cant find type $typeName in immutable lookup environment"
+      |=> [
+        sameNameType count == 1
+          ifTrue: [sameNameType first]
+          ifFalse: [TO DO: "There are many types with the same name: $sameNameType, please specify pkg like pkg.type"]
+      ]
+    ]
+    |=> [
+      candidates = typesWithSameNames at: typeName
+      candidates unpack: [
+        found = it toList, find: [candidate -> candidate pkgName == pkgName]
+        found unpack: [^ it]
+      ]
+      TO DO: "No such type: $typeName in $pkgName"
+    ]
+]
+
 // Declaration/interface pass result.  Body resolution is intentionally a
 // separate operation so incremental and LSP callers can stop at this layer.
 type ResolverInterfaceSnapshot
-  fileToStatements: Map(String, mut List::Statement)
-  db: TyperDB
+  fileToStatements: Map(String, List(Statement))
+  lookupEnvironment: ResolverLookupEnvironment
   entryPointStatements: List::Statement
-  messageDeclarations: Map(String, mut List::MessageDecl)
+  messageDeclarations: Map(String, List(MessageDecl))
   entryPointName: String
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
@@ -1462,15 +1652,23 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
 
   ^ ResolverInterfaceSnapshot
     fileToStatements: fileToStatements
-    db: db
+    lookupEnvironment: db toResolverLookupEnvironment
     entryPointStatements: entryPointStatements
     messageDeclarations: msgDecls
     entryPointName: entryPoint
 ]
 
 ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
+  db = lookupEnvironment newTyperDB
   msgDecls = this messageDeclarations
   entryPoint = this entryPointName
+
+  mutableStatements::mut Map(String, mut List::Statement) = #{}!
+  fileToStatements forEach: [file, statements ->
+    copied::mut List::Statement = {}!
+    copied addAll: statements
+    mutableStatements at: file put: copied
+  ]
 
   MsgDeclVisitor new
     processBodyes: msgDecls
@@ -1505,10 +1703,10 @@ ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
     pkgName = receiverType pkgName
     isBindType = db isBindType: receiverType
     isBindType ifFalse: [
-      listMaybe = fileToStatements at: pkgName
+      listMaybe = mutableStatements at: pkgName
       | listMaybe
       | null => [
-        (fileToStatements at: entryPoint, unpackOrPANIC) add: it
+        (mutableStatements at: entryPoint, unpackOrPANIC) add: it
       ]
       |=> listMaybe add: it
     ]
@@ -1577,7 +1775,7 @@ ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
 
   fileToTypedStatements::mut Map(String, mut List::TypedStatement) = #{}!
   entryExprsTyped = typedMain v
-  fileToStatements forEach: [file, statements ->
+  mutableStatements forEach: [file, statements ->
     pkg = db packages at: file, unpackOrPANIC
     isEntryPointFile = file == entryPoint
     mut entryExprIndex = 0
