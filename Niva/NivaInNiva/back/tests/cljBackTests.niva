@@ -33,6 +33,20 @@ Test cljPackageOutputUsesStableNamespacesAndPaths = [
   main contains: "(defn -main", assertTrue
 ]
 
+Test cljPackageOutputQualifiesUnionBranches = [
+  sources = #{
+    "model" "union Shape =\n| Circle radius: Int"
+    "main" "shape = Circle radius: 1\nvalue = | shape\n| Circle => shape radius\n|=> 0"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+
+  main contains: "niva.generated.model/->model_Circle", assertTrue
+  main contains: "niva.generated.model/model_Circle", assertTrue
+]
+
 Test cljUnionShapesAsRecords = [
   fileMain = """
     union Shape =
