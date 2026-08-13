@@ -11,6 +11,28 @@ Test cljRecordTypes = [
   clj contains: "(defrecord main_Point [x y])", assertTrue
 ]
 
+Test cljPackageOutputUsesStableNamespacesAndPaths = [
+  sources = #{
+    "model" "type Person name: String\nPerson greet -> String = [^ name]"
+    "main" "p = Person name: \"Ada\"\np greet"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+
+  Assert that: output files count equals: 2
+  Assert that: output entryNamespace equals: "niva.generated.main"
+  model = output files at: "niva/generated/model.clj", unpackOrPANIC
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  model contains: "(ns niva.generated.model)", assertTrue
+  Assert that: (model contains: ":gen-class") equals: false
+  main contains: "(ns niva.generated.main (:gen-class) (:require [niva.generated.model]))", assertTrue
+  main contains: "niva.generated.model/->model_Person", assertTrue
+  main contains: "niva.generated.model/model_Person__greet", assertTrue
+  Assert that: (model contains: "(defn -main") equals: false
+  main contains: "(defn -main", assertTrue
+]
+
 Test cljUnionShapesAsRecords = [
   fileMain = """
     union Shape =

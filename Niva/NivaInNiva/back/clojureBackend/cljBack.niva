@@ -1,5 +1,9 @@
 type CljBackend
 
+type CljOutput
+  files: Map(String, String)
+  entryNamespace: String
+
 // Selects the shape of the generated Clojure module.  Program output keeps
 // the normal `main` namespace and `-main` entry point; REPL output is a
 // loadable session namespace whose entry expression is evaluated at load
@@ -10,6 +14,7 @@ type CljContext
   imports: mut Set(String)
   debug: Bool
   debugEntries: mut List(CljDebugEntry)
+  currentPackage: String
 
 type CljDebugEntry
   generatedLine: Int
@@ -19,7 +24,11 @@ type CljDebugEntry
   method: String
 
 constructor CljContext newDebug(debug): Bool -> CljContext =
-  CljContext imports: #()! debug: debug debugEntries: {}!
+  CljContext newDebug: debug imports: #() pkg: ""
+
+constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
+    pkg(pkg): String -> CljContext =
+  CljContext imports: (imports toMutableSet) debug: debug debugEntries: {}! currentPackage: pkg
 
 CljContext addImport(name): String -> Unit = [
   imports add: name
@@ -77,7 +86,16 @@ extend String [
         .replace: ".." with: "rangeTo"
         ,replace: "?" with: "_QM"
 
+  on cljGeneratedNamespace -> String = "niva.generated." + this
+
+  on cljGeneratedPath -> String =
+    (this cljGeneratedNamespace replace: "." with: "/") + ".clj"
+
 ]
+
+IrPackage cljGeneratedNamespace -> String = name cljGeneratedNamespace
+
+IrPackage cljGeneratedPath -> String = name cljGeneratedPath
 
 // mangled function name derived directly from IR
 IrFunction cljFuncNameFromIr -> String = .id cljFuncIdToName
@@ -141,6 +159,15 @@ IrTypeRef cljTypeName -> String = [
   ^ baseId == "core_Error"
       ifTrue: [":niva.core/Error"]
       ifFalse: [baseId cljSanitizeIdent]
+]
+
+IrTypeRef cljQualifiedTypeName(ctx): CljContext -> String = [
+  baseName = this cljTypeName
+  owner = ownerPkg
+  canQualify = (ctx currentPackage != "") && (owner != "") &&
+    (owner != "core") && (owner != ctx currentPackage)
+  canQualify ifTrue: [^ (owner cljGeneratedNamespace) + "/" + baseName]
+  ^ baseName
 ]
 
 // ---------------------------------------------------------------------------
