@@ -96,13 +96,14 @@ type CompilerSession
   revision: Int
   committedSnapshot: WorkspaceSnapshot?
   modules: Map(String, IncrementalModuleState)
+  entry: IrBlock?
   dependencies: Map(String, IncrementalDependencyTargets)
   reverseDependencies: Map(String, IncrementalDependencyTargets)
   specializationUses: Map(String, Set(String))
   compilerConfig: CompilerConfigFingerprint?
 
 constructor CompilerSession empty -> CompilerSession =
-  CompilerSession revision: 0 committedSnapshot: null modules: #{}
+  CompilerSession revision: 0 committedSnapshot: null modules: #{} entry: null
     dependencies: #{} reverseDependencies: #{} specializationUses: #{}
     compilerConfig: null
 
@@ -144,10 +145,47 @@ Set(String) incrementalTransitiveDependants(reverseGraph): Map(String, Increment
   ^ result
 ]
 
+Set(String) CompilerSession bodyModulesFor(snapshot): WorkspaceSnapshot apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> Set(String) = [
+  result::mut Set(String) = #()!
+
+  apiHashes forEach: [moduleId, newApiHash ->
+    source = snapshot sourceFor: moduleId
+    sourceHash = source unpack: [Sha256 digest: it content] or: (Sha256 digest: "")
+    old = modules at: moduleId
+    | old
+    | null => result add: moduleId
+    |=> [
+      old sourceHash != sourceHash ifTrue: [result add: moduleId]
+      old apiHash != newApiHash ifTrue: [result add: moduleId]
+    ]
+  ]
+
+  // A first candidate has no reusable body cache.  Resolution must therefore
+  // cover every source, while later candidates can stop at the changed API
+  // frontier and its old reverse dependants.
+  modules isEmpty ifTrue: [
+    apiHashes forEach: [moduleId, ignored -> result add: moduleId]
+  ]
+
+  changedInterfaces::mut Set(String) = #()!
+  apiHashes forEach: [moduleId, newApiHash ->
+    old = modules at: moduleId
+    old unpack: [oldState ->
+      oldState apiHash != newApiHash ifTrue: [changedInterfaces add: moduleId]
+    ]
+  ]
+  result addAll: (changedInterfaces incrementalTransitiveDependants: reverseDependencies)
+
+  resolutionChanged = compilerConfig unpack: [it resolutionKey != config resolutionKey] or: true
+  resolutionChanged ifTrue: [apiHashes forEach: [moduleId, ignored -> result add: moduleId]]
+  ^ result
+]
+
 type CompilerCandidate
   baseRevision: Int
   snapshot: WorkspaceSnapshot
   modules: Map(String, IncrementalModuleState)
+  irModule: IrModule
   dependencies: Map(String, IncrementalDependencyTargets)
   reverseDependencies: Map(String, IncrementalDependencyTargets)
   specializationUses: Map(String, Set(String))
@@ -157,15 +195,28 @@ type CompilerCandidate
   bodyInvalidated: Set(String)
   outputInvalidated: Set(String)
 
-CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(specializationUses): Map(String, Set(String)) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+type CompilerBackendArtifact
+  backend: String
+  target: String
+  content: String
+
+CompilerCandidate emitBackend -> CompilerBackendArtifact = [
+  backend = compilerConfig backend
+  content =
+    | backend
+    | "clj" => [CljBackend fullFromIrModule: irModule]
+    |=> [TO DO: "incremental backend is not available for " + backend]
+  ^ CompilerBackendArtifact backend: backend target: compilerConfig target content: content
+]
+
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(specializationUses): Map(String, Set(String)) apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   newDependencies::mut Map(String, IncrementalDependencyTargets) = #{}!
   ir packages forEach: [pkg ->
     newDependencies at: pkg name put: (IncrementalDependencyTargets values: pkg dependencyPackageNames)
   ]
   newReverse = newDependencies incrementalReverseGraph
 
-  newApiHashes::mut Map(String, String) = #{}!
-  ir packages forEach: [pkg -> newApiHashes at: pkg name put: pkg apiHash]
+  newApiHashes = apiHashes
 
   sourceInvalidated::mut Set(String) = #()!
   interfaceInvalidated::mut Set(String) = #()!
@@ -262,7 +313,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
   ]
 
   ^ CompilerCandidate
-    baseRevision: revision snapshot: snapshot modules: newModules
+    baseRevision: revision snapshot: snapshot modules: newModules irModule: ir
     dependencies: newDependencies reverseDependencies: newReverse
     specializationUses: specializationUses compilerConfig: config
     sourceInvalidated: sourceInvalidated interfaceInvalidated: interfaceInvalidated
@@ -275,11 +326,27 @@ CompilerSession commit(candidate): CompilerCandidate -> CompilerSession = [
     revision: revision + 1
     committedSnapshot: candidate snapshot
     modules: candidate modules
+    entry: candidate irModule entry
     dependencies: candidate dependencies
     reverseDependencies: candidate reverseDependencies
     specializationUses: candidate specializationUses
     compilerConfig: candidate compilerConfig
 ]
+
+type CompilerDiagnostic
+  requestVersion: Int
+  path: String
+  message: String
+
+type CompilerCompilationResult
+  requestVersion: Int
+  candidate: CompilerCandidate?
+  backendArtifact: CompilerBackendArtifact?
+  diagnostics: List(CompilerDiagnostic)
+  cancelled: Bool
+
+constructor CompilerCompilationResult cancelled(version): Int -> CompilerCompilationResult =
+  CompilerCompilationResult requestVersion: version candidate: null backendArtifact: null diagnostics: {} cancelled: true
 
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver): ResolverHelper config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   ir = resolver toIrModule
@@ -289,5 +356,88 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver)
     isGeneric = genericFunctionIds any: [key contains: ("|" + it + "|")]
     isGeneric ifTrue: [genericUses at: key put: contributors]
   ]
-  ^ .prepareCandidate: snapshot ir: ir specializationUses: genericUses config: config
+  ^ .prepareCandidate: snapshot ir: ir specializationUses: genericUses
+      apiHashes: resolver interfaceApiHashes config: config
+]
+
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot bodyResolver(bodyResolver): ResolverHelper bodyModules(bodyModules): Set(String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+  apiHashes = interfaceSnapshot interfaceApiHashes
+  bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
+  bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
+  bodyIr = bodyResolver toIrModule
+
+  // Keep the last typed/IR result for modules outside the body frontier.  The
+  // new resolver contains only the selected packages, so a changed body
+  // cannot accidentally type-check an unchanged dependant.
+  merged::mut Map(String, IrPackage) = #{}!
+  modules forEach: [moduleId, state -> merged at: moduleId put: state irPackage]
+  bodyIr packages forEach: [pkg -> merged at: pkg name put: pkg]
+
+  mergedPackages = merged values toList sortedBy: [it name]
+  mergedEntry = (bodyModules contains: interfaceSnapshot entryPointName)
+    ifTrue: [bodyIr entry]
+    ifFalse: [entry]
+  mergedIr = IrModule
+    version: bodyIr version
+    pkg: interfaceSnapshot entryPointName
+    packages: mergedPackages
+    entry: mergedEntry
+
+  mergedSpecializationUses::mut Map(String, Set(String)) = #{}!
+  specializationUses forEach: [key, contributors ->
+    kept::mut Set(String) = #()!
+    contributors forEach: [moduleId ->
+      bodyModules contains: moduleId, ifFalse: [kept add: moduleId]
+    ]
+    (kept count > 0) ifTrue: [mergedSpecializationUses at: key put: kept]
+  ]
+  bodyResolver specializationUses forEach: [key, contributors ->
+    existing = mergedSpecializationUses at: key
+    | existing
+    | null => mergedSpecializationUses at: key put: contributors toSet
+    |=> [
+      updated::mut Set(String) = existing toMutableSet
+      contributors forEach: [it -> updated add: it]
+      mergedSpecializationUses at: key put: updated
+    ]
+  ]
+
+  ^ this prepareCandidate: snapshot ir: mergedIr
+      specializationUses: mergedSpecializationUses
+      apiHashes: apiHashes config: config
+]
+
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+  apiHashes = interfaceSnapshot interfaceApiHashes
+  bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
+  bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
+  ^ this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
+      bodyResolver: bodyResolver bodyModules: bodyModules config: config
+]
+
+CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
+  cancelled ifTrue: [^ CompilerCompilationResult cancelled: requestVersion]
+
+  apiHashes = interfaceSnapshot interfaceApiHashes
+  bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
+  bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
+
+  diagnostics::mut List(CompilerDiagnostic) = {}!
+  // A working TyperDB starts with the declaration-pass errors, so reading it
+  // once avoids publishing duplicate diagnostics for the same source token.
+  bodyResolver db listOfErrors forEach: [error ->
+    diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+      path: error tok file path message: error toConsoleMsg)
+  ]
+  diagnostics isEmpty ifFalse: [
+    ^ CompilerCompilationResult
+      requestVersion: requestVersion candidate: null backendArtifact: null
+      diagnostics: diagnostics toList cancelled: false
+  ]
+
+  candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
+    bodyResolver: bodyResolver bodyModules: bodyModules config: config
+  artifact = candidate emitBackend
+  ^ CompilerCompilationResult requestVersion: requestVersion candidate: candidate
+    backendArtifact: artifact diagnostics: {} cancelled: false
 ]

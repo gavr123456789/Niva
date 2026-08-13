@@ -237,3 +237,141 @@ Test resolverInterfacePassStopsBeforeBodies = [
   Assert that: firstResolver toIrModule packages count equals: 1
   Assert that: secondResolver toIrModule packages count equals: 1
 ]
+
+Test interfaceApiHashIsAvailableBeforeBodyResolution = [
+  firstSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name]"
+    "main" "type App person: Person"
+  }
+  changedSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name + name]"
+    "main" "type App person: Person"
+  }
+
+  firstInterface = ResolverInterfaceSnapshot
+    collectSources: firstSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  changedInterface = ResolverInterfaceSnapshot
+    collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+
+  firstHashes = firstInterface interfaceApiHashes
+  changedHashes = changedInterface interfaceApiHashes
+  Assert that: (firstHashes at: "model") equals: (changedHashes at: "model")
+  Assert that: (firstHashes at: "main") equals: (changedHashes at: "main")
+
+  // Only the selected module gets a body cache entry.  In particular, the
+  // dependant is not type-checked merely because its source is present.
+  selected = changedInterface resolveBodiesFor: #( "model" )
+  Assert that: selected db typedBodiesCache count equals: 1
+  Assert that: (selected fileToStatements at: "main") equals: null
+]
+
+Test sessionResolvesOnlyInvalidatedBodyFrontier = [
+  initialSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name]"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  changedSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name + name]"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  config = CompilerConfigFingerprint incrementalTest
+
+  firstInterface = ResolverInterfaceSnapshot
+    collectSources: initialSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  empty = CompilerSession empty
+  initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    interfaceSnapshot: firstInterface config: config
+  committed = empty commit: initial
+
+  changedInterface = ResolverInterfaceSnapshot
+    collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: changedInterface config: config
+
+  Assert that: candidate sourceInvalidated equals: #( "model" )
+  Assert that: candidate interfaceInvalidated count equals: 0
+  Assert that: candidate bodyInvalidated equals: #( "model" )
+  // The cached dependant is present, but it was not rebuilt by the selected
+  // body pass.
+  Assert that: (candidate modules at: "service") != null equals: true
+]
+
+Test compilationResultVersionsDiagnosticsAndCancellation = [
+  goodSources = #{"main" "Int value -> Int = [^ this]"}
+  badSources = #{"main" "Int value -> Int = [^ \"wrong\"]"}
+  config = CompilerConfigFingerprint incrementalTest
+  goodInterface = ResolverInterfaceSnapshot
+    collectSources: goodSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  badInterface = ResolverInterfaceSnapshot
+    collectSources: badSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+
+  empty = CompilerSession empty
+  good = empty compileCandidate: (goodSources incrementalTestSnapshot: 1)
+    interfaceSnapshot: goodInterface config: config requestVersion: 11 cancelled: false
+  Assert that: good cancelled equals: false
+  Assert that: good diagnostics count equals: 0
+  committed = empty commit: good candidate unpackOrPANIC
+
+  failed = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: badInterface config: config requestVersion: 12 cancelled: false
+  Assert that: failed candidate equals: null
+  Assert that: failed diagnostics count > 0 equals: true
+  diagnostic = failed diagnostics first
+  Assert that: diagnostic requestVersion equals: 12
+  Assert that: committed revision equals: 1
+
+  cancelled = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: badInterface config: config requestVersion: 13 cancelled: true
+  Assert that: cancelled cancelled equals: true
+  Assert that: cancelled candidate equals: null
+  Assert that: cancelled diagnostics count equals: 0
+]
+
+Test incrementalBackendOutputMatchesCleanCompilation = [
+  initialSources = #{
+    "person" """
+      type Person name: String
+      Person greet -> String = [^ name]
+    """
+    "main" """
+      alice = Person name: "Ada"
+      alice greet
+    """
+  }
+  changedSources = #{
+    "person" """
+      type Person name: String
+      Person greet -> String = [^ name + name]
+    """
+    "main" """
+      alice = Person name: "Ada"
+      alice greet
+    """
+  }
+  config = CompilerConfigFingerprint incrementalTest
+
+  initialClean = ResolverHelper resolve: initialSources entryPoint: "main" backend: "clj"
+  initialCleanOutput = CljBackend fullFromIrModule: initialClean toIrModule
+  initialInterface = ResolverInterfaceSnapshot
+    collectSources: initialSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  empty = CompilerSession empty
+  initialResult = empty compileCandidate: (initialSources incrementalTestSnapshot: 1)
+    interfaceSnapshot: initialInterface config: config requestVersion: 1 cancelled: false
+  initialArtifact = initialResult backendArtifact unpackOrPANIC
+  Assert that: initialArtifact content equals: initialCleanOutput
+
+  committed = empty commit: initialResult candidate unpackOrPANIC
+  changedClean = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
+  changedCleanOutput = CljBackend fullFromIrModule: changedClean toIrModule
+  changedInterface = ResolverInterfaceSnapshot
+    collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  changedResult = committed compileCandidate: (changedSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: changedInterface config: config requestVersion: 2 cancelled: false
+  changedCandidate = changedResult candidate unpackOrPANIC
+  changedArtifact = changedResult backendArtifact unpackOrPANIC
+
+  Assert that: changedCandidate bodyInvalidated equals: #( "person" )
+  Assert that: changedArtifact content equals: changedCleanOutput
+]

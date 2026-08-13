@@ -1335,6 +1335,7 @@ type ResolverHelper
   db: TyperDB
   entryPointExpressions: List::TypedExpr2
   entryPointName: String
+  interfaceApiHashes: Map(String, String)
 
 type NivaSourceInput
   moduleId: String
@@ -1546,6 +1547,53 @@ type ResolverInterfaceSnapshot
   messageDeclarations: Map(String, List(MessageDecl))
   entryPointName: String
 
+// keep this representation independent from typed bodies
+// it is used by the incremental planner before resolveBodies is entered
+TypeField interfaceCanonicalTypeField -> String = name + ":" + astType interfaceCanonicalType
+
+AstType2 interfaceCanonicalType -> String =
+  | this
+  | AstType => name + (genericParams joinWith: ":" transform: [it interfaceCanonicalType]) +
+      (isMut ifTrue: [":mut"] ifFalse: [""]) +
+      (isNullable ifTrue: ["?"] ifFalse: [""]) +
+      (errors unpack: ["!" + (it names joinWith: ",")] or: "")
+  | AstLambdaType => "[" + (args joinWith: "," transform: [it interfaceCanonicalType]) +
+      "->" + returnType interfaceCanonicalType + "]"
+
+MessageDecl interfaceCanonical -> String = [
+  argsPart = args joinWith: "," transform: [it name + ":" + it astType interfaceCanonicalType]
+  returnPart = returnType unpack: [it interfaceCanonicalType] or: "-"
+  ^ "message|" + (receiver interfaceCanonicalType) + "|" + name + "|" +
+    argsPart + "|" + returnPart + "|" +
+    (isConstructor ifTrue: ["ctor"] ifFalse: ["method"])
+]
+
+Statement interfaceCanonical -> String = [
+  ^ | this
+    | TypeDecl => "type|" + name + "|" + (genericParams joinWith: ",") + "|" +
+        (fields joinWith: "," transform: [it interfaceCanonicalTypeField])
+    | UnionDecl => "union|" + name + "|" + (genericParams joinWith: ",") + "|" +
+        (commonUnionFields joinWith: "," transform: [it interfaceCanonicalTypeField]) + "|" +
+        (branches joinWith: "," transform: [branch ->
+          branch name + (branch isInclude ifTrue: ["+"] ifFalse: ["="]) + "(" +
+            (branch fields joinWith: "," transform: [it interfaceCanonicalTypeField]) + ")"
+        ])
+    | EnumDecl => "enum|" + token lexeme
+    | ExtendDecl => "extend|" + receiver interfaceCanonicalType + "|" +
+        (messages joinWith: "," transform: [it interfaceCanonical])
+    | MessageDecl => this interfaceCanonical
+    |=> ""
+]
+
+ResolverInterfaceSnapshot interfaceApiHashes -> Map(String, String) = [
+  hashes::mut Map(String, String) = #{}!
+  fileToStatements forEach: [pkg, statements ->
+    parts = statements map: [it interfaceCanonical], filter: [it isNotEmpty], sortedBy: [it]
+    hashes at: pkg put: (Sha256 digest: (pkg + "\n" + (parts joinWith: "\n")))
+  ]
+  ^ hashes toMap
+]
+
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
   ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
 ]
@@ -1658,16 +1706,21 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
     entryPointName: entryPoint
 ]
 
-ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
+ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelper = [
   db = lookupEnvironment newTyperDB
-  msgDecls = this messageDeclarations
+  msgDecls::mut Map(String, List(MessageDecl)) = #{}!
+  messageDeclarations forEach: [pkg, declarations ->
+    modules contains: pkg, ifTrue: [msgDecls at: pkg put: declarations]
+  ]
   entryPoint = this entryPointName
 
   mutableStatements::mut Map(String, mut List::Statement) = #{}!
   fileToStatements forEach: [file, statements ->
-    copied::mut List::Statement = {}!
-    copied addAll: statements
-    mutableStatements at: file put: copied
+    modules contains: file, ifTrue: [
+      copied::mut List::Statement = {}!
+      copied addAll: statements
+      mutableStatements at: file put: copied
+    ]
   ]
 
   MsgDeclVisitor new
@@ -1678,7 +1731,7 @@ ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
   entryPointExprs::mut List::Expr = {}!
   entryPointStatements forEach: [
     | it
-    | Expr => entryPointExprs add: it
+    | Expr => (modules contains: entryPoint) ifTrue: [entryPointExprs add: it]
     |=> []
   ]
   entryPointBody = Body unTypedBody: entryPointExprs
@@ -1841,6 +1894,11 @@ ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
     db: db
     entryPointExpressions: typedMain v
     entryPointName: entryPoint
+    interfaceApiHashes: (this interfaceApiHashes)
+]
+
+ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
+  ^ this resolveBodiesFor: (fileToStatements keys toSet)
 ]
 
 constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverHelper =
