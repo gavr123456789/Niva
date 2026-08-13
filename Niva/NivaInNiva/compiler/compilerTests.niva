@@ -223,11 +223,17 @@ Test resolverInterfacePassStopsBeforeBodies = [
   interfaceSnapshot = ResolverInterfaceSnapshot
     collectSources: sources toNivaSourceInputs entryPoint: "main" backend: "clj"
 
-  Assert that: interfaceSnapshot db typedBodiesCache count equals: 0
-  personType = interfaceSnapshot db findByTypeName: "Person" inPkg: "main"
+  personType = interfaceSnapshot lookupEnvironment findByTypeName: "Person" inPkg: "main"
   Assert that: personType name equals: "Person"
 
-  resolver = interfaceSnapshot resolveBodies
-  Assert that: resolver db typedBodiesCache count equals: 1
-  Assert that: resolver toIrModule packages count equals: 1
+  firstResolver = interfaceSnapshot resolveBodies
+  secondResolver = interfaceSnapshot resolveBodies
+  Assert that: firstResolver db typedBodiesCache count equals: 1
+  Assert that: secondResolver db typedBodiesCache count equals: 1
+  Assert that: firstResolver db == secondResolver db equals: false
+  freshDb = interfaceSnapshot lookupEnvironment newTyperDB
+  Assert that: freshDb typedBodiesCache count equals: 0
+  Assert that: freshDb generatedMessageDecls count equals: 0
+  Assert that: firstResolver toIrModule packages count equals: 1
+  Assert that: secondResolver toIrModule packages count equals: 1
 ]

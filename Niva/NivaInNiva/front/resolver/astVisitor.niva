@@ -27,13 +27,13 @@ PrintingVisitor visit(st): Statement = [
 TypeDeclVisitor
   visitAllTypesThenTypesAndMethods(fileToStatements): Map(String, List(Statement))
   entryPointStatements: List(Statement)
-  -> Map(String, mut List::MessageDecl) = [
+  -> Map(String, List(MessageDecl)) = [
 
   pkgTotypeDecls2::mut List(Tuple(String, TypeDecl)) = {}!
   noFieldsTypes::mut Map(String, TypeT) = #{}!
-  msgDeclsByPkg::mut Map(String, mut List::MessageDecl) = #{}!
+  msgDeclsByPkg::mut Map(String, mut List(MessageDecl)) = #{}!
   unionIncludes::mut Map(String, mut List(Tuple(String, Token))) = #{}!
-  unionRoots::mut Set::String = #()!
+  unionRoots::mut Set(String) = #()!
 
   // collect union roots before processing branches
   fileToStatements forEach: [file, statements ->
@@ -49,7 +49,7 @@ TypeDeclVisitor
     listMaybe = msgDeclsByPkg at: pkg
     | listMaybe
     | null => [
-      newList::mut List::MessageDecl = {}!
+      newList::mut List(MessageDecl) = {}!
       msgDeclsByPkg at: pkg put: newList
       newList
     ]
@@ -61,7 +61,7 @@ TypeDeclVisitor
     list add: msgDecl
   ]
 
-  processDeclarations = [file::String, statements::List::Statement ->
+  processDeclarations = [file::String, statements::List(Statement) ->
     pkgName = file
 
     db addNewPkgIfNotExists: pkgName
@@ -407,7 +407,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
   ]
 ]
 
-MsgDeclVisitor processBodyes(pkg2Msg): Map(String, mut List::MessageDecl) db::TyperDB = [
+MsgDeclVisitor processBodyes(pkg2Msg): Map(String, List(MessageDecl)) db::TyperDB = [
   pkg2Msg forEach: [pkgStr, msgList ->
     pkg = db packages at: pkgStr, unpackOrPANIC
 
