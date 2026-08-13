@@ -33,7 +33,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         --repl — emit a loadable Clojure REPL module without -main (build + Clojure only)
         --repl-line=N — emit entry expressions starting at source line N
         --native — compile a Clojure build to a native executable with GraalVM native-image
-        --incremental — opt in to the persistent compiler session in watch/LSP
+        --incremental — opt in to a persistent compiler session
         --verbose
         --help
     """ trimIndent

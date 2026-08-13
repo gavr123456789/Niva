@@ -49,6 +49,15 @@ Test cliArgsIncrementalFlag = [
   Assert that: result incremental equals: true
 ]
 
+Test cliArgsIncrementalIsOptIn = [
+  clean = ArgParser args: {"run" "main.niva"} toList
+  incremental = ArgParser args: {"run" "main.niva" "--backend=lsp" "--incremental"} toList
+
+  Assert that: clean incremental equals: false
+  Assert that: incremental backend equals: CompilerBackend.Lsp
+  Assert that: incremental incremental equals: true
+]
+
 Test cliArgsInfoTypePath = [
   result = ArgParser args: {"info" "main.Person"} toList
   Assert that: result option equals: CompilerOption.Info
