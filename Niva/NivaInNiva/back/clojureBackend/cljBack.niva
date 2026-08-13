@@ -170,6 +170,18 @@ IrTypeRef cljQualifiedTypeName(ctx): CljContext -> String = [
   ^ baseName
 ]
 
+// enum atoms use the generated enum Var instead of a plain keyword
+IrLiteralExpr cljLiteralExpr(ctx): CljContext -> String = [
+  isEnumAtom = (literal kind == IrLiteralKind.Atom) &&
+    (typeRef kind == IrTypeRefKind.Custom) &&
+    (typeRef ownerPkg != "")
+  isEnumAtom ifTrue: [
+    enumName = typeRef cljQualifiedTypeName: ctx
+    ^ enumName + "_" + (literal lexeme cljSanitizeIdent)
+  ]
+  ^ literal toCljLiteral
+]
+
 // ---------------------------------------------------------------------------
 // operator translation for IrOpBin
 // ---------------------------------------------------------------------------

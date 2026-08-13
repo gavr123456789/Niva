@@ -20,7 +20,7 @@
 extend IrExpr [
   on toCljExpr(ctx): CljContext scope: CljScope -> String =
     | this
-    | IrLiteralExpr => literal toCljLiteral
+    | IrLiteralExpr => this cljLiteralExpr: ctx
     | IrVarRef      => [
         safe = name cljSanitizeIdent
         (scope isMut: name) ifTrue: ["@" + safe] ifFalse: [safe]
