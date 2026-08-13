@@ -83,7 +83,7 @@ extend NivaType [
 
   /// generate unique identifiers for instantiated types (Box__Int)
   on toMangledName -> String = [
-    result = | this
+    ^ | this
     | TypeT => [
       genericArgsStr = genericArgs isNotEmpty
                         ifTrue:  ["__" + (genericArgs joinWith: "_" transform: [it toMangledName])]
@@ -98,7 +98,6 @@ extend NivaType [
     |=> [
       pkgName + "_" + name
     ]
-    ^ result
   ]
 
   on replaceGenericsFromTableDeep(letterToType): Map(String, NivaType) db: TyperDB -> NivaType = [

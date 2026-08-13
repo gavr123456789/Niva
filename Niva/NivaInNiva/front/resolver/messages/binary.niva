@@ -29,11 +29,10 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
   ]
 
   //
-  newBinaryT = BinaryMsgT
+  ^ BinaryMsgT
     args: typedArgs toList
     receiver: receiverTypedExpr
     token: token
     typeInfo: lastTypeInfo
     dbMsg: lastDbMsg unpackOrPANIC // this is +, its impossible to do 1 pkg.+ 2
-  ^ newBinaryT
 ]

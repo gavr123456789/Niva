@@ -83,23 +83,19 @@ constructor TyperDB new -> TyperDB = [
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
   stringBuilderProtocol = NivaProtocol stringBuilderFromDefaultTypes: dtc sb: sb
 
-  // every type needs its own empty protocol, sharing one map means
-  // that a method added to one type appears on all of them
-  floatProto::mut Map(String, NivaMethod) = #{}!
-  unitProto::mut Map(String, NivaMethod) = #{}!
-
   typeToMethodNameToMethod::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
     char charProtocol
 
     int intProtocol
     double doubleProtocol
 
-    float floatProto
+    // each literal must stay separate: sharing a map makes methods leak between types
+    float (#{}!)
 
     str strProtocol
     bool boolProtocol
 
-    unit unitProto
+    unit (#{}!)
 
     any anyProtocol
     error errorProtocol
@@ -112,34 +108,23 @@ constructor TyperDB new -> TyperDB = [
     sb stringBuilderProtocol
   }
 
-  charConstructors::mut Map(String, NivaMethod) = #{}!
-  intConstructors::mut Map(String, NivaMethod) = #{}!
-  floatConstructors::mut Map(String, NivaMethod) = #{}!
-  doubleConstructors::mut Map(String, NivaMethod) = #{}!
-  strConstructors::mut Map(String, NivaMethod) = #{}!
-  boolConstructors::mut Map(String, NivaMethod) = #{}!
-  unitConstructors::mut Map(String, NivaMethod) = #{}!
-  anyConstructors::mut Map(String, NivaMethod) = #{}!
-  listConstructors::mut Map(String, NivaMethod) = #{}!
-  mapConstructors::mut Map(String, NivaMethod) = #{}!
-  setConstructors::mut Map(String, NivaMethod) = #{}!
   sbConstructors::mut Map(String, NivaMethod) = #{}!
   sbConstructors at: "new" put: sb generateDefaultConstructor
 
   constructorsCache::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
-    char charConstructors
-    int intConstructors
-    float floatConstructors
-    double doubleConstructors
-    str strConstructors
-    bool boolConstructors
+    char (#{}!)
+    int (#{}!)
+    float (#{}!)
+    double (#{}!)
+    str (#{}!)
+    bool (#{}!)
     bind bindConstructors
-    unit unitConstructors
-    any anyConstructors
+    unit (#{}!)
+    any (#{}!)
     error errorProtocol
-    list listConstructors
-    map mapConstructors
-    set setConstructors
+    list (#{}!)
+    map (#{}!)
+    set (#{}!)
     sb sbConstructors
   }
 
@@ -221,13 +206,6 @@ extend TyperDB [
     bindMeta bindFileToPkg at: fileName put: pkgName
   ]
 
-  //on isBindFile(fileName): String -> Bool = bindMeta bindFiles contains: fileName
-
-  //on pkgNameForFile(fileName): String -> String = [
-  //  maybe = bindMeta bindFileToPkg at: fileName
-  //  ^ maybe unpack: [it] or: fileName
-  //]
-
   on markBindStatement(st): Statement = [
     bindMeta bindStatements add: st
   ]
@@ -273,10 +251,8 @@ extend TyperDB [
     unionRootToBranches at: rootId put: set
   ]
 
-  on isUnionBranch(branch): TypeT ofRoot(root): TypeT -> Bool = [
-    branches = this unionBranchesDeep: root
-    ^ branches contains: branch toIdString
-  ]
+  on isUnionBranch(branch): TypeT ofRoot(root): TypeT -> Bool =
+    (this unionBranchesDeep: root) contains: branch toIdString
 
   on findUnionParent(branch): TypeT -> TypeT? = [
     branchId = branch toIdString
@@ -555,15 +531,12 @@ extend TyperDB [
       | UnresolvedGenericT => true
       |=> expected sameTypeStrictAs: got
     ]
-    shapeMatchesResult = shapeMatches expected: template got: actual
-
-    shapeMatchesResult ifFalse: [^ null]
+    shapeMatches expected: template got: actual, ifFalse: [^ null]
     letterToType::mut Map(String, NivaType) = #{}!
     template collectGenericMappingsFrom: actual into: letterToType db: this
     specialized = template replaceGenericsFromTableDeep: letterToType db: this
     (specialized isContainsUnresolvedGenerics) ifTrue: [^ null]
-    sameReceiver = specialized sameTypeStrictAs: actual
-    sameReceiver ifFalse: [^ null]
+    specialized sameTypeStrictAs: actual, ifFalse: [^ null]
     ^ letterToType
   ]
 
@@ -698,18 +671,14 @@ extend TyperDB [
   ]
 
   on addNewPkgIfNotExists(pkgName): String -> NivaPkg = [
-    result = packages at: pkgName
-    p = | result
+    existing = packages at: pkgName
+    ^ | existing
         | null => [
           newPkg = NivaPkg withCoreImportednamed: pkgName
           packages at: pkgName put: newPkg
           newPkg
         ]
-        |=> [
-          result
-        ]
-
-    ^ p
+        |=> existing
   ]
 
   on addToTypesWithTheSameName(t): TypeT = [
@@ -1112,15 +1081,13 @@ extend TyperDB [
       ]
 
       // check that its Do or any arg names
-      result = name == "do" ifTrue: [
+      ^ name == "do" ifTrue: [
         NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
       ] ifFalse: [
         // check that it has args
         // then compare them
         NivaMethod manyArgKw: receiverType fields receiverType: receiverType returnT: receiverType returnType
-    ]
-
-      ^ result
+      ]
       ]
       |=> []
     ]
@@ -1217,7 +1184,7 @@ extend TyperDB [
     // its not core type
     // so use typesWithSameNames
 
-    result = | pkgName
+    ^ | pkgName
     | null => [
       // we dont know the pkg, so search type in every pkg
       sameNameType = typesWithSameNames at: typeName
@@ -1247,7 +1214,6 @@ extend TyperDB [
         ]
       ]
     ]
-    ^ result
   ]
 
 
@@ -1255,9 +1221,8 @@ extend TyperDB [
 
   /// Returns the same type information as the `info` CLI command, but for a
   /// type that has already been inferred by the resolver.
-  on compileTimeInfoFor(t): NivaType -> String = [
-    ^ .compileTimeInfoFor: t showSourceLocations: false
-  ]
+  on compileTimeInfoFor(t): NivaType -> String =
+    .compileTimeInfoFor: t showSourceLocations: false
 
   on compileTimeInfoFor(t): NivaType showSourceLocations(show): Bool -> String = [
     sb = StringBuilder new
@@ -1265,9 +1230,8 @@ extend TyperDB [
     ^ sb toString
   ]
 
-  on appendStructureInfoForType(t): NivaType to(sb): StringBuilder -> Unit = [
-    ^ .appendStructureInfoForType: t to: sb showSourceLocations: false
-  ]
+  on appendStructureInfoForType(t): NivaType to(sb): StringBuilder -> Unit =
+    .appendStructureInfoForType: t to: sb showSourceLocations: false
 
   on appendStructureInfoForType(t): NivaType to(sb): StringBuilder showSourceLocations(show): Bool -> Unit = [
     typeToken = typeDeclarationTokens at: (t pkgName + "." + t name)
