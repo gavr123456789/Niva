@@ -899,7 +899,7 @@ IrInstantiation toKey -> String = [
   ^ receiverType toKeyPart + "|" + argKey + "|" + returnType toKeyPart
 ]
 
-TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) -> Unit = [
+TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) specializationUses: mut Map(String, mut Set(String)) -> Unit = [
   | this
   | MessageSendT => [
     funcId = this dbMsg toCanonicalIrFunctionId: db
@@ -923,39 +923,55 @@ TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap
     exists = instList any: [it toKey == inst toKey]
     exists ifFalse: [instList add: inst]
 
-    receiver collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
-    argExprs forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+    specializationId = this dbMsg pkgName + "|" + funcId + "|" + inst toKey
+    contributors::mut Set(String) = specializationUses get: specializationId orPut: [#()!]
+    contributors add: currentPkg
+
+    receiver collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+    argExprs forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
   ]
-  | VarDeclarationT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
-  | AssignT =>            value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
-  | DestructingAssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
-  | ReturnStatementT =>   value unpack: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
-  | CodeBlockT =>         body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+  | VarDeclarationT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | AssignT =>            value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | DestructingAssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | ReturnStatementT =>   value unpack: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
+  | CodeBlockT =>         body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
   | MatchT => [
-    subject collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+    subject collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
     branches forEach: [br ->
-      br condition collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
-      br additionalConditions v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
-      br body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+      br condition collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+      br additionalConditions v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
+      br body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
     ]
     elseBranch unpack: [
-      it v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+      it v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
     ]
   ]
-  | CollectionLiteralT => elements v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
-  | ExprInBracketsT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap
+  | CollectionLiteralT => elements v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
+  | ExprInBracketsT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
   |=> []
 ]
 
-List::TypedStatement collectInstantiationsFromStatements(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) -> Unit = [
+List::TypedStatement collectInstantiationsFromStatements(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) specializationUses: mut Map(String, mut Set(String)) -> Unit = [
   this forEach: [st ->
     | st
-    | MessageDeclT => st body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+    | MessageDeclT => st body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
     | ExtendDeclT =>  st messages forEach: [msg ->
-        msg body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap]
+        msg body v forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
       ]
     |=> []
   ]
+]
+
+ResolverHelper specializationUses -> Map(String, Set(String)) = [
+  instMap::mut Map(String, mut List::IrInstantiation) = #{}!
+  uses::mut Map(String, mut Set(String)) = #{}!
+  fileToStatements forEach: [file, statements ->
+    statements collectInstantiationsFromStatements: db currentPkg: file instMap: instMap specializationUses: uses
+  ]
+  entryPointExpressions forEach: [
+    it collectInstantiationsFromExpr: db currentPkg: entryPointName instMap: instMap specializationUses: uses
+  ]
+  ^ uses
 ]
 
 ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
@@ -979,9 +995,10 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   ]
 
   instMap::mut Map(String, mut List::IrInstantiation) = #{}!
+  specializationUses::mut Map(String, mut Set(String)) = #{}!
 
   fileToStatements forEach: [file, statements ->
-    statements collectInstantiationsFromStatements: resolverDb currentPkg: file instMap: instMap
+    statements collectInstantiationsFromStatements: resolverDb currentPkg: file instMap: instMap specializationUses: specializationUses
   ]
 
   // entry point
@@ -995,7 +1012,8 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   // method instantiations separately.
   entryExprs forEach: [it collectInstantiationsFromExpr: resolverDb
                                       currentPkg: entryPointName
-                                      instMap: instMap]
+                                      instMap: instMap
+                                      specializationUses: specializationUses]
   rawEntryBlock = entryBody toIrBlock: resolverDb currentPkg: entryPointName typeFieldsById: typeFieldsById thisTypeRef: null
 
   // attach instantiations

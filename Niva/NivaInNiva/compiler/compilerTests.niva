@@ -47,3 +47,187 @@ Test resolverKeepsRealSourcePath = [
   | TypeDeclT => Assert that: statement token file path equals: realPath
   |=> [TO DO: "Expected TypeDeclT"]
 ]
+
+constructor CompilerConfigFingerprint incrementalTest -> CompilerConfigFingerprint =
+  CompilerConfigFingerprint compilerVersion: "test-compiler"
+    irSchema: "nir/v0" backend: "clj" target: "jvm"
+    abiOptions: "" coreAbiHash: "test-core"
+
+Map(String, String) incrementalTestSnapshot(revision): Int -> WorkspaceSnapshot =
+  WorkspaceSnapshot fromSources: .toNivaSourceInputs revision: revision
+
+Test sha256BindingIsDeterministic = [
+  Assert that: (Sha256 digest: "abc") equals:
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+]
+
+Test apiHashExcludesFunctionBodies = [
+  first = ResolverHelper resolve: #{
+    "main" "Int doubled -> Int = [^ this + this]"
+  } entryPoint: "main"
+  second = ResolverHelper resolve: #{
+    "main" "Int doubled -> Int = [^ this * 2]"
+  } entryPoint: "main"
+
+  firstPkg = first toIrModule packages first
+  secondPkg = second toIrModule packages first
+  Assert that: firstPkg apiHash equals: secondPkg apiHash
+]
+
+Test incrementalBodyChangeDoesNotInvalidateDependants = [
+  initialSources = #{
+    "model" """
+      type Person name: String
+      Person label -> String = [^ name]
+    """
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  changedSources = #{
+    "model" """
+      type Person name: String
+      Person label -> String = [^ name + name]
+    """
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+
+  initialResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  empty = CompilerSession empty
+  firstCandidate = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: initialResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: firstCandidate
+
+  changedResolver = ResolverHelper resolve: changedSources entryPoint: "main"
+  candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
+    resolver: changedResolver config: CompilerConfigFingerprint incrementalTest
+
+  Assert that: candidate sourceInvalidated equals: #( "model" )
+  Assert that: candidate interfaceInvalidated count equals: 0
+  Assert that: candidate bodyInvalidated equals: #( "model" )
+  Assert that: (candidate bodyInvalidated contains: "service") equals: false
+  Assert that: (candidate bodyInvalidated contains: "main") equals: false
+]
+
+Test incrementalApiChangeInvalidatesTransitiveDependants = [
+  initialSources = #{
+    "model" "type Person name: String"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  changedSources = #{
+    "model" "type Person name: String age: Int"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+
+  empty = CompilerSession empty
+  firstResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  first = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: firstResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: first
+
+  changedResolver = ResolverHelper resolve: changedSources entryPoint: "main"
+  candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
+    resolver: changedResolver config: CompilerConfigFingerprint incrementalTest
+
+  Assert that: candidate interfaceInvalidated equals: #( "model" )
+  Assert that: candidate bodyInvalidated equals: #( "main" "model" "service" )
+]
+
+Test staleIncrementalCandidateCannotCommit = [
+  initialSources = #{"main" "Int value -> Int = [^ this]"}
+  firstChanged = #{"main" "Int value -> Int = [^ this + 1]"}
+  staleChanged = #{"main" "Int value -> Int = [^ this + 2]"}
+
+  empty = CompilerSession empty
+  initialResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: initialResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: initial
+
+  firstResolver = ResolverHelper resolve: firstChanged entryPoint: "main"
+  firstCandidate = committed prepareCandidate: (firstChanged incrementalTestSnapshot: 2)
+    resolver: firstResolver config: CompilerConfigFingerprint incrementalTest
+  staleResolver = ResolverHelper resolve: staleChanged entryPoint: "main"
+  staleCandidate = committed prepareCandidate: (staleChanged incrementalTestSnapshot: 2)
+    resolver: staleResolver config: CompilerConfigFingerprint incrementalTest
+
+  newest = committed commit: firstCandidate
+  afterStaleCommit = newest commit: staleCandidate
+  Assert that: afterStaleCommit revision equals: newest revision
+  finalSnapshot = afterStaleCommit committedSnapshot unpackOrPANIC
+  Assert that: finalSnapshot revision equals: 2
+  newestMain = newest modules at: "main", unpackOrPANIC
+  finalMain = afterStaleCommit modules at: "main", unpackOrPANIC
+  Assert that: finalMain sourceHash equals: newestMain sourceHash
+]
+
+Test specializationUseIndexTracksContributingModule = [
+  sources = #{
+    "box" """
+      type Box(T) value: T
+      Box(T) unwrap -> T = [^ value]
+    """
+    "main" """
+      box = Box value: 1
+      box unwrap
+    """
+  }
+  resolver = ResolverHelper resolve: sources entryPoint: "main"
+  empty = CompilerSession empty
+  candidate = empty prepareCandidate: (sources incrementalTestSnapshot: 1)
+    resolver: resolver config: CompilerConfigFingerprint incrementalTest
+  uses = candidate specializationUses
+  mut found = false
+  uses forEach: [key, contributors ->
+    ((key startsWith: "box|") && (contributors contains: "main")) ifTrue: [found <- true]
+  ]
+  Assert that: found equals: true
+]
+
+Test incrementalRemovalUpdatesBothGraphDirections = [
+  initialSources = #{
+    "model" "type Person name: String"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  removedSources = #{
+    "model" "type Person name: String"
+    "main" "type App name: String"
+  }
+
+  empty = CompilerSession empty
+  initialResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: initialResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: initial
+
+  removedResolver = ResolverHelper resolve: removedSources entryPoint: "main"
+  candidate = committed prepareCandidate: (removedSources incrementalTestSnapshot: 2)
+    resolver: removedResolver config: CompilerConfigFingerprint incrementalTest
+
+  Assert that: (candidate modules at: "service") equals: null
+  Assert that: (candidate dependencies at: "service") equals: null
+  modelDependants = candidate reverseDependencies at: "model", unpackOrPANIC
+  Assert that: modelDependants values count equals: 0
+]
+
+Test resolverInterfacePassStopsBeforeBodies = [
+  sources = #{
+    "main" """
+      type Person name: String
+      Person greeting -> String = [^ name + name]
+    """
+  }
+  interfaceSnapshot = ResolverInterfaceSnapshot
+    collectSources: sources toNivaSourceInputs entryPoint: "main" backend: "clj"
+
+  Assert that: interfaceSnapshot db typedBodiesCache count equals: 0
+  personType = interfaceSnapshot db findByTypeName: "Person" inPkg: "main"
+  Assert that: personType name equals: "Person"
+
+  resolver = interfaceSnapshot resolveBodies
+  Assert that: resolver db typedBodiesCache count equals: 1
+  Assert that: resolver toIrModule packages count equals: 1
+]

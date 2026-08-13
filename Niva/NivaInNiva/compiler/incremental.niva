@@ -1,0 +1,293 @@
+// in-memory-module-level incremental compilation state
+// all values returned from this file are fresh snapshots committed sessions are never mutated
+
+type WorkspaceSnapshot
+  revision: Int
+  sources: List(NivaSourceInput)
+  documentVersions: Map(String, Int)
+
+constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int -> WorkspaceSnapshot =
+  WorkspaceSnapshot :revision sources: (sources sortedBy: [it moduleId]) documentVersions: #{}
+
+WorkspaceSnapshot sourceFor(moduleId): String -> NivaSourceInput? =
+  sources find: [it moduleId == moduleId]
+
+type CompilerConfigFingerprint
+  compilerVersion: String
+  irSchema: String
+  backend: String
+  target: String
+  abiOptions: String
+  coreAbiHash: String
+
+CompilerConfigFingerprint resolutionKey -> String =
+  compilerVersion + "|" + irSchema + "|" + coreAbiHash
+
+CompilerConfigFingerprint backendKey -> String =
+  .resolutionKey + "|" + backend + "|" + target + "|" + abiOptions
+
+IrTypeRefKind incrementalStableName -> String =
+  | this
+  | IrTypeRefKind.Builtin => "builtin"
+  | IrTypeRefKind.Custom => "custom"
+  | IrTypeRefKind.Function => "function"
+
+IrTypeRef canonicalInterfaceString -> String = [
+  argsPart = args joinWith: "," transform: [it canonicalInterfaceString]
+  returnPart = returnType unpack: [it canonicalInterfaceString] or: "-"
+  errorsPart = errors map: [it canonicalInterfaceString], sortedBy: [it], joinWith: ","
+  ^ kind incrementalStableName + ":" + ownerPkg + ":" + typeId +
+    "<" + argsPart + ">->" + returnPart + "!" + errorsPart +
+    (isMut ifTrue: [":mut"] ifFalse: [":val"]) +
+    (nullable ifTrue: ["?"] ifFalse: [""])
+]
+
+IrField canonicalInterfaceString -> String =
+  name + ":" + typeRef canonicalInterfaceString
+
+IrTypeDef canonicalInterfaceString -> String =
+  "type|" + id + "|" + (typeParams joinWith: ",") + "|" +
+    (fields joinWith: "," transform: [it canonicalInterfaceString])
+
+IrUnionBranch canonicalInterfaceString -> String =
+  name + (isInclude ifTrue: ["+"] ifFalse: ["="]) +
+    "(" + (fields joinWith: "," transform: [it canonicalInterfaceString]) + ")"
+
+IrUnionDef canonicalInterfaceString -> String =
+  "union|" + id + "|" + (typeParams joinWith: ",") + "|" +
+    (commonFields joinWith: "," transform: [it canonicalInterfaceString]) + "|" +
+    (branches joinWith: "," transform: [it canonicalInterfaceString]) + "|" +
+    (isErrorDomain ifTrue: ["error"] ifFalse: ["plain"])
+
+IrEnumDef canonicalInterfaceString -> String =
+  "enum|" + id + "|" + (values joinWith: ",")
+
+IrFunction canonicalInterfaceString -> String =
+  "fn|" + id + "|" + (generics joinWith: ",") + "|" +
+    receiverType canonicalInterfaceString + "|" +
+    (args joinWith: "," transform: [it name + ":" + it typeRef canonicalInterfaceString]) +
+    "|" + returnType canonicalInterfaceString + "|" +
+    (requiresMutReceiver ifTrue: ["mut"] ifFalse: ["val"])
+
+IrPackage canonicalInterfaceString -> String = [
+  parts::mut List(String) = {}!
+  types map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
+  unions map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
+  enums map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
+  functions map: [it canonicalInterfaceString], sortedBy: [it], forEach: [parts add: it]
+  ^ parts joinWith: "\n"
+]
+
+IrPackage apiHash -> String = Sha256 digest: .canonicalInterfaceString
+
+type IncrementalModuleState
+  moduleId: String
+  sourceHash: String
+  apiHash: String
+  dependencyApiHash: String
+  dependencies: List(String)
+  specializationHash: String
+  irPackage: IrPackage
+
+type IncrementalDependencyTargets
+  values: List(String)
+
+type CompilerSession
+  revision: Int
+  committedSnapshot: WorkspaceSnapshot?
+  modules: Map(String, IncrementalModuleState)
+  dependencies: Map(String, IncrementalDependencyTargets)
+  reverseDependencies: Map(String, IncrementalDependencyTargets)
+  specializationUses: Map(String, Set(String))
+  compilerConfig: CompilerConfigFingerprint?
+
+constructor CompilerSession empty -> CompilerSession =
+  CompilerSession revision: 0 committedSnapshot: null modules: #{}
+    dependencies: #{} reverseDependencies: #{} specializationUses: #{}
+    compilerConfig: null
+
+Map(String, IncrementalDependencyTargets) incrementalReverseGraph -> Map(String, IncrementalDependencyTargets) = [
+  reverseLists::mut Map(String, IncrementalDependencyTargets) = #{}!
+  this forEach: [moduleId, targets ->
+    (reverseLists at: moduleId) == null ifTrue: [
+      reverseLists at: moduleId put: (IncrementalDependencyTargets values: {})
+    ]
+    targets values forEach: [target ->
+      dependantsMaybe = reverseLists at: target
+      dependants::List(String) =
+        | dependantsMaybe
+        | null => {String}
+        |=> dependantsMaybe values
+      newValues = (dependants + {moduleId}) toSet toList sortedBy: [it]
+      reverseLists at: target put: (IncrementalDependencyTargets values: newValues)
+    ]
+  ]
+  ^ reverseLists
+]
+
+Set(String) incrementalTransitiveDependants(reverseGraph): Map(String, IncrementalDependencyTargets) -> Set(String) = [
+  result::mut Set(String) = #()!
+  queue::mut List(String) = this toList, sortedBy: [it], toMutableList
+  mut index = 0
+  [index < queue count] whileTrue: [
+    current = queue at: index
+    index <- index + 1
+    reverseGraph at: current, unpack: [dependants ->
+      dependants values sortedBy: [it], forEach: [dependant ->
+        result contains: dependant, ifFalse: [
+          result add: dependant
+          queue add: dependant
+        ]
+      ]
+    ]
+  ]
+  ^ result
+]
+
+type CompilerCandidate
+  baseRevision: Int
+  snapshot: WorkspaceSnapshot
+  modules: Map(String, IncrementalModuleState)
+  dependencies: Map(String, IncrementalDependencyTargets)
+  reverseDependencies: Map(String, IncrementalDependencyTargets)
+  specializationUses: Map(String, Set(String))
+  compilerConfig: CompilerConfigFingerprint
+  sourceInvalidated: Set(String)
+  interfaceInvalidated: Set(String)
+  bodyInvalidated: Set(String)
+  outputInvalidated: Set(String)
+
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(specializationUses): Map(String, Set(String)) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+  newDependencies::mut Map(String, IncrementalDependencyTargets) = #{}!
+  ir packages forEach: [pkg ->
+    newDependencies at: pkg name put: (IncrementalDependencyTargets values: pkg dependencyPackageNames)
+  ]
+  newReverse = newDependencies incrementalReverseGraph
+
+  newApiHashes::mut Map(String, String) = #{}!
+  ir packages forEach: [pkg -> newApiHashes at: pkg name put: pkg apiHash]
+
+  sourceInvalidated::mut Set(String) = #()!
+  interfaceInvalidated::mut Set(String) = #()!
+  specializationInvalidated::mut Set(String) = #()!
+
+  configResolutionChanged = compilerConfig unpack: [it resolutionKey != config resolutionKey] or: true
+  configBackendChanged = compilerConfig unpack: [it backendKey != config backendKey] or: true
+
+  ir packages forEach: [pkg ->
+    sourceHash = snapshot sourceFor: pkg name,
+      unpack: [Sha256 digest: it content]
+      or: (Sha256 digest: "")
+    oldState = modules at: pkg name
+    | oldState
+    | null => [
+        sourceInvalidated add: pkg name
+        interfaceInvalidated add: pkg name
+      ]
+    |=> [
+      oldState sourceHash != sourceHash ifTrue: [sourceInvalidated add: pkg name]
+      oldState apiHash != (newApiHashes at: pkg name, unpackOrPANIC) ifTrue: [interfaceInvalidated add: pkg name]
+    ]
+  ]
+
+  modules forEach: [moduleId, old ->
+    (newApiHashes at: moduleId) == null ifTrue: [
+      sourceInvalidated add: moduleId
+      interfaceInvalidated add: moduleId
+    ]
+  ]
+
+  specializationKeys::mut Set(String) = #()!
+  specializationUses forEach: [key, contributors -> specializationKeys add: key]
+  this specializationUses forEach: [key, contributors -> specializationKeys add: key]
+  specializationKeys forEach: [key ->
+    oldContributors = this specializationUses at: key, unpack: [it toList sortedBy: [it]] or: {}
+    newContributors = specializationUses at: key, unpack: [it toList sortedBy: [it]] or: {}
+    oldContributors != newContributors ifTrue: [
+      owner = key substringBefore: "|"
+      specializationInvalidated add: owner
+    ]
+  ]
+
+  allReverse::mut Map(String, IncrementalDependencyTargets) = #{}!
+  reverseDependencies forEach: [key, values -> allReverse at: key put: values]
+  newReverse forEach: [key, values ->
+    combinedMaybe = allReverse at: key
+    combined::List(String) =
+      | combinedMaybe
+      | null => {String}
+      |=> combinedMaybe values
+    allReverse at: key put: (IncrementalDependencyTargets
+      values: ((combined + values values) toSet toList sortedBy: [it]))
+  ]
+  transitive = interfaceInvalidated incrementalTransitiveDependants: allReverse
+
+  bodyInvalidated::mut Set(String) = #()!
+  bodyInvalidated addAll: sourceInvalidated
+  bodyInvalidated addAll: transitive
+  configResolutionChanged ifTrue: [ir packages forEach: [bodyInvalidated add: it name]]
+
+  outputInvalidated::mut Set(String) = #()!
+  outputInvalidated addAll: bodyInvalidated
+  outputInvalidated addAll: specializationInvalidated
+  configBackendChanged ifTrue: [ir packages forEach: [outputInvalidated add: it name]]
+
+  newModules::mut Map(String, IncrementalModuleState) = #{}!
+  ir packages forEach: [pkg ->
+    sourceHash = snapshot sourceFor: pkg name,
+      unpack: [Sha256 digest: it content]
+      or: (Sha256 digest: "")
+    depApi = pkg dependencyPackageNames map: [dep ->
+      newApiHashes at: dep, unpackOrValue: "<missing>"
+    ], joinWith: "|"
+    specializationParts::mut List(String) = {}!
+    specializationUses forEach: [key, contributors ->
+      key startsWith: (pkg name + "|"), ifTrue: [
+        specializationParts add: (key + "=" + (contributors toList sortedBy: [it], joinWith: ","))
+      ]
+    ]
+    state = IncrementalModuleState
+      moduleId: pkg name
+      sourceHash: sourceHash
+      apiHash: (newApiHashes at: pkg name, unpackOrPANIC)
+      dependencyApiHash: (Sha256 digest: depApi)
+      dependencies: pkg dependencyPackageNames
+      specializationHash: (Sha256 digest: (specializationParts sortedBy: [it], joinWith: "|"))
+      irPackage: pkg
+    oldState = modules at: pkg name
+    canReuse = (outputInvalidated contains: pkg name, not) && (oldState != null)
+    canReuse
+      ifTrue: [newModules at: pkg name put: oldState unpackOrPANIC]
+      ifFalse: [newModules at: pkg name put: state]
+  ]
+
+  ^ CompilerCandidate
+    baseRevision: revision snapshot: snapshot modules: newModules
+    dependencies: newDependencies reverseDependencies: newReverse
+    specializationUses: specializationUses compilerConfig: config
+    sourceInvalidated: sourceInvalidated interfaceInvalidated: interfaceInvalidated
+    bodyInvalidated: bodyInvalidated outputInvalidated: outputInvalidated
+]
+
+CompilerSession commit(candidate): CompilerCandidate -> CompilerSession = [
+  candidate baseRevision != revision ifTrue: [^ this]
+  ^ CompilerSession
+    revision: revision + 1
+    committedSnapshot: candidate snapshot
+    modules: candidate modules
+    dependencies: candidate dependencies
+    reverseDependencies: candidate reverseDependencies
+    specializationUses: candidate specializationUses
+    compilerConfig: candidate compilerConfig
+]
+
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver): ResolverHelper config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+  ir = resolver toIrModule
+  genericFunctionIds = ir functions filter: [it generics isNotEmpty], map: [it id]
+  genericUses::mut Map(String, Set(String)) = #{}!
+  resolver specializationUses forEach: [key, contributors ->
+    isGeneric = genericFunctionIds any: [key contains: ("|" + it + "|")]
+    isGeneric ifTrue: [genericUses at: key put: contributors]
+  ]
+  ^ .prepareCandidate: snapshot ir: ir specializationUses: genericUses config: config
+]
