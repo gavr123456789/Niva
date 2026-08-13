@@ -1347,6 +1347,15 @@ type NivaSourceInput
   path: String
   content: String
 
+// Declaration/interface pass result.  Body resolution is intentionally a
+// separate operation so incremental and LSP callers can stop at this layer.
+type ResolverInterfaceSnapshot
+  fileToStatements: Map(String, mut List::Statement)
+  db: TyperDB
+  entryPointStatements: List::Statement
+  messageDeclarations: Map(String, mut List::MessageDecl)
+  entryPointName: String
+
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
   ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
 ]
@@ -1381,7 +1390,7 @@ constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoin
       entryPoint: entryPoint backend: backend
 ]
 
-constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverHelper  = [
+constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverInterfaceSnapshot = [
   fileToStatements::mut Map(String, mut List::Statement) = #{}!
   db = TyperDB new
 
@@ -1450,6 +1459,18 @@ constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryP
   msgDecls = TypeDeclVisitor db: db,
     visitAllTypesThenTypesAndMethods: fileToStatements
     entryPointStatements: entryPointStatements
+
+  ^ ResolverInterfaceSnapshot
+    fileToStatements: fileToStatements
+    db: db
+    entryPointStatements: entryPointStatements
+    messageDeclarations: msgDecls
+    entryPointName: entryPoint
+]
+
+ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
+  msgDecls = this messageDeclarations
+  entryPoint = this entryPointName
 
   MsgDeclVisitor new
     processBodyes: msgDecls
@@ -1623,6 +1644,10 @@ constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryP
     entryPointExpressions: typedMain v
     entryPointName: entryPoint
 ]
+
+constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverHelper =
+  ResolverInterfaceSnapshot collectSources: sources entryPoint: entryPoint backend: backend,
+    resolveBodies
 
 TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db(db): TyperDB -> TypeT = [
   newFields = fields map: [

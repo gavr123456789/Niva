@@ -1,0 +1,4 @@
+type Sha256
+
+@emit: """java.security.MessageDigest.getInstance("SHA-256").digest($1.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 0xff) }"""
+constructor Sha256 digest(text): String -> String = ""
