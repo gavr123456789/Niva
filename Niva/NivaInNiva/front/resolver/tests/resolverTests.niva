@@ -147,6 +147,31 @@ Test declaredErrorEffectsRequireBodyErrors = [
   ]
 ]
 
+Test tryRethrowsIntoEnclosingFunctionAndUnwrapsVariable = [
+  fileMain = """
+    Int sas -> Int! = [
+      1 > 2 ifTrue: [Error throwWithMsg: "hello"]
+      1
+    ]
+
+    Int sus -> Int!Error = [
+      x = this sas try
+      x inc inc
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  sus = result fileToStatements at: "main", unpackOrPANIC, at: 1
+  | sus
+  | MessageDeclT => [
+    Assert that: sus body listOfErrors count equals: 1
+    Assert that: sus body listOfErrors first name equals: "Error"
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+]
+
 Test callbackErrorsPropagateToEnclosingDeclarationAndMatch = [
   fileMain = """
     Int sas -> Int! = [

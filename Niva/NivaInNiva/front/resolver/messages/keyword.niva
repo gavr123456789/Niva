@@ -337,15 +337,14 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
   // Evaluating receiver/arguments can fail before the method is entered.
   // Function errors are latent: creating a block is harmless; invoking it via
-  // a call propagates the errors from its body. `try` consumes the receiver's
-  // immediate errors instead of propagating them.
-  msgName == "try" ifFalse: [
-    receiverTypedExpr typeInfo listOfErrors forEach: [callErrors add: it]
-    receiverEffectType = receiverTypedExpr typeInfo t
-    | receiverEffectType
-    | FuntionT => receiverEffectType returnErrors forEach: [callErrors add: it]
-    |=> []
-  ]
+  // a call propagates the errors from its body. `try` makes the successful
+  // value usable, but re-throws the receiver's errors from the current
+  // function, so those errors must remain part of this expression's effect.
+  receiverTypedExpr typeInfo listOfErrors forEach: [callErrors add: it]
+  receiverEffectType = receiverTypedExpr typeInfo t
+  | receiverEffectType
+  | FuntionT => receiverEffectType returnErrors forEach: [callErrors add: it]
+  |=> []
 
   typedArgs forEach: [arg ->
     arg expr typeInfo listOfErrors forEach: [callErrors add: it]
