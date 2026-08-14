@@ -34,7 +34,13 @@ constructor IO_Container new -> IO_Container = [
 
   walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
     root = path toPath normalized
-    rootSegmentCount = root segments count
+    // Okio keeps `.` as a path segment after normalization. Recursive entries
+    // do not contain that segment, so dropping it used to turn a root-level
+    // `main.niva` into an empty relative path and `.niva_clj/main.niva` into
+    // `main.niva`.
+    rootSegmentCount = root toString == "."
+      ifTrue: [0]
+      ifFalse: [root segments count]
     x = FileSystem listRecursively: root
 
     x map: [
@@ -76,14 +82,12 @@ constructor IO_Container new -> IO_Container = [
 compilerTry = [
   path = Compiler cliArgs
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
-]
+] do
 
 compilerTry2 = [
-  //path = {"run" ".niva_js/testss.niva"}
-  //path = {"run" ".niva_go/_testss.niva" "--backend" "go"}
-  path = {"run" ".niva_clj/main.niva" "--backend=clj" } // "--debug"
-  t1 = System currentTimeMillis
+  cliArgs = Compiler cliArgs
+  path = cliArgs isEmpty
+    ifTrue: [{"run" ".niva_clj/main.niva" "--runtime=bb"}]
+    ifFalse: [cliArgs]
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
-  diff = System currentTimeMillis - t1
-  //diff echo // 60 toLong / 1000 toLong, echo
-] do
+]
