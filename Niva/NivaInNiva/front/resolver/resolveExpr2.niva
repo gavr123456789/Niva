@@ -701,7 +701,17 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ]
 
     varTypeInfo = declaredTypeInfo unpackOrValue: typedExpr typeInfo
-    c defineVar: name withType: varTypeInfo
+    // `try` unwraps the value for subsequent uses of this variable, while
+    // its error effect is retained on the declaration below and therefore on
+    // the enclosing body/function.
+    untypedValue = this value
+    valueIsTry = | untypedValue
+                 | UnaryMsg => untypedValue selector name == "try"
+                 |=> false
+    bindingTypeInfo = valueIsTry
+      ifTrue: [TypeInfo t: typedExpr typeInfo t isMut: typedExpr typeInfo isMut listOfErrors: {}]
+      ifFalse: [varTypeInfo]
+    c defineVar: name withType: bindingTypeInfo
 
     isVarUsed = c currentBlockRefNames contains: name
 
@@ -712,7 +722,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       :token
       :isMut
       isUsed: isVarUsed
-      typeInfo: db dtc unit toTypeInfoDefault
+      typeInfo: (TypeInfo t: db dtc unit isMut: false listOfErrors: typedExpr typeInfo listOfErrors)
 
   ]
   | Assign => [
