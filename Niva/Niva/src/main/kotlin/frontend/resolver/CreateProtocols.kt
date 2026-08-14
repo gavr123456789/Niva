@@ -1381,7 +1381,7 @@ fun createMapProtocols(
         )
         val mutKwMsgs = mutableMapOf(
             createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType), forMutable = true),
-            createKeyword(KeywordArg("putAll", mutableMapType), unitType, forMutable = true),
+            createKeyword(KeywordArg("putAll", mapType), unitType, forMutable = true),
             createKeyword(
                 "atPut",
                 listOf(

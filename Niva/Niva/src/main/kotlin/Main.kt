@@ -16,6 +16,9 @@ import utils.testingLS
 
 
 fun main(args: Array<String>) {
+
+    val x = mutableMapOf(1 to "a", 2 to "b")
+    x.putAll(mapOf(3 to "4"))
 //    val args = arrayOf("run","")
 //        testingLS()
     if (help(args))
@@ -28,9 +31,6 @@ fun main(args: Array<String>) {
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
 fun run(args2: Array<String>) {
     val args = args2.toMutableList()
-    val arr = List(100) {42}
-    val aar = List(100) {it * 2}
-
 
     // readJar("/home/gavr/.gradle/caches/modules-2/files-2.1/io.github.jwharm.javagi/gtk/0.9.0/2caa1960a0bec1c8ed7127a6804693418441f166/gtk-0.9.0.jar")
 
@@ -121,6 +121,15 @@ fun run(args2: Array<String>) {
         MainArgument.USER_DEFINED_INFO_ONLY -> compiler.infoPrint(true, specialPkgToInfoPrint)
         MainArgument.RUN_FROM_IDEA -> compiler.runGradleAmperBuildCommand(dist = false)
         MainArgument.DEV_MODE -> daemon(pm, mainArg, am)
+        MainArgument.WATCH -> {
+            val watchArgs = args.toMutableList()
+            if (watchArgs.size > 1) {
+                watchArgs[1] = File(pm.pathToNivaMainFile).absolutePath
+            } else {
+                watchArgs += File(pm.pathToNivaMainFile).absolutePath
+            }
+            compiler.runGradleAmperBuildCommand(programArgs = watchArgs)
+        }
         MainArgument.GRAPHVIZ -> {
             graphviz(pm, args, resolver)
         }

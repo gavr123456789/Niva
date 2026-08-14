@@ -26,7 +26,7 @@ enum class MainArgument {
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DEV_MODE, TEST, LSP, GRAPHVIZ, NEW
+    DEV_MODE, TEST, LSP, GRAPHVIZ, NEW, WATCH
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -90,6 +90,7 @@ class ArgsManager(val args: MutableList<String>) {
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
                 "dev" -> MainArgument.DEV_MODE
+                "watch" -> MainArgument.WATCH
                 "test" -> if (mill) MainArgument.TEST_MILL
                 else MainArgument.TEST
                 "graphviz" -> MainArgument.GRAPHVIZ
@@ -139,6 +140,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
         MainArgument.BUIlD,
         MainArgument.DISRT,
         MainArgument.DEV_MODE,
+        MainArgument.WATCH,
         MainArgument.TEST,
         MainArgument.GRAPHVIZ,
         MainArgument.NEW,
