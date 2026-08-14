@@ -152,7 +152,10 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
     inputHasNoValue
       ifTrue: [sb appendIndent: 1 line: (errName + " := " + inputStr)]
       ifFalse: [sb appendIndent: 1 line: (valueName + ", " + errName + " := " + inputStr)]
-    sb appendIndent: 1 line: ("if " + errName + " != nil { panic(" + errName + ") }")
+    errorReturn = outputType isGoUnitType
+      ifTrue: ["return " + errName]
+      ifFalse: ["return " + (outputType goZeroValue: ctx) + ", " + errName]
+    sb appendIndent: 1 line: ("if " + errName + " != nil { " + errorReturn + " }")
   ] ifFalse: [
     sb appendIndent: 1 line: (valueName + " := " + inputStr)
   ]
@@ -160,16 +163,16 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
   isNullable ifTrue: [
     sb appendIndent: 1 line: ("if " + valueName + " == nil { panic(\"try on null\") }")
     outputType isGoUnitType
-      ifTrue: [sb appendIndent: 1 line: "return core.UnitInstance"]
+      ifTrue: [sb appendIndent: 1 line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
       ifFalse: [
         inputType isGoNullableReferenceValue
-          ifTrue: [sb appendIndent: 1 line: ("return " + valueName)]
-          ifFalse: [sb appendIndent: 1 line: ("return *" + valueName)]
+          ifTrue: [sb appendIndent: 1 line: ("return " + valueName + (hasErrors ifTrue: [", nil"] ifFalse: [""]))]
+          ifFalse: [sb appendIndent: 1 line: ("return *" + valueName + (hasErrors ifTrue: [", nil"] ifFalse: [""]))]
       ]
   ] ifFalse: [
     outputType isGoUnitType
-      ifTrue: [sb appendIndent: 1 line: "return core.UnitInstance"]
-      ifFalse: [sb appendIndent: 1 line: ("return " + valueName)]
+      ifTrue: [sb appendIndent: 1 line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
+      ifFalse: [sb appendIndent: 1 line: ("return " + valueName + (hasErrors ifTrue: [", nil"] ifFalse: [""]))]
   ]
 
   sb append: "}()"

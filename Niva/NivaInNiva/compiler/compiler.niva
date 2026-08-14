@@ -69,254 +69,15 @@ constructor NivaBuildSystem [
 /// takes fileNames to Content
 type NivaCompiler
 
-static JVM_HOST_SOURCE = """
-(ns niva.hot-reload.host
-  (:require [clj-reload.core :as reload]
-            [clojure.java.io :as io]))
-
-(defonce runtime
-  (atom {:initialized? false
-         :initial-loaded? false
-         :entry-executed? false
-         :entry-namespace nil
-         :watch-service nil
-         :watch-stop nil
-         :bb-process nil
-         :bb-writer nil}))
-
-(defn- print-error! [prefix error]
-  (binding [*out* *err*]
-    (println prefix)
-    (println (or (ex-message error) error))
-    (when-let [trace (seq (.getStackTrace error))]
-      (doseq [line (take 8 trace)]
-        (println "  at" line)))))
-
-(defn init! [generated-dir entry-namespace]
-  (when-not (:initialized? @runtime)
-    (reload/init
-     {:dirs [generated-dir]
-      :no-reload '#{niva.hot-reload.host}
-      :output :quieter})
-    (swap! runtime assoc
-           :initialized? true
-           :entry-namespace entry-namespace)))
-
-(defn- invoke-entry! []
-  (let [entry-symbol (symbol (:entry-namespace @runtime))
-        entry-ns (or (find-ns entry-symbol)
-                     (do (require entry-symbol) (find-ns entry-symbol)))
-        entry-var (or (requiring-resolve
-                       (symbol (:entry-namespace @runtime) "__niva_entry!"))
-                      (and entry-ns (ns-resolve entry-ns '__niva_entry!)))]
-    (when-not entry-var
-      (throw (ex-info "generated entry hook is missing"
-                      {:namespace entry-symbol})))
-    (entry-var)
-    (swap! runtime assoc :entry-executed? true)))
-
-(defn initial-load! []
-  (try
-    (reload/reload {:only :all})
-    (when-not (:entry-executed? @runtime)
-      (invoke-entry!))
-    (swap! runtime assoc :initial-loaded? true)
-    {:ok true}
-    (catch Throwable error
-      (print-error! "Clojure initial load failed" error)
-      {:ok false :error error})))
-
-(defn- reload-in-process! []
-  (try
-    (reload/reload {:only :changed})
-    (when-not (:entry-executed? @runtime)
-      (invoke-entry!))
-    (swap! runtime assoc :initial-loaded? true)
-    {:ok true}
-    (catch Throwable error
-      (print-error! "Clojure reload failed" error)
-      {:ok false :error error})))
-
-(defn reload-changed! []
-  (if-let [writer (:bb-writer @runtime)]
-    (try
-      (.write writer "reload\n")
-      (.flush writer)
-      {:ok true}
-      (catch Throwable error
-        (print-error! "Babashka reload signal failed" error)
-        {:ok false :error error}))
-    (reload-in-process!)))
-
-(defn- java-class [name]
-  (Class/forName name))
-
-(defn- invoke-static-no-args [class-name method-name]
-  (.invoke (.getMethod (java-class class-name) method-name (make-array Class 0))
-           nil
-           (object-array 0)))
-
-(defn- enum-value [class-name value]
-  (some #(when (= value (.name %)) %)
-        (.getEnumConstants (java-class class-name))))
-
-(defn- watch-kind [name]
-  (.get (.getField (java-class "java.nio.file.StandardWatchEventKinds") name) nil))
-
-(defn- project-directory? [^java.io.File file]
-  (and (.isDirectory file)
-       (not-any? #{".git" ".niva_clj" ".niva_cache" "build" "target"}
-                 (map #(.getName %) (take-while some? (iterate #(.getParentFile %) file))))))
-
-(defn- register-directory! [directory watch-service]
-  (.register directory watch-service
-             (into-array
-                         [(watch-kind "ENTRY_CREATE")
-                          (watch-kind "ENTRY_MODIFY")
-                          (watch-kind "ENTRY_DELETE")])))
-
-(defn- register-tree! [^java.io.File root watch-service]
-  (doseq [file (file-seq root)
-          :when (project-directory? file)]
-    (register-directory! (.toPath file) watch-service)))
-
-(defn- event-is-source? [event]
-  (let [context (.context event)]
-    (try
-      (.endsWith (str context) ".niva")
-      (catch Throwable _ false))))
-
-(defn- drain-key! [key root watch-service]
-  (let [events (.pollEvents key)]
-    (doseq [event events]
-      (when (= (watch-kind "ENTRY_CREATE") (.kind event))
-        (let [child (.resolve (.watchable key) (.context event))]
-          (when (.isDirectory (.toFile child))
-            (register-tree! (.toFile child) watch-service)))))
-    (boolean (some event-is-source? events))))
-
-(defn- wait-for-debounced-batch! [watch-service first-key]
-  (loop [source-event? (drain-key! first-key nil watch-service)]
-    (if-let [next-key (.poll watch-service 150
-                              (enum-value "java.util.concurrent.TimeUnit" "MILLISECONDS"))]
-      (let [next-source? (drain-key! next-key nil watch-service)]
-        (.reset next-key)
-        (recur (or source-event? next-source?)))
-      source-event?)))
-
-(defn- invoke-change! [on-change]
-  (if (instance? Runnable on-change)
-    (.run ^Runnable on-change)
-    (on-change)))
-
-(defn- watch-jvm! [project-root on-change]
-  (let [watch-service (.newWatchService
-                       (invoke-static-no-args "java.nio.file.FileSystems" "getDefault"))
-        root-file (java.io.File. project-root)
-        shutdown-hook (Thread. #(try (.close watch-service) (catch Throwable _)))]
-    (swap! runtime assoc :watch-service watch-service)
-    (.addShutdownHook (Runtime/getRuntime) shutdown-hook)
-    (try
-      (register-tree! root-file watch-service)
-      (loop []
-        (when-let [key (try (.take watch-service)
-                            (catch Throwable _ nil))]
-          (when (wait-for-debounced-batch! watch-service key)
-            (try (invoke-change! on-change)
-                 (catch Throwable error
-                   (print-error! "watch build callback failed" error))))
-          (.reset key)
-          (recur)))
-      (finally
-        (swap! runtime assoc :watch-service nil)
-        (try (.removeShutdownHook (Runtime/getRuntime) shutdown-hook) (catch Throwable _))
-        (try (.close watch-service) (catch Throwable _))))))
-
-(defn- bb-source-event? [event]
-  (let [path (:path event)]
-    (and path (.endsWith (str path) ".niva"))))
-
-(defn- watch-bb! [project-root on-change]
-  (let [load-pod (requiring-resolve 'babashka.pods/load-pod)
-        _ (load-pod 'org.babashka/fswatcher "0.0.7")
-        watch (requiring-resolve 'pod.babashka.fswatcher/watch)
-        stopped (promise)
-        callback-lock (Object.)
-        stop! #(deliver stopped true)
-        shutdown-hook (Thread. stop!)]
-    (swap! runtime assoc :watch-stop stop!)
-    (.addShutdownHook (Runtime/getRuntime) shutdown-hook)
-    (try
-      (watch project-root
-        (fn [event]
-          (when (bb-source-event? event)
-            (locking callback-lock
-              (try (invoke-change! on-change)
-                   (catch Throwable error
-                     (print-error! "watch build callback failed" error))))))
-        {:delay-ms 200 :recursive true})
-      (println "Watching...")
-      @stopped
-      (finally
-        (swap! runtime assoc :watch-stop nil)
-        (try (.removeShutdownHook (Runtime/getRuntime) shutdown-hook) (catch Throwable _))))))
-
-(defn stop-watch! []
-  (when-let [stop! (:watch-stop @runtime)]
-    (stop!)))
-
-(defn- babashka-runtime? []
-  (boolean (System/getProperty "babashka.version")))
-
-(defn- start-bb-runtime! [generated-dir entry-namespace]
-  (let [generated-path (.getAbsolutePath (java.io.File. generated-dir))
-        root (.getParentFile (java.io.File. generated-path))
-        process (-> (ProcessBuilder.
-                     ^java.util.List
-                     ["bb" "-m" "niva.hot-reload.host" "runtime-loop"
-                      generated-path entry-namespace])
-                    (.directory root)
-                    (.start))
-        _ (future (io/copy (.getInputStream process) System/out))
-        _ (future (io/copy (.getErrorStream process) System/err))
-        writer (io/writer (.getOutputStream process))]
-    (swap! runtime assoc :bb-process process :bb-writer writer)))
-
-(defn- stop-bb-runtime! []
-  (when-let [writer (:bb-writer @runtime)]
-    (try (.close writer) (catch Throwable _)))
-  (when-let [process (:bb-process @runtime)]
-    (try (.destroy process) (catch Throwable _)))
-  (swap! runtime assoc :bb-process nil :bb-writer nil))
-
-(defn runtime-loop! [generated-dir entry-namespace]
-  (init! generated-dir entry-namespace)
-  (initial-load!)
-  (doseq [line (line-seq (java.io.BufferedReader. *in*))]
-    (when (= line "reload")
-      (reload-in-process!))))
-
-(defn -main [& [command generated-dir entry-namespace]]
-  (when (= command "runtime-loop")
-    (runtime-loop! generated-dir entry-namespace)))
-
-(defn watch! [project-root on-change runtime-name]
-  (if (= runtime-name "bb")
-    (watch-bb! project-root on-change)
-    (watch-jvm! project-root on-change)))
-
-(defn start! [project-root generated-dir entry-namespace runtime-name on-change]
-  (if (and (= runtime-name "bb") (not (babashka-runtime?)))
-    (do
-      (start-bb-runtime! generated-dir entry-namespace)
-      (try
-        (watch-jvm! project-root on-change)
-        (finally (stop-bb-runtime!))))
-    (do
-      (init! generated-dir entry-namespace)
-      (initial-load!)
-      (watch! project-root on-change runtime-name))))
-"""
+IO_Container ensureCljProjectAt(root): String -> Unit = [
+  (FileSystem exists: (root toPath)) ifFalse: [
+    this createDirectories path: (root + "/niva")
+    this writeFile file: root + "/bb.edn" content: CLJ_PROJECT_DEPS_SOURCE
+    this writeFile file: root + "/deps.edn" content: CLJ_PROJECT_DEPS_SOURCE
+    this writeFile file: root + "/niva/core.clj" content: NIVA_CORE_SOURCE
+  ]
+  ()
+]
 
 type WatchChangeBatch
   paths: Set(String)
@@ -449,8 +210,8 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
 
   io writeFile file: stagingManifest content: manifest edn
   io writeFile file: stagingShim content: this legacyMainShim
-  io writeFile file: stagingDeps content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
-  io writeFile file: stagingBbDeps content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+  io writeFile file: stagingDeps content: CLJ_PROJECT_DEPS_SOURCE
+  io writeFile file: stagingBbDeps content: CLJ_PROJECT_DEPS_SOURCE
 
   // publish only fully written staging content
   hadPublishedGenerated = FileSystem exists: (publishedGenerated toPath)
@@ -548,6 +309,7 @@ constructor NivaCompiler [
         ]
 
         generateCljFromResolver = [res: ResolverHelper ->
+            io ensureCljProjectAt: realCljPath
             FileSystem createDirectories: realCljPath toPath
             irModule = repl
               ifTrue:  [res toIrModuleFromEntryLine: replLine]
@@ -630,6 +392,7 @@ constructor NivaCompiler [
             publishedOk
           ]
 
+          io ensureCljProjectAt: realCljPath
           // publish a first good generation before asking clj-reload to load it
           compileAndPublish do
           JvmReloadHost start: projectRoot generatedDir: realCljPath + "/generated"
@@ -707,27 +470,10 @@ constructor NivaCompiler [
                       // native-image needs JVM bytecode, while `bb uberjar` contains
                       // Babashka-loadable Clojure sources only. Use Babashka to invoke
                       // a small tools.build AOT build for the native-image input JAR.
-                      nativeBuildScript = """
-                        (ns build (:require [clojure.tools.build.api :as b]))
-
-                        (def class-dir "target/classes")
-                        (def basis (delay (b/create-basis {})))
-
-                        (defn native-jar [_]
-                          (b/delete {:path "target"})
-                          (b/copy-dir {:src-dirs ["."] :target-dir class-dir})
-                          (b/compile-clj {:basis @basis
-                                          :src-dirs ["generated" "."]
-                                          :class-dir class-dir
-                                          :ns-compile '[main]})
-                          (b/uber {:class-dir class-dir
-                                   :uber-file "../main.jar"
-                                   :basis @basis
-                                   :main 'main}))
-                      """ trimIndent
+                      nativeBuildScript = NATIVE_BUILD_SOURCE
                       io writeFile file: realCljPath + "/build.clj" content: nativeBuildScript
 
-                      nativeDeps = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+                      nativeDeps = CLJ_NATIVE_DEPS_SOURCE
                       jarBuildResult = io runProgramFromPath path: realCljPath args: {"bb" "clojure" "-Sdeps" nativeDeps "-T:build" "native-jar"}
                       jarBuildResult != 0 ifTrue: [TO DO: "Babashka failed to build the JVM main.jar"]
 
