@@ -178,6 +178,13 @@ IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
   argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
 
   funcIdLocal = funcId
+  receiverTypeId = receiverType unpack: [it typeId] or: ""
+  compilerCliArgsCall = (msgName unpack: [it == "cliArgs"] or: false) &&
+    ((receiverTypeId contains: "Compiler") ||
+      (funcIdLocal unpack: [it contains: "Compiler"] or: false))
+  compilerCliArgsCall ifTrue: [
+    ^ "(or (some-> (System/getProperty \"niva.cli.args\") read-string vec) [])"
+  ]
   jvmHostCall = (funcIdLocal unpack: [it contains: "JvmReloadHost"] or: false)
   jvmHostCall ifTrue: [
     msgNameLocal = msgName unpackOrPANIC
@@ -663,6 +670,7 @@ constructor CljBackend [
     sb appendLine: ""
     // keep the cli entry point as a thin compatibility wrapper
     sb appendLine: "(defn -main [& args]"
+    sb appendLine: "  (System/setProperty \"niva.cli.args\" (pr-str (vec args)))"
     sb appendLine: "  (__niva_entry!))"
     sb appendLine: ""
     generatedEndLine = ((sb toString) cljLineCount) - 2

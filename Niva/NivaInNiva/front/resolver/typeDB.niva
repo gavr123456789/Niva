@@ -66,7 +66,7 @@ constructor TyperDB new -> TyperDB = [
   sb = TypeT noFieldsWithName: "StringBuilder" pkgName: "core"
   corePkg types at: "StringBuilder" put: sb
 
-  {char int float double str bool bind error unit nothing any t list map set intRange charRange} = dtc
+  {char int float double str bool bind compiler error unit nothing any t list map set intRange charRange} = dtc
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
   mapProtocol     = NivaProtocol mapFromDefaultTypes: dtc mapType: map keyType: map k valueType: map v
@@ -78,6 +78,7 @@ constructor TyperDB new -> TyperDB = [
   charProtocol    = NivaProtocol charFromDefaultTypes: dtc
   anyProtocol     = NivaProtocol anyFromDefaultTypes: dtc
   bindConstructors = NivaProtocol bindFromDefaultTypes: dtc
+  compilerConstructors = NivaProtocol compilerFromDefaultTypes: dtc
   errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: error
   intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
@@ -119,6 +120,7 @@ constructor TyperDB new -> TyperDB = [
     str (#{}!)
     bool (#{}!)
     bind bindConstructors
+    compiler compilerConstructors
     unit (#{}!)
     any (#{}!)
     error errorProtocol

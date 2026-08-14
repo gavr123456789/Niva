@@ -9,6 +9,12 @@ String nivaModuleIdFromRelativePath -> String =
 String nivaModuleCollisionKey -> String =
   .lowercase, replace: "-" with: "_"
 
+String isHiddenPath -> Bool = [
+  segments = this replace: "\\" with: "/", split: "/"
+  directories = segments dropLast: 1
+  ^ directories any: [it startsWith: "."]
+]
+
 NivaSourceFile nivaModuleId -> String =
   relativePath nivaModuleIdFromRelativePath
 
@@ -37,7 +43,10 @@ constructor NivaBuildSystem [
                  or: io currentDir
 
         files = io walkDir path: p,
-            filter: [it relativePath endsWith: ".niva"],
+            filter: [
+              (it relativePath endsWith: ".niva") &&
+                ((it relativePath isHiddenPath) not)
+            ],
             sortedBy: [it relativePath]
 
         files nivaModuleCollisionError unpack: [TO DO: it]
@@ -62,7 +71,8 @@ type NivaCompiler
 
 static JVM_HOST_SOURCE = """
 (ns niva.hot-reload.host
-  (:require [clj-reload.core :as reload]))
+  (:require [clj-reload.core :as reload]
+            [clojure.java.io :as io]))
 
 (defonce runtime
   (atom {:initialized? false
@@ -70,7 +80,9 @@ static JVM_HOST_SOURCE = """
          :entry-executed? false
          :entry-namespace nil
          :watch-service nil
-         :watch-stop nil}))
+         :watch-stop nil
+         :bb-process nil
+         :bb-writer nil}))
 
 (defn- print-error! [prefix error]
   (binding [*out* *err*]
@@ -114,7 +126,7 @@ static JVM_HOST_SOURCE = """
       (print-error! "Clojure initial load failed" error)
       {:ok false :error error})))
 
-(defn reload-changed! []
+(defn- reload-in-process! []
   (try
     (reload/reload {:only :changed})
     (when-not (:entry-executed? @runtime)
@@ -124,6 +136,17 @@ static JVM_HOST_SOURCE = """
     (catch Throwable error
       (print-error! "Clojure reload failed" error)
       {:ok false :error error})))
+
+(defn reload-changed! []
+  (if-let [writer (:bb-writer @runtime)]
+    (try
+      (.write writer "reload\n")
+      (.flush writer)
+      {:ok true}
+      (catch Throwable error
+        (print-error! "Babashka reload signal failed" error)
+        {:ok false :error error}))
+    (reload-in-process!)))
 
 (defn- java-class [name]
   (Class/forName name))
@@ -181,6 +204,11 @@ static JVM_HOST_SOURCE = """
         (recur (or source-event? next-source?)))
       source-event?)))
 
+(defn- invoke-change! [on-change]
+  (if (instance? Runnable on-change)
+    (.run ^Runnable on-change)
+    (on-change)))
+
 (defn- watch-jvm! [project-root on-change]
   (let [watch-service (.newWatchService
                        (invoke-static-no-args "java.nio.file.FileSystems" "getDefault"))
@@ -194,7 +222,7 @@ static JVM_HOST_SOURCE = """
         (when-let [key (try (.take watch-service)
                             (catch Throwable _ nil))]
           (when (wait-for-debounced-batch! watch-service key)
-            (try (on-change)
+            (try (invoke-change! on-change)
                  (catch Throwable error
                    (print-error! "watch build callback failed" error))))
           (.reset key)
@@ -223,7 +251,7 @@ static JVM_HOST_SOURCE = """
         (fn [event]
           (when (bb-source-event? event)
             (locking callback-lock
-              (try (on-change)
+              (try (invoke-change! on-change)
                    (catch Throwable error
                      (print-error! "watch build callback failed" error))))))
         {:delay-ms 200 :recursive true})
@@ -237,15 +265,57 @@ static JVM_HOST_SOURCE = """
   (when-let [stop! (:watch-stop @runtime)]
     (stop!)))
 
+(defn- babashka-runtime? []
+  (boolean (System/getProperty "babashka.version")))
+
+(defn- start-bb-runtime! [generated-dir entry-namespace]
+  (let [generated-path (.getAbsolutePath (java.io.File. generated-dir))
+        root (.getParentFile (java.io.File. generated-path))
+        process (-> (ProcessBuilder.
+                     ^java.util.List
+                     ["bb" "-m" "niva.hot-reload.host" "runtime-loop"
+                      generated-path entry-namespace])
+                    (.directory root)
+                    (.start))
+        _ (future (io/copy (.getInputStream process) System/out))
+        _ (future (io/copy (.getErrorStream process) System/err))
+        writer (io/writer (.getOutputStream process))]
+    (swap! runtime assoc :bb-process process :bb-writer writer)))
+
+(defn- stop-bb-runtime! []
+  (when-let [writer (:bb-writer @runtime)]
+    (try (.close writer) (catch Throwable _)))
+  (when-let [process (:bb-process @runtime)]
+    (try (.destroy process) (catch Throwable _)))
+  (swap! runtime assoc :bb-process nil :bb-writer nil))
+
+(defn runtime-loop! [generated-dir entry-namespace]
+  (init! generated-dir entry-namespace)
+  (initial-load!)
+  (doseq [line (line-seq (java.io.BufferedReader. *in*))]
+    (when (= line "reload")
+      (reload-in-process!))))
+
+(defn -main [& [command generated-dir entry-namespace]]
+  (when (= command "runtime-loop")
+    (runtime-loop! generated-dir entry-namespace)))
+
 (defn watch! [project-root on-change runtime-name]
   (if (= runtime-name "bb")
     (watch-bb! project-root on-change)
     (watch-jvm! project-root on-change)))
 
 (defn start! [project-root generated-dir entry-namespace runtime-name on-change]
-  (init! generated-dir entry-namespace)
-  (initial-load!)
-  (watch! project-root on-change runtime-name))
+  (if (and (= runtime-name "bb") (not (babashka-runtime?)))
+    (do
+      (start-bb-runtime! generated-dir entry-namespace)
+      (try
+        (watch-jvm! project-root on-change)
+        (finally (stop-bb-runtime!))))
+    (do
+      (init! generated-dir entry-namespace)
+      (initial-load!)
+      (watch! project-root on-change runtime-name))))
 """
 
 type WatchChangeBatch
@@ -280,10 +350,72 @@ WatchQueueState buildFinished -> WatchQueueState = [
 
 type JvmReloadHost
 
+@emit: """run {
+  val cljRoot = java.io.File($2).parentFile
+    ?: error("Cannot find Clojure output root")
+  val classpathProcess = ProcessBuilder("clojure", "-Spath")
+    .directory(cljRoot)
+    .redirectErrorStream(true)
+    .start()
+  val classpath = classpathProcess.inputStream.bufferedReader().readText().trim()
+  val classpathExit = classpathProcess.waitFor()
+  check(classpathExit == 0) {
+    "Cannot resolve Clojure hot reload classpath: " + classpath
+  }
+  val urls = classpath.split(java.io.File.pathSeparator)
+    .filter { it.isNotBlank() }
+    .map { path ->
+      val file = java.io.File(path)
+      (if (file.isAbsolute) file else java.io.File(cljRoot, path)).toURI().toURL()
+    }
+    .toTypedArray()
+  val loader = java.net.URLClassLoader(urls, JvmReloadHost::class.java.classLoader)
+  val thread = Thread.currentThread()
+  val previousLoader = thread.contextClassLoader
+  thread.contextClassLoader = loader
+  try {
+    fun invokeNivaClj(function: Any, vararg args: Any?): Any? {
+      val method = function.javaClass.methods.first {
+        it.name == "invoke" && it.parameterCount == args.size
+      }
+      return method.invoke(function, *args)
+    }
+    val clojure = loader.loadClass("clojure.java.api.Clojure")
+    val varMethod = clojure.getMethod("var", Any::class.java, Any::class.java)
+    val readMethod = clojure.getMethod("read", String::class.java)
+    val requireFunction = varMethod.invoke(null, "clojure.core", "require")
+    val hostSymbol = readMethod.invoke(null, "niva.hot-reload.host")
+    invokeNivaClj(requireFunction, hostSymbol)
+    val startFunction = varMethod.invoke(null, "niva.hot-reload.host", "start!")
+    invokeNivaClj(startFunction, $1, $2, $3, $4, Runnable { ($5)() })
+  } catch (error: Throwable) {
+    error.printStackTrace()
+    throw error
+  } finally {
+    thread.contextClassLoader = previousLoader
+  }
+}"""
 static JvmReloadHost start(projectRoot): String generatedDir: String
     entryNamespace(entryNamespace): String runtime(runtime): String
     onChange(onChange): [Unit -> Unit] -> Unit = []
 
+@emit: """run {
+  val thread = Thread.currentThread()
+  val loader = thread.contextClassLoader
+  val previousLoader = thread.contextClassLoader
+  try {
+    val clojure = loader.loadClass("clojure.java.api.Clojure")
+    val varMethod = clojure.getMethod("var", Any::class.java, Any::class.java)
+    val reloadFunction = varMethod.invoke(null, "niva.hot-reload.host", "reload-changed!")
+    val method = reloadFunction.javaClass.methods.first {
+      it.name == "invoke" && it.parameterCount == 0
+    }
+    method.invoke(reloadFunction)
+    Unit
+  } finally {
+    thread.contextClassLoader = previousLoader
+  }
+}"""
 static JvmReloadHost reloadChanged -> Unit = []
 
 type CljGenerationResult

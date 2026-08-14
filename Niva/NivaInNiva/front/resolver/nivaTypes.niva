@@ -566,6 +566,7 @@ type DefaultTypesContainer
   str: StringT
   bool: BoolT
   bind: TypeT
+  compiler: TypeT
   error: TypeT
   unit: UnitT
   // utils
@@ -595,6 +596,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   str = StringT new
   bool = BoolT new
   bind = TypeT noFieldsWithName: "Bind" pkgName: "core"
+  compiler = TypeT noFieldsWithName: "Compiler" pkgName: "core"
   unit = UnitT new
   nothing = NothingT new
   any = AnyT new
@@ -624,7 +626,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     genericArgs: {}!
 
   dtc = DefaultTypesContainer
-    :char :int :float :double :str :bool :bind :error :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
+    :char :int :float :double :str :bool :bind :compiler :error :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
   ^ dtc
 ]
 
@@ -640,7 +642,7 @@ DefaultTypesContainer collection-with-different-generic(collection): NivaType ->
 /// create basic types like String Int List
 constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   dtc = DefaultTypesContainer new
-  {char, int, float, double, str, bool, bind, error, unit,
+  {char, int, float, double, str, bool, bind, compiler, error, unit,
   // utils
   nothing, any,
   // T
@@ -657,6 +659,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "Float" float
     "Double" double
     "Bind" bind
+    "Compiler" compiler
     "Error" error
     "IntRange" intRange
     "CharRange" charRange

@@ -6,6 +6,16 @@ Test nestedSourcePathBecomesStableModuleId = [
   Assert that: windowsModuleId equals: "model.user"
 ]
 
+Test hiddenDirectoriesAreNotSourcePaths = [
+  Assert that: ".niva_clj/main.niva" isHiddenPath equals: true
+  Assert that: ".git/hooks/main.niva" isHiddenPath equals: true
+  Assert that: "src/.private/main.niva" isHiddenPath equals: true
+  Assert that: "src\\.private\\main.niva" isHiddenPath equals: true
+  Assert that: "src/public/main.niva" isHiddenPath equals: false
+  Assert that: ".hidden.niva" isHiddenPath equals: false
+  Assert that: "main.niva" isHiddenPath equals: false
+]
+
 Test moduleCollisionNormalizationIsExplicit = [
   files = {
     (NivaSourceFile path: "/project/Foo-Bar.niva" relativePath: "Foo-Bar.niva")
@@ -588,6 +598,8 @@ Test jvmHostHasReloadSafeLifecycle = [
   Assert that: (JVM_HOST_SOURCE contains: ":entry-executed?") equals: true
   Assert that: (JVM_HOST_SOURCE contains: "(catch Throwable _ nil)") equals: true
   Assert that: (JVM_HOST_SOURCE contains: "150") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "org.babashka/fswatcher") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "runtime-name") equals: true
 ]
 
 Test jvmHostDoesNotRequireGeneratedNamespaces = [
