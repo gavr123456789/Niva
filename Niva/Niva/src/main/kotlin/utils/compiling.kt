@@ -61,25 +61,37 @@ object GlobalVariables {
 
 }
 private fun String.toCommandArgs(): List<String> {
-    val tokens = this.split(" ").filter { it.isNotBlank() }
+    val result = mutableListOf<String>()
+    val current = StringBuilder()
+    var quote: Char? = null
+    var escaped = false
 
-    return buildList {
-        var skipNext = false
-        tokens.forEachIndexed { index, token ->
-            if (skipNext) {
-                skipNext = false
-                return@forEachIndexed
-            }
-
-            if (token == "--tests" && index + 1 < tokens.size) {
-                add("--tests"  )
-                add(tokens[index + 1].trim('"'))
-                skipNext = true
-            } else {
-                add(token)
-            }
+    fun flush() {
+        if (current.isNotEmpty()) {
+            result += current.toString()
+            current.clear()
         }
     }
+
+    for (char in this) {
+        if (escaped) {
+            current.append(char)
+            escaped = false
+        } else if (char == '\\') {
+            escaped = true
+        } else if (quote != null) {
+            if (char == quote) quote = null else current.append(char)
+        } else if (char == '\'' || char == '"') {
+            quote = char
+        } else if (char.isWhitespace()) {
+            flush()
+        } else {
+            current.append(char)
+        }
+    }
+    if (escaped) current.append('\\')
+    flush()
+    return result
 }
 
 private data class GradleTestOutputBlock(
@@ -315,6 +327,7 @@ class CompilerRunner(
         runTests: Boolean = false,
         outputRename: String? = null,
         testFilter: List<String>? = null,
+        programArgs: List<String> = emptyList(),
     ) {
         // 1 remove repl log file since it will be recreated
         removeReplFile()
@@ -341,6 +354,12 @@ class CompilerRunner(
         }
         if (!nativeImageGradleProperty.isNullOrBlank()) {
             cmd += " $nativeImageGradleProperty"
+        }
+        if (programArgs.isNotEmpty()) {
+            val encodedArgs = programArgs.joinToString(" ") { arg ->
+                arg.replace("\\", "\\\\").replace("\"", "\\\"")
+            }
+            cmd += " --args=\"$encodedArgs\""
         }
         val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
         runFinalCommand("./gradlew","cmd.exe /c gradlew.bat", defaultArgs, cmd, file, runTests)
@@ -608,7 +627,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
             var cliArgs = listOf<String>()
             fun cliArgs() = cliArgs
         }
-        
+
         typealias Bool = Boolean
 
         
