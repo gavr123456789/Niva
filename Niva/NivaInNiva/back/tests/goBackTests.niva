@@ -489,7 +489,7 @@ Test goErrorDomainMatchByCoreErrorCodegen = [
   go contains: "it := __matchErr.(error)", assertTrue
 ]
 
-Test goTryPanicsOnError = [
+Test goTryRethrowsError = [
   fileMain = """
     errordomain MyError =
     | Error1 text: String
@@ -505,8 +505,8 @@ Test goTryPanicsOnError = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "if __tryErr != nil { panic(__tryErr) }", assertTrue
-  go contains: "return __tryValue", assertTrue
+  go contains: "if __tryErr != nil { return 0, __tryErr }", assertTrue
+  go contains: "return __tryValue, nil", assertTrue
 ]
 
 Test goTryPanicsOnNull = [
@@ -549,7 +549,7 @@ Test goTryUnitNullableChecksNull = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
-  go contains: "return core.UnitInstance", assertTrue
+  Assert that: (go contains: "return core.UnitInstance") equals: false
 ]
 
 Test goTryErrorableNullableValue = [
@@ -569,7 +569,7 @@ Test goTryErrorableNullableValue = [
   Assert that: result db listOfErrors count equals: 0
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "if __tryErr != nil { panic(__tryErr) }", assertTrue
+  go contains: "if __tryErr != nil { return __tryErr }", assertTrue
   go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
 ]
 

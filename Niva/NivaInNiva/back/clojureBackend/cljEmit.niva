@@ -711,7 +711,24 @@ constructor CljBackend [
       target(target): CljTarget -> CljOutput = [
     files::mut Map(String, String) = #{}!
 
-    ir packages sortedBy: [it name], forEach: [pkg ->
+    // Keep the legacy `main` shim loadable even when the source file is empty.
+    // The shim always requires the entry namespace, so an empty package list
+    // still needs a no-op generated entry module.
+    packages = ir packages isEmpty
+      ifTrue: [
+        {(IrPackage
+          name: ir pkg
+          imports: {}
+          dependencies: {}
+          types: {}
+          unions: {}
+          enums: {}
+          stateDefs: {}
+          functions: {})}
+      ]
+      ifFalse: [ir packages]
+
+    packages sortedBy: [it name], forEach: [pkg ->
       localDependencyNames = pkg dependencyPackageNames filter: [it != "core"]
       localImports = (localDependencyNames map: [dependency -> dependency cljGeneratedNamespace]) toSet
       packageEntry = pkg name == ir pkg ifTrue: [ir entry] ifFalse: [null]
@@ -725,7 +742,7 @@ constructor CljBackend [
     modules::mut List(CljModuleManifest) = {}!
     stateVars::mut List(CljStateManifest) = {}!
     typeShapes::mut List(CljTypeShape) = {}!
-    ir packages sortedBy: [it name], forEach: [pkg ->
+    packages sortedBy: [it name], forEach: [pkg ->
       modules add: (CljModuleManifest
         moduleId: pkg name
         file: pkg cljGeneratedPath

@@ -1,0 +1,966 @@
+static CLJ_PROJECT_DEPS_SOURCE = "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+static CLJ_NATIVE_DEPS_SOURCE = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+
+static NIVA_CORE_SOURCE = """
+(ns niva.core
+  (:refer-clojure :exclude [filter first last random reduce replace])
+  (:require [clojure.string :as str] [clojure.pprint :refer [pprint]])
+  (:import [java.util ArrayList Collections]
+           [java.lang Character StringBuilder]))
+
+;; (defrecord Unit [])
+;; (def UnitInstance (->Unit))
+
+(defrecord IntRange [start end-inclusive])
+(defrecord CharRange [start end-inclusive])
+(defrecord Option [value has-value])
+
+(defn ThrowWithMessage [msg]
+  (throw (ex-info msg {})))
+
+(defn Error__throw [self]
+  (throw (ex-info (str self) {:value self})))
+
+(defn Error__throwWithMsg [_self msg]
+  (throw (ex-info msg {})))
+
+(defmacro handling
+  [[sym subj] handler els]
+  `(let [r# (try
+              [::ok ~subj]
+              (catch Throwable e#
+                ;; niva errors are records wrapped in ExceptionInfo so they nos just throwable
+                (let [~sym (or (:value (ex-data e#)) e#)
+                      h# ~handler]
+                  (if (= h# ::miss)
+                    (throw e#)
+                    [::done h#]))))]
+     (if (= (nth r# 0) ::ok)
+       (let [~sym (nth r# 1)]
+         ~els)
+       (nth r# 1))))
+
+;; Int
+
+(defn Int__inc [s] (clojure.core/inc s))
+(defn Int__dec [s] (clojure.core/dec s))
+(defn Int__toFloat [s] (float s))
+(defn Int__toDouble [s] (double s))
+(defn Int__toLong [s] (long s))
+(defn Int__toChar [s] (bit-and (long s) 0xff))
+
+(defn Int__toDo [s to f]
+  (when (<= s to)
+    (doseq [i (range s (clojure.core/inc to))]
+      (f i)))
+  :unit)
+
+(defn Int__downToDo [s down-to f]
+  (when (>= s down-to)
+    (doseq [i (range s (clojure.core/dec down-to) -1)]
+      (f i)))
+  :unit)
+
+(defn Int__rangeTo [s to]
+  (->IntRange s to))
+
+
+(defn Int__repeat [^long n ^clojure.lang.IFn f]
+  (dotimes [i n]
+    (f i)))
+
+;; Ranges
+
+(defn- inclusive-range [start end-inclusive]
+  (if (<= start end-inclusive)
+    (range start (clojure.core/inc end-inclusive))
+    ()))
+
+(defn IntRange__forEach [s f]
+  (doseq [i (inclusive-range (:start s) (:end-inclusive s))]
+    (f i))
+  :unit)
+
+(defn IntRange__map [s f]
+  (mapv f (inclusive-range (:start s) (:end-inclusive s))))
+
+(defn IntRange__filter [s f]
+  (filterv f (inclusive-range (:start s) (:end-inclusive s))))
+
+(defn IntRange__contains [s v]
+  (<= (:start s) v (:end-inclusive s)))
+
+(defn IntRange__isEmpty [s]
+  (> (:start s) (:end-inclusive s)))
+
+(defn IntRange__random [range-value]
+  (let [start (:start range-value)
+        end-inclusive (:end-inclusive range-value)]
+    (when (< end-inclusive start)
+      (throw (ex-info "invalid range" {:range range-value})))
+    (+ start (rand-int (clojure.core/inc (- end-inclusive start))))))
+
+(defn CharRange__forEach [s f]
+  (doseq [cp (inclusive-range (:start s) (:end-inclusive s))]
+    (f cp))
+  :unit)
+
+(defn CharRange__map [s f]
+  (mapv f (inclusive-range (:start s) (:end-inclusive s))))
+
+(defn CharRange__filter [s f]
+  (filterv f (inclusive-range (:start s) (:end-inclusive s))))
+
+(defn CharRange__contains [s v]
+  (<= (:start s) v (:end-inclusive s)))
+
+(defn CharRange__isEmpty [s]
+  (> (:start s) (:end-inclusive s)))
+
+;; Any / printing
+
+(declare Any__toString)
+
+(def ^:private indent-step 4)
+
+(defn- indent [n]
+  (apply str (repeat n " ")))
+
+(defn- multiline? [s]
+  (clojure.string/includes? s "\n"))
+
+(defn- record-name [v]
+  (let [type-name (str (type v))
+        dot       (.lastIndexOf type-name ".")]
+    (if (neg? dot)
+      type-name
+      (subs type-name (inc dot)))))
+
+(defn- field-value-to-string [v ind]
+  (if (record? v)
+    (str "(" (Any__toString v ind true) ")")
+    (Any__toString v ind true)))
+(defn- record-to-string [v ind]
+  (let [type-name (record-name v)
+        fields    (seq v)
+        child-ind (+ ind indent-step)
+        rendered  (map (fn [[k value]]
+                         [(name k)
+                          (field-value-to-string value child-ind)])
+                       fields)
+        inline?   (and (<= (count fields) 2)
+                       (not-any? (fn [[_ value]]
+                                   (multiline? value))
+                                 rendered))]
+    (if inline?
+      ;; Wallet money: 42
+      ;; Point x: 10 y: 20
+      (str type-name
+           (when (seq rendered) " ")
+           (clojure.string/join
+             " "
+             (map (fn [[field value]]
+                    (str field ": " value))
+                  rendered)))
+
+      ;; Person
+      ;;     wallet: ...
+      ;;     name: ...
+      ;;     age: ...
+      (str type-name
+           "\n"
+           (clojure.string/join
+             "\n"
+             (map (fn [[field value]]
+                    (str (indent child-ind)
+                         field ": " value))
+                  rendered))))))
+
+(defn- sequence-to-niva-string [xs ind open close]
+  (let [xs        (seq xs)
+        child-ind (+ ind indent-step)
+        rendered  (map #(Any__toString % child-ind true) xs)
+        inline?   (and (<= (count xs) 3)
+                       (not-any? multiline? rendered))]
+    (if inline?
+      (str open
+           (clojure.string/join " " rendered)
+           close)
+
+      (str open
+           "\n"
+           (clojure.string/join
+             "\n"
+             (map #(str (indent child-ind) %)
+                  rendered))
+           "\n"
+           (indent ind)
+           close))))
+
+(defn- map-to-niva-string [m ind]
+  (let [entries   (seq m)
+        child-ind (+ ind indent-step)
+        rendered  (map (fn [[k v]]
+                     [(Any__toString k child-ind true)
+                      (Any__toString v child-ind true)])
+                   entries)
+        inline?   (and (<= (count entries) 3)
+                       (not-any?
+                         (fn [[k v]]
+                           (or (multiline? k)
+                               (multiline? v)))
+                         rendered))]
+    (if inline?
+      ;; #{1 "a" 2 "b"}
+      (str "#{"
+           (clojure.string/join
+             " "
+             (mapcat identity rendered))
+           "}")
+
+      ;; #{
+      ;;     1 "a"
+      ;;     2 "b"
+      ;; }
+      (str "#{"
+           "\n"
+           (clojure.string/join
+             "\n"
+             (map (fn [[k v]]
+                    (str (indent child-ind)
+                         k " " v))
+                  rendered))
+           "\n"
+           (indent ind)
+           "}"))))
+
+(defn Any__toString
+  ([v]
+   ;; root value — строка без кавычек
+   (Any__toString v 0 false))
+
+  ([v ind]
+   (Any__toString v ind false))
+
+  ([v ind nested?]
+   (cond
+     (nil? v)
+     "null"
+
+     (= v :unit)
+     "()"
+
+     (record? v)
+     (record-to-string v ind)
+
+     (map? v)
+     (map-to-niva-string v ind)
+
+     (set? v)
+     (sequence-to-niva-string v ind "#(" ")")
+
+     (or (vector? v) (sequential? v))
+     (sequence-to-niva-string v ind "{" "}")
+
+     (string? v)
+     (if nested?
+       (pr-str v)
+       v)
+
+     (boolean? v)
+     (Boolean/toString v)
+
+     :else
+     (str v))))
+;; T echo -> T
+(defn Any__echo [o]
+  (println (Any__toString o 0))
+  ;; (pprint o)
+  o)
+
+;; T echonl -> T
+(defn Any__echonl [o]
+  (print (Any__toString o 0))
+  (flush)
+  o)
+
+;; String helpers. Code-point vectors preserve Go rune behavior.
+
+(defn- string-code-points [^String s]
+  (vec (.toArray (.codePoints s))))
+
+(defn- code-points->string [code-points]
+  (let [builder (StringBuilder.)]
+    (doseq [cp code-points]
+      (.appendCodePoint builder (int cp)))
+    (.toString builder)))
+
+(defn String__uppercase [^String s] (.toUpperCase s))
+(defn String__reversed [^String s] (code-points->string (rseq (string-code-points s))))
+(defn String__count [^String s] (.codePointCount s 0 (.length s)))
+(defn String__trim [^String s] (.strip s))
+(defn String__isEmpty [^String s] (.isEmpty s))
+(defn String__isNotEmpty [^String s] (not (.isEmpty s)))
+(defn String__isBlank [^String s] (.isBlank s))
+(defn String__isNotBlank [^String s] (not (.isBlank s)))
+
+(defn String__toFloat [^String s]
+  (try
+    (Float/parseFloat s)
+    (catch NumberFormatException _ 0.0)))
+
+(defn String__toDouble [^String s]
+  (try
+    (Double/parseDouble s)
+    (catch NumberFormatException _ 0.0)))
+
+(defn String__lowercase [^String s] (.toLowerCase s))
+
+(defn String__first [s]
+  (let [cps (string-code-points s)]
+    (when (empty? cps)
+      (throw (ex-info "S empty" {})))
+    (nth cps 0)))
+
+(defn String__last [s]
+  (let [cps (string-code-points s)]
+    (when (empty? cps)
+      (throw (ex-info "S empty" {})))
+    (peek cps)))
+
+(defn String__at [s i]
+  (let [cps (string-code-points s)]
+    (when (or (neg? i) (>= i (count cps)))
+      (throw (ex-info "Idx out" {:index i})))
+    (nth cps i)))
+
+(defn String__get [^String s i] (String__at s i))
+
+(defn String__split [^String s ^String delimiter]
+  (if (.isEmpty delimiter)
+    (mapv code-points->string (clojure.core/map vector (string-code-points s)))
+    ;; Pattern/quote keeps the delimiter literal like strings.Split.
+    (vec (.split s (java.util.regex.Pattern/quote delimiter) -1))))
+
+(defn String__substring [^String s start end]
+  (let [cps (string-code-points s)
+        length (count cps)
+        start (min length (max 0 start))
+        end (min length (max 0 end))
+        [from to] (if (<= start end) [start end] [end start])]
+    (code-points->string (subvec cps from to))))
+
+(defn String__drop [^String s c]
+  (let [cps (string-code-points s)]
+    (cond
+      (<= c 0) s
+      (>= c (count cps)) ""
+      :else (code-points->string (subvec cps c)))))
+
+(defn String__dropLast [^String s c]
+  (let [cps (string-code-points s)]
+    (cond
+      (<= c 0) s
+      (>= c (count cps)) ""
+      :else (code-points->string (subvec cps 0 (- (count cps) c))))))
+
+(defn String__contains [^String s ^String sub] (.contains s sub))
+(defn String__replace__with [^String s ^String old ^String new] (.replace s old new))
+
+(defn String__map [^String s f]
+  (code-points->string (mapv f (string-code-points s))))
+
+(defn String__forEach [^String s f]
+  (doseq [ch s]
+    (f ch))
+  :unit)
+
+(defn String__filter [^String s predicate]
+  (code-points->string (filterv predicate (string-code-points s))))
+
+(defn String__toIntRadix [^String s radix]
+  (Long/parseLong s (int radix)))
+
+(defn String__toInt [^String s]
+  (String__toIntRadix s 10))
+
+;; Bool
+
+(defn Bool__toString [s] (Boolean/toString s))
+(defn Bool__not [s] (not s))
+(defn Bool__isTrue [s] s)
+(defn Bool__isFalse [s] (not s))
+(defn Bool__or [s o] (or s o))
+(defn Bool__and [s o] (and s o))
+
+(defn Bool__ifTrue [s f]
+  (when s (f))
+  :unit)
+
+(defn Bool__ifFalse [s f]
+  (when-not s (f))
+  :unit)
+
+(defn Bool__ifTrue__ifFalse [s true-fn false-fn]
+  (if s (true-fn) (false-fn)))
+
+(defn Bool__ifFalse_ifTrue [s false-fn true-fn]
+  (if s (true-fn) (false-fn)))
+
+;; Char (Unicode code point represented as an integer)
+
+(defn Char__toInt [ch] (long ch))
+
+(defn Char__toInt__base [ch base]
+  (let [value (Character/digit (int ch) (int base))]
+    (when (neg? value)
+      (throw (ex-info "Idx out" {:char ch :base base})))
+    value))
+
+(defn Char__code [s] (long s))
+(defn Char__inc [s] (bit-and (clojure.core/inc (long s)) 0xff))
+(defn Char__dec [s] (bit-and (clojure.core/dec (long s)) 0xff))
+(defn Char__isDigit [s] (Character/isDigit (int s)))
+(defn Char__isLetter [s] (Character/isLetter (int s)))
+(defn Char__isLetterOrDigit [s] (Character/isLetterOrDigit (int s)))
+(defn Char__isLowerCase [s] (Character/isLowerCase (int s)))
+(defn Char__isUpperCase [s] (Character/isUpperCase (int s)))
+(defn Char__isWhitespace [s] (Character/isWhitespace (int s)))
+(defn Char__lowercaseChar [s] (long (Character/toLowerCase (int s))))
+(defn Char__uppercaseChar [s] (long (Character/toUpperCase (int s))))
+(defn Char__rangeTo [s t] (->CharRange s t))
+(defn Char__equals [s o] (= s o))
+(defn Char__notEquals [s o] (not= s o))
+
+(defn WhileTrue [condition body]
+  (loop []
+    (when (condition)
+      (body)
+      (recur)))
+  :unit)
+
+;; List (vectors)
+
+(defn List__count [s] (count s))
+
+(defn List__first [s]
+  (when (empty? s)
+    (throw (ex-info "L e" {})))
+  (nth s 0))
+
+(defn List__last [s]
+  (when (empty? s)
+    (throw (ex-info "L e" {})))
+  (peek (vec s)))
+
+(defn List__firstOrNull [s]
+  (if (empty? s) (->Option nil false) (->Option (nth s 0) true)))
+
+(defn List__lastOrNull [s]
+  (if (empty? s) (->Option nil false) (->Option (peek (vec s)) true)))
+
+(defn List__toList [s] (vec s))
+
+(defn List__shuffled [s]
+  (let [copy (ArrayList. s)]
+    (Collections/shuffle copy)
+    (vec copy)))
+
+(defn List__isEmpty [s] (empty? s))
+(defn List__isNotEmpty [s] (not (empty? s)))
+(defn List__reversed [s] (vec (reverse s)))
+(defn List__plus [s o] (into (vec s) o))
+(defn List__plus_single [s o] (conj (vec s) o))
+
+(defn List__forEach [s f]
+  (doseq [item s] (f item))
+  :unit)
+
+(defn List__onEach [s] s)
+
+(defn List__forEachIndexed [s f]
+  (doseq [[i item] (map-indexed vector s)]
+    (f i item))
+  :unit)
+
+(defn List__map [s f] (mapv f s))
+(defn List__mapIndexed [s f] (mapv f (range) s))
+(defn List__filter [s predicate] (filterv predicate s))
+
+(defn List__at [s i]
+  (when (or (neg? i) (>= i (count s)))
+    (throw (ex-info "Idx out" {:index i})))
+  (nth s i))
+
+(defn List__drop [s n]
+  (cond
+    (<= n 0) s
+    (>= n (count s)) []
+    :else (subvec (vec s) n)))
+
+(defn List__dropLast [s n]
+  (cond
+    (<= n 0) s
+    (>= n (count s)) []
+    :else (subvec (vec s) 0 (- (count s) n))))
+
+(defn List__take [s n]
+  (cond
+    (<= n 0) []
+    (>= n (count s)) s
+    :else (subvec (vec s) 0 n)))
+
+(defn List__takeLast [s n]
+  (cond
+    (<= n 0) []
+    (>= n (count s)) s
+    :else (subvec (vec s) (- (count s) n))))
+
+(defn List__chunked [s size]
+  (when (<= size 0)
+    (throw (ex-info "sz < 0" {:size size})))
+  (mapv vec (partition-all size s)))
+
+(defn List__joinWith [s separator]
+  (str/join separator (clojure.core/map str s)))
+
+(defn List__indexOfFirst [s predicate]
+  (or (clojure.core/first
+       (keep-indexed (fn [i item] (when (predicate item) i)) s))
+      -1))
+
+(defn List__indexOfLast [s predicate]
+  (or (clojure.core/last
+       (keep-indexed (fn [i item] (when (predicate item) i))s))
+      -1))
+
+(defn List__injectInto [s initial operation]
+  (clojure.core/reduce operation initial s))
+
+(defn List__reduce [s operation]
+  (when (empty? s)
+    (throw (ex-info "e L red" {})))
+  (clojure.core/reduce operation s))
+
+(defn List__partition [s predicate]
+  (clojure.core/reduce
+   (fn [[truthy falsey] item]
+     (if (predicate item)
+       [(conj truthy item) falsey]
+       [truthy (conj falsey item)]))
+   [[] []]
+   s))
+
+(defn List__find [s predicate]
+  (if-let [entry (clojure.core/first (clojure.core/filter #(predicate (second %)) (map-indexed vector s)))]
+    (->Option (second entry) true)
+    (->Option nil false)))
+
+(defn List__viewFromTo [s from to]
+  (let [length (count s)
+        from (min length (max 0 from))
+        to (min length (max 0 to))]
+    (if (<= from to)
+      (subvec (vec s) from to)
+      [])))
+
+;; Mutable collection functions use atoms, e.g. (atom [1 2 3]).
+
+(defn- require-atom [value operation]
+  (when-not (instance? clojure.lang.IAtom value)
+    (throw (ex-info (str operation " expects an atom") {:value value}))))
+
+(defn List__mut_clear [s]
+  (require-atom s 'List__mut_clear)
+  (reset! s [])
+  :unit)
+
+(defn List__mut_add [s item]
+  (require-atom s 'List__mut_add)
+  (swap! s conj item)
+  :unit)
+
+(defn List__mut_addAt [s i item]
+  (require-atom s 'List__mut_addAt)
+  (swap! s
+         (fn [items]
+           (let [items (vec items)]
+             (when (or (neg? i) (> i (count items)))
+               (throw (ex-info "Idx out" {:index i})))
+             (into (conj (subvec items 0 i) item) (subvec items i)))))
+  :unit)
+
+(defn List__mut_addFirst [s item]
+  (List__mut_addAt s 0 item))
+
+(defn List__mut_addAll [s other]
+  (require-atom s 'List__mut_addAll)
+  (swap! s #(into (vec %) other))
+  :unit)
+
+(defn List__mut_removeAt [s i]
+  (require-atom s 'List__mut_removeAt)
+  (swap! s
+         (fn [items]
+           (let [items (vec items)]
+             (when (or (neg? i) (>= i (count items)))
+               (throw (ex-info "Idx out" {:index i})))
+             (into (subvec items 0 i) (subvec items (clojure.core/inc i))))))
+  :unit)
+
+(defn List__mut_set [s i item]
+  (require-atom s 'List__mut_set)
+  (swap! s
+         (fn [items]
+           (when (or (neg? i) (>= i (count items)))
+             (throw (ex-info "Idx out" {:index i})))
+           (assoc (vec items) i item)))
+  :unit)
+
+;; Set
+
+(defn Set__count [s] (count s))
+
+(defn Set__mut_clear [s]
+  (require-atom s 'Set__mut_clear)
+  (reset! s #{})
+  :unit)
+
+(defn Set__first [s]
+  (when (empty? s)
+    (throw (ex-info "S e" {})))
+  (clojure.core/first s))
+
+(defn Set__toList [s] (vec s))
+(defn Set__plus [s o] (into (set s) o))
+(defn Set__minus [s o] (apply disj (set s) o))
+
+(defn Set__forEach [s f]
+  (doseq [item s] (f item))
+  :unit)
+
+(defn Set__filter [s predicate] (set (clojure.core/filter predicate s)))
+(defn Set__contains [s item] (contains? s item))
+
+(defn Set__mut_add [s item]
+  (require-atom s 'Set__mut_add)
+  (swap! s conj item)
+  :unit)
+
+(defn Set__mut_remove [s item]
+  (require-atom s 'Set__mut_remove)
+  (let [present? (contains? @s item)]
+    (swap! s disj item)
+    present?))
+
+;; Map
+
+(defn Map__count [s] (count s))
+(defn Map__isEmpty [s] (empty? s))
+(defn Map__keys [s] (set (keys s)))
+(defn Map__plus [s o] (merge s o))
+(defn Map__minus [s k] (dissoc s k))
+
+(defn Map__forEach [s f]
+  (doseq [[k v] s] (f k v))
+  :unit)
+
+(defn Map__at [s k] (get s k))
+(defn Map__containsKey [s k] (contains? s k))
+
+(defn Map__mut_putAt [s k v]
+  (require-atom s 'Map__mut_putAt)
+  (swap! s assoc k v)
+  :unit)
+
+;; StringBuilder
+(defn StringBuilder__count [^StringBuilder sb]
+  (.length sb))
+
+(defn StringBuilder__clear [^StringBuilder sb]
+  (.setLength sb 0)
+  sb)
+
+(defn StringBuilder__toString [^StringBuilder sb]
+  (.toString sb))
+
+(defn StringBuilder__trim [^StringBuilder sb]
+  (clojure.string/trim (.toString sb)))
+
+(defn StringBuilder__append [^StringBuilder sb ^String value]
+  (.append sb value)
+  sb)
+
+(defn StringBuilder__appendLine [^StringBuilder sb ^String value]
+  (.append sb value)
+  (.append sb \newline)
+  sb)
+""" trimIndent
+
+static JVM_HOST_SOURCE = """
+(ns niva.hot-reload.host
+  (:require [clj-reload.core :as reload]
+            [clojure.java.io :as io]))
+
+(defonce runtime
+  (atom {:initialized? false
+         :initial-loaded? false
+         :entry-executed? false
+         :entry-namespace nil
+         :watch-service nil
+         :watch-stop nil
+         :bb-process nil
+         :bb-writer nil}))
+
+(defn- print-error! [prefix error]
+  (binding [*out* *err*]
+    (println prefix)
+    (println (or (ex-message error) error))
+    (when-let [trace (seq (.getStackTrace error))]
+      (doseq [line (take 8 trace)]
+        (println "  at" line)))))
+
+(defn init! [generated-dir entry-namespace]
+  (when-not (:initialized? @runtime)
+    (reload/init
+     {:dirs [generated-dir]
+      :no-reload '#{niva.hot-reload.host}
+      :output :quieter})
+    (swap! runtime assoc
+           :initialized? true
+           :entry-namespace entry-namespace)))
+
+(defn- invoke-entry! []
+  (let [entry-symbol (symbol (:entry-namespace @runtime))
+        entry-ns (or (find-ns entry-symbol)
+                     (do (require entry-symbol) (find-ns entry-symbol)))
+        entry-var (or (requiring-resolve
+                       (symbol (:entry-namespace @runtime) "__niva_entry!"))
+                      (and entry-ns (ns-resolve entry-ns '__niva_entry!)))]
+    (when-not entry-var
+      (throw (ex-info "generated entry hook is missing"
+                      {:namespace entry-symbol})))
+    (entry-var)
+    (swap! runtime assoc :entry-executed? true)))
+
+(defn initial-load! []
+  (try
+    (reload/reload {:only :all})
+    (when-not (:entry-executed? @runtime)
+      (invoke-entry!))
+    (swap! runtime assoc :initial-loaded? true)
+    {:ok true}
+    (catch Throwable error
+      (print-error! "Clojure initial load failed" error)
+      {:ok false :error error})))
+
+(defn- reload-in-process! []
+  (try
+    (reload/reload {:only :changed})
+    (when-not (:entry-executed? @runtime)
+      (invoke-entry!))
+    (swap! runtime assoc :initial-loaded? true)
+    {:ok true}
+    (catch Throwable error
+      (print-error! "Clojure reload failed" error)
+      {:ok false :error error})))
+
+(defn reload-changed! []
+  (if-let [writer (:bb-writer @runtime)]
+    (try
+      (.write writer "reload\n")
+      (.flush writer)
+      {:ok true}
+      (catch Throwable error
+        (print-error! "Babashka reload signal failed" error)
+        {:ok false :error error}))
+    (reload-in-process!)))
+
+(defn- java-class [name]
+  (Class/forName name))
+
+(defn- invoke-static-no-args [class-name method-name]
+  (.invoke (.getMethod (java-class class-name) method-name (make-array Class 0))
+           nil
+           (object-array 0)))
+
+(defn- enum-value [class-name value]
+  (some #(when (= value (.name %)) %)
+        (.getEnumConstants (java-class class-name))))
+
+(defn- watch-kind [name]
+  (.get (.getField (java-class "java.nio.file.StandardWatchEventKinds") name) nil))
+
+(defn- project-directory? [^java.io.File file]
+  (and (.isDirectory file)
+       (not-any? #{".git" ".niva_clj" ".niva_cache" "build" "target"}
+                 (map #(.getName %) (take-while some? (iterate #(.getParentFile %) file))))))
+
+(defn- register-directory! [directory watch-service]
+  (.register directory watch-service
+             (into-array
+                         [(watch-kind "ENTRY_CREATE")
+                          (watch-kind "ENTRY_MODIFY")
+                          (watch-kind "ENTRY_DELETE")])))
+
+(defn- register-tree! [^java.io.File root watch-service]
+  (doseq [file (file-seq root)
+          :when (project-directory? file)]
+    (register-directory! (.toPath file) watch-service)))
+
+(defn- event-is-source? [event]
+  (let [context (.context event)]
+    (try
+      (.endsWith (str context) ".niva")
+      (catch Throwable _ false))))
+
+(defn- drain-key! [key root watch-service]
+  (let [events (.pollEvents key)]
+    (doseq [event events]
+      (when (= (watch-kind "ENTRY_CREATE") (.kind event))
+        (let [child (.resolve (.watchable key) (.context event))]
+          (when (.isDirectory (.toFile child))
+            (register-tree! (.toFile child) watch-service)))))
+    (boolean (some event-is-source? events))))
+
+(defn- wait-for-debounced-batch! [watch-service first-key]
+  (loop [source-event? (drain-key! first-key nil watch-service)]
+    (if-let [next-key (.poll watch-service 150
+                              (enum-value "java.util.concurrent.TimeUnit" "MILLISECONDS"))]
+      (let [next-source? (drain-key! next-key nil watch-service)]
+        (.reset next-key)
+        (recur (or source-event? next-source?)))
+      source-event?)))
+
+(defn- invoke-change! [on-change]
+  (if (instance? Runnable on-change)
+    (.run ^Runnable on-change)
+    (on-change)))
+
+(defn- watch-jvm! [project-root on-change]
+  (let [watch-service (.newWatchService
+                       (invoke-static-no-args "java.nio.file.FileSystems" "getDefault"))
+        root-file (java.io.File. project-root)
+        shutdown-hook (Thread. #(try (.close watch-service) (catch Throwable _)))]
+    (swap! runtime assoc :watch-service watch-service)
+    (.addShutdownHook (Runtime/getRuntime) shutdown-hook)
+    (try
+      (register-tree! root-file watch-service)
+      (loop []
+        (when-let [key (try (.take watch-service)
+                            (catch Throwable _ nil))]
+          (when (wait-for-debounced-batch! watch-service key)
+            (try (invoke-change! on-change)
+                 (catch Throwable error
+                   (print-error! "watch build callback failed" error))))
+          (.reset key)
+          (recur)))
+      (finally
+        (swap! runtime assoc :watch-service nil)
+        (try (.removeShutdownHook (Runtime/getRuntime) shutdown-hook) (catch Throwable _))
+        (try (.close watch-service) (catch Throwable _))))))
+
+(defn- bb-source-event? [event]
+  (let [path (:path event)]
+    (and path (.endsWith (str path) ".niva"))))
+
+(defn- watch-bb! [project-root on-change]
+  (let [load-pod (requiring-resolve 'babashka.pods/load-pod)
+        _ (load-pod 'org.babashka/fswatcher "0.0.7")
+        watch (requiring-resolve 'pod.babashka.fswatcher/watch)
+        stopped (promise)
+        callback-lock (Object.)
+        stop! #(deliver stopped true)
+        shutdown-hook (Thread. stop!)]
+    (swap! runtime assoc :watch-stop stop!)
+    (.addShutdownHook (Runtime/getRuntime) shutdown-hook)
+    (try
+      (watch project-root
+        (fn [event]
+          (when (bb-source-event? event)
+            (locking callback-lock
+              (try (invoke-change! on-change)
+                   (catch Throwable error
+                     (print-error! "watch build callback failed" error))))))
+        {:delay-ms 200 :recursive true})
+      (println "Watching...")
+      @stopped
+      (finally
+        (swap! runtime assoc :watch-stop nil)
+        (try (.removeShutdownHook (Runtime/getRuntime) shutdown-hook) (catch Throwable _))))))
+
+(defn stop-watch! []
+  (when-let [stop! (:watch-stop @runtime)]
+    (stop!)))
+
+(defn- babashka-runtime? []
+  (boolean (System/getProperty "babashka.version")))
+
+(defn- start-bb-runtime! [generated-dir entry-namespace]
+  (let [generated-path (.getAbsolutePath (java.io.File. generated-dir))
+        root (.getParentFile (java.io.File. generated-path))
+        process (-> (ProcessBuilder.
+                     ^java.util.List
+                     ["bb" "-m" "niva.hot-reload.host" "runtime-loop"
+                      generated-path entry-namespace])
+                    (.directory root)
+                    (.start))
+        _ (future (io/copy (.getInputStream process) System/out))
+        _ (future (io/copy (.getErrorStream process) System/err))
+        writer (io/writer (.getOutputStream process))]
+    (swap! runtime assoc :bb-process process :bb-writer writer)))
+
+(defn- stop-bb-runtime! []
+  (when-let [writer (:bb-writer @runtime)]
+    (try (.close writer) (catch Throwable _)))
+  (when-let [process (:bb-process @runtime)]
+    (try (.destroy process) (catch Throwable _)))
+  (swap! runtime assoc :bb-process nil :bb-writer nil))
+
+(defn runtime-loop! [generated-dir entry-namespace]
+  (init! generated-dir entry-namespace)
+  (initial-load!)
+  (doseq [line (line-seq (java.io.BufferedReader. *in*))]
+    (when (= line "reload")
+      (reload-in-process!))))
+
+(defn -main [& [command generated-dir entry-namespace]]
+  (when (= command "runtime-loop")
+    (runtime-loop! generated-dir entry-namespace)))
+
+(defn watch! [project-root on-change runtime-name]
+  (if (= runtime-name "bb")
+    (watch-bb! project-root on-change)
+    (watch-jvm! project-root on-change)))
+
+(defn start! [project-root generated-dir entry-namespace runtime-name on-change]
+  (if (and (= runtime-name "bb") (not (babashka-runtime?)))
+    (do
+      (start-bb-runtime! generated-dir entry-namespace)
+      (try
+        (watch-jvm! project-root on-change)
+        (finally (stop-bb-runtime!))))
+    (do
+      (init! generated-dir entry-namespace)
+      (initial-load!)
+      (watch! project-root on-change runtime-name))))
+"""
+
+static NATIVE_BUILD_SOURCE = """
+                        (ns build (:require [clojure.tools.build.api :as b]))
+
+                        (def class-dir "target/classes")
+                        (def basis (delay (b/create-basis {})))
+
+                        (defn native-jar [_]
+                          (b/delete {:path "target"})
+                          (b/copy-dir {:src-dirs ["."] :target-dir class-dir})
+                          (b/compile-clj {:basis @basis
+                                          :src-dirs ["generated" "."]
+                                          :class-dir class-dir
+                                          :ns-compile '[main]})
+                          (b/uber {:class-dir class-dir
+                                   :uber-file "../main.jar"
+                                   :basis @basis
+                                   :main 'main}))
+                      """ trimIndent

@@ -517,6 +517,38 @@ Test cljPublishingUsesGenerationDirectory = [
   io deleteRecursively path: ".niva_clj/publish-tests"
 ]
 
+Test cljProjectBootstrapCreatesMissingRuntimeFiles = [
+  io = IO_Container new
+  root = ".niva_clj/bootstrap-tests"
+  io deleteRecursively path: root
+
+  io ensureCljProjectAt: root
+
+  Assert that: (io readFile path: root + "/bb.edn") equals: CLJ_PROJECT_DEPS_SOURCE
+  Assert that: (io readFile path: root + "/deps.edn") equals: CLJ_PROJECT_DEPS_SOURCE
+  Assert that: (io readFile path: root + "/niva/core.clj") equals: NIVA_CORE_SOURCE
+
+  io writeFile file: root + "/deps.edn" content: "preserved"
+  io ensureCljProjectAt: root
+  Assert that: (io readFile path: root + "/deps.edn") equals: "preserved"
+
+  io deleteRecursively path: root
+]
+
+Test cljEmptyProgramProducesLoadableEntryModule = [
+  result = ResolverHelper resolve: #{"main" ""} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModuleForTarget: (result toIrModule)
+    debug: false mode: CljEmitMode.Program target: CljTarget.Bb
+
+  generated = output files at: "niva/generated/main.clj"
+  Assert that: (generated != null) equals: true
+  generated unpack: [
+    Assert that: (it contains: "(ns niva.generated.main)") equals: true
+    Assert that: (it contains: "(defn __niva_entry!") equals: true
+  ]
+  Assert that: (output manifest edn contains: "\"main\"") equals: true
+]
+
 Test cljPublishingRemovesStaleGeneratedFiles = [
   io = IO_Container new
   root = ".niva_clj/publish-tests/stale"
