@@ -580,6 +580,20 @@ constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   ^bindProto methods
 ]
 
+constructor NivaProtocol compilerFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
+  {str compiler} = dtc
+  compilerProto = NivaProtocol name: "constructors"
+  compilerProto addMethod: (NivaMethod
+    name: "cliArgs"
+    receiverType: compiler
+    args: {}
+    returnType: (ListT t: str)
+    forMut: false
+    protocolName: "constructors"
+    pkgName: "core")
+  ^ compilerProto methods
+]
+
 constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
   {str nothing} = dtc
 

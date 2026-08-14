@@ -343,6 +343,30 @@ Test cljEntryIsBehindReloadSafeHook = [
     clj contains: "y 2]", assertTrue
     Assert that: (clj contains: "\n(let [x 1") equals: false
     clj contains: "(defn -main [& args]", assertTrue
+    clj contains: "(System/setProperty \"niva.cli.args\" (pr-str (vec args)))", assertTrue
+]
+
+Test cljCompilerCliArgsFollowMainArguments = [
+  result = ResolverHelper resolve: #{"main" "Compiler cliArgs"}
+    entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(System/getProperty \"niva.cli.args\")", assertTrue
+  clj contains: "(System/setProperty \"niva.cli.args\" (pr-str (vec args)))", assertTrue
+  Assert that: (clj contains: "Compiler__cliArgs") equals: false
+
+  io = IO_Container new
+  root = ".niva_clj/cli-args"
+  io createDirectories path: root
+  io writeFile file: root + "/main.clj" content: clj
+  io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
+  exit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -M -e '(do (load-file \"main.clj\") (println (main/-main \"watch\" \"main.niva\" \"--runtime=bb\")))' > result.txt"}
+  Assert that: exit equals: 0
+  output = io readFile path: root + "/result.txt"
+  Assert that: output equals: "[watch main.niva --runtime=bb]\n"
+  io deleteRecursively path: root
 ]
 
 Test cljProgramNamespaceGeneratesJavaMainClass = [
