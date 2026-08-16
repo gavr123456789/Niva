@@ -438,106 +438,13 @@ MessageSendT msgSendToTSFromPkg(currentPkg): String db: TyperDB -> String = [
                 argsStr = argsExprs joinWith: ", "
                 ^ "new " + pkg_qualifier + dbMsg receiverType name + "(" + argsStr + ")"
             ]
-        isBindReceiver && (dbMsg name == "emit__backend")
-            ifTrue: [
-                templateExpr = args first expr
-                backendExpr = (args at: 1) expr
-
-                backendName = | backendExpr
-                  | StringExprT => backendExpr token lexeme unquoteLiteral
-                  |=> [TO DO: "Bind emit:backend: expects String literal as backend"]
-
-                backendName != "js" ifTrue: [^ "undefined"]
-
-                ^ | templateExpr
-                  | StringExprT => templateExpr token lexeme unquoteLiteral
-                  |=> templateExpr toTSFromPkg: currentPkg db: db
-            ]
-
-        isBindReceiver && ((dbMsg name == "emit") || (dbMsg name == "goCode"))
+        isBindReceiver && (dbMsg name == "emit")
             ifTrue: [
                 argExpr = args first expr
                 ^ | argExpr
                   | StringExprT => argExpr token lexeme unquoteLiteral
                   |=> argExpr toTSFromPkg: currentPkg db: db
             ]
-        isBindReceiver && (dbMsg name == "addImport__backend")
-            ifTrue: [
-                importExpr = args first expr
-                backendExpr = (args at: 1) expr
-
-                backendName = | backendExpr
-                  | StringExprT => backendExpr token lexeme unquoteLiteral
-                  |=> [TO DO: "Bind addImport:backend: expects String literal as backend"]
-
-                backendName != "js" ifTrue: [^ ""]
-
-                | importExpr
-                | StringExprT => [
-                    importName = importExpr token lexeme unquoteLiteral
-                    pkg = db packages at: currentPkg, unpackOrPANIC
-                    pkg addPackageImport: importName
-                  ]
-                |=> [
-                    TO DO: "Bind addImport:backend: expects String literal"
-                  ]
-                ^ ""
-            ]
-
-        isBindReceiver && (dbMsg name == "addImport")
-            ifTrue: [
-                argExpr = args first expr
-                | argExpr
-                | StringExprT => [
-                    importName = argExpr token lexeme unquoteLiteral
-                    pkg = db packages at: currentPkg, unpackOrPANIC
-                    pkg addPackageImport: importName
-                  ]
-                |=> [
-                    TO DO: "Bind addImport expects String literal"
-                  ]
-                ^ ""
-            ]
-
-        isBindReceiver && (dbMsg name == "emit__backend__args")
-            ifTrue: [
-                templateExpr = args first expr
-                backendExpr = (args at: 1) expr
-                argsListExpr = (args at: 2) expr
-
-                backendName = | backendExpr
-                  | StringExprT => backendExpr token lexeme unquoteLiteral
-                  |=> [TO DO: "Bind emit:backend:args: expects String literal as backend"]
-
-                backendName != "js" ifTrue: [^ "undefined"]
-
-                template = | templateExpr
-                  | StringExprT => templateExpr token lexeme unquoteLiteral
-                  |=> [TO DO: "Bind emit:backend:args: expects String literal as first argument"]
-
-                argsValues = | argsListExpr
-                  | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
-                  |=> [TO DO: "Bind emit:backend:args: expects List literal as third argument"]
-
-                ^ template bindApply: argsValues
-            ]
-
-        isBindReceiver && (dbMsg name == "emit__args")
-            ifTrue: [
-                templateExpr = args first expr
-                argsListExpr = (args at: 1) expr
-
-                template = | templateExpr
-                  | StringExprT => templateExpr token lexeme unquoteLiteral
-                  |=> [TO DO: "Bind emit:args: expects String literal as first argument"]
-
-                argsValues = | argsListExpr
-                  | ListLiteralT => argsListExpr elements v map: [it toTSFromPkg: currentPkg db: db]
-                  |=> [TO DO: "Bind emit:args: expects List literal as second argument"]
-
-                ^ template bindApply: argsValues
-            ]
-
         dbMsg name == "whileTrue" ifTrue: [
             condStr = receiver toTSFromPkg: currentPkg db: db
             bodyStr = (args first expr) toTSFromPkg: currentPkg db: db

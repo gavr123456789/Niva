@@ -147,6 +147,28 @@ Test declaredErrorEffectsRequireBodyErrors = [
   ]
 ]
 
+Test inlineBindDeclarationAllowsDeclaredErrorEffect = [
+  bindFile = """
+    String readFile -> String!Error =
+      Bind emit: "(slurp $0)"
+  """
+  fileMain = "x = \"hi\" readFile"
+
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test inlineBindWithoutDeclaredErrorEffectDoesNotInferOne = [
+  bindFile = """
+    String readFile -> String =
+      Bind emit: "(slurp $0)"
+  """
+  fileMain = "x = \"hi\" readFile"
+
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
 Test tryRethrowsIntoEnclosingFunctionAndUnwrapsVariable = [
   fileMain = """
     Int sas -> Int! = [
@@ -1247,6 +1269,76 @@ Test shadowCopyAllFieldsError = [
   db = result db
 
   Assert that: db listOfErrors count equals: 1
+]
+
+Test immutableNestedCopyUpdateLowersToShadowCopies = [
+  fileMain = """
+    type Money value: Int currency: String
+    type Wallet money: Money id: Int
+    type Person wallet: Wallet name: String
+
+    person = Person
+      wallet: (Wallet money: (Money value: 1 currency: "EUR") id: 7)
+      name: "Alice"
+    updated = person wallet money value <- 13
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+
+  Assert that: db listOfErrors count equals: 0
+  updatedDecl = typedAst last
+  | updatedDecl
+  | VarDeclarationT => [
+    Assert that: updatedDecl value typeInfo t name equals: "Person"
+    outerCopy = updatedDecl value
+    | outerCopy
+    | KeywordMsgT => [
+      Assert that: outerCopy kind equals: MessageSendKind.ShadowCopy
+      walletCopy = outerCopy args first expr
+      | walletCopy
+      | KeywordMsgT => [
+        Assert that: walletCopy kind equals: MessageSendKind.ShadowCopy
+        moneyCopy = walletCopy args first expr
+        | moneyCopy
+        | KeywordMsgT => Assert that: moneyCopy kind equals: MessageSendKind.ShadowCopy
+        |=> [TO DO: "Money shadow copy expected"]
+      ]
+      |=> [TO DO: "Wallet shadow copy expected"]
+    ]
+    |=> [TO DO: "Person shadow copy expected"]
+  ]
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test immutableNestedCopyUpdateRejectsNonGetter = [
+  fileMain = """
+    type Money value: Int
+    type Wallet money: Money
+    type Person wallet: Wallet
+
+    Money same -> Money = this
+    person = Person wallet: (Wallet money: (Money value: 1))
+    updated = person wallet money same value <- 13
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test immutableNestedCopyUpdateChecksValueType = [
+  fileMain = """
+    type Money value: Int
+    type Wallet money: Money
+    type Person wallet: Wallet
+
+    person = Person wallet: (Wallet money: (Money value: 1))
+    updated = person wallet money value <- "wrong"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
 ]
 
 Test nullableReceiverMessageDecl = [

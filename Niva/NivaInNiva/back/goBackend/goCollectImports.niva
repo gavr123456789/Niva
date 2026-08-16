@@ -1,28 +1,3 @@
-IrCall collectGoBindImports(imports): mut Set(String) -> Unit = [
-  r = receiverType
-  isBind = r unpack: [it typeId == "core_Bind"] or: false
-  isBind ifFalse: [^ Unit]
-
-  msgName unpack: [msg ->
-    | msg
-    | "addImport" => [
-        importExpr = args first
-        importName = importExpr irStringLiteralValue
-        importName unpack: [it addToGoImports: imports]
-      ]
-    | "addImport__backend" => [
-        importExpr = args first
-        backendExpr = args at: 1
-        isGo = backendExpr irStringLiteralValue unpack: [it == "go"] or: false
-        isGo ifTrue: [
-          importName = importExpr irStringLiteralValue
-          importName unpack: [it addToGoImports: imports]
-        ]
-      ]
-    |=> []
-  ]
-]
-
 IrBlock collectGoImportsInto(imports): mut Set(String) -> Unit = [
   stmts forEach: [it collectGoImportsInto: imports]
   result unpack: [it collectGoImportsInto: imports]
@@ -63,7 +38,6 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
   | IrCall     => [
       isCore = declPkg unpack: [it == "core"] or: false
       isCore ifTrue: ["niva_go/core" addToGoImports: imports]
-      .collectGoBindImports: imports
       callee unpack: [it collectGoImportsInto: imports]
       args forEach: [it collectGoImportsInto: imports]
     ]

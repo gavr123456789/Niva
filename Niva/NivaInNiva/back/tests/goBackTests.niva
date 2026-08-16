@@ -86,23 +86,20 @@ Test goMutReceiverUsesPointer = [
 ]
 
 Test goBindingsReadFile = [
+  bindFile = """
+    Int read: String -> String = Bind emit: "os.ReadFile($1)"
+  """
   fileMain = """
-    Int read: String -> String = [
-      Bind addImport: "os" backend: "go"
-      ^ Bind emit: "os.ReadFile($1)" backend: "go" args: {read}
-    ]
     x = 1 read: "file.txt"
     x echo
   """
 
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "os.bind" bindFile} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
   go contains: "import (", assertTrue
   go contains: "\"niva_go/core\"", assertTrue
   go contains: "\"os\"", assertTrue
-  go contains: "func main__core_Int__read", assertTrue
-  go contains: "os.ReadFile(read)", assertTrue
-  go contains: "main__core_Int__read(1, \"file.txt\")", assertTrue
+  go contains: "os.ReadFile(\"file.txt\")", assertTrue
 ]
 
 Test goCoreAnyMethodOwnerCodegen = [
@@ -574,28 +571,31 @@ Test goTryErrorableNullableValue = [
 ]
 
 Test goBindPlaceholder10 = [
+  bindFile = """
+    Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int =
+      Bind emit: "$10 + $1"
+  """
   fileMain = """
-    Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int = [
-      ^ Bind emit: "$10 + $1" backend: "go" args: {a b c d e f g h i j k}
-    ]
     x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
   """
 
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "return j + a", assertTrue
+  go contains: "10 + 1", assertTrue
 ]
 
 // New bind design (docs/bind_redesign_plan.md)
 
 // Point 2: single `Bind emit:` body is inlined at the call site (no wrapper func).
 Test goBindInlineEmitUnary = [
-  fileMain = """
+  bindFile = """
     Int double -> Int = Bind emit: "($0 * 2)"
+  """
+  fileMain = """
     x = 21 double
   """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "(21 * 2)", assertTrue
@@ -605,11 +605,13 @@ Test goBindInlineEmitUnary = [
 
 // Point 2: keyword form, $0 = this, $1 = first arg, $2 = second arg.
 Test goBindInlineEmitKeyword = [
-  fileMain = """
+  bindFile = """
     Int sas: Int and: Bool -> Int = Bind emit: "kekeke($1, $0, $2)"
+  """
+  fileMain = """
     y = 1 sas: 2 and: true
   """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "kekeke(2, 1, true)", assertTrue
@@ -625,7 +627,7 @@ Test goBindByNameInstance = [
   fileMain = """
     a = "hi" toUpper
   """
-  result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "strings.bind.extra" bindFile} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
   go = GoBackend fullFromIrModule: (result toIrModule)
 
@@ -649,16 +651,19 @@ Test goBindByNameStatic = [
   go contains: "\"strconv\"", assertTrue
 ]
 
-// Point 3: multi-expr body stays a real function; `Bind goCode:` is inserted inline.
-Test goBindGoCodeInBody = [
-  fileMain = """
+// Point 3: a multi-expr bind-file body stays a real function; its ordinary
+// `Bind emit:` call is inserted inline in that function.
+Test goBindEmitInBody = [
+  bindFile = """
     Int compute -> Int = [
-      a::Int = Bind goCode: "1 + 41"
+      a::Int = Bind emit: "1 + 41"
       ^ a
     ]
+  """
+  fileMain = """
     x = 0 compute
   """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "1 + 41", assertTrue

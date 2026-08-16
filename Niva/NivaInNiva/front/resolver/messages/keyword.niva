@@ -146,9 +146,6 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
       candidate args count == args count ifTrue: [kwMsgDB <- candidate]
     ]
   ]
-  // just replace this mutability with flag
-  // hasGenerics
-  // and at the end if it has then use the new generated kwMsg with instantiated geneircs, if not then use kwMsgDB
 
 
   Assert that: kwMsgDB args count equals: args count
@@ -188,7 +185,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
                             expr: expr
                             argName: name name)
 
-    // infer generics from nested types (function return types)
+    // infer generics from nested types
     argTypeFromDb collectGenericMappingsFrom: realType into: letterToType db: db
 
     argTypeFromDb isContainsUnresolvedGenerics
@@ -215,63 +212,27 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     NameAndExprT name: name expr: typedExpr
   ]
 
-  // щас тут логика ветвится
-  // дженерик не дженерик ресивер
-  // дженерик не дженерик конструктор
-  // дженерик не дженерик обычное сообщение
-  //
-  // нужно просто по отдельности - полностью обработать ресивер заменив при надобности его на новый замененный
-  // потом полностью обработать сообщение
-
-  // К этому моменту мы проверили обычные типы, и получили таблицу женериков
-  // теперь можно сгенерировать Msg с замененными женериками из оригинального, или получить если он уже был сгенерен
-  // у инстанциированных типов, должны быть инстанциированные сообщения
-  // мы будем затем находит интанциированные типы по id, и затем их сообщения
-
-  // также нужно убрать отдельную таблицу конструкторов, наверное, потому что само сообщение и так содержит kind
-  // нет, тогда мы не сможем хранить сообщение и конструктор с одинаковыми названиями
-
-  // try to find by id
   letterToType isNotEmpty ifTrue: [
-    // 1) create new type with generic replaced based on receiverType, if it contains generics and this is a constructor
-    // 1.1) if type does not contains generics but message contains, it seams okay, we can infer them from args
-    // 1.2) if type does contains generics but message dont, then its a problem.
-    // 2) create a new message, if it contains any generics, current letter to type not empty means it does
-
-    // instantiate method and its type if needed
-    // replaceGenericsFromTable also instantiates receiver type and registers it in DB
     dontMangle = | receiverType
                  | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
                  |=> #(String)!
 
     newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: true db: db
 
-    // check if this method instantiation already exists
-    // instantiated receiver type is already registered in replaceGenericsFromTable
-
-    // register the method in the instantiated receiver type's method table
     instReceiverType = db addCollectionInstantiationIfAbsent: newMethod receiverType
 
-    // add the method to the cache if missing
-    // instantiated methods go to instantiatedCache
-    // generic methods on non generic types go to typeToMethodNameToMethod
-    // addMethod:toProtocol:forType: handles insertion
 
 
     methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr
 
     | methodAlreadyExists
     | null => [
-       // method not found, register it
-
-       // 1 add to DB method cache
        db addNewMethod: newMethod forType: instReceiverType inProtocol: "generated"
 
-       // 2 generate MessageDecl for backend
        originalDecl = kwMsgDB decl
 
        | originalDecl
-       | null => [] // nothing to generate (e.g. intrinsic or getter without decl)
+       | null => [] // nothing to generate (intrinsic or getter without decl)
        |=> [
           // create new body with same expressions but empty typed body
           newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList)
@@ -291,10 +252,8 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor
             token: originalDecl token
-          // resolve body of the new declaration (generic monomorphized)
           newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType
 
-          // add to generated list for backend
           db addGeneratedMessageDecl: newDecl
        ]
     ]
@@ -307,7 +266,6 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     kwMsgDB <- newMethod
 
   ] ifFalse: [
-    // 1.2 check here
     | receiverType
     | TypeT => [
       isThereUnresolvedGenerics = receiverType genericArgs find: [
@@ -326,20 +284,11 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
 
 
-  // do not check if they are generics
-  // no, probably just replace expected args here with real args, if they are generics
-
-  // db checkRealArgs: argTypesAndExprs withExpectedArgs: kwMsgDB args // мы теперь сравниваем выше "db isAssignable: realType toExpected: argTypeFromDb"
 
   canonicalReturnType = db addCollectionInstantiationIfAbsent: kwMsgDB returnType
   callErrors::mut List(NivaType) = {}!
   kwMsgDB returnErrors forEach: [callErrors add: it]
 
-  // Evaluating receiver/arguments can fail before the method is entered.
-  // Function errors are latent: creating a block is harmless; invoking it via
-  // a call propagates the errors from its body. `try` makes the successful
-  // value usable, but re-throws the receiver's errors from the current
-  // function, so those errors must remain part of this expression's effect.
   receiverTypedExpr typeInfo listOfErrors forEach: [callErrors add: it]
   receiverEffectType = receiverTypedExpr typeInfo t
   | receiverEffectType
@@ -364,9 +313,5 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
                   isMut: kwMsgDB forMut
                   listOfErrors: (callErrors normalizeErrorList))
     dbMsg: kwMsgDB
-
-  // receiver stays non instaciated when its constructor, its pretty logical
-  // Box t: 42
-  // Box(Box t: T) t: 42(Int)
 
 ]

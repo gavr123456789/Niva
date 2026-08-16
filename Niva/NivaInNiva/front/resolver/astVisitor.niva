@@ -66,7 +66,6 @@ TypeDeclVisitor
 
     db addNewPkgIfNotExists: pkgName
 
-    // TODO unions, enums, aliases
     // save all types (without fields), and msg decls
     statements forEach: [
       | it
@@ -209,7 +208,6 @@ TypeDeclVisitor
           ]
         ] do
 
-        //"Types: added type " + resolvedType name + " in pkg " + pkgName, log
 
       ]
       readyToAddToDBType == null ifTrue: [
@@ -264,10 +262,8 @@ TypeDeclVisitor
 
   // msg decls resolving
   // here we should have all the types resolved
-  // msgDeclsByPkg at: "main" put: entryList
 
 // first resolve all the declarations
-// then resolve main "body"
 // then resolve all others method's bodies
     msgDeclsByPkg forEach: [pkg, msgList ->
     msgList forEach: [ msg ->
@@ -318,7 +314,6 @@ TypeDeclVisitor
           pkgName: pkg
 
         db addNewConstructor: constructorMethod forType: receiverType
-        //"Methods: added constructor " + constructorMethod name + " in pkg: " + pkg, log
         ()
       ] ifFalse: [
         returnErrors = msg returnType unpack: [
@@ -340,19 +335,16 @@ TypeDeclVisitor
 
         db registerMethodDeclaration: receiverType name: msg name token: msg token
         db addNewMethod: method forType: receiverType inProtocol: null
-        //"Methods: added method " + method name + " in pkg: " + pkg, log
         ()
       ]
     ]]
 
 // resolve main
-// resolve main moved to ResolverHelper
   ] do
   ^ msgDeclsByPkg
 ]
 
-/// if no return type and has body then its Unit
-/// if no return type and isSingleExpr then its unknown
+/// infer return type when declaration omits one
 MessageDecl getReturnTypeIfDeclaredOrUnknown(db): TyperDB -> NivaType = [
   rt = returnType
   ^ | rt
@@ -365,8 +357,7 @@ MessageDecl getReturnTypeIfDeclaredOrUnknown(db): TyperDB -> NivaType = [
 ]
 
 /// returns a type with fields filled with real types, ready to add to db
-/// returns null if such type was not found in knownTypeNames or db
-/// and adds that as error to listOfErrors
+/// find type or record an error
 TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> TypeT? = [
   name = st name
   typeStub = knownTypes at: name
@@ -428,7 +419,6 @@ MsgDeclVisitor processBodyes(pkg2Msg): Map(String, List(MessageDecl)) db::TyperD
 ]
 
 MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) -> TypedBody = [
-  //"resolving body of " + this name + " from pkg: " + pkg name, log
   db typedBodiesCache at: this, unpack: [^ it]
   // put extra types to db
   db localGenericScope putAll: extraTypes
@@ -441,7 +431,6 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     |=> resolvedArgsFromDb count == args count
   expectedReturnType = returnType unpack: [it toNivaTypefromDB: db inPkg: null] or: null
 
-  // add receiver as "this" and args to the context
   createContextWithThisAndArgs = [
     c = Context rootWithPkg: pkg
     receiverType = receiver toNivaTypefromDB: db inPkg: null
@@ -551,15 +540,15 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   // since single expr bodies can omit the return type
 
   // check that last expr type == return type declared
-  // if return type is generic it will be checked here keyword 282 `newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType`
   // so skipping
   declaredReturnType = returnType unpack: [it toNivaTypefromDB: db inPkg: null]
                                   or: null
   // empty declaration in a .bind.niva file is implemented by the target runtime, so its synthetic Unit body must not be checked as the function's declared return type.
-  isExternalBind = (db isBindMessageDecl: this) && (isSingleExpr not) && (body unTypedBody isEmpty)
+  isBindDeclaration = db isBindMessageDecl: this
+  isExternalBind = isBindDeclaration && (isSingleExpr not) && (body unTypedBody isEmpty)
 
   declaresErrorEffect = hasAnyReturnErrors || declaredReturnErrors isNotEmpty
-  (declaresErrorEffect && actualReturnErrors isEmpty && (isExternalBind not)) ifTrue: [
+  (declaresErrorEffect && actualReturnErrors isEmpty && (isBindDeclaration not)) ifTrue: [
     declaredShown = hasAnyReturnErrors
       ifTrue: ["! (at least one inferred error)"]
       ifFalse: [declaredReturnErrors errorsToString]
@@ -600,7 +589,6 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
       msg: "Function " + name + " error effects mismatch: declared " + declaredShown + ", actual " + actualShown)
   ]
 
-  // clean up local scope from generics, probably a bad solution, thats stupidly a global mutable
   extraTypes keys forEach: [
     db localGenericScope remove: it
   ]

@@ -25,7 +25,6 @@ extend mut Parser [
         c <- false
       ]
     ]
-    // "parseManyIdent $result" echo
     ^ result
   ]
 
@@ -35,14 +34,9 @@ extend mut Parser [
       mut c = true
       [c] whileTrue: [
         tok = .peek
-        // tok lexeme echo
-        // this is double check for binary, we already did it on the call side
-        // ... but we still need it for "recursion" to get the next +
         | tok kind
         | TokenType.BinarySymbol => [
           binarySymbol = .step
-          // binarySymbol kind echo
-          // + ^1 inc inc + 2
           rhsTok = .step
           receiver =
             | rhsTok kind
@@ -54,14 +48,12 @@ extend mut Parser [
             |=> [
               (.primary: rhsTok) unpackOrMsg: "Cant find primary"
             ]
-          // + 1^ inc inc + 2
           unaryList = .peek line == receiver token line, ifTrue: [
             .parseManyIdentSeparated: null
           ] ifFalse: [{}!]
 
 
           unaryList isEmpty, ifTrue: [
-            // + 1 + 2
             binSymbol = Identifier fromToken: binarySymbol
             result add: (NameAndExpr name: (binSymbol) expr: receiver)
           ] ifFalse: [
@@ -85,7 +77,6 @@ extend mut Parser [
 
             unary = tempUnary
 
-            // + 1 inc inc + 2
             binSymbol = Identifier fromToken: binarySymbol
             result add: (NameAndExpr name: (binSymbol) expr: unary)
           ]

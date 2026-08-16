@@ -1,14 +1,16 @@
 
 
-// Collect all identifier names from untyped expressions in a body
-// Conservative: collects ALL lowercase identifiers (before resolution)
-// Used to determine which VarDeclarationT are actually used
+// collect names used in body
 Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
   | this
   | Identifier => [ name first isUpperCase ifFalse: [refs add: name] ]
   | ExprInBrackets => value collectExprRefNames: refs
   | VarDeclaration => value collectExprRefNames: refs
   | Assign => value collectExprRefNames: refs
+  | ImmutableCopyUpdate => [
+    target collectExprRefNames: refs
+    value collectExprRefNames: refs
+  ]
   | DestructingAssign => value collectExprRefNames: refs
   | ReturnStatement => value unpack: [it collectExprRefNames: refs]
   | UnaryMsg => [
@@ -41,22 +43,42 @@ Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
   |=> []
 ]
 
+// find first non generated getter in update target
+UnaryMsgT firstNonGetterInCopyUpdate -> Token? = [
+  kind != MessageSendKind.Getter ifTrue: [^ selector token]
+  localReceiver = receiver
+  ^ | localReceiver
+    | UnaryMsgT => localReceiver firstNonGetterInCopyUpdate
+    |=> null
+]
+
+// expand chained update syntax
+// x wallet money value <- v into
+UnaryMsg expandImmutableCopyUpdate(value): Expr -> Expr = [
+  localReceiver = receiver
+  shadowCopy = KeywordMsg
+    args: {(NameAndExpr name: selector expr: value)}
+    receiver: localReceiver
+    token: token
+    kind: MessageSendKind.Call
+
+  ^ | localReceiver
+    | UnaryMsg => localReceiver expandImmutableCopyUpdate: shadowCopy
+    |=> shadowCopy
+]
+
 extend Body [
   on resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
     .resolveBody2: db withContext: upperContext expectedType: null
 
-  /// used only for resolving body inside expressions, not for resolve body from message declarations
-  /// expectedType - if this expression is in place where certain type expected, like return type declared
+  /// resolve body inside expressions
+  /// expected type comes from surrounding expression
   on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
-    //StackTrace get log
-    //Compiler getPlace log
 
     c = Context fromParent: upperContext
 
-    // scan untyped body for referenced names (fill isUsed for VarDeclarationT)
     unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
 
-    // '[]' body, nothing to resolve
     unTypedBody isEmpty ifTrue: [
       ^ TypedBody v: {} t: db dtc unit listOfErrors: {}
     ]
@@ -75,11 +97,9 @@ extend Body [
 
       typed = expr toTypedExprFromDb2: db withContext: c expectedType: expectedForExpr
       typeOfExpr = typed typeInfo t
-      // check that type is not Unknown
       | typeOfExpr | Unknown => [
         TO DO: "Unknown type of expr is not possible $expr"
       ] |=> []
-      // if it is, then go and resolve the body, with remembering stack
 
       typed
     ]
@@ -112,9 +132,7 @@ extend Body [
                 listOfErrors: (bodyErrors normalizeErrorList)
   ]
 
-  /// resolve elements of a collection literal, expected type is propagated to every element,
-  /// so a nested empty collection can infer its type: `x::List(List(Int)) = {{} {}}`
-  /// for list and set both expected types are the element type, for map its key and value
+  /// resolve collection elements with expected type
   on resolveCollectionElements(db): TyperDB withContext(upperContext): Context expectedEven: NivaType? expectedOdd: NivaType? -> TypedBody = [
     (expectedEven == null) && (expectedOdd == null) ifTrue: [
       ^ .resolveBody2: db withContext: upperContext
@@ -185,7 +203,6 @@ List(NivaType) errorListCovers(actual): List(NivaType) db: TyperDB -> Bool = [
 List(NivaType) errorsToString -> String =
   this normalizeErrorList joinWith: ", " transform: [it name]
 
-// returns the number of wrong type element, if all good returns null
 NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
   types forEachIndexed: [i, it ->
     this sameTypeAs: it, ifFalse: [^ i]
@@ -198,7 +215,6 @@ extend TyperDB [
     | subjectType
     | TypeT => [
       unionLeaves = this unionLeaves: subjectType
-      // if else exists, it's a catch-all
       elseBranch == null ifTrue: [
         checkedLeaves::mut Set(String) = #()!
 
@@ -416,7 +432,6 @@ Expr toTypedExprFromDb2: TyperDB withContext: Context -> TypedExpr2 =
   .:toTypedExprFromDb2 :withContext expectedType: null
 
 Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaType? -> TypedExpr2 = [
-  // todo optimize by adding core pkg to the TyperDB
   result = | this
   | CharExpr    => CharExprT :token typeInfo: db dtc char toTypeInfoDefault
   | IntExpr     => IntExprT :token typeInfo: db dtc int toTypeInfoDefault
@@ -427,15 +442,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | NullExpr    => NullExprT :token typeInfo: (NullableT v: db dtc nothing) toTypeInfoDefault
   | UnitExpr    => UnitExprT :token typeInfo: db dtc unit toTypeInfoDefault
   | AtomIdentifier => AtomExprT :name :token typeInfo: db dtc str toTypeInfoDefault
-  // Identifier can be type itself like Unit
   | Identifier   => [
 
     varType = c lookupForVar: this name
     | varType
     | null => [
-      // this identifier can be name of the type and just a constructor call
       name first isUpperCase ifTrue: [
-        q = db findByTypeName: name // TODO replace by findMaybe, and dont check for UpperCase
+        q = db findByTypeName: name
 
         IdentifierT :name :path :token typeInfo: q toTypeInfoDefault isNameOfTheType: true
       ] ifFalse: [
@@ -530,8 +543,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     this elements unTypedBody isEmpty ? [
       TO DO: "Can't infer type of the Map collection without elements"
     ]
-    // resolve
-    // compere each first and each second
     expectedMap = expectedType unpack: [ et ->
       unwrapped = et unwrapNullable
       | unwrapped
@@ -548,7 +559,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
 
-    // Compare every first with first, every second with second
     first = typesOfElems first
     second = typesOfElems at: 1
 
@@ -628,7 +638,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
     // take first and others
-    // Compare all elements between each other
     f = typesOfElems first
     numberOfWrongElementType = f sameTypeAsMany: (typesOfElems drop: 1)
     numberOfWrongElementType unpack: [
@@ -651,9 +660,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       astType
   ]
   | UnaryMsg   => [
-    // `info` is a compiler intrinsic. Resolve its receiver first so the
-    // output describes the inferred type, then erase the message from the
-    // runtime AST by replacing it with Unit.
     isFullInfo = selector name == "infoFull"
     (selector name == "info") || isFullInfo ifTrue: [
       receiverTyped = receiver toTypedExprFromDb2: db withContext: c
@@ -671,15 +677,24 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: expectedType
   ]
 
-  | VarDeclaration  => [
-    // "var decl " + c toString, log
+  | ImmutableCopyUpdate => [
+    typedTarget = target resolveUnaryFromDb2: db withContext: c
+    invalidGetter = typedTarget firstNonGetterInCopyUpdate
+    invalidGetter unpack: [badToken ->
+      value toTypedExprFromDb2: db withContext: c
+      db addErrorFromTok: badToken withMsg: "Immutable copy update path can contain only unary getters"
+      ^ typedTarget
+    ]
 
-    // declared type is resolved first, so the value knows what type is expected
-    // `x::List(Int) = {}`
+    expanded = target expandImmutableCopyUpdate: value
+    ^ expanded toTypedExprFromDb2: db withContext: c expectedType: expectedType
+  ]
+
+  | VarDeclaration  => [
+
     mut declaredType::NivaType? = null
     mut declaredTypeInfo::TypeInfo? = null
     this astType unpack: [ declaredAstType ->
-      // x::Int = "ars"
       nivaType = declaredAstType toNivaTypefromDB: db inPkg: null
       errorsList = declaredAstType toErrorsFromDb: db inPkg: null
       declaredType <- nivaType
@@ -688,22 +703,17 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     typedExpr = this value toTypedExprFromDb2: db withContext: c expectedType: declaredType
 
-    // check that ast type is the same as declared
     declaredType unpack: [ nivaType ->
       db isAssignable: typedExpr typeInfo t toExpected: nivaType,
         ifFalse: [
           valName = name
           astTypeName = declaredType toString
           realTypeName = typedExpr typeInfo t toString
-          // TODO add it to error list
           db addErrorFromTok: this token withMsg: "Type declared for $valName is not equal for it's value type $astTypeName != $realTypeName"
         ]
     ]
 
     varTypeInfo = declaredTypeInfo unpackOrValue: typedExpr typeInfo
-    // `try` unwraps the value for subsequent uses of this variable, while
-    // its error effect is retained on the declaration below and therefore on
-    // the enclosing body/function.
     untypedValue = this value
     valueIsTry = | untypedValue
                  | UnaryMsg => untypedValue selector name == "try"
@@ -727,7 +737,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   ]
   | Assign => [
       method_receiver = c lookupForVar: "this"
-      // if this has fienld of the same name
       kind = | method_receiver
               | null => AssignKind.TO_LOCAL_MUT
               |=> [
@@ -856,7 +865,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   ]
   | Match     => [
 
-    // TODO exhaustivness for unions and bool and enums and nullMatching
     rawElseBranch = this elseBranch // local smart cast
     isMatchingOnThis = subject token lexeme == "this"
 
@@ -902,7 +910,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     returnTypes::mut List(NivaType) = {}!
     branchesT = branches map: [br ->
-      // if matching on `this` then add fields of `this` to the context
       contextIfThisMatching = isMatchingOnThis
                                 ifTrue: [
                                   newC = Context fromParent: c
@@ -910,9 +917,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                                 ]
                                 ifFalse:[c]
       //contextIfThisMatching vars keys toList isEmpty ifTrue: [
-      //                                                //TO DO: "First"
       //                                              ] ifFalse: [
-      //                                                //TO DO: "second"
       //                                              ]
       //// resolve additionalConditions and branches ////
       conditionT = br condition toTypedExprFromDb2: db withContext: contextIfThisMatching

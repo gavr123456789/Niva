@@ -77,6 +77,31 @@ Test mutVarDeclarationExpr -> Unit = [
   statements = TestParse withInput: input expectedCount: 2
 ]
 
+Test immutableNestedCopyUpdateExpr -> Unit = [
+  input = """
+    y = x wallet money value <- 13
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+
+  declaration = statements first
+  | declaration
+  | VarDeclaration => [
+    copyUpdate = declaration value
+    | copyUpdate
+    | ImmutableCopyUpdate => [
+      Assert that: copyUpdate target selector name equals: "value"
+      Assert that: copyUpdate value token lexeme equals: "13"
+
+      moneyGetter = copyUpdate target receiver
+      | moneyGetter
+      | UnaryMsg => Assert that: moneyGetter selector name equals: "money"
+      |=> [TO DO: "money getter UnaryMsg expected"]
+    ]
+    |=> [TO DO: "ImmutableCopyUpdate expected"]
+  ]
+  |=> [TO DO: "VarDeclaration expected"]
+]
+
 
 Test matchExpr -> Unit = [
   input = """

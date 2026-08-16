@@ -87,16 +87,12 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
   ]
 ]
 
-/// sameTypeAs: is asymmetric, NothingT and AnyT on the right match everything,
-/// so `null`(NothingT) or `Any` receivers would match a method declared for a concrete type
+/// sameTypeAs: NothingT and AnyT on the right match every type
 NivaType sameTypeStrictAs(nivaType): NivaType -> Bool =
   (.sameTypeAs: nivaType) && (nivaType sameTypeAs: this)
 
 
-// typechecks for x::Int = 4
-// where nivaType is `::Int` part, and 4 is `this`
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
-  // Nothing is the bottom type (for example `throw`) is valid wherever a value is expected
   this isNothingType ifTrue: [^ true]
   ^ nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
@@ -151,9 +147,6 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
 
     | NullableT =>  | this
                     | NullableT => [
-                                    // nullable with nothing inside is just `null`
-                                    // x::Int? = null
-                                    // null here is NullableT(NothingT)
                                     | this v isNothingType
                                     | true => true
                                     |=> this v isAssignableTo: nivaType v :db]

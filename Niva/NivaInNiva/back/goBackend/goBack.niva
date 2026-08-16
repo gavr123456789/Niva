@@ -388,65 +388,17 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
   |=> r typeId == "core_Bind"
         ifFalse: [^ null]
 
-
   msgNameLocalMaybe = msgName
   | msgNameLocalMaybe
   | null => [^ null]
   |=> [
     msgNameLocal = msgNameLocalMaybe
     ^ | msgNameLocal
-    | "emit" | "goCode" => [
-      templateExpr = args first
-      templateVal = templateExpr irStringLiteralValue
-      | templateVal
-      | null => (templateExpr toGoExpr: ctx scope: scope)
-      |=> templateVal
-    ]
-    | "emit__args" => [
-      templateExpr = args first
-      argsListExpr = args at: 1
-      template = templateExpr irStringLiteralValue unpackOrPANIC
-      items = argsListExpr irListLiteralItems
-      argsValues = items map: [it toGoExpr: ctx scope: scope]
-      template bindApply: argsValues
-    ]
-    | "emit__backend" => [
-      templateExpr = args first
-      backendExpr = args at: 1
-      backendName = backendExpr irStringLiteralValue unpackOrPANIC
-      backendName != "go" ifTrue: [^ ""]
-      templateVal = templateExpr irStringLiteralValue
-      | templateVal
-      | null => (templateExpr toGoExpr: ctx scope: scope)
-      |=> templateVal
-    ]
-    | "emit__backend__args" => [
-      templateExpr = args first
-      backendExpr = args at: 1
-      argsListExpr = args at: 2
-      backendName = backendExpr irStringLiteralValue unpackOrPANIC
-      backendName != "go" ifTrue: [^ ""]
-      template = templateExpr irStringLiteralValue unpackOrPANIC
-      items = argsListExpr irListLiteralItems
-      argsValues = items map: [it toGoExpr: ctx scope: scope]
-      template bindApply: argsValues
-    ]
-    | "addImport" => [
-      importExpr = args first
-      importName = importExpr irStringLiteralValue unpackOrPANIC
-      ctx addImport: importName
-      ""
-    ]
-    | "addImport__backend" => [
-      importExpr = args first
-      backendExpr = args at: 1
-      isGo = backendExpr irStringLiteralValue unpackOrPANIC == "go"
-      isGo ifFalse: [^ ""]
-      importName = importExpr irStringLiteralValue unpackOrPANIC
-      ctx addImport: importName
-      ""
-    ]
-    |=> null
+      | "emit" => [
+          templateExpr = args first
+          templateExpr irStringLiteralValue unpackOrValue: (templateExpr toGoExpr: ctx scope: scope)
+        ]
+      |=> null
   ]
 ]
 
