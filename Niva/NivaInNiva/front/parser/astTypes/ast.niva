@@ -111,6 +111,7 @@ union Expr token: Token =
   | ExprInBrackets value: Expr
   | VarDeclaration    name: String value: Expr astType: AstType2? isMut: Bool
   | Assign            name: String value: Expr
+  | ImmutableCopyUpdate target: UnaryMsg value: Expr
   | DestructingAssign bindings: List(DestructureBinding) value: Expr // {name} = person, {local = field} = person
 
   | ^CollectionLiteral

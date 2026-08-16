@@ -70,7 +70,7 @@ extend MessageDecl [
 
   on bindIsEmptyBody -> Bool = (isSingleExpr not) && (body unTypedBody isEmpty)
 
-  // exactly `Bind emit: "..."` or `Bind goCode: "..."` (one keyword) -> template
+  // exactly `Bind emit: "..."` (one keyword) -> template.
   on bindEmitTemplate -> String? = [
     exprs = body unTypedBody
     exprs count == 1 ifFalse: [^ null]
@@ -85,12 +85,10 @@ extend MessageDecl [
         recvIsBind ifFalse: [^ null]
         (firstExpr args count == 1) ifFalse: [^ null]
         firstArg = firstExpr args first
-        selName = firstArg name name
-        ((selName == "emit") || (selName == "goCode")) ifFalse: [^ null]
+        (firstArg name name == "emit") ifFalse: [^ null]
         | firstArg expr
         | StringExpr => [
           tok = firstArg expr token
-          // todo make this a method
           tok kind == TokenType.RawString
             ifTrue: [tok lexeme unquoteRawLiteral]
             ifFalse: [tok lexeme unquoteLiteral]
@@ -101,7 +99,10 @@ extend MessageDecl [
   ]
 
   on bindPlanWith(db): TyperDB pkg: String -> IrBind? = [
-    ((db isBindMessageDecl: this) && (.bindIsEmptyBody)) ifTrue: [
+    isBind = db isBindMessageDecl: this
+    isBind ifFalse: [^ null]
+
+    .bindIsEmptyBody ifTrue: [
       // Keep the declared foreign name intact. Go applies its exported-name
       // convention during emission; Clojure names (for example `upper-case`)
       // must not be capitalized.
@@ -110,33 +111,8 @@ extend MessageDecl [
     tmpl = .bindEmitTemplate
     ^ tmpl unpack: [t ->
       // emits inside a .bind.niva file auto-import that file's Go package
-      emitPkg = (db isBindMessageDecl: this) ifTrue: [pkg] ifFalse: [null]
-      IrBindEmit template: t goPkg: emitPkg
+      IrBindEmit template: t goPkg: pkg
     ] or: null
-  ]
-  // TODO: decide what to do when a bind function is passed as a value (higher-order).
-  // For empty-body (by-name) binds this is harmless (it's just a known Go function),
-  // but an inline `Bind emit:` has no wrapper to reference. Very rare; revisit later.
-]
-
-extend MessageDeclT [
-  // typed-side check used to skip generating a real Go function for inline emits
-  on isInlineBindEmit -> Bool = [
-    exprs = body v
-    exprs count == 1 ifFalse: [^ false]
-    first = exprs first
-    // single-expr method bodies are wrapped in an implicit return
-    firstExpr = | first
-      | ReturnStatementT => (first value unpack: [it] or: first)
-      |=> first
-    ^ | firstExpr
-      | KeywordMsgT => [
-        recvIsBind = (firstExpr dbMsg receiverType toMangledName) == "core_Bind"
-        (recvIsBind && (firstExpr args count == 1)) ifFalse: [^ false]
-        selName = firstExpr args first name name
-        (selName == "emit") || (selName == "goCode")
-      ]
-      |=> false
   ]
 ]
 
@@ -818,12 +794,9 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
 TypedStatement toIrFunctions(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) -> List::IrFunction =
   | this
   | MessageDeclT => [
-      // single `Bind emit:`/`goCode:` body is inlined at call sites -> no Go function
-      this isInlineBindEmit ifTrue: [^ {IrFunction}]
       {(this toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById)}
     ]
-  | ExtendDeclT => (messages filter: [it isInlineBindEmit not])
-                     map: [it toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById]
+  | ExtendDeclT => messages map: [it toIrFunction: db currentPkg: currentPkg typeFieldsById: typeFieldsById]
   |=> {IrFunction}
 
 TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map(String, List(IrField)) -> List(IrTypeDef) =

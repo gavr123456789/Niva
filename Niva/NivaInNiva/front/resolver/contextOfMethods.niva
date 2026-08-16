@@ -17,11 +17,6 @@ constructor Context [
 
 extend Context [
 
-  // TODO store token with, no, need to store typed expr since all typeInfo is from there
-  // TODO or add new TypeFlags type and store it inside typedExpr, to be more flexible(not always we have typedExpr, for example for kw msg params)
-
-
-  // TODO need to store
   on defineVar(name): String withType: TypeInfo = [
     varType = vars at: name
     | varType
@@ -54,7 +49,6 @@ extend Context [
       nonNullP = p unpackOrPANIC
       newLine = compute c: nonNullP
       result add: newLine
-      // result <- newLine + "\n" +levelStr + result
       p <- nonNullP parent
     ]
     mut level = -1

@@ -4,44 +4,28 @@ type TyperDB
   packages: mut Map(String, NivaPkg)
 
 
-  // caches
   internalTypesCache: mut Map(String, NivaType) // types from Core pkg
   typesWithSameNames: mut Map(String, mut Set::NivaType)
-  // needed for info infoFull special messages(and future lsp probably)
   typeDeclarationTokens: mut Map(String, Token)
   methodDeclarationTokens: mut Map(String, Token)
-  // key = typeId ("pkg.Type"), value = branch typeIds
   unionRootToBranches: mut Map(String, mut Set::String)
-  // reverse: branch typeId -> direct parent typeId
   branchIdToParentId: mut Map(String, String)
 
-  typesById: mut Map(String, TypeT) // typeID("pkg.Map.Ing.String") to type, why not type to type, because we need real generic info
-  // utils
+  typesById: mut Map(String, TypeT)
   dtc: DefaultTypesContainer
-  // methods
   typeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // methodDB
-  // Methods declared on generic receiver patterns (for example List(T)).
-  // These are deliberately kept separate from the concrete method cache:
-  // NivaType uses identity semantics as a Map key.
   genericReceiverMethods: mut List::GenericReceiverMethodTemplate
-  // methods of nullable receivers(`Int? orZero = ...`, `T? unpackOr: x = ...`) they cant live in
-  // typeToMethodNameToMethod, because NullableT is created anew every time and has no structural equality
-  // methodName -> mangled name of the inner type -> method
   nullableMethods: mut Map(String, mut Map(String, NivaMethod))
   constructorsTypeToMethodNameToMethod: mut Map(NivaType, mut Map(String, NivaMethod)) // constructorsDB, since we can have constructo and message with the same names
   instantiatedCache: mut Map(NivaType, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
-  // canonical instances for collection types (ListT/SetT/MapT), keyed by "List_Int" etc.
   canonicalCollectionInstances: mut Map(String, NivaType)
 
-  // generated
   generatedMessageDecls: mut List::MessageDecl
   typedBodiesCache: mut Map(MessageDecl, TypedBody)
   declToMethod: mut Map(MessageDecl, NivaMethod)
 
-  // local scope for generic resolution
   localGenericScope: mut Map(String, NivaType)
 
-  // bind metadata
   bindMeta: BindMeta
 
 
@@ -164,9 +148,6 @@ constructor TyperDB new -> TyperDB = [
     localGenericScope: #{}!
     bindMeta: BindMeta new
 
-  // all core methods are stored in the type table above
-  // but echo from anyProtocol is very special and has T echo -> T signature
-  // so we registering it very very much specifically --- registerGenericReceiverMethod
   echoMethod = anyProtocol at: "echo", unpackOrPANIC
   db registerGenericReceiverMethod: echoMethod forType: echoMethod receiverType
   ^db
@@ -178,7 +159,6 @@ type GenericReceiverMethodTemplate
   method: NivaMethod
   pkgName: String
 
-// AST type for synthetic declaration of a specialized method(from generic)
 NivaType toFakeAstType -> AstType = [
   astName = | this
     | NullableT => v name
@@ -428,7 +408,6 @@ extend TyperDB [
     ^ actual isAssignableTo: expected db: this
   ]
 
-  // TODO replace with nullmatch + find
   on findUnionField(rootType): TypeT fieldName: String -> TypeTField? = [
     rootId = rootType toIdString
     ^ unionRootToBranches at: rootId, unpack: [branches ->
@@ -444,8 +423,6 @@ extend TyperDB [
       null
     ] or: null
   ]
-  /// nullable receivers are keyed by the mangled name of their inner type,
-  /// every generic one(`T? m`, `G? m`) matches any nullable, so they all share a single slot
   on nullableMethodKeyFor(inner): NivaType -> String = [
     mangled = inner toMangledName
     ^ mangled isGeneric ifTrue: ["?"] ifFalse: [mangled]
@@ -454,7 +431,6 @@ extend TyperDB [
   /// adds method to protocol, if no such protocol - creates it
   on addMethod(m): NivaMethod forType(forType): NivaType = [
     | forType
-    // nullable receivers(`T? unpackOr: x = ...`) are never registered as types, see nullableMethods
     | NullableT => [
       innerToMethod::mut Map(String, NivaMethod) = nullableMethods get: m name orPut: [#{}!]
       key = .nullableMethodKeyFor: forType v
@@ -470,16 +446,11 @@ extend TyperDB [
 
       methodNameToMethodMap at: m name put: m
     ]
-    //m kind == MessageSendKind.Getter ifFalse: [
-    //  "Methods: added method " + m name + " to new protocol $protocolName for type $forType in pkg ", log
-    //]
   ]
 
 
-  /// adds ne method for db, if protocol is null then adds to "common"
+  /// add method to protocol or common table
   on addNewMethod(m): NivaMethod forType::NivaType inProtocol::String? = [
-    // A generic receiver is a pattern, not an instantiable method-table key.
-    // Keep it in a separate registry and materialize it on first concrete use.
     isNullableReceiver = | forType
       | NullableT => true
       |=> false
@@ -574,7 +545,6 @@ extend TyperDB [
             ]
             |=> specialized returnType
 
-          // keep the og receiver used by cache
           specializedWithActualReceiver = NivaMethod
             name: specializedName
             receiverType: forType
@@ -589,9 +559,6 @@ extend TyperDB [
             pkgName: specialized pkgName
           matches add: specializedWithActualReceiver
 
-          // The method is now available in the concrete method cache, but the
-          // backend still needs a declaration whose receiver has the concrete
-          // type. Keep the original generic declaration for other uses.
           | forType
           | TypeT => [
             originalDecl = specializedWithActualReceiver decl
@@ -642,7 +609,6 @@ extend TyperDB [
     pos = e tok toPosition
     "ADDED ERROR $pos $msg" red log
     listOfErrors add: e
-    //TO DO: "bad"
   ]
 
   on addErrorFromTok(tok): Token withMsg(msg): String = [
@@ -669,7 +635,6 @@ extend TyperDB [
       |=> []
     ]
 
-    //"addNewConstructor: added constructor " + m name + " for type " + forType name, log
   ]
 
   on addNewPkgIfNotExists(pkgName): String -> NivaPkg = [
@@ -698,7 +663,6 @@ extend TyperDB [
   ]
   on addNewType(t): TypeT inPkg(pkgName): String = [
     // 1 add to pkg
-    // find the pkg
     pkg = packages at: pkgName
     | pkg
     | null => TO DO: "Compiler bug: cant find pkg $pkgName"
@@ -721,14 +685,12 @@ extend TyperDB [
 
     id = t toIdString
     typesById get: id orPut: [t]
-    //"addNewType typesById: added new type $t to typesById with id: $id" log
 
 
     // 2 add to methods db
     x = this typeToMethodNameToMethod at: t
     | x
     | null => [
-      //"addNewType: added new type $t to methods cache with 0 members" log
       this typeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
     ] |=> TO DO: "Compiler bug: such type was already added to methodDB"
 
@@ -736,7 +698,6 @@ extend TyperDB [
     xc = this constructorsTypeToMethodNameToMethod at: t
     | xc
     | null => [
-      //"addNewType: added new type $t to constructor cache with 0 members" log
       this constructorsTypeToMethodNameToMethod at: t put: #{}! // new type does't have any methods yet
     ] |=> TO DO: "Compiler bug: such type was already added to constructorsDB"
   ]
@@ -757,18 +718,13 @@ extend TyperDB [
 
     // check if it already
     typesById at: typeId, unpack: [
-      //"already resolved generic $typeId" log
       ^it
     ]
 
     typesById at: typeId put: newTypeWithGenericInstantiated
-    //"added new generic instantiation $typeId" log
 
-    // add to lookup for mangled name (so we can find Box__Int)
     mangled = newTypeWithGenericInstantiated toMangledName
-    // .addToTypesWithTheSameName: newTypeWithGenericInstantiated // this uses name, which is "Box"
 
-    // manually add mangled name
     setMaybe = typesWithSameNames at: mangled
     | setMaybe
     | null => [
@@ -779,7 +735,6 @@ extend TyperDB [
     |=> setMaybe add: newTypeWithGenericInstantiated
 
 
-    // we adding type the first time, othervice it would be returned before
     Assert that: (instantiatedCache at: baseType) equals: null
 
     // add empty method lits to methods and constructors
@@ -890,7 +845,6 @@ extend TyperDB [
     |=> collectionType
   ]
 
-  /// we use this for replacing an old method with Unknown return type with new one with resolved rt
   on replaceMethod(m): NivaMethod inType::NivaType = [
     | inType
     | NullableT => [
@@ -904,19 +858,8 @@ extend TyperDB [
   ]
 
 
-// FINDING
-
-// добавить в NivaPkg список методов из других пакетов, точнее даже мапа
-// методНейм - пкг, нет, тк кк в разных пакетах могут быть одинаковые методы
-// как ни крути походу лучше всего хранить пакет в самом методе
-
-  /// methods of nullable receivers(`Int? orZero = ...`, `T? unpackOr: x = ...`) live in
-  /// nullableMethods instead of typeToMethodNameToMethod
-  /// a method declared for the exact inner type wins over a generic one
   on findMethodOnNullable(name): String inner(innerType): NivaType -> NivaMethod? = [
     nullableMethods at: name, unpack: [ byInnerType ->
-      // mangled names of collections dont contain their item types(`List(Int)` and `List(String)`
-      // are both `core_List`), so the found method still has to be checked
       byInnerType at: (.nullableMethodKeyFor: innerType), unpack: [ m ->
         m receiverType unwrapNullable sameTypeStrictAs: innerType, ifTrue: [^ m]
       ]
@@ -927,7 +870,6 @@ extend TyperDB [
     ^ null
   ]
 
-  /// `try` unwraps nullable/errorable, so its pretty special
   on findTryMethod(receiver): TypedExpr2 byName(name): String -> NivaMethod? = [
     name == "try" ifFalse: [^ null]
 
@@ -1003,8 +945,6 @@ extend TyperDB [
 
     y::mut Map(String, NivaMethod) = x unpackOrPANIC
 
-    //StackTrace get echo
-    //"Methods: found method $name in $lookupType" log
     methodMaybe = y at: name
     result =
       | methodMaybe
@@ -1057,8 +997,6 @@ extend TyperDB [
     tryMethod = this findTryMethod: receiver byName: name
     tryMethod unpack: [^ it]
     name == "try" ifTrue: [
-      // Keep resolving after reporting the error. The compiler stops before
-      // IR/backend generation when db.listOfErrors is non-empty.
       recoveryMethod = this findMethodInAllProtocols: "toString" forType: dtc any :receiver
       ^ recoveryMethod unpackOrPANIC
     ]
@@ -1093,7 +1031,6 @@ extend TyperDB [
       ]
       |=> []
     ]
-    // Errorable values are opaque: only methods declared on Any are available until the error effect handled `try`
     lookupType = receiverHasErrors ifTrue: [dtc any] ifFalse: [receiverType]
     pkg = packages at: lookupType pkgName, unpackOrPANIC
 
@@ -1103,7 +1040,6 @@ extend TyperDB [
       | null => [
           receiverHasErrors
             ifTrue: [
-              // Keep the real method for error recovery and further type checking, but reject calling it on an errorable receiver.
               forbiddenMethod = this findMethodInAllProtocols: name forType: receiverType :receiver
               | forbiddenMethod
               | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
@@ -1116,7 +1052,7 @@ extend TyperDB [
               {any} = dtc
               foundInAnyMaybe = this findMethodInAllProtocols: name forType: any :receiver
               | foundInAnyMaybe
-              | null => [ // TODO check for nullable, and suggest unpacking methods
+              | null => [
                           TO DO: "Searching for $name method but its not found for type $receiverType"]
               |=> foundInAnyMaybe
             ]
@@ -1127,7 +1063,6 @@ extend TyperDB [
     result =
       | method returnType
       | Unknown => [
-        //"Lazy resolving for $name", log
 
         {decl} = method
         | decl
@@ -1164,8 +1099,6 @@ extend TyperDB [
       ^ UnresolvedGenericT name: typeName
     ]
 
-    // generated declarations refer to types by mangled name, and a nullable one
-    // is never registered anywhere, so rebuild it from its base(`Nullable__core_Int`)
     (typeName startsWith: NULLABLE_MANGLE_PREFIX) ifTrue: [
       base = typeName drop: NULLABLE_MANGLE_PREFIX count
       ^ NullableT v: (.findByTypeName: base inPkg: pkgName)
@@ -1179,7 +1112,7 @@ extend TyperDB [
     // if core return from cache
     internalType = internalTypesCache at: typeName
     | internalType
-    | null => []//TO DO: "internal type: $typeName is not in core pkg" // compiler bug, not user error, so token wont be needed
+    | null => []
     |=> [^ internalType
           Unit]
 
@@ -1219,10 +1152,6 @@ extend TyperDB [
   ]
 
 
-  // INFO
-
-  /// Returns the same type information as the `info` CLI command, but for a
-  /// type that has already been inferred by the resolver.
   on compileTimeInfoFor(t): NivaType -> String =
     .compileTimeInfoFor: t showSourceLocations: false
 
@@ -1295,7 +1224,6 @@ extend TyperDB [
     ()
   ]
 
-  /// Returns Markdown documentation about every package -> type -> fields/methods.
   on structureInfo -> String = [
     sb = StringBuilder new
     projectPackages = packages values
@@ -1306,7 +1234,6 @@ extend TyperDB [
     ^ sb toString
   ]
 
-  /// Returns the same Markdown hierarchy narrowed to `package.Type`.
   on structureInfoFor(typePath): String -> String = [
     hasPackageAndType = (typePath contains: ".") &&
       ((typePath substringBeforeLast: ".") count != 0) &&
@@ -1345,9 +1272,6 @@ type NivaSourceInput
   path: String
   content: String
 
-// read-only product of declaration collection
-// Resolver bodies always run on a fresh TyperDB materialized from this value, so lookup caches from one run
-// cannot leak into another candidate or the committed interface snapshot
 type ResolverPackageInterface
   name: String
   types: Map(String, NivaType)
@@ -1392,7 +1316,6 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
       imports: pkg imports toSet packageImports: pkg packageImports toSet)
   ]
 
-  // usual sameNames = typesWithSameNames toMap wont work, since we need deep copy, not shadow one
   sameNames::mut Map(String, Set(NivaType)) = #{}!
   typesWithSameNames forEach: [key, values -> sameNames at: key put: values toSet]
   unionBranches::mut Map(String, Set(String)) = #{}!
@@ -1540,8 +1463,6 @@ ResolverLookupEnvironment findByTypeName(typeName): String inPkg(pkgName): Strin
     ]
 ]
 
-// Declaration/interface pass result.  Body resolution is intentionally a
-// separate operation so incremental and LSP callers can stop at this layer.
 type ResolverInterfaceSnapshot
   fileToStatements: Map(String, List(Statement))
   lookupEnvironment: ResolverLookupEnvironment
@@ -1549,8 +1470,6 @@ type ResolverInterfaceSnapshot
   messageDeclarations: Map(String, List(MessageDecl))
   entryPointName: String
 
-// keep this representation independent from typed bodies
-// it is used by the incremental planner before resolveBodies is entered
 TypeField interfaceCanonicalTypeField -> String = name + ":" + astType interfaceCanonicalType
 
 AstType2 interfaceCanonicalType -> String =
@@ -1613,13 +1532,10 @@ Map(String, String) toNivaSourceInputs -> List(NivaSourceInput) = [
   ^ sources toList
 ]
 
-// A bind file is named `<pkgpath>.bind.niva`; the map key has `.niva` already
-// stripped, so we look for a trailing `.bind`. Dots in the package part become
-// slashes so `net.http.bind.niva` binds to the Go import path `net/http`.
-// Returns the Go import path, or null if this is not a bind file.
+// parse bind source name into import path
 String parseBindFileName -> String? = [
   marker = ".bind"
-  (this endsWith: marker) ifFalse: [^ null]
+  (this contains: marker) ifFalse: [^ null]
   pkgRaw = this substringBeforeLast: marker
   pkgRaw count == 0 ifTrue: [^ null]
   ^ pkgRaw replace: "." with: "/"
@@ -1659,17 +1575,13 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
       list = getStatementsList pkgName: pkgName
       statements forEach: [
         | it
-        // no top level expressions allowed in a .bind.niva file
-        // TODO: report a proper compile error here instead of skipping
-        | Expr => []
+        | Expr => [TO DO: "no top level expressions allowed in a .bind.niva file"]
         |=> [
           list add: it
           db markBindStatement: it
           | it
           | MessageDecl => db markBindMessageDecl: it
           | ExtendDecl  => it messages forEach: [db markBindMessageDecl: it]
-          // types declared in a bind file are bindings to existing Go types,
-          // so mark them: the Go backend must not emit a struct for them
           | TypeDecl    => db markBindTypeId: (pkgName + "_" + it name)
           | UnionDecl   => db markBindTypeId: (pkgName + "_" + it name)
           |=> []
@@ -1742,7 +1654,6 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
     resolveBody2: db
     withContext: (Context rootWithPkg: entryPointPkg)
 
-  // merge entryPoint imports into the real entry file pkg
   realEntryPkg = db addNewPkgIfNotExists: entryPoint
 
   entryPointPkg imports forEach: [
@@ -1752,7 +1663,6 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
     realEntryPkg addPackageImport: it
   ]
 
-  // add generated functions to fileToStatements
   db generatedMessageDecls forEach: [
     receiverType = db findByTypeName: it receiver name inPkg: null
     pkgName = receiverType pkgName
@@ -1838,7 +1748,19 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
     mut hasNonBind = false
     statements forEach: [
       isBind = db isBindStatement: it
-      isBind ifFalse: [
+      isBindBody = | it
+        | MessageDecl => [
+          (db isBindMessageDecl: it) not ||
+            ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
+        ]
+        | ExtendDecl => [
+          it messages any: [
+            (db isBindMessageDecl: it) not ||
+              ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
+          ]
+        ]
+        |=> false
+      (isBind not) || isBindBody ifTrue: [
         hasNonBind <- true
         | it
         | Expr => [
@@ -1874,11 +1796,18 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
         ]
         | ExtendDecl => [
           receiverType = it receiver toNivaTypefromDB: db inPkg: null
-          typedMsgs = it messages map: [m -> toTypedMessageDecl msgDecl: m pkg: pkg]
-          typedList add: (ExtendDeclT
-                            receiver: receiverType
-                            messages: typedMsgs
-                            token: it token)
+          typedMsgs = it messages
+            filter: [
+              (db isBindMessageDecl: it) not ||
+                ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
+            ],
+            map: [m -> toTypedMessageDecl msgDecl: m pkg: pkg]
+          typedMsgs isNotEmpty ifTrue: [
+            typedList add: (ExtendDeclT
+                              receiver: receiverType
+                              messages: typedMsgs
+                              token: it token)
+          ]
           ()
         ]
         | MessageDecl => [

@@ -99,7 +99,7 @@ Test integersWithUnderscore = [
     Assert that: it end equals: (expectedEnds at: i)
   ]
 ]
-// skiping spaces should append `pos` so tokens have correct start
+// spaces keep token start positions
 Test parseFromSpace = [
   tokens = LexTest input: "   1  "
 
@@ -225,11 +225,6 @@ Test singleNum = [
 ]
 
 
-// comments are skipped now
-// Test comment = [
-//   LexTest checkThat: "// qwf ars \" qwf"
-//           equals: {TokenType.Comment}
-// ]
 
 
 Test controlFlow = [
@@ -287,7 +282,6 @@ Test sourceFileInTokens = [
   sf = SourceFile path: filePath
   tokens = Lexer get-tokens: "x y z" file: sf
 
-  // all tokens (incl EOF) carry the same file path
   tokens forEach: [it ->
     Assert that: it file path equals: filePath
   ]

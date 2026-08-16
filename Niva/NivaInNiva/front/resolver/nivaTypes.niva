@@ -39,10 +39,8 @@ union Complex
 | FuntionT
   returnType: NivaType // method or lambda
   returnErrors: List(NivaType) // latent errors produced when the function is called
-// for now unions are just TypeT, u should look into a table from TyperDB to see does it have childrens
-//| UnionT  branches: List::UnionTBranch
 
-/// mangled names of nullables look like `Nullable__core_Int`
+/// nullable names use a prefixed form
 static NULLABLE_MANGLE_PREFIX = "Nullable__"
 
 extend NivaType [
@@ -88,11 +86,9 @@ extend NivaType [
       genericArgsStr = genericArgs isNotEmpty
                         ifTrue:  ["__" + (genericArgs joinWith: "_" transform: [it toMangledName])]
                         ifFalse: [""]
-      // TODO check that its not core type
       pkgName + "_" + name + genericArgsStr
     ]
     | UnresolvedGenericT => [name]
-    // prefix, not suffix, otherwise `Box(Int?)` and `Box(Int)?` mangle to the same name
     | NullableT => [NULLABLE_MANGLE_PREFIX + this v toMangledName]
     | Unknown => ["Unknown"]
     |=> [
@@ -353,16 +349,13 @@ constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: 
 
 constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgName
 
-// Core protocol signatures historically construct error-free function types.
-// Keep that concise constructor while the full generated constructor is used
-// for blocks whose body has latent error effects.
+// keep core function types error free
 constructor FuntionT [
   on fields(fields): mut List::TypeTField name(name): String genericArgs(genericArgs): mut List::NivaType pkgName(pkgName): String returnType(returnType): NivaType -> FuntionT =
     FuntionT :fields :name :genericArgs :pkgName :returnType returnErrors: {}
 ]
 
 
-  // receiver: NivaType // not needed since we always getting it from type, which is already represent receiver
 type NivaMethod
   name: String
   receiverType: NivaType
@@ -377,7 +370,6 @@ type NivaMethod
   pkgName: String
 
 extend NivaMethod [
-  /// Niva-like method signature used by the `info` CLI command.
   on infoSignature -> String = [
     selector = args isEmpty
       ifTrue: [name]
@@ -540,14 +532,13 @@ type NivaPkg
 constructor NivaPkg name: String =
   NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()! packageImports: #()!
 
-/// create a package with "core" pkg imported, I think there is no case when pkg doesn't import core
+/// create package with core imported
 constructor NivaPkg withCoreImportednamed(name): String =
   NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #("core")! packageImports: #()!
 
 extend NivaPkg [
   on addImport(pkgName): String = [
     pkgName != this name ifTrue: [
-      //"Imports: added import of $pkgName to $name pkg" log
       imports add: pkgName
     ]
   ]
@@ -688,7 +679,6 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
 Project protocol: "toString"
 
 TypeT toString -> String = [
-  // TODO genericArgs
   strFields = fields joinWith: " " transform: [
     it name + ": " + it typeT toString
   ]

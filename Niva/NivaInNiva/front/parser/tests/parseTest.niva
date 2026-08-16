@@ -76,7 +76,7 @@ Test parseNumber = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | intExpr
   | IntExpr =>
@@ -106,7 +106,7 @@ Test parseNumberWithUnderscore = [
 Test parseString = [
   tokens = Lexer get-tokens: """ "sas" """
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | stringExpr
   | StringExpr =>
@@ -127,7 +127,7 @@ Test parseAstTypeList = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType
   | astType
   | AstType => [
@@ -148,7 +148,7 @@ Test parseAstTypeMap = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType
 
   | astType

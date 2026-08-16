@@ -133,13 +133,13 @@ union IrStmt token: Token =
 | IrThrow errExpr: IrExpr
 
 // inlineable binding info attached to an IrCall
-// IrBindByName: empty body bind in a .bind.niva file `goName` stores declared foreign name each backend use its own naming convention
-// IrBindEmit:   single `Bind emit:` body -> template inlined at each call site
+// IrBindByName: empty body bind in a .bind.niva file; `goName` stores the
+// declared foreign name and each backend applies its own naming convention.
+// IrBindEmit:   single `Bind emit:` body -> template inlined at each call site.
 //               ($0 = receiver(this), $1 = first keyword arg)
 union IrBind =
 | IrBindByName goPkg: String goName: String isStatic: Bool
-// goPkg: non null when the emit lives in a .bind.niva file -> that Go package is
-// auto imported at the call site (so no manual `Bind addImport:` is needed)
+// goPkg is the package from the `.bind` file and is auto-imported at the call site
 | IrBindEmit template: String goPkg: String?
 
 // Backend-specific constructor emit for external types.

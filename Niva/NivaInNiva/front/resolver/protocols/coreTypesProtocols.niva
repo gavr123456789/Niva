@@ -2,23 +2,18 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   {int str bool char unit t g} = dtc
 
   collP = NivaProtocol common
-  // unary
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
-  // not pure
   collP addMethod: (NivaMethod unary: "shuffled" receiverType: collectionType returnT: collectionType)
-  // can throw
   collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: collectionType)
   collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: collectionType)
   collP addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
   collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
-  // binary
   collP addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
 
   collP addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: str returnT: bool)
   collP addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: str returnT: bool)
 
-  // keyword
-  collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType ) //TODO nullable
+  collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType )
   collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
 
   collP addMethod: (NivaMethod singleArgKw: "take" receiverType: collectionType argT: int returnT: collectionType)
@@ -26,9 +21,7 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
   collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
 
-  // lambdas (map/foreach/filter)
   collWithDiffferentGeneric = (dtc collection-with-different-generic: collectionType)
-  // foreach: (item) -> unit
   itArg = TypeTField name: "it" typeT: itemType isMut: false
   foreachBlock = FuntionT
                 fields: { itArg }!
@@ -48,7 +41,6 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod singleArgKw: "forEachIndexed" receiverType: collectionType argT: foreachIndexedBlock returnT: unit)
 
 
-  // filter: (item) -> bool
   filterBlock = FuntionT
                 fields: { itArg }!
                   name: "filter"
@@ -57,7 +49,6 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
             returnType: bool
   collP addMethod: (NivaMethod singleArgKw: "filter" receiverType: collectionType argT: filterBlock returnT: collectionType)
 
-  // map: (item) -> different generic
   mapReturnGeneric = | collWithDiffferentGeneric
                      | ListT => collWithDiffferentGeneric t
                      | SetT  => collWithDiffferentGeneric t
@@ -75,7 +66,6 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   | collectionType
   | ListT => [
-      // injectInto: initial operation: (acc, item) -> acc (List only)
       accArg = TypeTField name: "acc" typeT: t isMut: false
       injectBlock = FuntionT
                     fields: { accArg itArg }!
@@ -107,7 +97,6 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod singleArgKw: "chunked" receiverType: collectionType argT: int returnT: listOfCollection)
   collP addMethod: (NivaMethod singleArgKw: "partition" receiverType: collectionType argT: filterBlock returnT: listOfCollection)
 
-  // joinTransform: [T -> String] join with ", "
   joinTransformBlock = FuntionT
                       fields: { itArg }!
                         name: "joinTransform"
@@ -119,13 +108,11 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
                                       argT: joinTransformBlock
                                    returnT: str)
 
-  // joinWith: String
   collP addMethod: (NivaMethod singleArgKw: "joinWith"
             receiverType: collectionType
                     argT: str
                     returnT: str)
 
-  // joinWith: String transform: [T -> String]
   joinArgs = {(TypeTField name: "joinWith"  typeT: str isMut: false)
               (TypeTField name: "transform" typeT: joinTransformBlock isMut: false)}
   collP addMethod: (NivaMethod manyArgKw: joinArgs
@@ -182,7 +169,6 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
   )
 
 
-  // map at: key
   mapP addMethod: (
     NivaMethod singleArgKw: "at"
               receiverType: mapType
@@ -190,7 +176,6 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
                    returnT: valueType toNullable
   )
 
-  // map containsKey: key
   mapP addMethod: (
     NivaMethod singleArgKw: "containsKey"
               receiverType: mapType
@@ -198,7 +183,6 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
                    returnT: bool
   )
 
-  // map forEach: [key value -> ...]
   keyArg = TypeTField
              name: "key"
             typeT: keyType
@@ -223,7 +207,6 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
                    returnT: unit
   )
 
-  // map at: value put: key
   atPutArgs = {
     (TypeTField
        name: "at"
@@ -291,7 +274,6 @@ constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
               returnT: setType
   )
 
-  // set contains: item
   setP addMethod: (
     NivaMethod singleArgKw: "contains"
               receiverType: setType
@@ -299,13 +281,11 @@ constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
                    returnT: bool
   )
 
-  // `it` and not `item`, otherwise the implicit `it` inside the block wont resolve
   itemArg = TypeTField
              name: "it"
             typeT: itemType
             isMut: false
 
-  // set forEach: [item -> ...]
   foreachBlock = FuntionT
                  fields: {itemArg}!
                    name: "forEach"
@@ -320,7 +300,6 @@ constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
                    returnT: unit
   )
 
-  // set filter: [item -> Bool]
   predicateBlock = FuntionT
                    fields: {itemArg}!
                      name: "filter"
@@ -444,7 +423,6 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
-  // strProto addMethod: (NivaMethod singleArgKw: "toInt" receiverType: str argT: int returnT: int)
 
   itArg = TypeTField name: "it" typeT: char isMut: false
   foreachBlock = FuntionT
@@ -570,12 +548,6 @@ constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   bindProto = NivaProtocol name: "constructors"
 
   bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: t)
-  bindProto addMethod: (NivaMethod singleArgCtorKw: "goCode" receiverType: bind argT: str returnType: t)
-  bindProto addMethod: (NivaMethod singleArgCtorKw: "addImport" receiverType: bind argT: any)
-  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: t)
-  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "backend" receiverType: bind argT1: str argT2: str returnType: t)
-  bindProto addMethod: (NivaMethod threeArgCtorKw: "emit" name2: "backend" name3: "args" receiverType: bind argT1: str argT2: str argT3: list returnType: t)
-  bindProto addMethod: (NivaMethod twoArgCtorKw: "addImport" name2: "backend" receiverType: bind argT1: any argT2: str returnType: any)
 
   ^bindProto methods
 ]
@@ -597,7 +569,6 @@ constructor NivaProtocol compilerFromDefaultTypes(dtc): DefaultTypesContainer ->
 constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
   {str nothing} = dtc
 
-  // ITS NOT A METHOD ITS CONSTRUCTOR
   errProto = NivaProtocol common
   errProto addMethod: (NivaMethod
           name: "throw"
@@ -623,7 +594,6 @@ possibleErrors: {}
           decl: null
   protocolName: "common"
     pkgName: "core")
-  // just for backwards compatibility with first niva
   errProto addMethod: (NivaMethod
           name: "throwWithMessage"
   receiverType: errorType
@@ -658,7 +628,6 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
   rangeProto addMethod: (NivaMethod singleArgKw: "take" receiverType: rangeType argT: int returnT: (ListT t: itemType))
   rangeProto addMethod: (NivaMethod singleArgKw: "takeLast" receiverType: rangeType argT: int returnT: (ListT t: itemType))
 
-  // filter: (item) -> bool, returns List[item]
   filterBlock = FuntionT
                 fields: { itArg }!
                   name: "filter"
@@ -667,7 +636,6 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
             returnType: bool
   rangeProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: rangeType argT: filterBlock returnT: (ListT t: itemType))
 
-  // map: (item) -> T, returns List[T]
   mapBlock = FuntionT
             fields: { itArg }!
               name: "map"
@@ -687,50 +655,33 @@ constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut
 
   charProto = NivaProtocol common
 
-  // ===== unary (Kotlin-style) =====
-  // fun Char.code: Int   (в Kotlin это property; тут оформим как unary-метод)
   charProto addMethod: (NivaMethod unary: "code" receiverType: char returnT: int)
 
-  // operator fun Char.inc(): Char
   charProto addMethod: (NivaMethod unary: "inc" receiverType: char returnT: char)
 
-  // operator fun Char.dec(): Char
   charProto addMethod: (NivaMethod unary: "dec" receiverType: char returnT: char)
 
-  // fun Char.isDigit(): Boolean
   charProto addMethod: (NivaMethod unary: "isDigit" receiverType: char returnT: bool)
 
-  // fun Char.isLetter(): Boolean
   charProto addMethod: (NivaMethod unary: "isLetter" receiverType: char returnT: bool)
 
-  // fun Char.isLetterOrDigit(): Boolean
   charProto addMethod: (NivaMethod unary: "isLetterOrDigit" receiverType: char returnT: bool)
 
-  // fun Char.isLowerCase(): Boolean
   charProto addMethod: (NivaMethod unary: "isLowerCase" receiverType: char returnT: bool)
 
-  // fun Char.isUpperCase(): Boolean
   charProto addMethod: (NivaMethod unary: "isUpperCase" receiverType: char returnT: bool)
 
-  // fun Char.isWhitespace(): Boolean
   charProto addMethod: (NivaMethod unary: "isWhitespace" receiverType: char returnT: bool)
 
-  // fun Char.lowercaseChar(): Char
   charProto addMethod: (NivaMethod unary: "lowercaseChar" receiverType: char returnT: char)
 
-  // fun Char.uppercaseChar(): Char
   charProto addMethod: (NivaMethod unary: "uppercaseChar" receiverType: char returnT: char)
 
-  // operator fun Char.equals(other: Char): Boolean  (в Kotlin это ==)
   charProto addMethod: (NivaMethod binary: "==" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: "!=" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: ".." receiverType: char argT: char returnT: charRange)
 
-  // operator fun Char.plus(other: Int): Char
-  //charProto addMethod: (NivaMethod binary: "+" receiverType: char argT: int returnT: char)
 
-  // operator fun Char.minus(other: Int): Char
-  //charProto addMethod: (NivaMethod binary: "-" receiverType: char argT: int returnT: char)
 
   ^charProto methods
 ]

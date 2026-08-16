@@ -203,7 +203,8 @@ Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
 Test cljPackageOutputMatchesSingleStringAtRuntime = [
   sources = #{
     "model" "type Person name: String\nPerson score -> Int = [^ 42]"
-    "main" "p = Person name: \"Ada\"\nvalue = p score\nInt print -> Unit = Bind emit: \"(println $0)\"\nvalue print"
+    "main" "p = Person name: \"Ada\"\nvalue = p score\nvalue print"
+    "main.bind" "Int print -> Unit = Bind emit: \"(println $0)\""
   }
   result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
   Assert that: result db listOfErrors count equals: 0
@@ -243,8 +244,9 @@ Test cljPackageOutputMatchesSingleStringAtRuntime = [
 ]
 
 Test cljPackageRequireDoesNotRunEntry = [
-  source = "base = 2\nmut counter = base\ncounter <- counter + 1\nInt announce -> Unit = Bind emit: \"(println $0)\"\ncounter announce"
-  result = ResolverHelper resolve: #{"main" source} entryPoint: "main" backend: "clj"
+  source = "base = 2\nmut counter = base\ncounter <- counter + 1\ncounter announce"
+  bindSource = "Int announce -> Unit = Bind emit: \"(println $0)\""
+  result = ResolverHelper resolve: #{"main" source "main.bind" bindSource} entryPoint: "main" backend: "clj"
   Assert that: result db listOfErrors count equals: 0
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
@@ -656,12 +658,35 @@ Test cljFieldGetUsesKeyword = [
   clj contains: "(:name alice)", assertTrue
 ]
 
-Test cljBindEmitInline = [
+Test cljImmutableNestedCopyUpdate = [
   fileMain = """
-    Int double -> Int = Bind emit: "(* $0 2)"
-    x = 21 double
+    type Money value: Int currency: String
+    type Wallet money: Money id: Int
+    type Person wallet: Wallet name: String
+
+    person = Person
+      wallet: (Wallet money: (Money value: 1 currency: "EUR") id: 7)
+      name: "Alice"
+    updated = person wallet money value <- 13
   """
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains:
+    "(->main_Person (->main_Wallet (->main_Money 13 (:currency (:money (:wallet person)))) (:id (:wallet person))) (:name person))",
+    assertTrue
+  Assert that: (clj contains: "reset!") equals: false
+]
+
+Test cljBindEmitInline = [
+  bindFile = """
+    Int double -> Int = Bind emit: "(* $0 2)"
+  """
+  fileMain = """
+    x = 21 double
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
   clj contains: "(* 21 2)", assertTrue
@@ -671,41 +696,14 @@ Test cljBindEmitInline = [
 Test cljBindEmitRawStringInline = [
   quote = "\""
   triple = quote + quote + quote
-  fileMain = "Int foo -> Int = Bind emit: " + triple + "(+ $0 1)" + triple + "\nx = 41 foo"
+  bindFile = "Int foo -> Int = Bind emit: " + triple + "(+ $0 1)" + triple
+  fileMain = "x = 41 foo"
 
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
   clj contains: "(+ 41 1)", assertTrue
   Assert that: (clj contains: "\"\"(+ 41 1)\"\"") equals: false
-]
-
-Test cljBindEmitBackendSpecific = [
-  fileMain = """
-    Int foo: Int -> Int = [
-      ^ Bind emit: "(clj-only $1)" backend: "clojure" args: {foo}
-    ]
-    x = 5 foo: 42
-  """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  clj = CljBackend fullFromIrModule: (result toIrModule)
-
-  clj contains: "(clj-only foo)", assertTrue
-]
-
-Test cljBindAddImport = [
-  fileMain = """
-    Int readFile: String -> String = [
-      Bind addImport: "clojure.java.io" backend: "clojure"
-      ^ Bind emit: "(clojure.java.io/slurp $1)" backend: "clojure" args: {readFile}
-    ]
-    x = 1 readFile: "file.txt"
-  """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  clj = CljBackend fullFromIrModule: (result toIrModule)
-
-  clj contains: "[clojure.java.io]", assertTrue
-  clj contains: "(clojure.java.io/slurp readFile)", assertTrue
 ]
 
 // Clojure preserves the declared external function name. The receiver is the
@@ -741,17 +739,19 @@ Test cljBindByNameStatic = [
   clj contains: "[clojure.core]", assertTrue
 ]
 
-// A multi-expression body remains a normal function, while its single
-// Bind goCode expression is still emitted inline in that function.
-Test cljBindGoCodeInBody = [
-  fileMain = """
+// A multi-expression body in a bind file remains a normal function, while its
+// ordinary Bind emit expression is still emitted inline in that function.
+Test cljBindEmitInBody = [
+  bindFile = """
     Int compute -> Int = [
-      a::Int = Bind goCode: "(+ 1 41)"
+      a::Int = Bind emit: "(+ 1 41)"
       ^ a
     ]
+  """
+  fileMain = """
     x = 0 compute
   """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
   clj = CljBackend fullFromIrModule: (result toIrModule)
 
   clj contains: "(+ 1 41)", assertTrue

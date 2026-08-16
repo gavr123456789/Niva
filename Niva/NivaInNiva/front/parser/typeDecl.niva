@@ -1,7 +1,6 @@
 extend mut Parser [
   /// `name: String`
   on typeFields -> List::TypeField = [
-    // type can have no fields
     .peek kind == TokenType.IdentifierColon ifFalse: [^ {}]
     result::mut List::TypeField = {}!
 
@@ -14,7 +13,6 @@ extend mut Parser [
         astType = .parseType
         type_field = TypeField name: (tok lexeme) astType: astType
         result add: (type_field)
-        // need continue?
         c <- .peek kind == TokenType.IdentifierColon
       ] ifFalse: [
         c <- false
@@ -63,7 +61,6 @@ extend mut Parser [
     .matchString: "|" // first optional pipe
 
     branches:: mut List::UnionBranch = {}
-    // branchesParse
     mut c = true
     [c] whileTrue: [
       mut isInclude = false
