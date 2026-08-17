@@ -4,8 +4,7 @@ extend mut Parser [
     .peek kind == TokenType.IdentifierColon ifFalse: [^ {}]
     result::mut List::TypeField = {}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       tok = .peek
       tok kind == TokenType.IdentifierColon ifTrue: [
         .step // skip
@@ -13,11 +12,11 @@ extend mut Parser [
         astType = .parseType
         type_field = TypeField name: (tok lexeme) astType: astType
         result add: (type_field)
-        c <- .peek kind == TokenType.IdentifierColon
+        .peek kind == TokenType.IdentifierColon
       ] ifFalse: [
-        c <- false
+        false
       ]
-    ]
+    ] whileTrue: []
 
     ^ result toList
   ]
@@ -26,12 +25,11 @@ extend mut Parser [
     .match: TokenType.OpenParen, ifFalse: [^ {}]
 
     params::mut List(String) = {}!
-    mut c = true
-    [c] whileTrue: [
+    [
       tok = .matchAssertAnyIdent: "generic param name expected"
       params add: tok lexeme
-      c <- .match: TokenType.Comma
-    ]
+      .match: TokenType.Comma
+    ] whileTrue: []
 
     .matchAssert: TokenType.CloseParen
     ^ params toList
@@ -61,8 +59,7 @@ extend mut Parser [
     .matchString: "|" // first optional pipe
 
     branches:: mut List::UnionBranch = {}
-    mut c = true
-    [c] whileTrue: [
+    [
       mut isInclude = false
       .peek kind == TokenType.Return ifTrue: [
         .step // consume ^
@@ -78,12 +75,11 @@ extend mut Parser [
           isInclude: isInclude
           token: nameTok
         branches add: branch
-        c <- .match: TokenType.If
-        Unit
+        .match: TokenType.If
       ] ifFalse: [
-        c <- false
+        false
       ]
-    ]
+    ] whileTrue: []
 
 
 

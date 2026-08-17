@@ -4,18 +4,17 @@ extend mut Parser [
 
     .match: TokenType.OpenBrace, ifTrue: [
       names::mut List(String) = {}!
-      mut c = true
-      [c] whileTrue: [
+      [
         tok = .peek
         tok kind == TokenType.CloseBrace ifTrue: [
-          c <- false
+          false
         ] ifFalse: [
           nameTok = .matchAssertAnyIdent: "error name expected"
           names add: nameTok lexeme
           .match: TokenType.Comma
-          Unit
+          true
         ]
-      ]
+      ] whileTrue: []
 
       names isEmpty ifTrue: [TO DO: "error list cannot be empty"]
       .matchAssert: TokenType.CloseBrace
@@ -63,11 +62,10 @@ extend mut Parser [
     isMapLike ifTrue: [
       typeArgumentList::mut List::AstType = {}!
 
-      mut continue = true
-      [continue] whileTrue: [
+      [
         typeArgumentList add: .parseGenericType
-        continue <- .match: TokenType.Comma
-      ]
+        .match: TokenType.Comma
+      ] whileTrue: []
 
       .matchAssert: TokenType.CloseParen
 

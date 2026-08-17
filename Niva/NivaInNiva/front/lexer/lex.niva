@@ -425,9 +425,7 @@ mut Lexer skipWhiteSpaces = [
 ]
 
 mut Lexer skipComments = [
-  mut c = true
-
-  [c] whileTrue: [
+  [
     .skipWhiteSpaces
 
     savePoint = readPos
@@ -436,13 +434,14 @@ mut Lexer skipComments = [
       .peekChar == '/',
         ifTrue: [
           .skipCurrentLine
+          true
         ]
         ifFalse: [
-          c <- false
+          false
         ]
     ]
     |=> [
-      c <- false
+      false
     ]
-  ]
+  ] whileTrue: []
 ]

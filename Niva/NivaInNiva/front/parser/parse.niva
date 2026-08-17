@@ -65,8 +65,8 @@ extend mut Parser [
     savePosition = current
 
     bindings::mut List(DestructureBinding) = {}!
-    mut c = true
-    [c] whileTrue: [
+    mut invalid = false
+    [
       nextTok = .peek
       | nextTok kind
       | TokenType.Identifier
@@ -80,20 +80,22 @@ extend mut Parser [
             | TokenType.NullableIdentifier => [fieldName <- fieldTok lexeme]
             |=> [
               .restoreFrom: savePosition
-              ^ null
+              invalid <- true
             ]
         ]
         bindings add: (DestructureBinding :localName :fieldName)
         .match: TokenType.Comma
-        Unit
+        true
       ]
       | TokenType.CloseBrace => [
-        c <- false
+        false
       ]
       |=> [
-        c <- false
+        false
       ]
-    ]
+    ] whileTrue: []
+
+    invalid ifTrue: [^ null]
 
     .match: TokenType.CloseBrace, ifFalse: [
       .restoreFrom: savePosition
@@ -119,12 +121,11 @@ extend mut Parser [
     ^ .match: TokenType.Dot, ifTrue: [
 
       path = {(tok lexeme)}!
-      mut c = true
-      [c] whileTrue: [
+      [
         ident = .matchAssert: TokenType.Identifier
         path add: ident lexeme
-        c <- .match: TokenType.Dot
-      ]
+        .match: TokenType.Dot
+      ] whileTrue: []
       Identifier name: tok lexeme token: tok path: path
     ] ifFalse: [
       Identifier name: tok lexeme token: tok path: null
@@ -182,11 +183,10 @@ extend mut Parser [
   on parseCollectionBody(end): TokenType -> Body = [
     body::mut List::Expr = {}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       peekKind = .peek kind
       (peekKind == end) || (peekKind == TokenType.EndOfFile), ifTrue: [
-        c <- false
+        false
       ] ifFalse: [
         tok2 = .step
         pr = .parseCollectionElement: tok2
@@ -194,15 +194,15 @@ extend mut Parser [
         | null => [
           // not an element, let the caller report unclosed collection
           .stepBack
-          c <- false
+          false
         ]
         |=> [
           body add: pr
           .match: TokenType.Comma
-          Unit
+          true
         ]
       ]
-    ]
+    ] whileTrue: []
     ^ Body unTypedBody: body
   ]
 
@@ -304,20 +304,19 @@ extend mut Parser [
   on parseManyExprUntilTok(until): TokenType split: TokenType? -> Body = [
     body::mut List::Expr = {}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       tok = .peek
       tok kind == until ifTrue: [
         .step // skip
-        c <- false
+        false
       ] ifFalse: [
         nextTok = .step
         statement = .nextExpression: nextTok
         split unpack: [.match: it]
         body add: statement
-        Unit
+        true
       ]
-    ]
+    ] whileTrue: []
 
     result = Body unTypedBody: body
 
@@ -326,14 +325,13 @@ extend mut Parser [
   on parseManyExprSplitBy(split): TokenType -> List::Expr = [
     body::mut List::Expr = {}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       nextTok = .step
       statement = .nextExpression: nextTok
       body add: statement
 
-      c <- .match: split
-    ]
+      .match: split
+    ] whileTrue: []
 
     ^ body
   ]
@@ -356,20 +354,19 @@ extend mut Parser [
 
     kwArgs = {firstArg}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       tok = .peek
       singleOrDoubleColon = tok kind == TokenType.IdentifierDoubleColon || (tok kind == TokenType.IdentifierColon)
-      singleOrDoubleColon ifTrue: [
+        singleOrDoubleColon ifTrue: [
         arg = NameAndAstType name: .step lexeme astType: .parseType
         sep unpack: [.match: it]
 
         kwArgs add: arg
-        Unit
+        true
       ] ifFalse: [
-        c <- false
+        false
       ]
-    ]
+    ] whileTrue: []
     ^ kwArgs
   ]
 
@@ -383,9 +380,8 @@ extend mut Parser [
     subject = .nextExpression: .step
 
     parseBranches = [
-      mut c = true
-      [c] whileTrue: [
-        c <- .match: TokenType.If
+      [
+        .match: TokenType.If
         exprs = .parseManyExprSplitBy: TokenType.If
         exprs isEmpty ifTrue: [TO DO: "One or more additionalConditions (separated by `|`) expected"]
 
@@ -396,8 +392,8 @@ extend mut Parser [
         mb = MatchBranch condition: exprs first additionalConditions: additionalConditions body: body
         branches add: mb
 
-        c <- .match: TokenType.If
-      ]
+        .match: TokenType.If
+      ] whileTrue: []
       .match: TokenType.Else, ifTrue: [
         elseBranch <- .parseBodyOrSingleExpr
       ]
@@ -482,17 +478,16 @@ extend mut Parser [
   on commaChainedExprs(tok): Token receiver: Expr = [
      firstExpr = .nextExpression2: tok receiver: receiver
      mut expr = firstExpr
-     mut c = true
-     [c] whileTrue: [
+     [
        .peek kind == TokenType.Comma, ifTrue: [
           commaTok = .step // skip comma
 
           expr <- .nextExpression2: commaTok receiver: (ExprInBrackets value: expr token: commaTok)
-          ()
+          true
         ] ifFalse: [
-          c <- false
+          false
         ]
-     ]
+     ] whileTrue: []
 
      ^ expr
   ]
@@ -576,9 +571,8 @@ extend mut Parser [
     | TokenType.IdentifierColon => [
 
       result::mut List::NameAndExpr = {}!
-      mut c = true
       // parse keyword
-      [c] whileTrue: [
+      [
         colon = .peek
         | colon kind
         | TokenType.IdentifierColon => [
@@ -586,12 +580,12 @@ extend mut Parser [
             (NameAndExpr
               name: (Identifier fromToken: .step)
               expr: (.parsePrimaryOrUnaryOrBinary: .step))
-          Unit
+          true
         ]
         |=> [
-          c <- false
+          false
         ]
-      ]
+      ] whileTrue: []
       KeywordMsg
         args: result toList
         receiver: primaryUnaryBinary
