@@ -4,35 +4,33 @@ extend mut Parser [
   on parseManyIdentSeparated(sep): TokenType? -> mut List(Identifier) = [
     result::mut List(Identifier) = {}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       tok = .peek
 
       | tok kind
       | TokenType.Identifier => [
         // stop if new unary on new line
         result isNotEmpty && (tok line > result last token line), ifTrue: [
-          c <- false
+          false
         ] ifFalse: [
           identifier = .step
           expr = (.parseDotSeparatedIdentifier: tok)
           result add: expr
           sep unpack: [.match: it]
-          Unit
+          true
         ]
       ]
       |=> [
-        c <- false
+        false
       ]
-    ]
+    ] whileTrue: []
     ^ result
   ]
 
   /// + 2 inc inc + 3 dec dec
   on parseManyBinary -> List(NameAndExpr) = [
       result::mut List(NameAndExpr) = {}!
-      mut c = true
-      [c] whileTrue: [
+      [
         tok = .peek
         | tok kind
         | TokenType.BinarySymbol => [
@@ -81,13 +79,12 @@ extend mut Parser [
             result add: (NameAndExpr name: (binSymbol) expr: unary)
           ]
 
-          Unit
+          true
         ]
         |=> [
-          c <- false
-          Unit
+          false
         ]
-      ]
+      ] whileTrue: []
       ^ result toList
     ]
 ]

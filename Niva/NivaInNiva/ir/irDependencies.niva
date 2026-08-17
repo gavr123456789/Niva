@@ -218,14 +218,13 @@ mut IrTarjanState strongConnect(node): String -> Unit = [
   nodeLow = lowLinks at: node, unpackOrPANIC
   nodeLow == nodeIndex ifTrue: [
     component::mut List(String) = {}!
-    mut complete = false
-    [complete not] whileTrue: [
+    [
       member = stack last
       stack remove: member
       onStack remove: member
       component add: member
-      complete <- member == node
-    ]
+      member != node
+    ] whileTrue: []
     components add: (component toList sortedBy: [it])
   ]
 ]
