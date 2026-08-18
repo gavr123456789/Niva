@@ -54,6 +54,8 @@
   nullable `IrStmt` через `match`.
 - В `front/resolver/resolveExpr2.niva` guard для пустого списка ошибок в
   `checkErrorMatchExhaustiveness` заменён на `match true`.
+- В `compiler/incremental.niva` cancellation guards в `compileCandidate` и
+  `compileSnapshot` заменены на `match true`.
 
 ## Проверки, которые прошли
 
@@ -73,6 +75,11 @@
 
 - `niva build main.niva --backend=clj --target=bb`;
 - `niva test resolverTests`.
+
+После incremental-кластера также прошли:
+
+- `niva build main.niva --backend=clj --target=bb`;
+- `niva test compilerTests`.
 
 После callback-кластера также прошли:
 

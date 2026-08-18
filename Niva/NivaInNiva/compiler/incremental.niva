@@ -466,60 +466,65 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
 ]
 
 CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
-  cancelled ifTrue: [^ CompilerCompilationResult cancelled: requestVersion]
+  | true
+  | cancelled => CompilerCompilationResult cancelled: requestVersion
+  |=> [
+    apiHashes = interfaceSnapshot interfaceApiHashes
+    bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
+    bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
 
-  apiHashes = interfaceSnapshot interfaceApiHashes
-  bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
-  bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
-
-  diagnostics::mut List(CompilerDiagnostic) = {}!
-  // A working TyperDB starts with the declaration-pass errors, so reading it
-  // once avoids publishing duplicate diagnostics for the same source token.
-  bodyResolver db listOfErrors forEach: [error ->
-    diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
-      path: error tok file path message: error toConsoleMsg)
-  ]
-  diagnostics isEmpty ifFalse: [
-    ^ CompilerCompilationResult
-      requestVersion: requestVersion candidate: null backendArtifact: null
-      diagnostics: diagnostics toList cancelled: false
-  ]
-
-  candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
-    bodyResolver: bodyResolver bodyModules: bodyModules config: config
-  artifact = candidate emitBackend
-  shapeChanges = config backend == "clj"
-    ifTrue: [
-      candidate cljManifest unpack: [currentManifest ->
-        cljManifest unpack: [previousManifest ->
-          currentManifest incompatibleChanges: previousManifest
-        ] or: {String}
-      ] or: {String}
+    diagnostics::mut List(CompilerDiagnostic) = {}!
+    // A working TyperDB starts with the declaration-pass errors, so reading it
+    // once avoids publishing duplicate diagnostics for the same source token.
+    bodyResolver db listOfErrors forEach: [error ->
+      diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+        path: error tok file path message: error toConsoleMsg)
     ]
-    ifFalse: [{String}]
-  shapeChanges forEach: [change ->
-    diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
-      path: snapshot entryPoint + ".niva"
-      message: "hard restart required: " + change +
-        "; automatic state migration is not supported")
+    diagnostics isEmpty ifFalse: [
+      ^ CompilerCompilationResult
+        requestVersion: requestVersion candidate: null backendArtifact: null
+        diagnostics: diagnostics toList cancelled: false
+    ]
+
+    candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
+      bodyResolver: bodyResolver bodyModules: bodyModules config: config
+    artifact = candidate emitBackend
+    shapeChanges = config backend == "clj"
+      ifTrue: [
+        candidate cljManifest unpack: [currentManifest ->
+          cljManifest unpack: [previousManifest ->
+            currentManifest incompatibleChanges: previousManifest
+          ] or: {String}
+        ] or: {String}
+      ]
+      ifFalse: [{String}]
+    shapeChanges forEach: [change ->
+      diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+        path: snapshot entryPoint + ".niva"
+        message: "hard restart required: " + change +
+          "; automatic state migration is not supported")
+    ]
+    diagnostics isEmpty ifFalse: [
+      ^ CompilerCompilationResult
+        requestVersion: requestVersion candidate: null backendArtifact: null
+        diagnostics: diagnostics toList cancelled: false
+    ]
+    CompilerCompilationResult requestVersion: requestVersion candidate: candidate
+      backendArtifact: artifact diagnostics: {} cancelled: false
   ]
-  diagnostics isEmpty ifFalse: [
-    ^ CompilerCompilationResult
-      requestVersion: requestVersion candidate: null backendArtifact: null
-      diagnostics: diagnostics toList cancelled: false
-  ]
-  CompilerCompilationResult requestVersion: requestVersion candidate: candidate
-    backendArtifact: artifact diagnostics: {} cancelled: false
 ]
 
 // entry point for watch and lsp clients
 CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): CompilerConfigFingerprint
     requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
-  cancelled ifTrue: [^ CompilerCompilationResult cancelled: requestVersion]
-  interfaceSnapshot = ResolverInterfaceSnapshot
-    collectSources: snapshot sources entryPoint: snapshot entryPoint backend: config backend
-  this compileCandidate: snapshot interfaceSnapshot: interfaceSnapshot
-    config: config requestVersion: requestVersion cancelled: false
+  | true
+  | cancelled => CompilerCompilationResult cancelled: requestVersion
+  |=> [
+    interfaceSnapshot = ResolverInterfaceSnapshot
+      collectSources: snapshot sources entryPoint: snapshot entryPoint backend: config backend
+    this compileCandidate: snapshot interfaceSnapshot: interfaceSnapshot
+      config: config requestVersion: requestVersion cancelled: false
+  ]
 ]
 
 // shared routing point for future watch and lsp adapters
