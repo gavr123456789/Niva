@@ -10,7 +10,7 @@ constructor Parser newParseTokens: List(Token) -> Parser = [
   [ parser2 done not ] whileTrue: [
     parser2 statements add: parser2 nextStatement
   ]
-  ^ parser2
+  parser2
 ]
 
 
@@ -41,7 +41,7 @@ extend mut Parser [
 
     value = isThereAValue ifTrue: [.nextExpression: .step] ifFalse: [null]
     result = ReturnStatement value: value token: tok
-    ^ result
+    result
   ]
 
   /// tok is identifier
@@ -54,66 +54,75 @@ extend mut Parser [
     .matchAssert: TokenType.Assign
     value = .nextExpression: .step
     result = VarDeclaration :name :value :token :astType :isMut
-    ^ result
+    result
   ]
 
   /// {a b} = expr
   /// {local = field} = expr
   on tryParseDestructingAssign(tok): Token -> Expr? = [
-    tok kind != TokenType.OpenBrace ifTrue: [^ null]
+    | true
+    | tok kind != TokenType.OpenBrace => null
+    |=> [
+      savePosition = current
 
-    savePosition = current
-
-    bindings::mut List(DestructureBinding) = {}!
-    mut invalid = false
-    [
-      nextTok = .peek
-      | nextTok kind
-      | TokenType.Identifier
-      | TokenType.NullableIdentifier => [
-        localName = .step lexeme
-        mut fieldName = localName
-        .match: TokenType.Assign, ifTrue: [
-            fieldTok = .step
-            | fieldTok kind
-            | TokenType.Identifier
-            | TokenType.NullableIdentifier => [fieldName <- fieldTok lexeme]
-            |=> [
-              .restoreFrom: savePosition
-              invalid <- true
-            ]
+      bindings::mut List(DestructureBinding) = {}!
+      mut invalid = false
+      [
+        nextTok = .peek
+        | nextTok kind
+        | TokenType.Identifier
+        | TokenType.NullableIdentifier => [
+          localName = .step lexeme
+          mut fieldName = localName
+          .match: TokenType.Assign, ifTrue: [
+              fieldTok = .step
+              | fieldTok kind
+              | TokenType.Identifier
+              | TokenType.NullableIdentifier => [fieldName <- fieldTok lexeme]
+              |=> [
+                .restoreFrom: savePosition
+                invalid <- true
+              ]
+          ]
+          bindings add: (DestructureBinding :localName :fieldName)
+          .match: TokenType.Comma
+          true
         ]
-        bindings add: (DestructureBinding :localName :fieldName)
-        .match: TokenType.Comma
-        true
-      ]
-      | TokenType.CloseBrace => [
-        false
-      ]
+        | TokenType.CloseBrace => [
+          false
+        ]
+        |=> [
+          false
+        ]
+      ] whileTrue: []
+
+      | true
+      | invalid => null
       |=> [
-        false
+        closeBrace = .match: TokenType.CloseBrace
+        | true
+        | closeBrace not => [
+          .restoreFrom: savePosition
+          null
+        ]
+        | bindings isEmpty => [
+          .restoreFrom: savePosition
+          null
+        ]
+        |=> [
+          assign = .match: TokenType.Assign
+          | true
+          | assign not => [
+            .restoreFrom: savePosition
+            null
+          ]
+          |=> [
+            value = .nextExpression: .step
+            DestructingAssign bindings: bindings toList value: value token: tok
+          ]
+        ]
       ]
-    ] whileTrue: []
-
-    invalid ifTrue: [^ null]
-
-    .match: TokenType.CloseBrace, ifFalse: [
-      .restoreFrom: savePosition
-      ^ null
     ]
-
-    bindings isEmpty ifTrue: [
-      .restoreFrom: savePosition
-      ^ null
-    ]
-
-    .match: TokenType.Assign, ifFalse: [
-      .restoreFrom: savePosition
-      ^ null
-    ]
-
-    value = .nextExpression: .step
-    ^ DestructingAssign bindings: bindings toList value: value token: tok
   ]
 
   /// a^.b.c
@@ -164,7 +173,7 @@ extend mut Parser [
       UnitExpr token: tok
 
     |=> [null]
-    ^ x
+    x
   ]
 
   /// single element of a collection literal
@@ -203,7 +212,7 @@ extend mut Parser [
         ]
       ]
     ] whileTrue: []
-    ^ Body unTypedBody: body
+    Body unTypedBody: body
   ]
 
   /// if starts from { #{ #(, then return collection
@@ -297,7 +306,7 @@ extend mut Parser [
       body: body
       token: tok
 
-    ^ result
+    result
   ]
 
 
@@ -320,7 +329,7 @@ extend mut Parser [
 
     result = Body unTypedBody: body
 
-    ^ result
+    result
   ]
   on parseManyExprSplitBy(split): TokenType -> List::Expr = [
     body::mut List::Expr = {}!
@@ -333,7 +342,7 @@ extend mut Parser [
       .match: split
     ] whileTrue: []
 
-    ^ body
+    body
   ]
 
 
@@ -400,7 +409,7 @@ extend mut Parser [
 
     ] do
 
-    ^ Match subject: subject branches: branches elseBranch: elseBranch token: tok
+    Match subject: subject branches: branches elseBranch: elseBranch token: tok
   ]
   on nextStatement -> Statement = [
     savePosition = current
@@ -713,7 +722,7 @@ extend mut Parser [
     ]
     |=> []
 
-    ^ maybePrimary
+    maybePrimary
   ]
 
 
@@ -736,7 +745,7 @@ extend mut Parser [
       ^ true
     ]
 
-    ^ false
+    false
   ]
 
   /// match Identifier|Nullable|Error
@@ -794,10 +803,10 @@ extend mut Parser [
     //   ^ EOF_TOKEN
     // ]
 
-    ^tokens at: current
+    tokens at: current
   ]
   on peekAt(distance): Int -> Token = [
     realDistance = current + distance
-    ^tokens at: realDistance
+    tokens at: realDistance
   ]
 ]

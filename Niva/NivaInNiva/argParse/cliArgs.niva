@@ -13,17 +13,17 @@ type ArgsParsed
   nativeBuild: Bool
   incremental: Bool
 
-String compilerRuntimeFromCli -> CompilerRuntime? = [
-  this == "jvm" ifTrue: [^ CompilerRuntime.Jvm]
-  this == "bb" ifTrue: [^ CompilerRuntime.Bb]
-  ^ null
-]
+String compilerRuntimeFromCli -> CompilerRuntime? =
+  | true
+  | this == "jvm" => CompilerRuntime.Jvm
+  | this == "bb" => CompilerRuntime.Bb
+  |=> null
 
-String compilerTargetFromCli -> CompilerTarget? = [
-  this == "jvm" ifTrue: [^ CompilerTarget.Jvm]
-  this == "bb" ifTrue: [^ CompilerTarget.Bb]
-  ^ null
-]
+String compilerTargetFromCli -> CompilerTarget? =
+  | true
+  | this == "jvm" => CompilerTarget.Jvm
+  | this == "bb" => CompilerTarget.Bb
+  |=> null
 
 constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help
   backend: CompilerBackend.Js runtime: CompilerRuntime.Jvm target: CompilerTarget.Jvm
@@ -183,7 +183,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
 
   explicitHelp ifTrue: [help echo; ^ ArgsParsed help]
   invalid ifTrue: [^ ArgsParsed help]
-  ^ ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl
+  ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl
     replLine: replLine nativeBuild: nativeBuild incremental: incremental
 ]
 
