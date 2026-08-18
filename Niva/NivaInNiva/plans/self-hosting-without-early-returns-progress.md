@@ -52,6 +52,8 @@
   присваивания заменён на nullable-значение и `match`.
 - В `ir/fromTypedAst.niva` возврат из `whileStmt unpack` заменён на разбор
   nullable `IrStmt` через `match`.
+- В `front/resolver/resolveExpr2.niva` guard для пустого списка ошибок в
+  `checkErrorMatchExhaustiveness` заменён на `match true`.
 
 ## Проверки, которые прошли
 
@@ -66,6 +68,11 @@
 - `niva build main.niva --backend=clj --target=bb` (после каждого кластера);
 - `niva test parseTest`;
 - `niva test irTests`.
+
+После resolver-кластера также прошли:
+
+- `niva build main.niva --backend=clj --target=bb`;
+- `niva test resolverTests`.
 
 После callback-кластера также прошли:
 
