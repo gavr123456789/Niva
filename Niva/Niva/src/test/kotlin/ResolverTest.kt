@@ -423,6 +423,65 @@ class ResolverTest {
             assert(statements.count() == 1)
         }
     }
+
+    @Test
+    fun lastCompatibleExpressionIsImplicitReturn() {
+        val source = """
+            Int foo -> Int = [
+              x = 12
+              x + 42
+            ]
+        """.trimIndent()
+
+        val (statements, _) = resolveWithResolver(source)
+        val declaration = statements.single() as MessageDeclarationUnary
+        val returnStatement = declaration.body.last() as ReturnStatement
+
+        assertTrue(returnStatement.expression is Expression)
+        assertEquals("Int", returnStatement.expression?.type?.name)
+    }
+
+    @Test
+    fun compatibleNullableReturnTypeAcceptsImplicitReturn() {
+        val source = """
+            Int foo -> Int? = [
+              x = 12
+              x
+            ]
+        """.trimIndent()
+
+        val (statements, _) = resolveWithResolver(source)
+        val declaration = statements.single() as MessageDeclarationUnary
+        assertTrue(declaration.body.last() is ReturnStatement)
+    }
+
+    @Test
+    fun incompatibleLastExpressionIsNotAnImplicitReturn() {
+        val source = """
+            Int foo -> String = [
+              x = 12
+              x
+            ]
+        """.trimIndent()
+
+        assertFails {
+            resolveWithResolver(source)
+        }
+    }
+
+    @Test
+    fun lastVariableDeclarationIsNotAnImplicitReturn() {
+        val source = """
+            Int foo -> Int = [
+              x = 12
+            ]
+        """.trimIndent()
+
+        assertFails {
+            resolveWithResolver(source)
+        }
+    }
+
     @Test
     fun noReturnNeeded() {
         val source = """
