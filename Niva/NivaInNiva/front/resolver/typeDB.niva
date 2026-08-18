@@ -259,41 +259,38 @@ extend TyperDB [
 
   on unionBranchesDeep(root): TypeT -> Set::String = [
     visited::mut Set::String = #()!
-    ^ this unionBranchesDeepById: root toIdString visited: visited
+    this unionBranchesDeepById: root toIdString visited: visited
   ]
 
   on unionBranchesDeepById(rootId): String visited: mut Set::String -> Set::String = [
-    visited contains: rootId, ifTrue: [^ #()!]
-    visited add: rootId
+    visited contains: rootId, ifTrue: [#()!] ifFalse: [
+      visited add: rootId
 
-    direct = unionRootToBranches at: rootId
-    ^ | direct
-      | null => #()!
-      |=> [
+      direct = unionRootToBranches at: rootId
+      direct unpack: [nonNull ->
         expanded = #()!
-        direct forEach: [branchId ->
+        nonNull forEach: [branchId ->
           expanded add: branchId
           expanded addAll: (this unionBranchesDeepById: branchId visited: visited)
         ]
         expanded
-      ]
+      ] or: #()!
+    ]
   ]
 
   on unionLeaves(root): TypeT -> Set::String = [
     visited::mut Set::String = #()!
-    ^ this unionLeavesById: root toIdString visited: visited
+    this unionLeavesById: root toIdString visited: visited
   ]
 
   on unionLeavesById(rootId): String visited: mut Set::String -> Set::String = [
-    visited contains: rootId, ifTrue: [^ #()!]
-    visited add: rootId
+    visited contains: rootId, ifTrue: [#()!] ifFalse: [
+      visited add: rootId
 
-    direct = unionRootToBranches at: rootId
-    ^ | direct
-      | null => #()!
-      |=> [
+      direct = unionRootToBranches at: rootId
+      direct unpack: [nonNull ->
         leaves = #()!
-        direct forEach: [branchId ->
+        nonNull forEach: [branchId ->
           sub = unionRootToBranches at: branchId
           | sub
           | null => leaves add: branchId
@@ -304,7 +301,8 @@ extend TyperDB [
           ]
         ]
         leaves
-      ]
+      ] or: #()!
+    ]
   ]
 
   on unionAncestorChain(startType): TypeT -> List::TypeT = [
