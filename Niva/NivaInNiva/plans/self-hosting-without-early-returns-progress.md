@@ -56,6 +56,8 @@
   `checkErrorMatchExhaustiveness` заменён на `match true`.
 - В `compiler/incremental.niva` cancellation guards в `compileCandidate` и
   `compileSnapshot` заменены на `match true`.
+- В `argParse/cliArgs.niva` invalid guard в `ArgParser` заменён на
+  `match true`.
 
 ## Проверки, которые прошли
 
@@ -80,6 +82,11 @@
 
 - `niva build main.niva --backend=clj --target=bb`;
 - `niva test compilerTests`.
+
+После CLI-кластера также прошли:
+
+- `niva build main.niva --backend=clj --target=bb`;
+- `niva test cliArgsTest`.
 
 После callback-кластера также прошли:
 
