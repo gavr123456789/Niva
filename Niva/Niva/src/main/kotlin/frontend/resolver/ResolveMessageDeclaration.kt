@@ -311,6 +311,55 @@ fun Resolver.resolveMessageDeclaration(
 
 
         resolve(statement.body, (previousScope + bodyScope).toMutableMap(), statement)
+
+        fun addImplicitReturnForLastExpression() {
+            if (
+                statement.isSingleExpression ||
+                statement.returnTypeAST == null ||
+                statement.returnType == null ||
+                wasThereTopLevelReturn
+            ) {
+                return
+            }
+
+            val declaredReturnType = statement.returnType ?: return
+            if (declaredReturnType.name == InternalTypes.Unit.name) return
+
+            val lastIndex = statement.body.lastIndex
+            val lastExpression = statement.body.getOrNull(lastIndex) as? Expression ?: return
+            val realReturnType = lastExpression.type ?: return
+
+            // Nothing already represents a non-returning control path.
+            if (realReturnType.name == InternalTypes.Nothing.name) return
+
+            val isReturnTypeCompatible = compare2Types(
+                declaredReturnType,
+                realReturnType,
+                lastExpression.token,
+                unpackNullForSecond = false,
+                isOut = true,
+                compareParentsOfBothTypes = false,
+                compareMutability = false,
+                unpackNullForFirst = true
+            )
+            if (!isReturnTypeCompatible) return
+
+            if (declaredReturnType.isMutable && !realReturnType.isMutable) {
+                lastExpression.token.compileError(
+                    "Return type is mutable ${YEL}$declaredReturnType${RESET}, but ur type is not: ${YEL}$realReturnType"
+                )
+            }
+
+            statement.body[lastIndex] = ReturnStatement(
+                expression = lastExpression,
+                token = lastExpression.token
+            )
+            wasThereReturn = realReturnType
+            wasThereTopLevelReturn = true
+        }
+
+        addImplicitReturnForLastExpression()
+
         // check that errors that returns and stack are the same
         val validateErrorsDeclarated = {
             val returnTypeAST = statement.returnTypeAST
