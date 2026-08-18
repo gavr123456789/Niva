@@ -182,8 +182,9 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   ]
 
   explicitHelp ifTrue: [help echo; ^ ArgsParsed help]
-  invalid ifTrue: [^ ArgsParsed help]
-  ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl
+  | true
+  | invalid => ArgsParsed help
+  |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl
     replLine: replLine nativeBuild: nativeBuild incremental: incremental
 ]
 
