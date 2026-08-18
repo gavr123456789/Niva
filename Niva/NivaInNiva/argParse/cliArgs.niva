@@ -83,8 +83,8 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut nativeBuild = false
   mut incremental = false
   mut backend = CompilerBackend.Clj
-  mut runtime = CompilerRuntime.Jvm
-  mut target = CompilerTarget.Jvm
+  mut runtime = CompilerRuntime.Bb
+  mut target = CompilerTarget.Bb
   mut invalid = false
   mut explicitHelp = false
 
