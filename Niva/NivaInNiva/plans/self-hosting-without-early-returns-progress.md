@@ -48,6 +48,10 @@
   через `match true` с сохранением восстановления позиции.
 - В `front/resolver/resolveExpr2.niva` переписаны guards в
   `firstNonGetterInCopyUpdate` и `errorListEquals`.
+- В `front/parser/parse.niva` callback-return из попытки деструктурирующего
+  присваивания заменён на nullable-значение и `match`.
+- В `ir/fromTypedAst.niva` возврат из `whileStmt unpack` заменён на разбор
+  nullable `IrStmt` через `match`.
 
 ## Проверки, которые прошли
 
@@ -60,6 +64,12 @@
 После продолжения также прошли:
 
 - `niva build main.niva --backend=clj --target=bb` (после каждого кластера);
+- `niva test parseTest`;
+- `niva test irTests`.
+
+После callback-кластера также прошли:
+
+- `niva build main.niva --backend=clj --target=bb`;
 - `niva test parseTest`;
 - `niva test irTests`.
 
