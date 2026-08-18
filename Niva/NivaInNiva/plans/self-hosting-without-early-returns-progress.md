@@ -58,6 +58,9 @@
   `compileSnapshot` заменены на `match true`.
 - В `argParse/cliArgs.niva` invalid guard в `ArgParser` заменён на
   `match true`.
+- В `front/resolver/typeDB.niva` guards обходов union-графа в
+  `unionBranchesDeepById` и `unionLeavesById` заменены на nullable-ветвление;
+  финальные `^` этих обходов также убраны.
 
 ## Проверки, которые прошли
 
@@ -87,6 +90,11 @@
 
 - `niva build main.niva --backend=clj --target=bb`;
 - `niva test cliArgsTest`.
+
+После первого typeDB-кластера также прошли:
+
+- `niva build main.niva --backend=clj --target=bb`;
+- `niva test resolverTests`.
 
 После callback-кластера также прошли:
 
