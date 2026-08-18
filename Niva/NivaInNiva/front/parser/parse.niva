@@ -525,47 +525,50 @@ extend mut Parser [
    | TokenType.If => .parseMatch: tok
    | TokenType.IdentifierDoubleColon => .parseVarDeclExpr: tok name: tok lexeme isMut: false // VarDeclaration: `x::Int`
    |=> [
+     destructuring = tok kind == TokenType.OpenBrace ifTrue: [
+       .tryParseDestructingAssign: tok
+     ] ifFalse: [null]
 
-     tok kind == TokenType.OpenBrace ifTrue: [
-        .tryParseDestructingAssign: tok, unpack: [^ it]
-     ]
-
-     tok-pos = tok toPosition
-     primaryReceiver = .primary: tok, unpackOrMsg: tok-pos + "  nextExpression: no primary1 ($tok)"
-     // assign
-     .peek kind == TokenType.Assign, ifTrue: [
-       ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
-     ]
-
-     .peek kind == TokenType.AssignArrow, ifTrue: [
-       .step
-       value = .nextExpression: .step
-       | primaryReceiver
-       | Identifier => [
-         ^ Assign name: primaryReceiver name value: value token: tok
+     | destructuring
+     | null => [
+       tok-pos = tok toPosition
+       primaryReceiver = .primary: tok, unpackOrMsg: tok-pos + "  nextExpression: no primary1 ($tok)"
+       // assign
+       .peek kind == TokenType.Assign, ifTrue: [
+         ^.parseVarDeclExpr: tok name: primaryReceiver token lexeme isMut: false
        ]
-       |=> [
-         TO DO: "<- expected identifier on the left side"
-       ]
-     ]
-     // any expr
-     comma-chained-expr2 = .commaChainedExprs: tok receiver: primaryReceiver
 
-     // x wallet money value <- 13
-     // copy var from kotlin basically
-     .peek kind == TokenType.AssignArrow, ifTrue: [
-       .step
-       | comma-chained-expr2
-       | UnaryMsg => [
-         copyValue = .nextExpression: .step
-         ^ ImmutableCopyUpdate target: comma-chained-expr2 value: copyValue token: tok
+       .peek kind == TokenType.AssignArrow, ifTrue: [
+         .step
+         value = .nextExpression: .step
+         | primaryReceiver
+         | Identifier => [
+           ^ Assign name: primaryReceiver name value: value token: tok
+         ]
+         |=> [
+           TO DO: "<- expected identifier on the left side"
+         ]
        ]
-       |=> [
-         TO DO: "<- immutable copy update expects a non-empty unary getter chain"
-       ]
-     ]
+       // any expr
+       comma-chained-expr2 = .commaChainedExprs: tok receiver: primaryReceiver
 
-     comma-chained-expr2
+       // x wallet money value <- 13
+       // copy var from kotlin basically
+       .peek kind == TokenType.AssignArrow, ifTrue: [
+         .step
+         | comma-chained-expr2
+         | UnaryMsg => [
+           copyValue = .nextExpression: .step
+           ^ ImmutableCopyUpdate target: comma-chained-expr2 value: copyValue token: tok
+         ]
+         |=> [
+           TO DO: "<- immutable copy update expects a non-empty unary getter chain"
+         ]
+       ]
+
+       comma-chained-expr2
+     ]
+     |=> destructuring
     ]
   ]
 

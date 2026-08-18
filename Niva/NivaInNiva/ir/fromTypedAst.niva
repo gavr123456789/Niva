@@ -307,16 +307,19 @@ TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
   | MessageSendT => [
     // whileTrue: as statement we keep IrWhile without extra block wrapper
     whileStmt = this toIrWhileStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
-    whileStmt unpack: [^ it]
-    irExpr = this toIrExprFromMsg: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
-    | irExpr
-    | IrCall => [
-        isThrow = (irExpr msgName unpack: [it == "throw"] or: false) && (irExpr declPkg unpack: [it == "core"] or: false)
-        isThrow
-          ifTrue: [IrThrow errExpr: (irExpr args first) token: token]
-          ifFalse: [IrExprStmt expr: irExpr token: token]
-      ]
-    |=> IrExprStmt expr: irExpr token: token
+    | whileStmt
+    | null => [
+      irExpr = this toIrExprFromMsg: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      | irExpr
+      | IrCall => [
+          isThrow = (irExpr msgName unpack: [it == "throw"] or: false) && (irExpr declPkg unpack: [it == "core"] or: false)
+          isThrow
+            ifTrue: [IrThrow errExpr: (irExpr args first) token: token]
+            ifFalse: [IrExprStmt expr: irExpr token: token]
+        ]
+      |=> IrExprStmt expr: irExpr token: token
+    ]
+    |=> whileStmt
   ]
   |=> [
     IrExprStmt expr: (this toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef) token: token
