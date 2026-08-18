@@ -324,38 +324,38 @@ extend TyperDB [
   ]
 
   on findFirstCommonUnionAncestor(types): List::NivaType -> TypeT? = [
-    types isEmpty ifTrue: [^ null]
-
-    nonTypeFound = types any: [
-      | it | TypeT => false
-      |=> true
-    ]
-    nonTypeFound ifTrue: [^ null]
-
-    typeTs::mut List::TypeT = {}!
-    types forEach: [
-      | it | TypeT => typeTs add: it
-      |=> []
-    ]
-
-    ancestorSets::mut List::Set::String = {}!
-    typeTs forEach: [
-      ancestorSets add: (this unionAncestorIds: it)
-    ]
-
-    firstChain = this unionAncestorChain: (typeTs first)
-
-    found = firstChain find: [candidate ->
-      candidateId = candidate toIdString
-      isCommon <- true
-      ancestorSets forEach: [set ->
-        set contains: candidateId,
-            ifFalse: [isCommon <- false]
+    types isEmpty ifTrue: [null] ifFalse: [
+      nonTypeFound = types any: [
+        | it | TypeT => false
+        |=> true
       ]
-      isCommon
-    ]
+      nonTypeFound ifTrue: [null] ifFalse: [
+        typeTs::mut List::TypeT = {}!
+        types forEach: [
+          | it | TypeT => typeTs add: it
+          |=> []
+        ]
 
-    ^ found
+        ancestorSets::mut List::Set::String = {}!
+        typeTs forEach: [
+          ancestorSets add: (this unionAncestorIds: it)
+        ]
+
+        firstChain = this unionAncestorChain: (typeTs first)
+
+        found = firstChain find: [candidate ->
+          candidateId = candidate toIdString
+          isCommon <- true
+          ancestorSets forEach: [set ->
+            set contains: candidateId,
+                ifFalse: [isCommon <- false]
+          ]
+          isCommon
+        ]
+
+        found
+      ]
+    ]
   ]
 
   on mergeTypesByUnion(types): List::NivaType -> NivaType? = [

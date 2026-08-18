@@ -61,6 +61,8 @@
 - В `front/resolver/typeDB.niva` guards обходов union-графа в
   `unionBranchesDeepById` и `unionLeavesById` заменены на nullable-ветвление;
   финальные `^` этих обходов также убраны.
+- В `front/resolver/typeDB.niva` два guard-return в
+  `findFirstCommonUnionAncestor` заменены вложенным ветвлением.
 
 ## Проверки, которые прошли
 
@@ -77,6 +79,11 @@
 - `niva test irTests`.
 
 После resolver-кластера также прошли:
+
+- `niva build main.niva --backend=clj --target=bb`;
+- `niva test resolverTests`.
+
+После второго typeDB-кластера также прошли:
 
 - `niva build main.niva --backend=clj --target=bb`;
 - `niva test resolverTests`.
