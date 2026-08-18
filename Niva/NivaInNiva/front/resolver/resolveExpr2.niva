@@ -272,54 +272,56 @@ extend TyperDB [
   ]
 
   on checkErrorMatchExhaustiveness(subjectErrors): List(NivaType) branches: List(MatchBranchT) token: Token = [
-    subjectErrors isEmpty ifTrue: [^ Unit]
-
-    leaves::mut Set(String) = #()!
-    subjectErrors forEach: [err ->
-      | err
-      | TypeT => [
-        errLeaves = this unionLeaves: err
-        (errLeaves count == 0)
-          ifTrue: [
-            leaves add: err toIdString
-            Unit
-          ]
-          ifFalse: [
-            leaves addAll: errLeaves
-            Unit
-          ]
+    | true
+    | subjectErrors isEmpty => Unit
+    |=> [
+      leaves::mut Set(String) = #()!
+      subjectErrors forEach: [err ->
+        | err
+        | TypeT => [
+          errLeaves = this unionLeaves: err
+          (errLeaves count == 0)
+            ifTrue: [
+              leaves add: err toIdString
+              Unit
+            ]
+            ifFalse: [
+              leaves addAll: errLeaves
+              Unit
+            ]
+        ]
+        |=> []
       ]
-      |=> []
-    ]
 
-    checked::mut Set(String) = #()!
-    branches forEach: [branch ->
-      branchType = branch condition typeInfo t
-      | branchType
-      | TypeT => [
-        leaves forEach: [leafId ->
-          leafType = typesById at: leafId
-          leafType unpack: [
-            this isAssignable: it toExpected: branchType, ifTrue: [
-              checked add: leafId
+      checked::mut Set(String) = #()!
+      branches forEach: [branch ->
+        branchType = branch condition typeInfo t
+        | branchType
+        | TypeT => [
+          leaves forEach: [leafId ->
+            leafType = typesById at: leafId
+            leafType unpack: [
+              this isAssignable: it toExpected: branchType, ifTrue: [
+                checked add: leafId
+              ]
             ]
           ]
         ]
-      ]
-      |=> []
-    ]
-
-    missing = leaves
-      filter: [leafId -> checked contains: leafId, not],
-      map: [leafId ->
-        branchType = typesById at: leafId
-        branchType unpack: [it name] or: leafId
+        |=> []
       ]
 
-    missing isNotEmpty ifTrue: [
-      missingSorted = missing sortedBy: [it]
-      msg = "Not all possible errors have been handled (" + (missingSorted joinWith: ", " transform: [it]) + ")"
-      this addErrorMessage: (LazyError tok: token msg: msg)
+      missing = leaves
+        filter: [leafId -> checked contains: leafId, not],
+        map: [leafId ->
+          branchType = typesById at: leafId
+          branchType unpack: [it name] or: leafId
+        ]
+
+      missing isNotEmpty ifTrue: [
+        missingSorted = missing sortedBy: [it]
+        msg = "Not all possible errors have been handled (" + (missingSorted joinWith: ", " transform: [it]) + ")"
+        this addErrorMessage: (LazyError tok: token msg: msg)
+      ]
     ]
   ]
 ]
