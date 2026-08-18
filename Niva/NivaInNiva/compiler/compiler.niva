@@ -12,7 +12,7 @@ String nivaModuleCollisionKey -> String =
 String isHiddenPath -> Bool = [
   segments = this replace: "\\" with: "/", split: "/"
   directories = segments dropLast: 1
-  ^ directories any: [it startsWith: "."]
+  directories any: [it startsWith: "."]
 ]
 
 NivaSourceFile nivaModuleId -> String =
@@ -33,7 +33,7 @@ List(NivaSourceFile) nivaModuleCollisionError -> String? = [
       ]
     ]
   ]
-  ^ null
+  null
 ]
 
 constructor NivaBuildSystem [
@@ -61,7 +61,7 @@ constructor NivaBuildSystem [
               content: content)
         ]
 
-        ^ sources toList
+        sources toList
     ]
 ]
 
@@ -87,7 +87,7 @@ constructor WatchChangeBatch empty -> WatchChangeBatch = WatchChangeBatch paths:
 WatchChangeBatch add(path): String -> WatchChangeBatch = [
   updated = paths toMutableSet
   updated add: path
-  ^ WatchChangeBatch paths: updated
+  WatchChangeBatch paths: updated
 ]
 
 WatchChangeBatch count -> Int = paths count
@@ -99,15 +99,15 @@ type WatchQueueState
 constructor WatchQueueState empty -> WatchQueueState =
   WatchQueueState building: false pending: false
 
-WatchQueueState event -> WatchQueueState = [
-  building ifTrue: [^ WatchQueueState building: true pending: true]
-  ^ WatchQueueState building: true pending: false
-]
+WatchQueueState event -> WatchQueueState =
+  | true
+  | building => WatchQueueState building: true pending: true
+  |=> WatchQueueState building: true pending: false
 
-WatchQueueState buildFinished -> WatchQueueState = [
-  pending ifTrue: [^ WatchQueueState building: true pending: false]
-  ^ WatchQueueState building: false pending: false
-]
+WatchQueueState buildFinished -> WatchQueueState =
+  | true
+  | pending => WatchQueueState building: true pending: false
+  |=> WatchQueueState building: false pending: false
 
 type JvmReloadHost
 
@@ -234,7 +234,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
   io writeFile file: hostPath content: JVM_HOST_SOURCE
   FileSystem deleteRecursively: stagingRoot toPath
 
-  ^ CljGenerationResult generationId: generationId published: true
+  CljGenerationResult generationId: generationId published: true
     generatedRoot: publishedGenerated manifestPath: root + "/manifest.edn"
 ]
 

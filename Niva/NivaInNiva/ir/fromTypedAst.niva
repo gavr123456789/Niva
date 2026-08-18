@@ -44,7 +44,7 @@ extend NivaType [
 
     errRefs = errorsList map: [it toIrType-immut-no-errors]
 
-    ^ IrTypeRef :kind typeId: typeId ownerPkg: base pkgName args: args returnType: returnType isMut: isMut nullable: nullable errors: errRefs
+    IrTypeRef :kind typeId: typeId ownerPkg: base pkgName args: args returnType: returnType isMut: isMut nullable: nullable errors: errRefs
   ]
 ]
 
@@ -58,9 +58,12 @@ extend TypeInfo [
 
 extend String [
   on bindCapitalizeFirst -> String = [
-    this count == 0 ifTrue: [^ this]
-    firstUp = ((this at: 0) toString) uppercase
-    ^ firstUp + (this drop: 1)
+    | true
+    | this count == 0 => this
+    |=> [
+      firstUp = ((this at: 0) toString) uppercase
+      firstUp + (this drop: 1)
+    ]
   ]
 ]
 
@@ -73,29 +76,37 @@ extend MessageDecl [
   // exactly `Bind emit: "..."` (one keyword) -> template.
   on bindEmitTemplate -> String? = [
     exprs = body unTypedBody
-    exprs count == 1 ifFalse: [^ null]
-    first = exprs first
-    firstExpr = | first
-      | ReturnStatement => (first value unpack: [it] or: first)
-      |=> first
-    ^ | firstExpr
+    first = exprs count == 1 ifTrue: [exprs first] ifFalse: [null]
+    firstExpr = first unpack: [
+      | it
+      | ReturnStatement => (it value unpack: [it] or: it)
+      |=> it
+    ] or: null
+    | firstExpr
+    | null => null
+    |=> [
+      | firstExpr
       | KeywordMsg => [
         recv = firstExpr receiver
         recvIsBind = | recv | Identifier => recv name == "Bind" |=> false
-        recvIsBind ifFalse: [^ null]
-        (firstExpr args count == 1) ifFalse: [^ null]
-        firstArg = firstExpr args first
-        (firstArg name name == "emit") ifFalse: [^ null]
-        | firstArg expr
-        | StringExpr => [
-          tok = firstArg expr token
-          tok kind == TokenType.RawString
-            ifTrue: [tok lexeme unquoteRawLiteral]
-            ifFalse: [tok lexeme unquoteLiteral]
-        ]
-        |=> null
+        recvIsBind ifTrue: [
+          (firstExpr args count == 1) ifTrue: [
+            firstArg = firstExpr args first
+            (firstArg name name == "emit") ifTrue: [
+              | firstArg expr
+              | StringExpr => [
+                tok = firstArg expr token
+                tok kind == TokenType.RawString
+                  ifTrue: [tok lexeme unquoteRawLiteral]
+                  ifFalse: [tok lexeme unquoteLiteral]
+              ]
+              |=> null
+            ] ifFalse: [null]
+          ] ifFalse: [null]
+        ] ifFalse: [null]
       ]
       |=> null
+    ]
   ]
 
   on bindPlanWith(db): TyperDB pkg: String -> IrBind? = [
@@ -109,7 +120,7 @@ extend MessageDecl [
       ^ IrBindByName goPkg: pkg goName: .bindFirstKey isStatic: isConstructor
     ]
     tmpl = .bindEmitTemplate
-    ^ tmpl unpack: [t ->
+    tmpl unpack: [t ->
       // emits inside a .bind.niva file auto-import that file's Go package
       IrBindEmit template: t goPkg: pkg
     ] or: null
@@ -123,7 +134,7 @@ extend TypeTField [
 NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
   declVal = decl
   nameLocal = name
-  ^ | declVal
+  | declVal
     | null => [
       receiverTypeLocal = receiverType
       mut ownerMethod::NivaMethod? = null
@@ -176,8 +187,7 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
       // declaration as the function owner, otherwise the call and the
       // generated function get different ids.
       ownerFromDecl = db declToMethod at: declVal
-      ownerFromDecl unpack: [^ it toIrFunctionId]
-      ^ this toIrFunctionId
+      ownerFromDecl unpack: [it toIrFunctionId] or: (this toIrFunctionId)
     ]
 ]
 
@@ -201,7 +211,7 @@ LiteralExprT toIrLiteral -> IrLiteral = [
   lex = | this
     | AtomExprT => name
     |=> token lexeme
-  ^ IrLiteral
+  IrLiteral
     kind: (this toIrLiteralKind)
     lexeme: lex
 ]
@@ -210,12 +220,12 @@ Bool toIrBoolLiteralExpr(db): TyperDB -> IrExpr = [
   lex = this ifTrue: ["true"] ifFalse: ["false"]
   lit = IrLiteral kind: IrLiteralKind.Bool lexeme: lex
   boolRef = db dtc bool toIrTypeRefWithMutErrors: false errorsList: {}
-  ^ IrLiteralExpr literal: lit typeRef: boolRef token: FAKE_TOKEN
+  IrLiteralExpr literal: lit typeRef: boolRef token: FAKE_TOKEN
 ]
 
 TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrExpr = [
   exprType = typeInfo toIrTypeRef
-  ^ | this
+  | this
     | LiteralExprT => [
       IrLiteralExpr literal: (this toIrLiteral) typeRef: exprType token: token
     ]
@@ -251,7 +261,7 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
 ]
 
 TypedExpr2 toIrStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrStmt = [
-  ^ | this
+  | this
   | VarDeclarationT => [
     declaredInfo = astType unpack: [it toTypeInfoFromDb: db inPkg: null] or: value typeInfo
     IrLet
@@ -345,11 +355,11 @@ CodeBlockT toIrLambdaExpr(db): TyperDB currentPkg: String typeFieldsById: Map(St
 
   bodyBlock = body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
   exprType = typeInfo toIrTypeRef
-  ^ IrLambda args: argsList body: bodyBlock typeRef: exprType token: token
+  IrLambda args: argsList body: bodyBlock typeRef: exprType token: token
 ]
 
 TypedExpr2 toIrBlockFromExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrBlock = [
-  ^ | this
+  | this
   | CodeBlockT => this body toIrBlock: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
   |=> [
     irExpr = this toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
@@ -413,7 +423,7 @@ MatchT toIrMatchExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String,
   ] or: null
 
   exprType = typeInfo toIrTypeRef
-  ^ IrMatchExpr kind: kind subject: subjectExpr cases: cases elseBranch: elseBlock typeRef: exprType typeAlias: typeAlias subjectIsUnit: subjectIsUnit token: token
+  IrMatchExpr kind: kind subject: subjectExpr cases: cases elseBranch: elseBlock typeRef: exprType typeAlias: typeAlias subjectIsUnit: subjectIsUnit token: token
 ]
 
 MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrExpr = [
@@ -638,12 +648,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
       ]
   ]
 
-  ^ result unpackOrPANIC
+  result unpackOrPANIC
 ]
 
 MessageSendT toIrWhileStmt(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrStmt? = [
   isWhile = dbMsg name == "whileTrue"
-  ^ isWhile ifTrue: [
+  isWhile ifTrue: [
     | this
     | KeywordMsgT => [
       condExpr = receiver toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
@@ -656,7 +666,7 @@ MessageSendT toIrWhileStmt(db): TyperDB currentPkg: String typeFieldsById: Map(S
 
 
 TypedBody toIrBlock(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrBlock = [
-  ^ this toIrBlockWithPrefix: {} db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  this toIrBlockWithPrefix: {} db: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
 ]
 
 TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrBlock = [
@@ -703,7 +713,7 @@ TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: Stri
   ]
 
   blockType = t toIrTypeRefWithMutErrors: false errorsList: {}
-  ^ IrBlock stmts: stmts toList result: resultExpr resultType: blockType
+  IrBlock stmts: stmts toList result: resultExpr resultType: blockType
 ]
 
 TypeFieldT toIrField -> IrField = IrField name: name typeRef: (typeInfo toIrTypeRef)
@@ -777,7 +787,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     ]
   ]
 
-  ^ IrFunction
+  IrFunction
     id: (receiverType toIrFunctionId: name declPkg: currentPkg)
     pkgId: currentPkg
     name: name
@@ -862,14 +872,14 @@ IrTypeRef toKeyPart -> String = [
   argsKey = args isNotEmpty
     ifTrue: ["(" + (args joinWith: "," transform: [it toKeyPart]) + ")"]
     ifFalse: [""]
-  ^ typeId + argsKey + (nullable ifTrue: ["?"] ifFalse: [""])
+  typeId + argsKey + (nullable ifTrue: ["?"] ifFalse: [""])
 ]
 
 IrInstantiation toKey -> String = [
   argKey = argTypes isNotEmpty
     ifTrue: [argTypes joinWith: "," transform: [it toKeyPart]]
     ifFalse: [""]
-  ^ receiverType toKeyPart + "|" + argKey + "|" + returnType toKeyPart
+  receiverType toKeyPart + "|" + argKey + "|" + returnType toKeyPart
 ]
 
 TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap: mut Map(String, mut List::IrInstantiation) specializationUses: mut Map(String, mut Set(String)) -> Unit = [
@@ -944,7 +954,7 @@ ResolverHelper specializationUses -> Map(String, Set(String)) = [
   entryPointExpressions forEach: [
     it collectInstantiationsFromExpr: db currentPkg: entryPointName instMap: instMap specializationUses: uses
   ]
-  ^ uses
+  uses
 ]
 
 ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
@@ -1068,7 +1078,7 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
       packages: packagesIr toList
       entry: entryBlock
 
-  ^ rawModule withNormalizedDependencies
+  rawModule withNormalizedDependencies
 ]
 
 ResolverHelper toIrModule -> IrModule =

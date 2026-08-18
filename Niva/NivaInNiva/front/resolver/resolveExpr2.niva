@@ -45,11 +45,14 @@ Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
 
 // find first non generated getter in update target
 UnaryMsgT firstNonGetterInCopyUpdate -> Token? = [
-  kind != MessageSendKind.Getter ifTrue: [^ selector token]
-  localReceiver = receiver
-  ^ | localReceiver
-    | UnaryMsgT => localReceiver firstNonGetterInCopyUpdate
-    |=> null
+  | true
+  | kind != MessageSendKind.Getter => selector token
+  |=> [
+    localReceiver = receiver
+    | localReceiver
+      | UnaryMsgT => localReceiver firstNonGetterInCopyUpdate
+      |=> null
+  ]
 ]
 
 // expand chained update syntax
@@ -62,7 +65,7 @@ UnaryMsg expandImmutableCopyUpdate(value): Expr -> Expr = [
     token: token
     kind: MessageSendKind.Call
 
-  ^ | localReceiver
+  | localReceiver
     | UnaryMsg => localReceiver expandImmutableCopyUpdate: shadowCopy
     |=> shadowCopy
 ]
@@ -127,7 +130,7 @@ extend Body [
         ]
         ifFalse: [listOfTypedExpr2 last typeInfo t]
 
-    ^ TypedBody v: listOfTypedExpr2
+    TypedBody v: listOfTypedExpr2
                 t: bodyType
                 listOfErrors: (bodyErrors normalizeErrorList)
   ]
@@ -151,7 +154,7 @@ extend Body [
       expr typeInfo listOfErrors forEach: [bodyErrors add: it]
     ]
 
-    ^ TypedBody
+    TypedBody
         v: typedElems
         t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
         listOfErrors: (bodyErrors normalizeErrorList)
@@ -170,20 +173,22 @@ List(NivaType) normalizeErrorList -> List(NivaType) = [
     ]
   ]
 
-  ^ result toList
+  result toList
 ]
 
 List(NivaType) errorListEquals(other): List(NivaType) -> Bool = [
   left = this normalizeErrorList
   right = other normalizeErrorList
-  left count != right count ifTrue: [^ false]
+  | true
+  | left count != right count => false
+  |=> [
+    rightIds = (right map: [it pkgName + "." + it name]) toSet
+    missing = left find: [err ->
+      rightIds contains: (err pkgName + "." + err name), not
+    ]
 
-  rightIds = (right map: [it pkgName + "." + it name]) toSet
-  missing = left find: [err ->
-    rightIds contains: (err pkgName + "." + err name), not
+    missing == null
   ]
-
-  ^ missing == null
 ]
 
 List(NivaType) errorListCovers(actual): List(NivaType) db: TyperDB -> Bool = [
@@ -197,7 +202,7 @@ List(NivaType) errorListCovers(actual): List(NivaType) db: TyperDB -> Bool = [
     covered not
   ]
 
-  ^ missing == null
+  missing == null
 ]
 
 List(NivaType) errorsToString -> String =
@@ -207,7 +212,7 @@ NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
   types forEachIndexed: [i, it ->
     this sameTypeAs: it, ifFalse: [^ i]
   ]
-  ^ null
+  null
 ]
 
 extend TyperDB [
@@ -415,7 +420,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
         ifFalse: [expectedType name]
     ]
 
-  ^ CodeBlockT :args typedArgs: typedArgs
+  CodeBlockT :args typedArgs: typedArgs
     body: typedBody
     :token
     typeInfo: (FuntionT
@@ -1064,7 +1069,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | TypedExpr => TO DO: "Compiler bug: Recursive check, $this already type checked"
 
 
-  ^ result
+  result
 ]
 
 type CheckMethodArg nivaType: NivaType expr: Expr argName: String
