@@ -376,6 +376,20 @@ mut Lexer readIdentifier -> String = [
     .step
   ]
 
+  // A bang is part of a value identifier only when it is adjacent to it and
+  // really terminates the identifier. Uppercase names are types, where `!`
+  // is the existing error-type separator (`Int!Error`, `Int!{Error}`).
+  firstChar = input at: localPos
+  nextChar = readPos >= input count ifTrue: ['\u0000'] ifFalse: [.peekChar]
+  nextIsIdentifierChar = nextChar isLetter || nextChar isDigit ||
+    (nextChar == '_') || (nextChar == '-')
+  isBangSuffix = (ch == '!') &&
+    (firstChar isLowerCase || (firstChar == '_')) &&
+    (nextChar != '=') && nextIsIdentifierChar not && (nextChar != '{')
+  isBangSuffix ifTrue: [
+    .step
+  ]
+
   result = input slice: localPos..<pos //readPos dec
   ^result
 ]
