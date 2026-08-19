@@ -203,7 +203,12 @@ extend NivaType [
     | UnresolvedGenericT => [
       existing = into at: letter
       | existing
-      | null => into at: letter put: actual
+      | null => [
+        // unresolved type doesnt means its generic, it maybe lambda like T -> T
+        | actual
+        | UnresolvedGenericT => []
+        |=> into at: letter put: actual
+      ]
 
       |=> [
         existing sameTypeAs: actual, ifFalse: [

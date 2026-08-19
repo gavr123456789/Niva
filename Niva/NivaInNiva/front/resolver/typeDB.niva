@@ -937,7 +937,12 @@ extend TyperDB [
       ]
       genericMethod = this findGenericReceiverMethod: name forType: lookupType
       genericMethod unpack: [^ it]
-      TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"
+      // method body of a generic receiver is resolved before the receiver type is specialized, in that phase a lambda
+      // argument can have the unresolved type T like a + a inside `List(Int) reduce: [a b -> a + b]`
+      // T is not a concrete key in typeToMethodNameToMethod so we let the caller continue with the Any protocol instead of reporting a missing type
+      | lookupType
+      | UnresolvedGenericT => [^ null]
+      |=> TO DO: "cant find type $lookupType in db typeToMethodNameToMethod"
     ]
     |=> []
 
