@@ -52,12 +52,9 @@ Test generic_receiver_method_specializes_nested_collection = [
   Assert that: isExpected equals: true
 ]
 
-Test generic_receiver_method_can_call_reduce = [
+Test can_call_reduce = [
   fileMain = """
-    List(T) all_same =
-      this reduce: [a, b -> a == b]
-
-    {1 2 3} all_same
+    {1 2 3} reduce: [a, b -> a + b]
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"

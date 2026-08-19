@@ -200,6 +200,21 @@ Test identifierNullable = [
   ]
 ]
 
+Test identifierBang = [
+  tokens = LexTest input: "foobar! foobar ! read-file! String!Error Int!{Error}"
+  expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Bang TokenType.Identifier
+                   TokenType.Identifier TokenType.Bang TokenType.Identifier
+                   TokenType.Identifier TokenType.Bang TokenType.OpenBrace TokenType.Identifier TokenType.CloseBrace}
+  expectedLexemes = {"foobar!" "foobar" "!" "read-file!" "String" "!" "Error"
+                     "Int" "!" "{" "Error" "}"}
+
+  Assert that: tokens count equals: expectedKinds count
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
 Test strings = [
   LexTest checkThat: """ "" "sas" "sus" """
           equals: {TokenType.String TokenType.String TokenType.String}

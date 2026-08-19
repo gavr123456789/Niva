@@ -108,7 +108,9 @@ extend String [
   on cljGeneratedNamespace -> String = "niva.generated." + this
 
   on cljGeneratedPath -> String =
-    (this cljGeneratedNamespace replace: "." with: "/") + ".clj"
+    // clojure translates - in files into _
+    (this cljGeneratedNamespace replace: "." with: "/",
+      replace: "-" with: "_") + ".clj"
 
 ]
 
