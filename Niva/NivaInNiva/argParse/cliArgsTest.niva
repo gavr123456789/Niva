@@ -91,8 +91,8 @@ Test cliArgsRejectsSeparatedOptionValue = [
 Test cliArgsWatchDefaultsToJvm = [
   result = ArgParser args: {"watch" "main.niva"} toList
   Assert that: result option equals: CompilerOption.Watch
-  Assert that: result runtime equals: CompilerRuntime.Jvm
-  Assert that: result target equals: CompilerTarget.Jvm
+  Assert that: result runtime equals: CompilerRuntime.Bb
+  Assert that: result target equals: CompilerTarget.Bb
 ]
 
 Test cliArgsWatchRuntimeSelection = [
