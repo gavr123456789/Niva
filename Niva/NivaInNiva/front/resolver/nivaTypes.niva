@@ -651,6 +651,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "Bool" bool
     "Unit" unit
     "String" str
+    "Char" char
     "Int" int
     "Float" float
     "Double" double
