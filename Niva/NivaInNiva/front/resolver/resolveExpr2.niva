@@ -566,29 +566,38 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
 
-    first = typesOfElems first
-    second = typesOfElems at: 1
-
-
-    (typesOfElems drop: 2), forEachIndexed: [i, it ->
-      i % 2 == 0 ? [
-        it sameTypeAs: first, ifFalse: [
-          db addErrorMessage: (ErrorWrongArgType
-                                tok: this token
-                                msg: "Wront type of $it element, $second value type expected")
-        ]
-      ] ! [
-        it sameTypeAs: second, ifFalse: [
-          db addErrorMessage: (ErrorWrongArgType
-                                tok: this token
-                                msg: "Wront type of $it element, $first key type expected")
-        ]
-      ]
+    keyTypes::mut List(NivaType) = {}!
+    valueTypes::mut List(NivaType) = {}!
+    typesOfElems forEachIndexed: [i, it ->
+      i % 2 == 0 ? [keyTypes add: it] ! [valueTypes add: it]
     ]
 
+    mergedKeyType = db mergeTypesByUnion: keyTypes
+    mergedValueType = db mergeTypesByUnion: valueTypes
+    first = | mergedKeyType
+            | null => keyTypes first
+            |=> mergedKeyType
+    second = | mergedValueType
+             | null => valueTypes first
+             |=> mergedValueType
 
+    wrongKeyIndex = | mergedKeyType
+                    | null => first sameTypeAsMany: (keyTypes drop: 1)
+                    |=> null
+    wrongKeyIndex unpack: [i ->
+      wrongElement = elems at: (i * 2 + 2)
+      db addErrorMessage: (ErrorWrongArgType tok: this token
+                            msg: "Wrong type of $wrongElement element, $first key type expected")
+    ]
 
-    // if they all equal take first and second as k and v types
+    wrongValueIndex = | mergedValueType
+                      | null => second sameTypeAsMany: (valueTypes drop: 1)
+                      |=> null
+    wrongValueIndex unpack: [i ->
+      wrongElement = elems at: (i * 2 + 3)
+      db addErrorMessage: (ErrorWrongArgType tok: this token
+                            msg: "Wrong type of $wrongElement element, $second value type expected")
+    ]
 
 
     mapType = db addCollectionInstantiationIfAbsent: (MapT k: first v: second)
@@ -644,9 +653,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
-    // take first and others
-    f = typesOfElems first
-    numberOfWrongElementType = f sameTypeAsMany: (typesOfElems drop: 1)
+    // Collection elements may be different branches of the same union.
+    // Reuse the same common-union-root merge used for match return types.
+    mergedElementType = db mergeTypesByUnion: typesOfElems
+    f = | mergedElementType
+        | null => typesOfElems first
+        |=> mergedElementType
+    numberOfWrongElementType = | mergedElementType
+      | null => f sameTypeAsMany: (typesOfElems drop: 1)
+      |=> null
     numberOfWrongElementType unpack: [
       wrongElement = elems at: it
       db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wront type of $wrongElement element, $f type expected")

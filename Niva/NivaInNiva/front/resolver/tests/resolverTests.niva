@@ -637,6 +637,44 @@ Test collectionsTestingMapTry = [
 
 ]
 
+Test unionBranchesCanBeCollectionElements = [
+  fileMain = """
+    union DifferentTypes =
+    | IntType x: Int
+    | StrType x: String
+    | BoolType x: Bool
+
+    i = IntType x: 1
+    s = StrType x: "a"
+    b = BoolType x: true
+
+    anyList = {i b s i b}
+    anyMap = #{"int" i "str" s "bool" b}
+
+    anyList forEach: [
+      | it
+      | IntType => "int!" echo
+      | StrType => "String!" echo
+      | BoolType => "bool!" echo
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test charLiteralAndProtocol = [
+  fileMain = """
+    Char foo = "hiii" echo
+
+    ch = 'a'
+    ch foo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
 Test nestedCollectionsAndExprInBracketsTypes = [
   fileMain = """
     {{1 2} {3}}
