@@ -262,19 +262,23 @@ extend TyperDB [
     this unionBranchesDeepById: root toIdString visited: visited
   ]
 
-  on unionBranchesDeepById(rootId): String visited: mut Set::String -> Set::String = [
-    visited contains: rootId, ifTrue: [#()!] ifFalse: [
-      visited add: rootId
+  on expandUnionBranches(rootId): String visited: mut Set::String -> Set::String = [
+    direct = unionRootToBranches at: rootId
+    direct unpack: [nonNull ->
+      expanded = #()!
+      nonNull forEach: [branchId ->
+        expanded add: branchId
+        expanded addAll: (this unionBranchesDeepById: branchId visited: visited)
+      ]
+      expanded
+    ] or: #()!
+  ]
 
-      direct = unionRootToBranches at: rootId
-      direct unpack: [nonNull ->
-        expanded = #()!
-        nonNull forEach: [branchId ->
-          expanded add: branchId
-          expanded addAll: (this unionBranchesDeepById: branchId visited: visited)
-        ]
-        expanded
-      ] or: #()!
+  on unionBranchesDeepById(rootId): String visited: mut Set::String -> Set::String = [
+    alreadyVisited = visited contains: rootId
+    alreadyVisited ifTrue: [#()!] ifFalse: [
+      visited add: rootId
+      this expandUnionBranches: rootId visited: visited
     ]
   ]
 
@@ -283,25 +287,29 @@ extend TyperDB [
     this unionLeavesById: root toIdString visited: visited
   ]
 
-  on unionLeavesById(rootId): String visited: mut Set::String -> Set::String = [
-    visited contains: rootId, ifTrue: [#()!] ifFalse: [
-      visited add: rootId
-
-      direct = unionRootToBranches at: rootId
-      direct unpack: [nonNull ->
-        leaves = #()!
-        nonNull forEach: [branchId ->
-          sub = unionRootToBranches at: branchId
-          | sub
-          | null => leaves add: branchId
-          |=> [
-            nestedLeaves = this unionLeavesById: branchId visited: visited
-            leaves addAll: nestedLeaves
-            ()
-          ]
+  on expandUnionLeaves(rootId): String visited: mut Set::String -> Set::String = [
+    direct = unionRootToBranches at: rootId
+    direct unpack: [nonNull ->
+      leaves = #()!
+      nonNull forEach: [branchId ->
+        sub = unionRootToBranches at: branchId
+        | sub
+        | null => leaves add: branchId
+        |=> [
+          nestedLeaves = this unionLeavesById: branchId visited: visited
+          leaves addAll: nestedLeaves
+          ()
         ]
-        leaves
-      ] or: #()!
+      ]
+      leaves
+    ] or: #()!
+  ]
+
+  on unionLeavesById(rootId): String visited: mut Set::String -> Set::String = [
+    alreadyVisited = visited contains: rootId
+    alreadyVisited ifTrue: [#()!] ifFalse: [
+      visited add: rootId
+      this expandUnionLeaves: rootId visited: visited
     ]
   ]
 
@@ -323,38 +331,37 @@ extend TyperDB [
       toSet
   ]
 
+  on commonUnionAncestor(types): List::NivaType -> TypeT? = [
+    typeTs::mut List::TypeT = {}!
+    types forEach: [
+      | it | TypeT => typeTs add: it
+      |=> []
+    ]
+
+    ancestorSets::mut List::Set::String = {}!
+    typeTs forEach: [
+      ancestorSets add: (this unionAncestorIds: it)
+    ]
+
+    firstChain = this unionAncestorChain: (typeTs first)
+    firstChain find: [candidate ->
+      candidateId = candidate toIdString
+      isCommon <- true
+      ancestorSets forEach: [set ->
+        set contains: candidateId,
+            ifFalse: [isCommon <- false]
+      ]
+      isCommon
+    ]
+  ]
+
   on findFirstCommonUnionAncestor(types): List::NivaType -> TypeT? = [
-    types isEmpty ifTrue: [null] ifFalse: [
-      nonTypeFound = types any: [
-        | it | TypeT => false
-        |=> true
-      ]
-      nonTypeFound ifTrue: [null] ifFalse: [
-        typeTs::mut List::TypeT = {}!
-        types forEach: [
-          | it | TypeT => typeTs add: it
-          |=> []
-        ]
-
-        ancestorSets::mut List::Set::String = {}!
-        typeTs forEach: [
-          ancestorSets add: (this unionAncestorIds: it)
-        ]
-
-        firstChain = this unionAncestorChain: (typeTs first)
-
-        found = firstChain find: [candidate ->
-          candidateId = candidate toIdString
-          isCommon <- true
-          ancestorSets forEach: [set ->
-            set contains: candidateId,
-                ifFalse: [isCommon <- false]
-          ]
-          isCommon
-        ]
-
-        found
-      ]
+    nonTypeFound = types any: [
+      | it | TypeT => false
+      |=> true
+    ]
+    (types isEmpty || nonTypeFound) ifTrue: [null] ifFalse: [
+      this commonUnionAncestor: types
     ]
   ]
 

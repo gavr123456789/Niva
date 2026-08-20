@@ -33,28 +33,6 @@ constructor Lexer get-tokens(input): String file(sf): SourceFile -> List(Token) 
 ]
 
 extend mut Lexer [
-  on printState = [
-    "---" echo
-    ch debug
-    posOnLine debug
-    line debug
-    "---" echo
-  ]
-
-  on printFullState = [
-    "---" echo
-    input echo
-    posOnLine repeat: [
-      " " echonnl
-    ]
-    "^" echo
-
-    ch debug
-    posOnLine debug
-    "---" echo
-  ]
-
-
   on step = [
     readPos >= input count
       ifTrue: [ch <- '\u0000']

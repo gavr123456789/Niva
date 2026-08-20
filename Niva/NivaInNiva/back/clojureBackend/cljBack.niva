@@ -166,16 +166,14 @@ IrTypeRef coreFuncNameFromCljCall(name): String -> String = [
       ifFalse: [(recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)]
 ]
 
-// ---------------------------------------------------------------------------
-// type mapping (no static types in Clojure but we still need type-ids for match)
-// ---------------------------------------------------------------------------
-
+// type mapping
 IrTypeRef isCljUnitType -> Bool =
   (kind == IrTypeRefKind.Builtin) && (typeId cljNormalizeTypeId == "core_Unit")
 
 IrTypeRef cljTypeName -> String = [
   baseId = typeId cljNormalizeTypeId
-  // `Error` is an abstract core type stupid hack to replace it for `Error throw`/`throwWithMsg`
+  // Error is an abstract core type the emitter replaces it for
+  // Error throw \ throwWithMsg calls
   // TODO
   ^ baseId == "core_Error"
       ifTrue: [":niva.core/Error"]
