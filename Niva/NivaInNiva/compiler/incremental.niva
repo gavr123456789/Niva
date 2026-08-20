@@ -381,11 +381,19 @@ constructor CompilerCompilationResult cancelled(version): Int -> CompilerCompila
 CompilerCompilationResult commitReady -> Bool =
   (cancelled not) && diagnostics isEmpty && (candidate != null)
 
+CompilerSession compilationFailure(requestVersion): Int diagnostics: List(CompilerDiagnostic) -> CompilerCompilationResult =
+  CompilerCompilationResult
+    requestVersion: requestVersion candidate: null backendArtifact: null
+    diagnostics: diagnostics cancelled: false
+
 CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container -> CljGenerationResult = [
-  .commitReady ifFalse: [^ CljGenerationResult notPublished]
-  artifact = backendArtifact unpackOrPANIC
-  output = artifact cljOutput unpackOrPANIC
-  output publishTo: root withIO: io
+  | true
+  | .commitReady not => CljGenerationResult notPublished
+  |=> [
+    artifact = backendArtifact unpackOrPANIC
+    output = artifact cljOutput unpackOrPANIC
+    output publishTo: root withIO: io
+  ]
 ]
 
 CompilerSession commitResult(result): CompilerCompilationResult -> CompilerSession =
@@ -481,36 +489,33 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
         path: error tok file path message: error toConsoleMsg)
     ]
     diagnostics isEmpty ifFalse: [
-      ^ CompilerCompilationResult
-        requestVersion: requestVersion candidate: null backendArtifact: null
-        diagnostics: diagnostics toList cancelled: false
-    ]
-
-    candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
-      bodyResolver: bodyResolver bodyModules: bodyModules config: config
-    artifact = candidate emitBackend
-    shapeChanges = config backend == "clj"
-      ifTrue: [
-        candidate cljManifest unpack: [currentManifest ->
-          cljManifest unpack: [previousManifest ->
-            currentManifest incompatibleChanges: previousManifest
+      this compilationFailure: requestVersion diagnostics: diagnostics toList
+    ] ifTrue: [
+      candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
+        bodyResolver: bodyResolver bodyModules: bodyModules config: config
+      artifact = candidate emitBackend
+      shapeChanges = config backend == "clj"
+        ifTrue: [
+          candidate cljManifest unpack: [currentManifest ->
+            cljManifest unpack: [previousManifest ->
+              currentManifest incompatibleChanges: previousManifest
+            ] or: {String}
           ] or: {String}
-        ] or: {String}
+        ]
+        ifFalse: [{String}]
+      shapeChanges forEach: [change ->
+        diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+          path: snapshot entryPoint + ".niva"
+          message: "hard restart required: " + change +
+            "; automatic state migration is not supported")
       ]
-      ifFalse: [{String}]
-    shapeChanges forEach: [change ->
-      diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
-        path: snapshot entryPoint + ".niva"
-        message: "hard restart required: " + change +
-          "; automatic state migration is not supported")
+      diagnostics isEmpty ifFalse: [
+        this compilationFailure: requestVersion diagnostics: diagnostics toList
+      ] ifTrue: [
+        CompilerCompilationResult requestVersion: requestVersion candidate: candidate
+          backendArtifact: artifact diagnostics: {} cancelled: false
+      ]
     ]
-    diagnostics isEmpty ifFalse: [
-      ^ CompilerCompilationResult
-        requestVersion: requestVersion candidate: null backendArtifact: null
-        diagnostics: diagnostics toList cancelled: false
-    ]
-    CompilerCompilationResult requestVersion: requestVersion candidate: candidate
-      backendArtifact: artifact diagnostics: {} cancelled: false
   ]
 ]
 

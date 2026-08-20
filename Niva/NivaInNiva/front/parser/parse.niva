@@ -379,8 +379,9 @@ extend mut Parser [
     ^ kwArgs
   ]
 
-  on restoreFrom(position): Int = [
+  on restoreFrom(position): Int -> Unit = [
     current <- position
+    ()
   ]
 
   on parseMatch(tok): Token -> Match = [
