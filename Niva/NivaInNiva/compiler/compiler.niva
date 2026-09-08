@@ -70,10 +70,14 @@ constructor NivaBuildSystem [
 type NivaCompiler
 
 IO_Container ensureCljProjectAt(root): String -> Unit = [
-  (FileSystem exists: (root toPath)) ifFalse: [
-    this createDirectories path: (root + "/niva")
+  this createDirectories path: (root + "/niva")
+  (FileSystem exists: ((root + "/bb.edn") toPath)) ifFalse: [
     this writeFile file: root + "/bb.edn" content: CLJ_PROJECT_DEPS_SOURCE
+  ]
+  (FileSystem exists: ((root + "/deps.edn") toPath)) ifFalse: [
     this writeFile file: root + "/deps.edn" content: CLJ_PROJECT_DEPS_SOURCE
+  ]
+  (FileSystem exists: ((root + "/niva/core.clj") toPath)) ifFalse: [
     this writeFile file: root + "/niva/core.clj" content: NIVA_CORE_SOURCE
   ]
   ()
@@ -198,6 +202,8 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
   stagingShim = stagingRoot + "/main.clj"
   stagingDeps = stagingRoot + "/deps.edn"
   stagingBbDeps = stagingRoot + "/bb.edn"
+  publishedDeps = root + "/deps.edn"
+  publishedBbDeps = root + "/bb.edn"
   legacyGenerated = root + "/niva/generated"
   hostPath = root + "/niva/hot_reload/host.clj"
 
@@ -210,8 +216,14 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
 
   io writeFile file: stagingManifest content: manifest edn
   io writeFile file: stagingShim content: this legacyMainShim
-  io writeFile file: stagingDeps content: CLJ_PROJECT_DEPS_SOURCE
-  io writeFile file: stagingBbDeps content: CLJ_PROJECT_DEPS_SOURCE
+  hasPublishedDeps = FileSystem exists: (publishedDeps toPath)
+  hasPublishedBbDeps = FileSystem exists: (publishedBbDeps toPath)
+  hasPublishedDeps ifFalse: [
+    io writeFile file: stagingDeps content: CLJ_PROJECT_DEPS_SOURCE
+  ]
+  hasPublishedBbDeps ifFalse: [
+    io writeFile file: stagingBbDeps content: CLJ_PROJECT_DEPS_SOURCE
+  ]
 
   // publish only fully written staging content
   hadPublishedGenerated = FileSystem exists: (publishedGenerated toPath)
@@ -221,8 +233,12 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
   FileSystem moveFrom: stagingGenerated toPath to: publishedGenerated toPath
   FileSystem moveFrom: stagingManifest toPath to: (root + "/manifest.edn") toPath
   FileSystem moveFrom: stagingShim toPath to: (root + "/main.clj") toPath
-  FileSystem moveFrom: stagingDeps toPath to: (root + "/deps.edn") toPath
-  FileSystem moveFrom: stagingBbDeps toPath to: (root + "/bb.edn") toPath
+  hasPublishedDeps ifFalse: [
+    FileSystem moveFrom: stagingDeps toPath to: publishedDeps toPath
+  ]
+  hasPublishedBbDeps ifFalse: [
+    FileSystem moveFrom: stagingBbDeps toPath to: publishedBbDeps toPath
+  ]
   hadPublishedGenerated ifTrue: [
     FileSystem deleteRecursively: backupGenerated toPath
   ]
