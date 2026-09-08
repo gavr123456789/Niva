@@ -529,8 +529,34 @@ Test cljProjectBootstrapCreatesMissingRuntimeFiles = [
   Assert that: (io readFile path: root + "/niva/core.clj") equals: NIVA_CORE_SOURCE
 
   io writeFile file: root + "/deps.edn" content: "preserved"
+  io writeFile file: root + "/bb.edn" content: "also preserved"
   io ensureCljProjectAt: root
   Assert that: (io readFile path: root + "/deps.edn") equals: "preserved"
+  Assert that: (io readFile path: root + "/bb.edn") equals: "also preserved"
+
+  io deleteRecursively path: root
+]
+
+Test cljPublishingPreservesProjectDependencyFiles = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/preserve-deps"
+  io deleteRecursively path: root
+  io createDirectories path: root
+  io writeFile file: root + "/deps.edn" content: "{:deps {my/app {:local/root \"app\"}}}\n"
+  io writeFile file: root + "/bb.edn" content: "{:tasks {run {:task \"my-task\"}}}\n"
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io
+
+  Assert that: published published equals: true
+  Assert that: (io readFile path: root + "/deps.edn")
+    equals: "{:deps {my/app {:local/root \"app\"}}}\n"
+  Assert that: (io readFile path: root + "/bb.edn")
+    equals: "{:tasks {run {:task \"my-task\"}}}\n"
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
 
   io deleteRecursively path: root
 ]
