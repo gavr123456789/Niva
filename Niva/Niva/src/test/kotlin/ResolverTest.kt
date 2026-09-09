@@ -1,9 +1,11 @@
 import frontend.resolver.Resolver
 import frontend.resolver.Type
 import frontend.resolver.resolve
+import frontend.resolver.resolveWithBackTracking
 import frontend.resolver.buildGlobalConstScopeFromStatements
 import main.frontend.meta.CompilerError
 import main.frontend.parser.types.ast.*
+import main.utils.VerbosePrinter
 import org.junit.jupiter.api.assertThrows
 import java.nio.file.Paths
 import kotlin.test.Test
@@ -87,6 +89,24 @@ class ResolverTest {
             g = w v2
         """.trimIndent()
         val (_, _) = resolveWithResolver(source)
+    }
+
+    @Test
+    fun genericFieldCanReferenceTypeDeclaredLater() {
+        val source = """
+            type Other v: Meow(Int)
+            type Meow v: List(T)
+        """.trimIndent()
+        val ast = getAstTest(source)
+        val resolver = createDefaultResolver(ast)
+
+        resolver.resolveWithBackTracking(ast, emptyList<Pair<String, List<Statement>>>(), resolver.currentResolvingFileName.absolutePath, "main", VerbosePrinter(false))
+
+        val other = ast.filterIsInstance<TypeDeclaration>().first { it.typeName == "Other" }
+        val fieldType = other.fields.first { it.name == "v" }.type as Type.UserLike
+
+        assertEquals("Meow", fieldType.name)
+        assertEquals("Int", fieldType.typeArgumentList.single().name)
     }
 
     @Test
@@ -219,6 +239,15 @@ class ResolverTest {
     }
 
     @Test
+    fun nonNullableValueCanGoIntoNullableGenericReceiverArg() {
+        val source = """
+            v::mut List(String?) = {}!
+            v add: "hewwo"
+        """.trimIndent()
+        val (_, _) = resolveWithResolver(source)
+    }
+
+    @Test
     fun checkForGenericsInArgumentsDeeply() {
         val source = """
             type Box t: [Int -> T]// ??? WHERE "Please declare missing generic arguments" ERROR
@@ -242,6 +271,21 @@ class ResolverTest {
             ]
         """.trimIndent()
             val (_, _) = resolveWithResolver(source)
+    }
+
+    @Test
+    fun varDeclarationCannotShadowImplicitThisField() {
+        val source = """
+            type Person name: String
+            
+            Person sas = [
+                name = 42
+            ]
+        """.trimIndent()
+        val error = assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
+        assertEquals(error.message?.contains("already contain varDeclaration with name name"), true)
     }
 
     @Test
@@ -379,6 +423,65 @@ class ResolverTest {
             assert(statements.count() == 1)
         }
     }
+
+    @Test
+    fun lastCompatibleExpressionIsImplicitReturn() {
+        val source = """
+            Int foo -> Int = [
+              x = 12
+              x + 42
+            ]
+        """.trimIndent()
+
+        val (statements, _) = resolveWithResolver(source)
+        val declaration = statements.single() as MessageDeclarationUnary
+        val returnStatement = declaration.body.last() as ReturnStatement
+
+        assertTrue(returnStatement.expression is Expression)
+        assertEquals("Int", returnStatement.expression?.type?.name)
+    }
+
+    @Test
+    fun compatibleNullableReturnTypeAcceptsImplicitReturn() {
+        val source = """
+            Int foo -> Int? = [
+              x = 12
+              x
+            ]
+        """.trimIndent()
+
+        val (statements, _) = resolveWithResolver(source)
+        val declaration = statements.single() as MessageDeclarationUnary
+        assertTrue(declaration.body.last() is ReturnStatement)
+    }
+
+    @Test
+    fun incompatibleLastExpressionIsNotAnImplicitReturn() {
+        val source = """
+            Int foo -> String = [
+              x = 12
+              x
+            ]
+        """.trimIndent()
+
+        assertFails {
+            resolveWithResolver(source)
+        }
+    }
+
+    @Test
+    fun lastVariableDeclarationIsNotAnImplicitReturn() {
+        val source = """
+            Int foo -> Int = [
+              x = 12
+            ]
+        """.trimIndent()
+
+        assertFails {
+            resolveWithResolver(source)
+        }
+    }
+
     @Test
     fun noReturnNeeded() {
         val source = """
@@ -927,6 +1030,25 @@ class ResolverTest {
 
         val (statements, _) = resolveWithResolver(source)
         assert(statements.count() == 5)
+    }
+
+    @Test
+    fun genericTypeAndUnionDeclarationsWithParens() {
+        val source = """
+        union Result(T) =
+        | Ok t: T
+        | Baad x: T
+
+        type Box(T, G) x: T y: G
+
+        x = Ok t: 42
+        box = Box x: 1 y: "q"
+        """.trimIndent()
+
+        val statements = resolve(source)
+
+        assertEquals(setOf("T"), (statements[0] as UnionRootDeclaration).genericFields)
+        assertEquals(setOf("T", "G"), (statements[1] as TypeDeclaration).genericFields)
     }
 
 

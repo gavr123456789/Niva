@@ -22,10 +22,11 @@ enum class MainArgument {
     TEST_MILL,
 
     SINGLE_FILE_PATH,
+    FORMAT,
     INFO_ONLY, // only means no kotlin compilation
     USER_DEFINED_INFO_ONLY,
     RUN_FROM_IDEA,
-    DEV_MODE, TEST, LSP, GRAPHVIZ, NEW
+    DEV_MODE, TEST, LSP, GRAPHVIZ, NEW, WATCH
 }
 
 operator fun String.div(arg: String) = buildString { append(this@div, "/", arg) }
@@ -89,9 +90,11 @@ class ArgsManager(val args: MutableList<String>) {
                 "info", "i" -> MainArgument.INFO_ONLY
                 "infoUserOnly", "iu" -> MainArgument.USER_DEFINED_INFO_ONLY
                 "dev" -> MainArgument.DEV_MODE
+                "watch" -> MainArgument.WATCH
                 "test" -> if (mill) MainArgument.TEST_MILL
                 else MainArgument.TEST
                 "graphviz" -> MainArgument.GRAPHVIZ
+                "format" -> MainArgument.FORMAT
                 "new" -> MainArgument.NEW
                 else -> {
                     if (!File(firstArg).exists()) {
@@ -129,6 +132,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
 
     val pathToNivaMainFile: String = when (mainArg) {
         MainArgument.SINGLE_FILE_PATH,
+        MainArgument.FORMAT,
         MainArgument.LSP,
         MainArgument.RUN,
         MainArgument.INFO_ONLY,
@@ -136,6 +140,7 @@ class PathManager(nivaMainOrSingleFile: String, mainArg: MainArgument, buildSyst
         MainArgument.BUIlD,
         MainArgument.DISRT,
         MainArgument.DEV_MODE,
+        MainArgument.WATCH,
         MainArgument.TEST,
         MainArgument.GRAPHVIZ,
         MainArgument.NEW,
@@ -398,6 +403,7 @@ Usage:
     ${WHITE}run$RESET      — compile and run project from "main.niva" file
     ${WHITE}FILE$RESET     — compile and run single file
     ${WHITE}run FILE$RESET — compile and run project from FILE entry point
+    ${WHITE}format FILE$RESET — format FILE in place
     ${WHITE}new$RESET      — create new project in ./nivaProject
 
     ${WHITE}build$RESET — compile only(creates jar\binary in current folder)

@@ -55,7 +55,8 @@ fun Resolver.resolveBinaryMsg(
 
     // q = "sas" + 2 toString
     // find message for this type
-    val msgFromDb =
+    val receiverTypeForMsg = if (isUnaryForReceiver) statement.unaryMsgsForReceiver.last().type!! else receiverType
+    val resolvedMsgFromDb =
         if (isUnaryForReceiver)
             findAnyMsgType(
                 statement.unaryMsgsForReceiver.last().type!!,
@@ -65,6 +66,11 @@ fun Resolver.resolveBinaryMsg(
             )
         else
             findAnyMsgType(receiverType, statement.selectorName, statement.token, MessageDeclarationType.Binary)
+    val msgFromDb =
+        if (statement.selectorName == "!=" && resolvedMsgFromDb.declaration == null) {
+            val equalityMsg = findAnyMsgType(receiverTypeForMsg, "==", statement.token, MessageDeclarationType.Binary)
+            if (equalityMsg.declaration != null) equalityMsg else resolvedMsgFromDb
+        } else resolvedMsgFromDb
 
     statement.declaration = msgFromDb.declaration
     statement.msgMetaData = msgFromDb

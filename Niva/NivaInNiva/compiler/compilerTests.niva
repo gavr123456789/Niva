@@ -1,0 +1,760 @@
+Test nestedSourcePathBecomesStableModuleId = [
+  moduleId = "model/user.niva" nivaModuleIdFromRelativePath
+  Assert that: moduleId equals: "model.user"
+
+  windowsModuleId = "model\\user.niva" nivaModuleIdFromRelativePath
+  Assert that: windowsModuleId equals: "model.user"
+]
+
+Test hiddenDirectoriesAreNotSourcePaths = [
+  Assert that: ".niva_clj/main.niva" isHiddenPath equals: true
+  Assert that: ".git/hooks/main.niva" isHiddenPath equals: true
+  Assert that: "src/.private/main.niva" isHiddenPath equals: true
+  Assert that: "src\\.private\\main.niva" isHiddenPath equals: true
+  Assert that: "src/public/main.niva" isHiddenPath equals: false
+  Assert that: ".hidden.niva" isHiddenPath equals: false
+  Assert that: "main.niva" isHiddenPath equals: false
+]
+
+Test moduleCollisionNormalizationIsExplicit = [
+  files = {
+    (NivaSourceFile path: "/project/Foo-Bar.niva" relativePath: "Foo-Bar.niva")
+    (NivaSourceFile path: "/project/foo_bar.niva" relativePath: "foo_bar.niva")
+  }
+
+  collision = files nivaModuleCollisionError
+  Assert that: (collision != null) equals: true
+  collision unpack: [
+    Assert that: (it contains: "foo_bar") equals: true
+    Assert that: (it contains: "Foo-Bar.niva") equals: true
+    Assert that: (it contains: "foo_bar.niva") equals: true
+  ]
+]
+
+Test sameBasenameInDifferentDirectoriesHasDistinctModuleIds = [
+  first = NivaSourceFile path: "/project/model/user.niva" relativePath: "model/user.niva"
+  second = NivaSourceFile path: "/project/admin/user.niva" relativePath: "admin/user.niva"
+
+  Assert that: first nivaModuleId equals: "model.user"
+  Assert that: second nivaModuleId equals: "admin.user"
+  Assert that: ({first second} nivaModuleCollisionError) equals: null
+]
+
+Test resolverKeepsRealSourcePath = [
+  realPath = "/project/model/user.niva"
+  sources = {
+    (NivaSourceInput
+      moduleId: "model.user"
+      relativePath: "model/user.niva"
+      path: realPath
+      content: "type User name: String")
+  }
+
+  result = ResolverHelper resolveSources: sources entryPoint: "model.user" backend: "clj"
+  statement = result fileToStatements at: "model.user", unpackOrPANIC, first
+
+  | statement
+  | TypeDeclT => Assert that: statement token file path equals: realPath
+  |=> [TO DO: "Expected TypeDeclT"]
+]
+
+constructor CompilerConfigFingerprint incrementalTest -> CompilerConfigFingerprint =
+  CompilerConfigFingerprint compilerVersion: "test-compiler"
+    irSchema: "nir/v0" backend: "clj" target: "jvm"
+    abiOptions: "" coreAbiHash: "test-core"
+
+Map(String, String) incrementalTestSnapshot(revision): Int -> WorkspaceSnapshot =
+  WorkspaceSnapshot fromSources: .toNivaSourceInputs revision: revision
+
+Test sha256BindingIsDeterministic = [
+  Assert that: (Sha256 digest: "abc") equals:
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+]
+
+Test apiHashExcludesFunctionBodies = [
+  first = ResolverHelper resolve: #{
+    "main" "Int doubled -> Int = [^ this + this]"
+  } entryPoint: "main"
+  second = ResolverHelper resolve: #{
+    "main" "Int doubled -> Int = [^ this * 2]"
+  } entryPoint: "main"
+
+  firstPkg = first toIrModule packages first
+  secondPkg = second toIrModule packages first
+  Assert that: firstPkg apiHash equals: secondPkg apiHash
+]
+
+Test incrementalBodyChangeDoesNotInvalidateDependants = [
+  initialSources = #{
+    "model" """
+      type Person name: String
+      Person label -> String = [^ name]
+    """
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  changedSources = #{
+    "model" """
+      type Person name: String
+      Person label -> String = [^ name + name]
+    """
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+
+  initialResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  empty = CompilerSession empty
+  firstCandidate = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: initialResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: firstCandidate
+
+  changedResolver = ResolverHelper resolve: changedSources entryPoint: "main"
+  candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
+    resolver: changedResolver config: CompilerConfigFingerprint incrementalTest
+
+  Assert that: candidate sourceInvalidated equals: #( "model" )
+  Assert that: candidate interfaceInvalidated count equals: 0
+  Assert that: candidate bodyInvalidated equals: #( "model" )
+  Assert that: (candidate bodyInvalidated contains: "service") equals: false
+  Assert that: (candidate bodyInvalidated contains: "main") equals: false
+]
+
+Test incrementalApiChangeInvalidatesTransitiveDependants = [
+  initialSources = #{
+    "model" "type Person name: String"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  changedSources = #{
+    "model" "type Person name: String age: Int"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+
+  empty = CompilerSession empty
+  firstResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  first = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: firstResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: first
+
+  changedResolver = ResolverHelper resolve: changedSources entryPoint: "main"
+  candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
+    resolver: changedResolver config: CompilerConfigFingerprint incrementalTest
+
+  Assert that: candidate interfaceInvalidated equals: #( "model" )
+  Assert that: candidate bodyInvalidated equals: #( "main" "model" "service" )
+]
+
+Test staleIncrementalCandidateCannotCommit = [
+  initialSources = #{"main" "Int value -> Int = [^ this]"}
+  firstChanged = #{"main" "Int value -> Int = [^ this + 1]"}
+  staleChanged = #{"main" "Int value -> Int = [^ this + 2]"}
+
+  empty = CompilerSession empty
+  initialResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: initialResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: initial
+
+  firstResolver = ResolverHelper resolve: firstChanged entryPoint: "main"
+  firstCandidate = committed prepareCandidate: (firstChanged incrementalTestSnapshot: 2)
+    resolver: firstResolver config: CompilerConfigFingerprint incrementalTest
+  staleResolver = ResolverHelper resolve: staleChanged entryPoint: "main"
+  staleCandidate = committed prepareCandidate: (staleChanged incrementalTestSnapshot: 2)
+    resolver: staleResolver config: CompilerConfigFingerprint incrementalTest
+
+  newest = committed commit: firstCandidate
+  afterStaleCommit = newest commit: staleCandidate
+  Assert that: afterStaleCommit revision equals: newest revision
+  finalSnapshot = afterStaleCommit committedSnapshot unpackOrPANIC
+  Assert that: finalSnapshot revision equals: 2
+  newestMain = newest modules at: "main", unpackOrPANIC
+  finalMain = afterStaleCommit modules at: "main", unpackOrPANIC
+  Assert that: finalMain sourceHash equals: newestMain sourceHash
+]
+
+Test specializationUseIndexTracksContributingModule = [
+  sources = #{
+    "box" """
+      type Box(T) value: T
+      Box(T) unwrap -> T = [^ value]
+    """
+    "main" """
+      box = Box value: 1
+      box unwrap
+    """
+  }
+  resolver = ResolverHelper resolve: sources entryPoint: "main"
+  empty = CompilerSession empty
+  candidate = empty prepareCandidate: (sources incrementalTestSnapshot: 1)
+    resolver: resolver config: CompilerConfigFingerprint incrementalTest
+  uses = candidate specializationUses
+  mut found = false
+  uses forEach: [key, contributors ->
+    ((key startsWith: "box|") && (contributors contains: "main")) ifTrue: [found <- true]
+  ]
+  Assert that: found equals: true
+]
+
+Test incrementalRemovalUpdatesBothGraphDirections = [
+  initialSources = #{
+    "model" "type Person name: String"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  removedSources = #{
+    "model" "type Person name: String"
+    "main" "type App name: String"
+  }
+
+  empty = CompilerSession empty
+  initialResolver = ResolverHelper resolve: initialSources entryPoint: "main"
+  initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    resolver: initialResolver config: CompilerConfigFingerprint incrementalTest
+  committed = empty commit: initial
+
+  removedResolver = ResolverHelper resolve: removedSources entryPoint: "main"
+  candidate = committed prepareCandidate: (removedSources incrementalTestSnapshot: 2)
+    resolver: removedResolver config: CompilerConfigFingerprint incrementalTest
+
+  Assert that: (candidate modules at: "service") equals: null
+  Assert that: (candidate dependencies at: "service") equals: null
+  modelDependants = candidate reverseDependencies at: "model", unpackOrPANIC
+  Assert that: modelDependants values count equals: 0
+]
+
+Test resolverInterfacePassStopsBeforeBodies = [
+  sources = #{
+    "main" """
+      type Person name: String
+      Person greeting -> String = [^ name + name]
+    """
+  }
+  interfaceSnapshot = ResolverInterfaceSnapshot
+    collectSources: sources toNivaSourceInputs entryPoint: "main" backend: "clj"
+
+  personType = interfaceSnapshot lookupEnvironment findByTypeName: "Person" inPkg: "main"
+  Assert that: personType name equals: "Person"
+
+  firstResolver = interfaceSnapshot resolveBodies
+  secondResolver = interfaceSnapshot resolveBodies
+  Assert that: firstResolver db typedBodiesCache count equals: 1
+  Assert that: secondResolver db typedBodiesCache count equals: 1
+  Assert that: firstResolver db == secondResolver db equals: false
+  freshDb = interfaceSnapshot lookupEnvironment newTyperDB
+  Assert that: freshDb typedBodiesCache count equals: 0
+  Assert that: freshDb generatedMessageDecls count equals: 0
+  Assert that: firstResolver toIrModule packages count equals: 1
+  Assert that: secondResolver toIrModule packages count equals: 1
+]
+
+Test interfaceApiHashIsAvailableBeforeBodyResolution = [
+  firstSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name]"
+    "main" "type App person: Person"
+  }
+  changedSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name + name]"
+    "main" "type App person: Person"
+  }
+
+  firstInterface = ResolverInterfaceSnapshot
+    collectSources: firstSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  changedInterface = ResolverInterfaceSnapshot
+    collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+
+  firstHashes = firstInterface interfaceApiHashes
+  changedHashes = changedInterface interfaceApiHashes
+  Assert that: (firstHashes at: "model") equals: (changedHashes at: "model")
+  Assert that: (firstHashes at: "main") equals: (changedHashes at: "main")
+
+  // Only the selected module gets a body cache entry.  In particular, the
+  // dependant is not type-checked merely because its source is present.
+  selected = changedInterface resolveBodiesFor: #( "model" )
+  Assert that: selected db typedBodiesCache count equals: 1
+  Assert that: (selected fileToStatements at: "main") equals: null
+]
+
+Test sessionResolvesOnlyInvalidatedBodyFrontier = [
+  initialSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name]"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  changedSources = #{
+    "model" "type Person name: String\nPerson label -> String = [^ name + name]"
+    "service" "type View person: Person"
+    "main" "type App view: View"
+  }
+  config = CompilerConfigFingerprint incrementalTest
+
+  firstInterface = ResolverInterfaceSnapshot
+    collectSources: initialSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  empty = CompilerSession empty
+  initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
+    interfaceSnapshot: firstInterface config: config
+  committed = empty commit: initial
+
+  changedInterface = ResolverInterfaceSnapshot
+    collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: changedInterface config: config
+
+  Assert that: candidate sourceInvalidated equals: #( "model" )
+  Assert that: candidate interfaceInvalidated count equals: 0
+  Assert that: candidate bodyInvalidated equals: #( "model" )
+  // The cached dependant is present, but it was not rebuilt by the selected
+  // body pass.
+  Assert that: (candidate modules at: "service") != null equals: true
+]
+
+Test compilationResultVersionsDiagnosticsAndCancellation = [
+  goodSources = #{"main" "Int value -> Int = [^ this]"}
+  badSources = #{"main" "Int value -> Int = [^ \"wrong\"]"}
+  config = CompilerConfigFingerprint incrementalTest
+  goodInterface = ResolverInterfaceSnapshot
+    collectSources: goodSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  badInterface = ResolverInterfaceSnapshot
+    collectSources: badSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+
+  empty = CompilerSession empty
+  good = empty compileCandidate: (goodSources incrementalTestSnapshot: 1)
+    interfaceSnapshot: goodInterface config: config requestVersion: 11 cancelled: false
+  Assert that: good cancelled equals: false
+  Assert that: good diagnostics count equals: 0
+  committed = empty commit: good candidate unpackOrPANIC
+
+  failed = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: badInterface config: config requestVersion: 12 cancelled: false
+  Assert that: failed candidate equals: null
+  Assert that: failed diagnostics count > 0 equals: true
+  diagnostic = failed diagnostics first
+  Assert that: diagnostic requestVersion equals: 12
+  Assert that: committed revision equals: 1
+
+  cancelled = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: badInterface config: config requestVersion: 13 cancelled: true
+  Assert that: cancelled cancelled equals: true
+  Assert that: cancelled candidate equals: null
+  Assert that: cancelled diagnostics count equals: 0
+]
+
+Test incompatibleReloadShapeRequiresHardRestart = [
+  initialSources = #{"main" "type Person name: String"}
+  changedSources = #{"main" "type Person name: String age: Int"}
+  config = CompilerConfigFingerprint incrementalTest
+  initialSnapshot = WorkspaceSnapshot fromSources: (initialSources toNivaSourceInputs)
+    revision: 1 entryPoint: "main" documentVersions: #{}
+  changedSnapshot = WorkspaceSnapshot fromSources: (changedSources toNivaSourceInputs)
+    revision: 2 entryPoint: "main" documentVersions: #{}
+
+  session = CompilerSession empty
+  initial = session compileSnapshot: initialSnapshot config: config
+    requestVersion: 1 cancelled: false incremental: true
+  committed = session commitResult: initial incremental: true
+  changed = committed compileSnapshot: changedSnapshot config: config
+    requestVersion: 2 cancelled: false incremental: true
+
+  Assert that: changed candidate equals: null
+  Assert that: changed diagnostics count equals: 1
+  diagnostic = changed diagnostics first
+  Assert that: (diagnostic message contains: "hard restart required") equals: true
+  Assert that: (diagnostic message contains: "automatic state migration is not supported") equals: true
+  Assert that: ((committed cljManifest unpackOrPANIC) canonical contains: "main/main_Person") equals: true
+]
+
+Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
+  sources = #{"app.main" "1 echo"}
+  snapshot = WorkspaceSnapshot fromSources: (sources toNivaSourceInputs)
+    revision: 7 entryPoint: "app.main" documentVersions: #{"app.main" 3}
+  config = CompilerConfigFingerprint incrementalTest
+  session = CompilerSession empty
+
+  result = session compileSnapshot: snapshot config: config requestVersion: 31 cancelled: false
+  Assert that: result requestVersion equals: 31
+  Assert that: result diagnostics count equals: 0
+  candidate = result candidate unpackOrPANIC
+  Assert that: candidate snapshot entryPoint equals: "app.main"
+  Assert that: (candidate snapshot documentVersions at: "app.main") equals: 3
+
+  committed = session commitResult: result
+  Assert that: committed revision equals: 1
+  committedSnapshot = committed committedSnapshot unpackOrPANIC
+  Assert that: committedSnapshot entryPoint equals: "app.main"
+
+  cancelled = committed compileSnapshot: snapshot config: config requestVersion: 32 cancelled: true
+  Assert that: cancelled cancelled equals: true
+  Assert that: cancelled candidate equals: null
+  Assert that: (committed commitResult: cancelled) revision equals: committed revision
+
+  failedSources = #{"app.main" "Int value -> Int = [^ \"bad\"]"}
+  failedSnapshot = WorkspaceSnapshot fromSources: (failedSources toNivaSourceInputs)
+    revision: 8 entryPoint: "app.main" documentVersions: #{"app.main" 4}
+  failedInterface = ResolverInterfaceSnapshot
+    collectSources: failedSnapshot sources entryPoint: failedSnapshot entryPoint backend: config backend
+  failed = committed compileCandidate: failedSnapshot interfaceSnapshot: failedInterface
+    config: config requestVersion: 33 cancelled: false
+  afterFailed = committed commitResult: failed
+  Assert that: afterFailed revision equals: committed revision
+]
+
+Test compileSnapshotFlagSelectsPersistentOrCleanSession = [
+  initialSources = #{
+    "person" "type Person name: String\nPerson greet -> String = [^ name]"
+    "main" "alice = Person name: \"Ada\"\nalice greet"
+  }
+  changedSources = #{
+    "person" "type Person name: String\nPerson greet -> String = [^ name + name]"
+    "main" "alice = Person name: \"Ada\"\nalice greet"
+  }
+  config = CompilerConfigFingerprint incrementalTest
+  empty = CompilerSession empty
+  initialSnapshot = WorkspaceSnapshot fromSources: (initialSources toNivaSourceInputs)
+    revision: 1 entryPoint: "main" documentVersions: #{}
+  initial = empty compileSnapshot: initialSnapshot config: config
+    requestVersion: 1 cancelled: false incremental: true
+  committed = empty commitResult: initial
+  changedSnapshot = WorkspaceSnapshot fromSources: (changedSources toNivaSourceInputs)
+    revision: 2 entryPoint: "main" documentVersions: #{}
+
+  incremental = committed compileSnapshot: changedSnapshot config: config
+    requestVersion: 2 cancelled: false incremental: true
+  clean = committed compileSnapshot: changedSnapshot config: config
+    requestVersion: 2 cancelled: false incremental: false
+  incrementalCandidate = incremental candidate unpackOrPANIC
+  cleanCandidate = clean candidate unpackOrPANIC
+
+  Assert that: incrementalCandidate bodyInvalidated equals: #( "person" )
+  Assert that: cleanCandidate bodyInvalidated equals: #( "main" "person" )
+  incrementalArtifact = incremental backendArtifact unpackOrPANIC
+  cleanArtifact = clean backendArtifact unpackOrPANIC
+  Assert that: incrementalArtifact backend equals: cleanArtifact backend
+  Assert that: incrementalArtifact target equals: cleanArtifact target
+  Assert that: incrementalArtifact content equals: cleanArtifact content
+  Assert that: cleanCandidate baseRevision equals: 0
+  incrementalSession = committed commitResult: incremental incremental: true
+  cleanSession = committed commitResult: clean incremental: false
+  Assert that: incrementalSession revision equals: 2
+  Assert that: cleanSession revision equals: 0
+]
+
+Test incrementalBackendOutputMatchesCleanCompilation = [
+  initialSources = #{
+    "person" """
+      type Person name: String
+      Person greet -> String = [^ name]
+    """
+    "main" """
+      alice = Person name: "Ada"
+      alice greet
+    """
+  }
+  changedSources = #{
+    "person" """
+      type Person name: String
+      Person greet -> String = [^ name + name]
+    """
+    "main" """
+      alice = Person name: "Ada"
+      alice greet
+    """
+  }
+  config = CompilerConfigFingerprint incrementalTest
+
+  initialClean = ResolverHelper resolve: initialSources entryPoint: "main" backend: "clj"
+  initialCleanOutput = CljBackend fullFromIrModule: initialClean toIrModule
+  initialInterface = ResolverInterfaceSnapshot
+    collectSources: initialSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  empty = CompilerSession empty
+  initialResult = empty compileCandidate: (initialSources incrementalTestSnapshot: 1)
+    interfaceSnapshot: initialInterface config: config requestVersion: 1 cancelled: false
+  initialArtifact = initialResult backendArtifact unpackOrPANIC
+  Assert that: initialArtifact content equals: initialCleanOutput
+
+  committed = empty commit: initialResult candidate unpackOrPANIC
+  changedClean = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
+  changedCleanOutput = CljBackend fullFromIrModule: changedClean toIrModule
+  changedInterface = ResolverInterfaceSnapshot
+    collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
+  changedResult = committed compileCandidate: (changedSources incrementalTestSnapshot: 2)
+    interfaceSnapshot: changedInterface config: config requestVersion: 2 cancelled: false
+  changedCandidate = changedResult candidate unpackOrPANIC
+  changedArtifact = changedResult backendArtifact unpackOrPANIC
+
+  Assert that: changedCandidate bodyInvalidated equals: #( "person" )
+  Assert that: changedArtifact content equals: changedCleanOutput
+  changedOutput = changedArtifact cljOutput unpackOrPANIC
+  cleanOutput = CljBackend fullOutputFromIrModule: (changedClean toIrModule)
+    debug: false mode: CljEmitMode.Program
+  Assert that: changedOutput files equals: cleanOutput files
+  Assert that: changedOutput manifest canonical equals: cleanOutput manifest canonical
+]
+
+Test cljPublishingUsesGenerationDirectory = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/success"
+  io deleteRecursively path: root
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io
+
+  Assert that: published published equals: true
+  Assert that: (published generationId count > 0) equals: true
+  Assert that: (io readFile path: root + "/manifest.edn") equals: output manifest edn
+  Assert that: (io readFile path: root + "/main.clj") equals: output legacyMainShim
+  host = io readFile path: root + "/niva/hot_reload/host.clj"
+  Assert that: (host contains: "(reload/reload {:only :all})") equals: true
+  Assert that: (host contains: "(reload/reload {:only :changed})") equals: true
+  Assert that: ((io readFile path: root + "/deps.edn")
+    contains: "io.github.tonsky/clj-reload") equals: true
+  Assert that: ((io readFile path: root + "/bb.edn")
+    contains: "io.github.tonsky/clj-reload") equals: true
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
+Test cljProjectBootstrapCreatesMissingRuntimeFiles = [
+  io = IO_Container new
+  root = ".niva_clj/bootstrap-tests"
+  io deleteRecursively path: root
+
+  io ensureCljProjectAt: root
+
+  Assert that: (io readFile path: root + "/bb.edn") equals: CLJ_PROJECT_DEPS_SOURCE
+  Assert that: (io readFile path: root + "/deps.edn") equals: CLJ_PROJECT_DEPS_SOURCE
+  Assert that: (io readFile path: root + "/niva/core.clj") equals: NIVA_CORE_SOURCE
+
+  io writeFile file: root + "/deps.edn" content: "preserved"
+  io writeFile file: root + "/bb.edn" content: "also preserved"
+  io ensureCljProjectAt: root
+  Assert that: (io readFile path: root + "/deps.edn") equals: "preserved"
+  Assert that: (io readFile path: root + "/bb.edn") equals: "also preserved"
+
+  io deleteRecursively path: root
+]
+
+Test cljPublishingPreservesProjectDependencyFiles = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/preserve-deps"
+  io deleteRecursively path: root
+  io createDirectories path: root
+  io writeFile file: root + "/deps.edn" content: "{:deps {my/app {:local/root \"app\"}}}\n"
+  io writeFile file: root + "/bb.edn" content: "{:tasks {run {:task \"my-task\"}}}\n"
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io
+
+  Assert that: published published equals: true
+  Assert that: (io readFile path: root + "/deps.edn")
+    equals: "{:deps {my/app {:local/root \"app\"}}}\n"
+  Assert that: (io readFile path: root + "/bb.edn")
+    equals: "{:tasks {run {:task \"my-task\"}}}\n"
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
+
+  io deleteRecursively path: root
+]
+
+Test cljEmptyProgramProducesLoadableEntryModule = [
+  result = ResolverHelper resolve: #{"main" ""} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModuleForTarget: (result toIrModule)
+    debug: false mode: CljEmitMode.Program target: CljTarget.Bb
+
+  generated = output files at: "niva/generated/main.clj"
+  Assert that: (generated != null) equals: true
+  generated unpack: [
+    Assert that: (it contains: "(ns niva.generated.main)") equals: true
+    Assert that: (it contains: "(defn __niva_entry!") equals: true
+  ]
+  Assert that: (output manifest edn contains: "\"main\"") equals: true
+]
+
+Test cljPublishingRemovesStaleGeneratedFiles = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/stale"
+  io deleteRecursively path: root
+  io createDirectories path: (root + "/generated/niva/generated")
+  io createDirectories path: (root + "/niva/generated")
+  io writeFile file: root + "/generated/niva/generated/stale.clj" content: "stale"
+  io writeFile file: root + "/niva/generated/legacy-stale.clj" content: "legacy stale"
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io
+
+  Assert that: published published equals: true
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/stale.clj"]) equals: false
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
+  allFiles = io walkDir path: root
+  Assert that: (allFiles any: [it relativePath == "niva/generated/legacy-stale.clj"]) equals: false
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
+Test failedCljCompilationDoesNotReplacePublishedOutput = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/failed"
+  io deleteRecursively path: root
+  io createDirectories path: (root + "/generated/niva/generated")
+  io writeFile file: root + "/generated/niva/generated/main.clj" content: "old output"
+  io writeFile file: root + "/manifest.edn" content: "old manifest"
+
+  failed = CompilerCompilationResult requestVersion: 9 candidate: null
+    backendArtifact: null diagnostics: {(CompilerDiagnostic requestVersion: 9
+      path: "main.niva" message: "compile error")} cancelled: false
+  publishResult = failed publishCljOutput: root withIO: io
+
+  Assert that: publishResult published equals: false
+  Assert that: (io readFile path: root + "/generated/niva/generated/main.clj") equals: "old output"
+  Assert that: (io readFile path: root + "/manifest.edn") equals: "old manifest"
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
+Test watchDebouncesAndPreservesDistinctFiles = [
+  empty = WatchChangeBatch empty
+  batch1 = empty add: "main.niva"
+  batch2 = batch1 add: "main.niva"
+  batch3 = batch2 add: "model.niva"
+
+  Assert that: batch3 count equals: 2
+  Assert that: (batch3 paths contains: "main.niva") equals: true
+  Assert that: (batch3 paths contains: "model.niva") equals: true
+]
+
+Test watchQueueSerializesBuildsAndKeepsPendingEvents = [
+  empty = WatchQueueState empty
+  building = empty event
+  pending = building event
+  next = pending buildFinished
+  idle = next buildFinished
+
+  Assert that: building building equals: true
+  Assert that: building pending equals: false
+  Assert that: pending building equals: true
+  Assert that: pending pending equals: true
+  Assert that: next building equals: true
+  Assert that: next pending equals: false
+  Assert that: idle building equals: false
+  Assert that: idle pending equals: false
+]
+
+Test jvmHostHasReloadSafeLifecycle = [
+  Assert that: (JVM_HOST_SOURCE contains: "(reload/init") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "{:only :all}") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "{:only :changed}") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "requiring-resolve") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "__niva_entry!") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: ":entry-executed?") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "(catch Throwable _ nil)") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "150") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "org.babashka/fswatcher") equals: true
+  Assert that: (JVM_HOST_SOURCE contains: "runtime-name") equals: true
+]
+
+Test jvmHostDoesNotRequireGeneratedNamespaces = [
+  Assert that: (JVM_HOST_SOURCE contains: "(:require [niva.generated") equals: false
+  Assert that: (JVM_HOST_SOURCE contains: ":no-reload '#{niva.hot-reload.host}") equals: true
+]
+
+Test babashkaHostLoadsRecoversAndWatchesSources = [
+  io = IO_Container new
+  root = ".niva_clj/babashka-host"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/babashka-host babashka-watch-project && mkdir -p .niva_clj/babashka-host/generated/niva/generated .niva_clj/babashka-host/niva/hot_reload babashka-watch-project"}
+  Assert that: setupExit equals: 0
+
+  initialSource = """
+    (ns niva.generated.main)
+    (def ^:clj-reload/keep state (atom 0))
+    (def ^:clj-reload/keep entries (atom 0))
+    (defn __niva_entry! [] (swap! entries inc) (reset! state 7))
+    (defn value [] 1)
+  """ trimIndent
+  changedSource = """
+    (ns niva.generated.main)
+    (def ^:clj-reload/keep state (atom 0))
+    (def ^:clj-reload/keep entries (atom 0))
+    (defn __niva_entry! [] (swap! entries inc) (reset! state 7))
+    (defn value [] 2)
+  """ trimIndent
+  brokenSource = """
+    (ns niva.generated.main)
+    (defn broken [)
+  """ trimIndent
+  recoveredSource = """
+    (ns niva.generated.main)
+    (def ^:clj-reload/keep state (atom 0))
+    (def ^:clj-reload/keep entries (atom 0))
+    (defn __niva_entry! [] (swap! entries inc) (reset! state 7))
+    (defn value [] 3)
+  """ trimIndent
+  hostTest = """
+    (ns host-test
+      (:require [niva.hot-reload.host :as host]))
+
+    (defn value-of [name]
+      (deref (deref (requiring-resolve (symbol "niva.generated.main" name)))))
+
+    (defn call-value []
+      ((requiring-resolve 'niva.generated.main/value)))
+
+    (defn print-state [result]
+      (println (:ok result) (value-of "state") (value-of "entries") (call-value)))
+
+    (defn -main [& _]
+      (host/init! "generated" "niva.generated.main")
+      (print-state (host/initial-load!))
+      (Thread/sleep 1100)
+      (spit "generated/niva/generated/main.clj" (slurp "changed.clj"))
+      (print-state (host/reload-changed!))
+      (Thread/sleep 1100)
+      (spit "generated/niva/generated/main.clj" (slurp "broken.clj"))
+      (println (:ok (host/reload-changed!)))
+      (Thread/sleep 1100)
+      (spit "generated/niva/generated/main.clj" (slurp "recovered.clj"))
+      (print-state (host/reload-changed!))
+        (let [ready (promise)
+            worker (future
+                     (host/watch! "../../babashka-watch-project"
+                       #(deliver ready true) "bb"))]
+        (Thread/sleep 300)
+        (spit "../../babashka-watch-project/change.niva" "")
+        (println "watch" (deref ready 5000 false))
+        (host/stop-watch!)
+        (let [watch-stopped? (not= ::timeout (deref worker 5000 ::timeout))]
+          (println "watch-stopped" watch-stopped?))))
+  """ trimIndent
+
+  io writeFile file: root + "/generated/niva/generated/main.clj" content: initialSource
+  io writeFile file: root + "/changed.clj" content: changedSource
+  io writeFile file: root + "/broken.clj" content: brokenSource
+  io writeFile file: root + "/recovered.clj" content: recoveredSource
+  io writeFile file: root + "/host_test.clj" content: hostTest
+  io writeFile file: root + "/niva/hot_reload/host.clj" content: JVM_HOST_SOURCE
+  io writeFile file: root + "/deps.edn"
+    content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+  io writeFile file: root + "/bb.edn"
+    content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+
+  runExit = io runProgramFromPath path: root args: {"sh" "-c"
+    "bb -m host-test > result.txt"}
+  Assert that: runExit equals: 0
+  result = io readFile path: root + "/result.txt"
+  Assert that: (result contains: "true 7 1 1") equals: true
+  Assert that: (result contains: "true 7 1 2") equals: true
+  Assert that: (result contains: "false") equals: true
+  Assert that: (result contains: "true 7 1 3") equals: true
+  Assert that: (result contains: "watch true") equals: true
+  Assert that: (result contains: "watch-stopped true") equals: true
+
+  io deleteRecursively path: root
+]

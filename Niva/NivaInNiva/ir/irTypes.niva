@@ -1,0 +1,246 @@
+enum IrImportKind = Local | Package
+
+type IrImport
+  name: String
+  kind: IrImportKind
+
+enum IrTypeRefKind = Builtin | Custom | Function
+
+// IDEA: cache normilized type id here in additional field
+type IrTypeRef
+  kind: IrTypeRefKind
+  typeId: String
+  ownerPkg: String
+  args: List(IrTypeRef)
+  returnType: IrTypeRef?
+  isMut: Bool
+  nullable: Bool
+  errors: List(IrTypeRef)
+
+type IrField
+  name: String
+  typeRef: IrTypeRef
+
+type IrTypeDef
+  id: String
+  pkgId: String
+  name: String
+  typeParams: List(String)
+  fields: List(IrField)
+  token: Token
+
+type IrUnionBranch
+  name: String
+  fields: List(IrField)
+  isInclude: Bool
+  token: Token
+
+type IrUnionDef
+  id: String
+  pkgId: String
+  name: String
+  typeParams: List(String)
+  commonFields: List(IrField)
+  branches: List(IrUnionBranch)
+  isErrorDomain: Bool
+  token: Token
+
+type IrEnumDef
+  id: String
+  pkgId: String
+  name: String
+  values: List(String)
+  token: Token
+
+type IrStateDef
+  name: String
+  typeRef: IrTypeRef
+  initializer: IrExpr?
+  token: Token
+
+enum IrDependencyKind = Type | Call | Constructor | Explicit
+
+type IrDependency
+  fromPkg: String
+  toPkg: String
+  kind: IrDependencyKind
+  token: Token
+  symbol: String
+
+type IrDependencyCycle
+  packages: List(String)
+  edges: List(IrDependency)
+
+type IrArg
+  name: String
+  typeRef: IrTypeRef
+  needsGoPointer: Bool
+
+type IrDestructureBinding
+  name: String
+  fieldName: String
+  typeRef: IrTypeRef
+  isUsed: Bool
+
+type IrInstantiation
+  receiverType: IrTypeRef
+  argTypes: List(IrTypeRef)
+  returnType: IrTypeRef
+
+type IrFunction
+  id: String
+  pkgId: String
+  name: String
+  receiverType: IrTypeRef
+  args: List(IrArg)
+  returnType: IrTypeRef
+  requiresMutReceiver: Bool
+  generics: List(String)
+  instantiations: List(IrInstantiation)
+  body: IrBlock
+  token: Token
+
+// [...]
+type IrBlock
+  stmts: List(IrStmt)
+  result: IrExpr?
+  resultType: IrTypeRef
+
+enum IrMatchKind = ByType | ByValue | ByBool | ByError
+
+enum IrCollectionKind = List | Set | Map
+
+enum IrLiteralKind = Char | Int | Float | Double | String | RawString | Bool | Null | Unit | Atom
+
+type IrLiteral
+  kind: IrLiteralKind
+  lexeme: String
+
+type IrMatchCase
+  condition: IrExpr
+  additionalConditions: List(IrExpr)
+  body: IrBlock
+  assertedTypeRef: IrTypeRef?
+
+union IrStmt token: Token =
+| IrLet name: String typeRef: IrTypeRef value: IrExpr? isMut: Bool isUsed: Bool
+| IrSetLocal name: String value: IrExpr
+| IrSetField receiver: IrExpr field: String value: IrExpr
+| IrDestructure bindings: List(IrDestructureBinding) value: IrExpr
+| IrExprStmt expr: IrExpr
+| IrReturn expr: IrExpr?
+| IrWhile cond: IrExpr body: IrExpr
+| IrThrow errExpr: IrExpr
+
+// inlineable binding info attached to an IrCall
+// IrBindByName: empty body bind in a .bind.niva file; `goName` stores the
+// declared foreign name and each backend applies its own naming convention.
+// IrBindEmit:   single `Bind emit:` body -> template inlined at each call site.
+//               ($0 = receiver(this), $1 = first keyword arg)
+union IrBind =
+| IrBindByName goPkg: String goName: String isStatic: Bool
+// goPkg is the package from the `.bind` file and is auto-imported at the call site
+| IrBindEmit template: String goPkg: String?
+
+// Backend-specific constructor emit for external types.
+union IrConstructorBind =
+| IrConstructorBindEmit backend: String template: String
+
+union IrExpr typeRef: IrTypeRef token: Token =
+| IrLiteralExpr literal: IrLiteral
+| IrVarRef name: String
+| IrThisRef
+| IrFieldGet receiver: IrExpr field: String
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
+| IrLambda args: List(IrArg) body: IrBlock
+| IrBlockExpr block: IrBlock
+// typeAlias is for making `this` or `it` inside branches
+// subjectIsUnit if its match on error, and func returns only error, no value, then we emit `err := call()` not `val, err := call()`
+| IrMatchExpr kind: IrMatchKind subject: IrExpr cases: List(IrMatchCase) elseBranch: IrBlock? typeAlias: String? subjectIsUnit: Bool
+| IrNewExpr typeId: String args: List(IrExpr) constructorBind: IrConstructorBind?
+| IrCollectionLiteral kind: IrCollectionKind items: List(IrExpr)
+| IrOpBin op: String left: IrExpr right: IrExpr
+| IrTypeRefExpr ref: IrTypeRef
+
+type IrPackage
+  name: String
+  imports: List(IrImport)
+  dependencies: List(IrDependency)
+  types: List(IrTypeDef)
+  unions: List(IrUnionDef)
+  enums: List(IrEnumDef)
+  stateDefs: List(IrStateDef)
+  functions: List(IrFunction)
+
+type IrModule
+  version: String
+  pkg: String
+  packages: List(IrPackage)
+  entry: IrBlock?
+
+extend IrTypeRef [
+  on isGoRefLike -> Bool =
+    | kind
+    | IrTypeRefKind.Function => true
+    | IrTypeRefKind.Builtin  => (typeId == "core_List") || (typeId == "core_Set") || (typeId == "core_Map")
+    |=> false
+
+  on isGoPointerParam -> Bool =
+    isMut && (kind == IrTypeRefKind.Custom) && (.isGoRefLike not)
+
+  on needsGoAddressAtCall -> Bool =
+    .isGoPointerParam && (nullable not)
+]
+
+IrModule imports -> List(IrImport) = [
+  imports::mut List::IrImport = {}!
+  seenLocalImports::mut Set(String) = #()!
+  seenPackageImports::mut Set(String) = #()!
+
+  packages forEach: [pkg ->
+    pkg imports forEach: [imp ->
+      | imp kind
+      | IrImportKind.Local => [
+          seenLocalImports contains: imp name, ifFalse: [
+            seenLocalImports add: imp name
+            imports add: imp
+          ]
+        ]
+      | IrImportKind.Package => [
+          seenPackageImports contains: imp name, ifFalse: [
+            seenPackageImports add: imp name
+            imports add: imp
+          ]
+      ]
+    ]
+  ]
+
+  ^ imports toList
+]
+
+IrModule types -> List(IrTypeDef) = [
+  result::mut List::IrTypeDef = {}!
+  packages forEach: [pkg -> result addAll: pkg types]
+  ^ result toList
+]
+
+IrModule unions -> List(IrUnionDef) = [
+  result::mut List::IrUnionDef = {}!
+  packages forEach: [pkg -> result addAll: pkg unions]
+  ^ result toList
+]
+
+IrModule enums -> List(IrEnumDef) = [
+  result::mut List::IrEnumDef = {}!
+  packages forEach: [pkg -> result addAll: pkg enums]
+  ^ result toList
+]
+
+IrPackage dependencyPackageNames -> List(String) =
+  dependencies map: [it toPkg], toSet, toList, sortedBy: [it]
+
+IrModule functions -> List(IrFunction) = [
+  result::mut List::IrFunction = {}!
+  packages forEach: [pkg -> result addAll: pkg functions]
+  ^ result toList
+]

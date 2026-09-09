@@ -61,25 +61,126 @@ object GlobalVariables {
 
 }
 private fun String.toCommandArgs(): List<String> {
-    val tokens = this.split(" ").filter { it.isNotBlank() }
+    val result = mutableListOf<String>()
+    val current = StringBuilder()
+    var quote: Char? = null
+    var escaped = false
 
-    return buildList {
-        var skipNext = false
-        tokens.forEachIndexed { index, token ->
-            if (skipNext) {
-                skipNext = false
-                return@forEachIndexed
-            }
-
-            if (token == "--tests" && index + 1 < tokens.size) {
-                add("--tests"  )
-                add(tokens[index + 1].trim('"'))
-                skipNext = true
-            } else {
-                add(token)
-            }
+    fun flush() {
+        if (current.isNotEmpty()) {
+            result += current.toString()
+            current.clear()
         }
     }
+
+    for (char in this) {
+        if (escaped) {
+            current.append(char)
+            escaped = false
+        } else if (char == '\\') {
+            escaped = true
+        } else if (quote != null) {
+            if (char == quote) quote = null else current.append(char)
+        } else if (char == '\'' || char == '"') {
+            quote = char
+        } else if (char.isWhitespace()) {
+            flush()
+        } else {
+            current.append(char)
+        }
+    }
+    if (escaped) current.append('\\')
+    flush()
+    return result
+}
+
+private data class GradleTestOutputBlock(
+    val testId: String,
+    val event: String,
+    val lines: MutableList<String> = mutableListOf()
+)
+
+private val gradleTestEventRegex = Regex("^(.+ > .+) (PASSED|FAILED|SKIPPED|STANDARD_OUT|STANDARD_ERROR)$")
+
+private fun isGradleTestFooterLine(trimmed: String): Boolean =
+    trimmed.startsWith("> Task") ||
+        trimmed.startsWith("FAILURE:") ||
+        trimmed.startsWith("* ") ||
+        trimmed.startsWith("> Run with") ||
+        trimmed.startsWith("Execution failed") ||
+        trimmed.startsWith("There were failing tests") ||
+        trimmed.startsWith("See the report") ||
+        trimmed.startsWith("BUILD FAILED") ||
+        trimmed.startsWith("BUILD SUCCESSFUL") ||
+        trimmed.startsWith("Configuration cache") ||
+        trimmed.startsWith("Reusing configuration cache") ||
+        trimmed.matches(Regex("\\d+ tests? completed.*")) ||
+        trimmed.contains("actionable tasks")
+
+private fun cleanupGradleTestOutputLine(line: String): String =
+    line
+        .removePrefix("    ")
+        .replace("java.lang.Exception: ", "")
+        .trimEnd()
+
+internal fun formatFailedTestsOutput(gradleOutput: String): String {
+    val normalized = gradleOutput
+        .replace("UP-TO-DATE", "")
+        .replace("BUILD SUCCESSFUL in", "")
+
+    val blocks = mutableListOf<GradleTestOutputBlock>()
+    var currentBlock: GradleTestOutputBlock? = null
+
+    fun flushCurrentBlock() {
+        currentBlock?.let(blocks::add)
+        currentBlock = null
+    }
+
+    normalized.lineSequence().forEach { rawLine ->
+        val line = rawLine.trimEnd()
+        val trimmed = line.trim()
+        val eventMatch = gradleTestEventRegex.matchEntire(trimmed)
+
+        if (eventMatch != null) {
+            flushCurrentBlock()
+            currentBlock = GradleTestOutputBlock(
+                testId = eventMatch.groupValues[1],
+                event = eventMatch.groupValues[2]
+            )
+            return@forEach
+        }
+
+        if (trimmed.isBlank()) {
+            currentBlock?.lines?.add("")
+            return@forEach
+        }
+
+        if (line == trimmed && isGradleTestFooterLine(trimmed)) {
+            flushCurrentBlock()
+            return@forEach
+        }
+
+        currentBlock?.lines?.add(cleanupGradleTestOutputLine(line))
+    }
+    flushCurrentBlock()
+
+    val failedBlocks = blocks
+        .withIndex()
+        .filter { it.value.event == "FAILED" }
+
+    if (failedBlocks.isEmpty()) return ""
+
+    return failedBlocks.joinToString("\n") { failedBlock ->
+        val testId = failedBlock.value.testId
+        val outputLines = blocks
+            .take(failedBlock.index)
+            .filter { it.testId == testId && (it.event == "STANDARD_OUT" || it.event == "STANDARD_ERROR") }
+            .flatMap { it.lines }
+            .filter { it.isNotBlank() }
+
+        (listOf("$testId ${RED}❌$RESET") + outputLines + failedBlock.value.lines.filter { it.isNotBlank() })
+            .joinToString("\n")
+    }.trim()
 }
 
 // if we are running test we need to modify its output
@@ -96,6 +197,11 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
             .redirectOutput(ProcessBuilder.Redirect.INHERIT)
             .redirectInput(ProcessBuilder.Redirect.PIPE)
             .redirectError(ProcessBuilder.Redirect.INHERIT)
+    }
+
+    if (runTests) {
+        // merge stderr into stdout so gradle shows error messages
+        p.redirectErrorStream(true)
     }
 
 //    if (GlobalVariables.isDemonMode) {
@@ -119,19 +225,16 @@ fun String.runCommand(workingDir: File, withOutputCapture: Boolean = false, runT
         process.waitFor()//.waitFor(15, TimeUnit.SECONDS)
 
     if (runTests) {
-        val upToDate = "UP-TO-DATE"
-        val first = "> Task :test"
-        val last = "4 actionable tasks"
-
         val w = inputStream.readText()
 //        val e = process.errorStream.reader().readText()
 
-        val j = w.substringAfterLast(first).substringBefore(last).replace(upToDate, "").replace("BUILD SUCCESSFUL in", "").replace("STANDARD_OUT", "")
-        val l = j.replace("PASSED", "${GREEN}✅$RESET")
-        val u = l.replace("FAILED", "${RED}❌$RESET")
-            .replace("java.lang.Exception: ", "").trim()
-
-        println(u)
+//        val onlyFailed = formatFailedTestsOutput(w)
+        println(w)
+//        if (onlyFailed.isBlank()) {
+//            println("${GREEN}✅ All tests passed$RESET")
+//        } else {
+//            println(onlyFailed)
+//        }
     }
 
 
@@ -223,7 +326,8 @@ class CompilerRunner(
         buildFatJar: Boolean = false,
         runTests: Boolean = false,
         outputRename: String? = null,
-        testFilter: String? = null,
+        testFilter: List<String>? = null,
+        programArgs: List<String> = emptyList(),
     ) {
         // 1 remove repl log file since it will be recreated
         removeReplFile()
@@ -239,14 +343,23 @@ class CompilerRunner(
         }
         // 3 generate a command and run it
         var cmd = gradleCmd(dist, buildFatJar, runTests)
-        if (runTests && !testFilter.isNullOrBlank()) {
-            // Gradle test filtering. Supports patterns like ClassName.testName
-            // We quote the value to keep it intact across shells.
-            val escaped = testFilter.replace("\"", "\\\"")
-            cmd += " --tests \"$escaped\""
+        if (runTests && !testFilter.isNullOrEmpty()) {
+            // Gradle test filtering. Supports patterns like ClassName.testName.
+            // Multiple --tests are OR-combined by Gradle.
+            for (pattern in testFilter) {
+                if (pattern.isBlank()) continue
+                val escaped = pattern.replace("\"", "\\\"")
+                cmd += " --tests \"$escaped\""
+            }
         }
         if (!nativeImageGradleProperty.isNullOrBlank()) {
             cmd += " $nativeImageGradleProperty"
+        }
+        if (programArgs.isNotEmpty()) {
+            val encodedArgs = programArgs.joinToString(" ") { arg ->
+                arg.replace("\\", "\\\\").replace("\"", "\\\"")
+            }
+            cmd += " --args=\"$encodedArgs\""
         }
         val defaultArgs = if (runTests) "--warning-mode=none" else "-q --console=plain"// if not verbose --console=plain
         runFinalCommand("./gradlew","cmd.exe /c gradlew.bat", defaultArgs, cmd, file, runTests)
@@ -373,10 +486,10 @@ fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): Muta
     val filesAndDirs = directory.listFiles() ?: return mutableListOf()
 
     for (file in filesAndDirs) {
-        if (file.isFile && (file.extension == ext)) {
-            fileList.add(file)
-        } else if (file.isDirectory) {
-            if (!file.name.startsWith(".")) {
+        if (!file.name.startsWith("_") && !file.name.startsWith(".")) {
+            if (file.isFile && (file.extension == ext)) {
+                fileList.add(file)
+            } else if (file.isDirectory) {
                 fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
             }
         }
@@ -514,7 +627,7 @@ fun addStd(mainCode: String, compilationTarget: CompilationTarget): String {
             var cliArgs = listOf<String>()
             fun cliArgs() = cliArgs
         }
-        
+
         typealias Bool = Boolean
 
         
@@ -717,7 +830,7 @@ fun putInMainKotlinCode(
                     val y = lines.getOrNull(kotlinLine - 1)
                     if (y != null) {
                         val splitted = y.split("@")
-                        if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine)
+                            if (splitted.count() != 2) throw Exception("Cant find niva line above " + kotlinLine + " in file " + file)
                             val fileAndLineNumber = splitted[1].trim()
                             val (file, lineStr) = fileAndLineNumber.split(":::")
                             val line = lineStr.toInt()

@@ -215,22 +215,27 @@ fun resolveTypeIfSameNamesFromConstructor(
     }
 
     val setOfArgsSendedNames = kwConstructor.args.map { it.name }.toSet()
-    val setOfArgsTypeNames = kwConstructor.args.map {
-        it.keywordArg.type!!.pkg + "::" + it.keywordArg.type!!.name
-    }.toSet()
+    val typesWithSameArgNames = result.packagesToTypes.values
+        .filterIsInstance<Type.UserLike>()
+        .filter { type -> type.fields.map { it.name }.toSet() == setOfArgsSendedNames }
 
     val set = mutableSetOf<Type>()
 
+    if (typesWithSameArgNames.count() == 1) {
+        set.add(typesWithSameArgNames.first())
+    } else if (typesWithSameArgNames.count() > 1 && kwConstructor.args.all { it.keywordArg.type != null }) {
+        val setOfArgsTypeNames = kwConstructor.args.map {
+            val argType = it.keywordArg.type!!
+            argType.pkg + "::" + argType.name
+        }.toSet()
 
-    // case 1 same names different arg names
-    result.packagesToTypes.values.filterIsInstance<Type.UserLike>().forEach { type ->
-        val resultSetNames = type.fields.map { it.name }.toSet()
-        val resultSetTypes = type.fields.map { it.type.pkg + "::" + it.type.name }.toSet()
-        val sameNames = resultSetNames == setOfArgsSendedNames
-        val sameTypes = resultSetTypes == setOfArgsTypeNames
+        typesWithSameArgNames.forEach { type ->
+            val resultSetTypes = type.fields.map { it.type.pkg + "::" + it.type.name }.toSet()
+            val sameTypes = resultSetTypes == setOfArgsTypeNames
 
-        if (sameNames && sameTypes) {
-            set.add(type)
+            if (sameTypes) {
+                set.add(type)
+            }
         }
     }
 

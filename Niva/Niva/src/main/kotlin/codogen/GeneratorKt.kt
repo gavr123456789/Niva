@@ -88,8 +88,8 @@ class GeneratorKt(
         // DONT FORGET TO REPLACE //KOTLIN_IMPL WITH KOTLIN_MULTIPLATFORM_*
         const val GRADLE_TEMPLATE_MULTIPLATFORM = """
 plugins {
-    kotlin("multiplatform") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("multiplatform") version "2.3.21"
+    kotlin("plugin.serialization") version "2.3.21"
 }
 
 group = "org.example"
@@ -128,8 +128,8 @@ allprojects {
 
         const val GRADLE_TEMPLATE = """
 plugins {
-    kotlin("jvm") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("jvm") version "2.3.21"
+    kotlin("plugin.serialization") version "2.3.21"
     application
     id("org.graalvm.buildtools.native") version "0.11.1"
 }

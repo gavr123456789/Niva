@@ -1,38 +1,31 @@
 package utils
 
-fun testingLS() {
-    //    val ls = LS { println("Niva LS: $it") }
-//    val fromJson = readFromJson("devModeData.json")
-//
-//    fromJson.data.forEach { (fileName, value) ->
-//        val file = File(fileName)
-//        value.forEach { (lineNum, values) ->
-//            values.forEach {
-//                val w = it.toIdentifierExpr(file, lineNum)
-//                ls.megaStore.addNew(
-//                    s = w,
-//                    scope = mapOf(),
-//                )
-//            }
-//        }
-//    }
-//    println(fromJson)
-///////////////////////
+import main.languageServer.LS
+import main.languageServer.OnCompletionException
+import main.languageServer.onCompletion
+import main.languageServer.resolveAllFirstTime
+import main.languageServer.resolveNonIncremental
+import main.languageServer.resolveIncremental
+import java.io.File
+import java.net.URI
 
-//    val args = arrayOf("build","")
-    //    val qqq =
-    // "file:///home/gavr/Documents/Projects/Fun/Niva/Niva/NivaInNiva/front/lexer/lex.niva"
-    //    try {
-    //        val ls = LS()
-    //        val resolver = ls.resolveAllFirstTime(qqq, true, null)
-    //
-    //        // 1 file to decl не содержит main
-    //        val resolver3 =  ls.resolveNonIncremental(qqq, fakeFileSourceGOOD)
-    ////        ls.resolveIncremental(qqq, fakeFileSourceGOOD)
-    //        val q = ls.onCompletion(qqq, line = 9, character = 17)
-    //        println(q)
-    //    }
-    //    catch (e: OnCompletionException) {
-    //        println(e.scope)
-    //    }
+fun testingLS() {
+    val args = arrayOf("build","")
+        val qqq =
+     "file:///~/Documents/Fun/Kotlin/Niva/Niva/NivaInNiva/main.niva"
+        try {
+            val ls = LS()
+            val resolver = ls.resolveAllFirstTime(qqq, true, null)
+            val mainFile = File(URI(qqq))
+            val mainSource = mainFile.readText()
+
+            val resolver3 =  ls.resolveNonIncremental(qqq, mainSource)
+            val resolver4 =  ls.resolveIncremental(qqq, mainSource + "\n123", changeLine = mainSource.split("\n").size)
+    //        ls.resolveIncremental(qqq, fakeFileSourceGOOD)
+            val q = ls.onCompletion(qqq, line = 9, character = 17)
+            println(q)
+        }
+        catch (e: OnCompletionException) {
+            println(e.scope)
+        }
 }

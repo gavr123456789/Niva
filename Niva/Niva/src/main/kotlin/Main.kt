@@ -5,6 +5,7 @@ package main
 
 import java.io.File
 import kotlin.system.exitProcess
+import main.formatter.formatNivaFile
 import main.frontend.meta.CompilerError
 import main.frontend.meta.compileError
 import main.frontend.meta.createFakeToken
@@ -12,14 +13,20 @@ import main.utils.*
 import utils.testingLS
 
 
+
+
 fun main(args: Array<String>) {
 
-//        val args = arrayOf("run","")
+    val x = mutableMapOf(1 to "a", 2 to "b")
+    x.putAll(mapOf(3 to "4"))
+//    val args = arrayOf("run","")
 //        testingLS()
     if (help(args))
         return
     run(args)
 }
+
+
 
 // just `niva run` means default file is main.niva, `niva run file.niva` runs with this file as root
 fun run(args2: Array<String>) {
@@ -31,6 +38,11 @@ fun run(args2: Array<String>) {
 
     val am = ArgsManager(args)
     val mainArg = am.mainArg()
+
+    if (mainArg == MainArgument.FORMAT) {
+        format(args)
+        return
+    }
 
     if (mainArg == MainArgument.NEW) {
         createNewProject()
@@ -86,29 +98,38 @@ fun run(args2: Array<String>) {
         MainArgument.BUILD_MILL -> compiler.runMill(Option.BUILD, am.outputRename)
         MainArgument.TEST_MILL -> compiler.runMill(Option.TEST, am.outputRename)
         MainArgument.TEST -> {
-            // 1) niva test FILE TESTNAME  -> --tests "Class.TestName"
-            // 2) niva test TESTNAME       -> --tests "*.TestName"
-            val testFilter = if (args[0] == "test") {
+            // 1) niva test FILE TESTNAME  -> --tests "*File*.TestName"
+            // 2) niva test NAME_OR_PKG    -> --tests "*NAME*" (class/file) + "*.NAME" (method)
+            val testFilters: List<String>? = if (args[0] == "test") {
                 when (args.size) {
                     3 -> {
                         val cls = File(args[1]).nameWithoutExtension
                         val testName = args[2]
-                        "*$cls*.$testName"
+                        listOf("*$cls*.$testName")
                     }
                     2 -> {
-                        val testName = args[1]
-                        "*.$testName"
+                        val nameOrPkg = args[1]
+                        listOf("*$nameOrPkg*", "*.$nameOrPkg")
                     }
                     else -> null
                 }
             } else null
-            compiler.runGradleAmperBuildCommand(runTests = true, testFilter = testFilter)
+            compiler.runGradleAmperBuildCommand(runTests = true, testFilter = testFilters)
         }
         MainArgument.SINGLE_FILE_PATH -> compiler.runGradleAmperBuildCommand(dist = am.compileOnly)
         MainArgument.INFO_ONLY -> compiler.infoPrint(false, specialPkgToInfoPrint)
         MainArgument.USER_DEFINED_INFO_ONLY -> compiler.infoPrint(true, specialPkgToInfoPrint)
         MainArgument.RUN_FROM_IDEA -> compiler.runGradleAmperBuildCommand(dist = false)
         MainArgument.DEV_MODE -> daemon(pm, mainArg, am)
+        MainArgument.WATCH -> {
+            val watchArgs = args.toMutableList()
+            if (watchArgs.size > 1) {
+                watchArgs[1] = File(pm.pathToNivaMainFile).absolutePath
+            } else {
+                watchArgs += File(pm.pathToNivaMainFile).absolutePath
+            }
+            compiler.runGradleAmperBuildCommand(programArgs = watchArgs)
+        }
         MainArgument.GRAPHVIZ -> {
             graphviz(pm, args, resolver)
         }
@@ -116,6 +137,22 @@ fun run(args2: Array<String>) {
     }
 
     am.time(System.currentTimeMillis() - secondTime, true)
+}
+
+fun format(args: List<String>) {
+    val path = args.getOrNull(1)
+    if (path == null) {
+        System.err.println("Usage: niva format FILE")
+        exitProcess(1)
+    }
+
+    val file = File(path)
+    if (!file.exists() || !file.isFile) {
+        System.err.println("File $path doesn't exist")
+        exitProcess(1)
+    }
+
+    formatNivaFile(file)
 }
 
 enum class Option {
@@ -127,6 +164,16 @@ enum class Option {
 const val MAIN_NIVA = "main.niva"
 fun getPathToMainOrSingleFile(args: List<String>): String {
     fun fileExists(path: String) = File(path).exists()
+    fun mainFileInDirectory(path: String): File = File(path, MAIN_NIVA)
+    fun pathToMainFileOrSelf(path: String): String {
+        val file = File(path)
+        if (!file.isDirectory) return path
+        val main = mainFileInDirectory(path)
+        return if (main.exists())
+            main.path
+        else
+            createFakeToken().compileError("Can't find `$MAIN_NIVA` in directory $path")
+    }
 
     fun findMainNivaOrDie(): String {
         val main = MAIN_NIVA
@@ -163,7 +210,7 @@ fun getPathToMainOrSingleFile(args: List<String>): String {
                     MAIN_NIVA
 
                 fileExists(fileNameArg) ->
-                    fileNameArg
+                    pathToMainFileOrSelf(fileNameArg)
 
                 cmd == "graphviz" ->
                     findMainNivaOrCompileError("File $fileNameArg doesn't exist and default $MAIN_NIVA not found")

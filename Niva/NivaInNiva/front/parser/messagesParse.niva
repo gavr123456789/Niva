@@ -4,64 +4,54 @@ extend mut Parser [
   on parseManyIdentSeparated(sep): TokenType? -> mut List(Identifier) = [
     result::mut List(Identifier) = {}!
 
-    mut c = true
-    [c] whileTrue: [
+    [
       tok = .peek
 
       | tok kind
       | TokenType.Identifier => [
         // stop if new unary on new line
         result isNotEmpty && (tok line > result last token line), ifTrue: [
-          c <- false
+          false
         ] ifFalse: [
           identifier = .step
           expr = (.parseDotSeparatedIdentifier: tok)
           result add: expr
           sep unpack: [.match: it]
-          Unit
+          true
         ]
       ]
       |=> [
-        c <- false
+        false
       ]
-    ]
-    // "parseManyIdent $result" echo
-    ^result
+    ] whileTrue: []
+    ^ result
   ]
 
   /// + 2 inc inc + 3 dec dec
-  on parseManyBinary -> List::NameAndExpr = [
-      result::mut List::NameAndExpr = {}!
-      mut c = true
-      [c] whileTrue: [
+  on parseManyBinary -> List(NameAndExpr) = [
+      result::mut List(NameAndExpr) = {}!
+      [
         tok = .peek
-        // tok lexeme echo
-        // this is double check for binary, we already did it on the call side
-        // ... but we still need it for "recursion" to get the next +
         | tok kind
         | TokenType.BinarySymbol => [
           binarySymbol = .step
-          // binarySymbol kind echo
-          // + ^1 inc inc + 2
           rhsTok = .step
           receiver =
             | rhsTok kind
             | TokenType.OpenParen => [
-              inner = .nextExperssion: .step
+              inner = .nextExpression: .step
               .matchAssert: TokenType.CloseParen
               ExprInBrackets value: inner token: rhsTok
             ]
             |=> [
               (.primary: rhsTok) unpackOrMsg: "Cant find primary"
             ]
-          // + 1^ inc inc + 2
           unaryList = .peek line == receiver token line, ifTrue: [
             .parseManyIdentSeparated: null
           ] ifFalse: [{}!]
 
 
           unaryList isEmpty, ifTrue: [
-            // + 1 + 2
             binSymbol = Identifier fromToken: binarySymbol
             result add: (NameAndExpr name: (binSymbol) expr: receiver)
           ] ifFalse: [
@@ -85,18 +75,16 @@ extend mut Parser [
 
             unary = tempUnary
 
-            // + 1 inc inc + 2
             binSymbol = Identifier fromToken: binarySymbol
             result add: (NameAndExpr name: (binSymbol) expr: unary)
           ]
 
-          Unit
+          true
         ]
         |=> [
-          c <- false
-          Unit
+          false
         ]
-      ]
+      ] whileTrue: []
       ^ result toList
     ]
 ]

@@ -1,26 +1,22 @@
 
-/// every [] have a context
+
 type Context
   parent: Context?
   vars: mut Map(String, TypeInfo)
   currentPkg: NivaPkg
+  currentBlockRefNames: mut Set(String)
 
 
 
 constructor Context [
   /// no parents no vars(yet)
-  on rootWithPkg(currentPkg): NivaPkg = Context parent: null vars: #{}! :currentPkg
+  on rootWithPkg(currentPkg): NivaPkg = Context parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
   on fromParent::Context =
-    Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg
+    Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg currentBlockRefNames: #()!
 ]
 
 extend Context [
 
-  // TODO store token with, no, need to store typed expr since all typeInfo is from there
-  // TODO or add new TypeFlags type and store it inside typedExpr, to be more flexible(not always we have typedExpr, for example for kw msg params)
-
-
-  // TODO need to store
   on defineVar(name): String withType: TypeInfo = [
     varType = vars at: name
     | varType
@@ -53,7 +49,6 @@ extend Context [
       nonNullP = p unpackOrPANIC
       newLine = compute c: nonNullP
       result add: newLine
-      // result <- newLine + "\n" +levelStr + result
       p <- nonNullP parent
     ]
     mut level = -1

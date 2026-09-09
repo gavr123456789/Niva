@@ -1,4 +1,4 @@
-
+/// example
 /// abcd
 /// __^
 /// pos = 2,
@@ -11,43 +11,28 @@ type Lexer
   ch: Char
   line: Int
   posOnLine: Int
+  file: SourceFile
 
-constructor Lexer lex-input: String = [
-  l::mut Lexer = Lexer input: lex-input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0, toMut
+constructor Lexer lex-input(input): String file(sf): SourceFile = [
+  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0 file: sf, toMut
   l step // add EOF, probably
-  ^l
+  ^ l
 ]
 
+constructor Lexer lex-input: String -> mut Lexer =
+  Lexer lex-input: lex-input file: fakeSourceFile
+
+
 constructor Lexer get-tokens(input): String -> List(Token) = [
-  ^ Lexer lex-input: input, lex toList
+  lexer::mut Lexer = Lexer lex-input: input
+  ^ lexer lex toList
+]
+
+constructor Lexer get-tokens(input): String file(sf): SourceFile -> List(Token) = [
+  ^ (Lexer lex-input: input file: sf), lex toList
 ]
 
 extend mut Lexer [
-  on printState = [
-    "---" echo
-    // input debug
-    // readPos debug
-    ch debug
-    posOnLine debug
-    line debug
-    "---" echo
-  ]
-
-  on printFullState = [
-    "---" echo
-    // input debug
-    input echo
-    posOnLine repeat: [
-      " " echonnl
-    ]
-    "^" echo
-
-    ch debug
-    posOnLine debug
-    "---" echo
-  ]
-
-
   on step = [
     readPos >= input count
       ifTrue: [ch <- '\u0000']
@@ -77,22 +62,17 @@ extend mut Lexer [
       ]
 
   on stepMatch(char): Char -> Bool = [
-    // input count debug
     .step
     ^.match: char
   ]
 
   on createToken(kind): TokenType lexeme: String -> Token = [
-    // posOnLine - lexeme count, debug
-    // posOnLine debug
-    // line debug
     tok = Token
       kind: kind
       lexeme: lexeme
       line: line
       start: posOnLine - lexeme count end: posOnLine//lexeme count
-
-    // tok debug
+      file: file
     pos <- readPos
     ^ tok
   ]
@@ -102,16 +82,6 @@ extend mut Lexer [
     .skipComments
 
 
-    // |ch
-    // | '/' => .stepMatch: '/',
-    //   ifTrue:  [
-    //     "skipped line $line" echo
-    //     .skipCurrentLine
-    //   ]
-    //   ifFalse: [
-    //     ^.createToken: TokenType.BinarySymbol lexeme: "/"
-    //     Unit
-    //   ]
 
 
     l = ch toString
@@ -155,18 +125,15 @@ extend mut Lexer [
 
     | '"' => [
       result = .parseStringLike: '"'
-      ^ .createToken: TokenType.String lexeme: result
+      kind = (result startsWith: "\"\"\"")
+        ifTrue: [TokenType.RawString]
+        ifFalse: [TokenType.String]
+      ^ .createToken: kind lexeme: result
     ]
     | '\'' => [
       result = .parseStringLike: '\''
       ^ .createToken: TokenType.Char lexeme: result
     ]
-    // | '/' => .stepMatch: '/',
-    //   ifTrue:  [
-    //     .skipCurrentLine
-    //     .createToken: TokenType.Comment lexeme: "//"
-    //   ]
-    //   ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "/"]
 
     | '/' => .createToken: TokenType.BinarySymbol lexeme: l
 
@@ -188,7 +155,6 @@ extend mut Lexer [
       ]
     ]
 
-    // parens
     | '(' => [
       // avoid consuming the next char unless it's a unit "()"
       .peekChar == ')', ifTrue: [
@@ -208,11 +174,16 @@ extend mut Lexer [
       | ch
       | '{' => .createToken: TokenType.OpenBraceHash lexeme: "#{"
       | '(' => .createToken: TokenType.OpenParenHash lexeme: "#("
-      |=> Error throwWithMessage: "only { or ( can be after #"
+      |=> [
+        (ch isLetter || (ch == '_')) ifTrue: [
+          lit = .readIdentifier
+          ^ .createToken: TokenType.AtomIdentifier lexeme: "#" + lit
+        ]
+        Error throwWithMessage: "only { or ( or identifier can be after #"
+      ]
     ]
 
 
-      // binary symbols and negative digits
     | '-' => ^ .peekChar isDigit ifTrue: [
       .step // skip minus
       .numberTokenWithPrefix: "-"
@@ -247,7 +218,6 @@ extend mut Lexer [
 
 
     |'+'|'*'|'%' => .createToken: TokenType.BinarySymbol lexeme: l
-    // other staff
     | ',' =>     .createToken: TokenType.Comma lexeme: l
     | '.' => [
       .peekChar == '.', ifTrue: [
@@ -261,7 +231,6 @@ extend mut Lexer [
     | '^' =>     .createToken: TokenType.Return  lexeme: l
 
     |=> [
-      // identifier
       ch isLetter || (ch == '_') ifTrue: [
         pos == readPos ifTrue: [
           pos <- pos dec
@@ -269,13 +238,11 @@ extend mut Lexer [
         lit = .readIdentifier
         tt = Token lookupKeyword: lit
 
-        // digit after identifier "sas42"
         ch isDigit ifTrue: [
           litDigit = .parseNumber
           ^ .createToken: TokenType.Identifier lexeme: lit + litDigit
         ]
 
-        // colon after identifier
 
         ^| ch
         | ':' => [
@@ -295,12 +262,10 @@ extend mut Lexer [
           .createToken: tt lexeme: lit
         ]
       ]
-      // digit
       ch isDigit ifTrue: [
         ^ .numberTokenWithPrefix: ""
       ]
 
-      // fail
       .createToken: TokenType.Invalid lexeme: l
     ]
 
@@ -318,10 +283,9 @@ extend mut Lexer [
     ]
     ^ tokens
   ]
-  /// skips any symbol until "\n"
+  /// skip symbols until line end
   on skipCurrentLine = [
     [(ch != '\n') && (ch != '\u0000')] whileTrue: [
-      // "'$ch'" echo
       .step
     ]
     .match: '\n', ifTrue: [
@@ -332,11 +296,9 @@ extend mut Lexer [
 ]
 
 
-enum StrMode = Single | Multi
 
-/// assume that delimiter was already eaten
+/// delimiter was already eaten
 mut Lexer parseStringLike(delimiter): Char -> String = [
-  mut mode = StrMode.Single
   mut escaped = false
   localPos = pos
 
@@ -361,12 +323,11 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
     .match: '"'
     input slice: localPos..<pos
   ] ifFalse: [
-    .match: delimiter // eat the first "
+    .match: delimiter
     [(ch != delimiter) || escaped] whileTrue: [
       ch == '\u0000' ifTrue: [
         TO DO: "unterminated string literal"
       ]
-      ch == '\n' ifTrue: [mode <- StrMode.Multi]
 
       escaped ifTrue: [
         escaped <- false
@@ -381,7 +342,7 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
       ]
     ]
 
-    .match: delimiter // eat the last "
+    .match: delimiter
     input slice: localPos..<pos
   ]
 ]
@@ -389,7 +350,21 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
 mut Lexer readIdentifier -> String = [
   localPos = pos
 
-  [ch isLetter || ch isDigit || (ch == '_')] whileTrue: [
+  [ch isLetter || ch isDigit || (ch == '_') || (ch == '-')] whileTrue: [
+    .step
+  ]
+
+  // A bang is part of a value identifier only when it is adjacent to it and
+  // really terminates the identifier. Uppercase names are types, where `!`
+  // is the existing error-type separator (`Int!Error`, `Int!{Error}`).
+  firstChar = input at: localPos
+  nextChar = readPos >= input count ifTrue: ['\u0000'] ifFalse: [.peekChar]
+  nextIsIdentifierChar = nextChar isLetter || nextChar isDigit ||
+    (nextChar == '_') || (nextChar == '-')
+  isBangSuffix = (ch == '!') &&
+    (firstChar isLowerCase || (firstChar == '_')) &&
+    (nextChar != '=') && nextIsIdentifierChar not && (nextChar != '{')
+  isBangSuffix ifTrue: [
     .step
   ]
 
@@ -399,7 +374,7 @@ mut Lexer readIdentifier -> String = [
 
 mut Lexer parseNumber -> String = [
   localPos = pos
-  [ch isDigit] whileTrue: [
+  [ch isDigit || ((ch == '_') && (.peekChar isDigit))] whileTrue: [
     .step
   ]
 
@@ -442,9 +417,7 @@ mut Lexer skipWhiteSpaces = [
 ]
 
 mut Lexer skipComments = [
-  mut c = true
-
-  [c] whileTrue: [
+  [
     .skipWhiteSpaces
 
     savePoint = readPos
@@ -453,13 +426,14 @@ mut Lexer skipComments = [
       .peekChar == '/',
         ifTrue: [
           .skipCurrentLine
+          true
         ]
         ifFalse: [
-          c <- false
+          false
         ]
     ]
     |=> [
-      c <- false
+      false
     ]
-  ]
+  ] whileTrue: []
 ]

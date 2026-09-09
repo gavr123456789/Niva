@@ -1,8 +1,18 @@
 type TestParse
 constructor TestParse withInput: String expectedCount: Int -> mut List::Statement = [
   tokens = Lexer get-tokens: withInput
-  // tokens debug
-  // {statements} = Parser newParseTokens: tokens
+  parser = Parser newParseTokens: tokens
+  statements::mut List(Statement) = parser statements
+
+  expectedCount > 0 ifTrue: [
+    Assert that: statements count equals: expectedCount
+  ]
+
+  ^statements
+]
+
+constructor TestParse withInput(content): String file(sf): SourceFile expectedCount: Int -> mut List::Statement = [
+  tokens = Lexer get-tokens: content file: sf
   parser = Parser newParseTokens: tokens
   statements::mut List(Statement) = parser statements
 
@@ -66,7 +76,7 @@ Test parseNumber = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | intExpr
   | IntExpr =>
@@ -76,10 +86,27 @@ Test parseNumber = [
   |=> [TO DO: "It should be int, but it $intExpr"]
 ]
 
+Test parseNumberWithUnderscore = [
+  input = """
+  1_000_000
+  """ trimIndent
+
+  tokens = Lexer get-tokens: input
+  statements::mut List::Statement = {}!
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  | intExpr
+  | IntExpr =>
+    Assert
+      that: intExpr num
+      equals: 1000000
+  |=> [TO DO: "It should be int, but it $intExpr"]
+]
+
 Test parseString = [
   tokens = Lexer get-tokens: """ "sas" """
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
   | stringExpr
   | StringExpr =>
@@ -95,13 +122,12 @@ Test parseString = [
 
 Test parseAstTypeList = [
   input = """
-    List::List::Int
+    List(List(Int))
   """ trimIndent
 
   tokens = Lexer get-tokens: input
-  // tokens debug
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType
   | astType
   | AstType => [
@@ -121,9 +147,8 @@ Test parseAstTypeMap = [
   """ trimIndent
 
   tokens = Lexer get-tokens: input
-  // tokens debug
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements // {}! error TODO
+  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   astType = parser parseType
 
   | astType
@@ -220,11 +245,49 @@ Test parseExtendMessageDeclarations = [
     third = extendDecl messages at: 2
 
     Assert that: first receiver name equals: "FooBar"
-    Assert that: first name equals: "foo:bar:"
+    Assert that: first name equals: "foo__bar"
     Assert that: second receiver name equals: "FooBar"
     Assert that: second name equals: "foo"
     Assert that: third receiver name equals: "FooBar"
     Assert that: third name equals: "+"
   ]
   |=> [TO DO: "ExtendDecl expected"]
+]
+
+Test parseNullableReceiverMessageDeclarations = [
+  input = """
+    T? unpackOrPanic -> T = [this]
+    Int? orZero: default::Int -> Int = [42]
+  """
+
+  statements = TestParse withInput: input expectedCount: 2
+
+  unary = statements at: 0
+  | unary
+  | MessageDecl => [
+    Assert that: unary name equals: "unpackOrPanic"
+    receiver = unary receiver
+    | receiver
+    | AstType => [
+      Assert that: receiver name equals: "T"
+      Assert that: receiver isNullable equals: true
+    ]
+    |=> [TO DO: "AstType receiver expected"]
+  ]
+  |=> [TO DO: "MessageDecl expected"]
+
+  kw = statements at: 1
+  | kw
+  | MessageDecl => [
+    Assert that: kw name equals: "orZero"
+    Assert that: kw args count equals: 1
+    receiver = kw receiver
+    | receiver
+    | AstType => [
+      Assert that: receiver name equals: "Int"
+      Assert that: receiver isNullable equals: true
+    ]
+    |=> [TO DO: "AstType receiver expected"]
+  ]
+  |=> [TO DO: "MessageDecl expected"]
 ]

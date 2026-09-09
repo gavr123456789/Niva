@@ -1,0 +1,972 @@
+Test cljRecordTypes = [
+  fileMain = """
+    type Point
+      x: Int
+      y: Int
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defrecord main_Point [x y])", assertTrue
+]
+
+Test cljPackageOutputUsesStableNamespacesAndPaths = [
+  sources = #{
+    "model" "type Person name: String\nPerson greet -> String = [^ name]"
+    "main" "p = Person name: \"Ada\"\np greet"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+
+  Assert that: output files count equals: 2
+  Assert that: output entryNamespace equals: "niva.generated.main"
+  model = output files at: "niva/generated/model.clj", unpackOrPANIC
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  model contains: "(ns niva.generated.model)", assertTrue
+  Assert that: (model contains: ":gen-class") equals: false
+  main contains: "(ns niva.generated.main (:gen-class) (:require [niva.generated.model]))", assertTrue
+  main contains: "niva.generated.model/->model_Person", assertTrue
+  main contains: "niva.generated.model/model_Person__greet", assertTrue
+  Assert that: (model contains: "(defn -main") equals: false
+  main contains: "(defn -main", assertTrue
+]
+
+Test cljBabashkaTargetRunsGeneratedProgram = [
+  fileMain = "type Person name: String\np = Person name: \"Ada\""
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModuleForTarget: (result toIrModule)
+    debug: false mode: CljEmitMode.Program target: CljTarget.Bb
+  root = ".niva_clj/babashka-target"
+  setupExit = (IO_Container new) runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/babashka-target && mkdir -p .niva_clj/babashka-target/generated/niva/generated"}
+  Assert that: setupExit equals: 0
+
+  io = IO_Container new
+  output files forEach: [relativePath, content ->
+    destination = root + "/generated/" + relativePath
+    io writeFile file: destination content: content
+  ]
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  io writeFile file: root + "/main.clj" content: output legacyMainShim
+  io writeFile file: root + "/deps.edn" content: "{:paths [\"generated\" \".\"]}\n"
+
+  Assert that: output target equals: CljTarget.Bb
+  Assert that: (main contains: ":gen-class") equals: false
+  Assert that: (output legacyMainShim contains: ":gen-class") equals: false
+  exit = io runProgramFromPath path: root args: {"bb" "-cp" "generated:." "-m" "main"}
+  Assert that: exit equals: 0
+
+  io deleteRecursively path: root
+]
+
+Test cljManifestIsDeterministicAndUnchangedShapeIsCompatible = [
+  sources = #{
+    "model" "type Person name: String"
+    "main" "mut counter = 1\np = Person name: \"Ada\"\np"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  firstOutput = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  secondOutput = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+
+  Assert that: firstOutput manifest canonical equals: secondOutput manifest canonical
+  Assert that: (firstOutput manifest edn contains: ":entry-ns \"niva.generated.main\"") equals: true
+  Assert that: (firstOutput manifest edn contains: "\"main\" {:file \"niva/generated/main.clj\"") equals: true
+  Assert that: (firstOutput manifest edn contains: "\"main/counter\"") equals: true
+  Assert that: (firstOutput manifest edn contains: "\"model/model_Person\"") equals: true
+  Assert that: (firstOutput manifest incompatibleChanges: secondOutput manifest) count equals: 0
+]
+
+Test cljManifestDetectsChangedRecordFields = [
+  firstSources = #{"main" "type Person name: String"}
+  changedSources = #{"main" "type Person name: String age: Int"}
+  firstResult = ResolverHelper resolve: firstSources entryPoint: "main" backend: "clj"
+  changedResult = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
+  firstManifest = (CljBackend fullOutputFromIrModule: (firstResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changedManifest = (CljBackend fullOutputFromIrModule: (changedResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changes = changedManifest incompatibleChanges: firstManifest
+
+  Assert that: changes count equals: 1
+  Assert that: (changes first contains: "type shape changed: main/main_Person") equals: true
+]
+
+Test cljManifestDetectsChangedUnionBranches = [
+  firstSources = #{"main" "union Shape =\n| Circle radius: Int"}
+  changedSources = #{"main" "union Shape =\n| Circle radius: Int diameter: Int"}
+  firstResult = ResolverHelper resolve: firstSources entryPoint: "main" backend: "clj"
+  changedResult = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
+  firstManifest = (CljBackend fullOutputFromIrModule: (firstResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changedManifest = (CljBackend fullOutputFromIrModule: (changedResult toIrModule)
+    debug: false mode: CljEmitMode.Program) manifest
+  changes = changedManifest incompatibleChanges: firstManifest
+
+  Assert that: changes count equals: 1
+  Assert that: (changes first contains: "type shape changed: main/main_Shape") equals: true
+]
+
+Test cljManifestDetectsChangedEnumValues = [
+  oldEnum = IrEnumDef
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green"} token: FAKE_TOKEN
+  newEnum = IrEnumDef
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green" "Blue"} token: FAKE_TOKEN
+  oldManifest = CljManifest
+    version: 1 entryNamespace: "niva.generated.main" modules: {}
+    stateVars: {}
+    typeShapes: {(CljTypeShape key: "main/main_Color" kind: "enum"
+      shape: oldEnum cljManifestShape)}
+  newManifest = CljManifest
+    version: 1 entryNamespace: "niva.generated.main" modules: {}
+    stateVars: {}
+    typeShapes: {(CljTypeShape key: "main/main_Color" kind: "enum"
+      shape: newEnum cljManifestShape)}
+  changes = newManifest incompatibleChanges: oldManifest
+
+  Assert that: changes count equals: 1
+  Assert that: (changes first contains: "type shape changed: main/main_Color") equals: true
+]
+
+Test cljPackageOutputQualifiesUnionBranches = [
+  sources = #{
+    "model" "union Shape =\n| Circle radius: Int"
+    "main" "shape = Circle radius: 1\nvalue = | shape\n| Circle => shape radius\n|=> 0"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+
+  main contains: "niva.generated.model/->model_Circle", assertTrue
+  main contains: "niva.generated.model/model_Circle", assertTrue
+]
+
+Test cljPackageOutputQualifiesEnumAtom = [
+  enumRef = IrTypeRef
+    kind: IrTypeRefKind.Custom
+    typeId: "model_Color"
+    ownerPkg: "model"
+    args: {}
+    returnType: null
+    isMut: false
+    nullable: false
+    errors: {}
+  atom = IrLiteralExpr
+    literal: (IrLiteral kind: IrLiteralKind.Atom lexeme: "red")
+    typeRef: enumRef
+    token: FAKE_TOKEN
+  ctx = CljContext newDebug: false imports: #() pkg: "main"
+  clj = atom toCljExpr: ctx scope: CljScope new
+
+  Assert that: clj equals: "niva.generated.model/model_Color_red"
+]
+
+Test cljPackageOutputQualifiesErrorBranches = [
+  sources = #{
+    "model" "errordomain ModelError =\n| Missing code: Int\n\nUnit fail -> Int!{Missing} = [\n  (Missing code: 404) throw\n  ^ 0\n]"
+    "main" "value = | () fail\n| Missing => [1]\n|=> [0]"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  model = output files at: "niva/generated/model.clj", unpackOrPANIC
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+
+  model contains: "(->model_Missing 404)", assertTrue
+  main contains: "niva.generated.model/model_Missing", assertTrue
+]
+
+Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
+  sources = #{
+    "model" "String shout -> String = [^ this upper-case]"
+    "main" "value = \"hi\" shout"
+    "clojure.string.bind" "String upper-case -> String = []"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  model = output files at: "niva/generated/model.clj", unpackOrPANIC
+  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+
+  model contains: "(:require [clojure.string]", assertTrue
+  model contains: "(clojure.string/upper-case this)", assertTrue
+  main contains: "niva.generated.model/model__core_String__shout", assertTrue
+]
+
+Test cljPackageOutputMatchesSingleStringAtRuntime = [
+  sources = #{
+    "model" "type Person name: String\nPerson score -> Int = [^ 42]"
+    "main" "p = Person name: \"Ada\"\nvalue = p score\nvalue print"
+    "main.bind" "Int print -> Unit = Bind emit: \"(println $0)\""
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  ir = result toIrModule
+  io = IO_Container new
+  cleanRoot = ".niva_clj/differential-clean"
+  multiRoot = ".niva_clj/differential-multi"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/differential-clean .niva_clj/differential-multi && mkdir -p .niva_clj/differential-clean .niva_clj/differential-multi/niva/generated"}
+  Assert that: setupExit equals: 0
+
+  clean = CljBackend fullFromIrModule: ir
+  io writeFile file: cleanRoot + "/main.clj" content: clean
+  io writeFile file: cleanRoot + "/deps.edn" content: "{:paths [\".\"]}\n"
+  cleanExit = io runProgramFromPath path: cleanRoot
+    args: {"sh" "-c" "clojure -M -m main > result.txt"}
+  Assert that: cleanExit equals: 0
+  cleanResult = io readFile path: cleanRoot + "/result.txt"
+
+  output = CljBackend fullOutputFromIrModule: ir
+    debug: false mode: CljEmitMode.Program
+  output files forEach: [relativePath, content ->
+    destination = multiRoot + "/" + relativePath
+    io writeFile file: destination content: content
+  ]
+  io writeFile file: multiRoot + "/deps.edn" content: "{:paths [\".\"]}\n"
+  multiExit = io runProgramFromPath path: multiRoot
+    args: {"sh" "-c" "clojure -M -m niva.generated.main > result.txt"}
+  Assert that: multiExit equals: 0
+  multiResult = io readFile path: multiRoot + "/result.txt"
+
+  Assert that: cleanResult equals: multiResult
+  Assert that: cleanResult equals: "42\n"
+  cleanupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/differential-clean .niva_clj/differential-multi"}
+  Assert that: cleanupExit equals: 0
+]
+
+Test cljPackageRequireDoesNotRunEntry = [
+  source = "base = 2\nmut counter = base\ncounter <- counter + 1\ncounter announce"
+  bindSource = "Int announce -> Unit = Bind emit: \"(println $0)\""
+  result = ResolverHelper resolve: #{"main" source "main.bind" bindSource} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+
+  io = IO_Container new
+  root = ".niva_clj/entry-hook"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/entry-hook && mkdir -p .niva_clj/entry-hook/niva/generated"}
+  Assert that: setupExit equals: 0
+  output files forEach: [relativePath, content ->
+    destination = root + "/" + relativePath
+    io writeFile file: destination content: content
+  ]
+  io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
+
+  requireExit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -M -e '(require (quote niva.generated.main))' > result.txt"}
+  Assert that: requireExit equals: 0
+  requireResult = io readFile path: root + "/result.txt"
+  Assert that: requireResult equals: ""
+
+  entryExit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -M -e '(require (quote niva.generated.main)) (niva.generated.main/__niva_entry!) (niva.generated.main/__niva_entry!)' > result.txt"}
+  Assert that: entryExit equals: 0
+  entryResult = io readFile path: root + "/result.txt"
+  Assert that: entryResult equals: "3\n:unit\n4\n:unit\n"
+
+  cleanupExit = io runProgram args: {"sh" "-c" "rm -rf .niva_clj/entry-hook"}
+  Assert that: cleanupExit equals: 0
+]
+
+Test cljUnionShapesAsRecords = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defrecord main_Rectangle [width height])", assertTrue
+  clj contains: "(defrecord main_Circle [radius])", assertTrue
+]
+
+// enum inside triple-quoted source is not parsed by the parser test path
+// (same as goEnumCodegen in goBackTests.niva — kept commented until the parser
+// supports enums in-string). Enum emit itself is still exercised via the
+// compiler pipeline when running from a real file.
+
+Test cljFunctionAsDefn = [
+  fileMain = """
+    Int double -> Int = this * 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main__core_Int__double [this]", assertTrue
+  clj contains: "(* this 2)", assertTrue
+]
+
+Test cljStringBuilderConstructor = [
+  fileMain = """
+    b = StringBuilder new
+    b append: "x"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(StringBuilder.)", assertTrue
+  Assert that: (clj contains: "->core_StringBuilder") equals: false
+]
+
+Test cljDeclaresFunctionsBeforeDefinitions = [
+  fileMain = """
+    Int first -> Int = this second
+    Int second -> Int = this + 1
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(declare main__core_Int__first main__core_Int__second)", assertTrue
+  beforeFirstDef = clj substringBefore: "(defn main__core_Int__first"
+  beforeFirstDef contains: "(declare main__core_Int__first main__core_Int__second)", assertTrue
+]
+
+Test cljEntryIsBehindReloadSafeHook = [
+    fileMain = """
+     x = 1
+     y = 2
+    """
+    result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+    clj = CljBackend fullFromIrModule: (result toIrModule)
+    clj contains: "(defn __niva_entry! []", assertTrue
+    clj contains: "(let [x 1", assertTrue
+    clj contains: "y 2]", assertTrue
+    Assert that: (clj contains: "\n(let [x 1") equals: false
+    clj contains: "(defn -main [& args]", assertTrue
+    clj contains: "(System/setProperty \"niva.cli.args\" (pr-str (vec args)))", assertTrue
+]
+
+Test cljCompilerCliArgsFollowMainArguments = [
+  result = ResolverHelper resolve: #{"main" "Compiler cliArgs"}
+    entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(System/getProperty \"niva.cli.args\")", assertTrue
+  clj contains: "(System/setProperty \"niva.cli.args\" (pr-str (vec args)))", assertTrue
+  Assert that: (clj contains: "Compiler__cliArgs") equals: false
+
+  io = IO_Container new
+  root = ".niva_clj/cli-args"
+  io createDirectories path: root
+  io writeFile file: root + "/main.clj" content: clj
+  io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
+  exit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -M -e '(do (load-file \"main.clj\") (println (main/-main \"watch\" \"main.niva\" \"--runtime=bb\")))' > result.txt"}
+  Assert that: exit equals: 0
+  output = io readFile path: root + "/result.txt"
+  Assert that: output equals: "[watch main.niva --runtime=bb]\n"
+  io deleteRecursively path: root
+]
+
+Test cljProgramNamespaceGeneratesJavaMainClass = [
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(ns main (:gen-class) (:require [niva.core]))", assertTrue
+]
+
+Test cljReplEmissionMode = [
+  fileMain = """
+    x = 1
+    x + 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+          debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(ns niva.repl.session)", assertTrue
+  clj contains: "(def x 1)", assertTrue
+  clj contains: "(+ x 2)", assertTrue
+  Assert that: (clj contains: "(defn -main") equals: false
+]
+
+Test cljReplEmitsOnlyCurrentEntryLines = [
+  fileMain = """
+    q = 42
+    q + 8
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModuleFromEntryLine: 3
+  clj = CljBackend fullFromIrModule: ir debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(+ q 8)", assertTrue
+  Assert that: (clj contains: "(def q 42)") equals: false
+]
+
+Test cljReplTopLevelMutationUsesDef = [
+  fileMain = """
+    mut q = 1
+    q <- q + 2
+    q
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModuleFromEntryLine: 3
+  clj = CljBackend fullFromIrModule: ir debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(def q (+ q 2))", assertTrue
+  clj contains: "\nq\n", assertTrue
+]
+
+Test cljReplInitialMutationUsesPlainValue = [
+  fileMain = """
+    mut q = 1
+    q <- q + 2
+    q
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+          debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(def q 1)", assertTrue
+  clj contains: "(def q (+ q 2))", assertTrue
+  Assert that: (clj contains: "(atom 1)") equals: false
+  Assert that: (clj contains: "(reset! q") equals: false
+]
+
+Test cljReplStateInitializersUsePlainValues = [
+  fileMain = """
+    mut a = 1
+    mut b = a + 1
+    b
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+          debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(def a 1)", assertTrue
+  clj contains: "(def b (+ a 1))", assertTrue
+  Assert that: (clj contains: "@a") equals: false
+]
+
+Test cljMutVarAsAtom = [
+  fileMain = """
+    mut c = 3
+    c <- 4
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(def ^:private __niva_state_uninitialized (Object.))", assertTrue
+  clj contains: "^:clj-reload/keep (def c (atom __niva_state_uninitialized))", assertTrue
+  Assert that: (clj contains: "(defn __niva_entry! []\n  (let [c (atom 3)") equals: false
+  clj contains: "(reset! c 3)", assertTrue
+  clj contains: "(reset! c 4)", assertTrue
+]
+
+Test cljWhileTrueUnwrapsLambdas = [
+  fileMain = """
+    mut c = 3
+    [c > 0] whileTrue: [c <- c - 1]
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(while ", assertTrue
+  clj contains: "(> @c 0)", assertTrue
+  clj contains: "(reset! c (- @c 1))", assertTrue
+]
+
+Test cljCoreCallGoesToCoreNs = [
+  fileMain = """
+    1 echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Any__echo 1)", assertTrue
+  clj contains: "[niva.core]", assertTrue
+]
+
+Test cljGenericEchoKeepsValue = [
+  fileMain = """
+    x = 1 echo
+    y = x + 2
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Any__echo 1)", assertTrue
+  clj contains: "(+ x 2)", assertTrue
+]
+
+Test cljUnitUsesUnitKeyword = [
+  fileMain = """
+    Unit sas -> Unit = [
+      ()
+    ]
+    () sas echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: ":unit", assertTrue
+  clj contains: "(defn main__core_Unit__sas [this] (let [_ :unit] :unit))", assertTrue
+]
+
+Test cljGenericReceiverGetsSpecializedFunction = [
+  fileMain = """
+    type Person name: String
+    p = Person name: "Alice"
+    T sas = "hii!"
+    p sas
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+  clj echo
+  clj contains: "(declare main__T__sas main__main_Person__sas main_Person__sas)", assertTrue
+  clj contains: "(defn main_Person__sas [this]", assertTrue
+]
+
+Test cljGenericReceiverPreservesNestedGenericTypes = [
+  fileMain = """
+    type Box(T) value: T
+    Box(T) keep: List(T) -> Unit = ()
+    b = Box value: 1
+    b keep: {2}
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main_Box__core_Int__keep [this keep]", assertTrue
+]
+
+Test cljGenericArgumentAndUnaryOverloadAreDistinct = [
+  fileMain = """
+    type Person name: String
+    p = Person name: "Alice"
+    Person sas: T -> String = "qwfqwf"
+    T sas = "Sas"
+    p sas: 42
+    p sas
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main_Person__sas__core_Int [this sas]", assertTrue
+  clj contains: "(defn main_Person__sas__0 [this]", assertTrue
+]
+
+Test cljMatchByTypeUsesCondpInstance = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    shape::Shape = Rectangle width: 1 height: 2
+
+    area = | shape
+    | Rectangle => shape width * shape height
+    | Circle => shape radius
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "condp instance?", assertTrue
+  clj contains: "main_Rectangle", assertTrue
+  clj contains: "main_Circle", assertTrue
+]
+
+Test cljMatchByValueUsesCond = [
+  fileMain = """
+    x = 1
+    y = | x
+    | 1 => 10
+    | 2 => 20
+    |=> 30
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(cond", assertTrue
+  clj contains: ":else 30", assertTrue
+]
+
+Test cljCollectionLiterals = [
+  fileMain = """
+    xs = {1 2 3}
+    ys = #(1 2 3)
+    zs = #{"a" 1 "b" 2}
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "[1 2 3]", assertTrue
+  clj contains: "#{1 2 3}", assertTrue
+  clj contains: "{\"a\" 1 \"b\" 2}", assertTrue
+]
+
+Test cljRawStringLiteral = [
+  quote = "\""
+  triple = quote + quote + quote
+  fileMain = "x = " + triple + "hello\nworld" + triple
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  Assert that: (clj contains: "\"\"\"") equals: false
+  Assert that: (clj contains: "\"hello\\nworld\"") equals: true
+]
+
+Test cljEscapedCharLiterals = [
+  fileMain = """
+    newline = '\n'
+    tab = '\t'
+    space = ' '
+    backslash = '\\'
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "\\newline", assertTrue
+  clj contains: "\\tab", assertTrue
+  clj contains: "\\space", assertTrue
+  clj contains: "\\\\", assertTrue
+]
+
+Test cljFieldGetUsesKeyword = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    n = alice name
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(->main_Person \"Alice\" 24)", assertTrue
+  clj contains: "(:name alice)", assertTrue
+]
+
+Test cljImmutableNestedCopyUpdate = [
+  fileMain = """
+    type Money value: Int currency: String
+    type Wallet money: Money id: Int
+    type Person wallet: Wallet name: String
+
+    person = Person
+      wallet: (Wallet money: (Money value: 1 currency: "EUR") id: 7)
+      name: "Alice"
+    updated = person wallet money value <- 13
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains:
+    "(->main_Person (->main_Wallet (->main_Money 13 (:currency (:money (:wallet person)))) (:id (:wallet person))) (:name person))",
+    assertTrue
+  Assert that: (clj contains: "reset!") equals: false
+]
+
+Test cljBindEmitInline = [
+  bindFile = """
+    Int double -> Int = Bind emit: "(* $0 2)"
+  """
+  fileMain = """
+    x = 21 double
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(* 21 2)", assertTrue
+  Assert that: (clj contains: "(defn main__core_Int__double") equals: false
+]
+
+Test cljBindEmitRawStringInline = [
+  quote = "\""
+  triple = quote + quote + quote
+  bindFile = "Int foo -> Int = Bind emit: " + triple + "(+ $0 1)" + triple
+  fileMain = "x = 41 foo"
+
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(+ 41 1)", assertTrue
+  Assert that: (clj contains: "\"\"(+ 41 1)\"\"") equals: false
+]
+
+// Clojure preserves the declared external function name. The receiver is the
+// first Clojure arg.
+Test cljBindByNameInstance = [
+  bindFile = """
+    String upper-case -> String = []
+  """
+  fileMain = """
+    a = "hi" upper-case
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "clojure.string.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(clojure.string/upper-case \"hi\")", assertTrue
+  clj contains: "[clojure.string]", assertTrue
+]
+
+// Static bind: the receiver type is not part of the external call arguments.
+Test cljBindByNameStatic = [
+  bindFile = """
+    static String parse-long: String -> Int = []
+  """
+  fileMain = """
+    x = String parse-long: "42"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "clojure.core.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(clojure.core/parse-long \"42\")", assertTrue
+  clj contains: "[clojure.core]", assertTrue
+]
+
+// A multi-expression body in a bind file remains a normal function, while its
+// ordinary Bind emit expression is still emitted inline in that function.
+Test cljBindEmitInBody = [
+  bindFile = """
+    Int compute -> Int = [
+      a::Int = Bind emit: "(+ 1 41)"
+      ^ a
+    ]
+  """
+  fileMain = """
+    x = 0 compute
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(+ 1 41)", assertTrue
+  clj contains: "(defn main__core_Int__compute", assertTrue
+]
+
+Test cljDestructure = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "{age :age name :name}", assertTrue
+]
+
+Test cljAtomIdentifierAsKeyword = [
+  fileMain = """
+    color = #red
+    other = #blue
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "color :red", assertTrue
+  clj contains: "other :blue", assertTrue
+]
+
+Test cljErrorDomainThrowCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defrecord main_Error1 [text])", assertTrue
+  clj contains: "(defrecord main_Error2 [code])", assertTrue
+  // JVM throws only Throwables: the error record is wrapped in an ex-info
+  clj contains: "(->main_Error2 404)", assertTrue
+  clj contains: "(throw (ex-info (str __cljErr) {:value __cljErr}))", assertTrue
+]
+
+Test cljErrorDomainHandledMatchCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error1 => [0]
+                | Error2 => [1]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // with an else branch, the success/handled plumbing hides in niva.core/handling
+  clj contains: "(niva.core/handling [it", assertTrue
+  clj contains: "[niva.core]", assertTrue
+  clj contains: "(condp instance? it", assertTrue
+  clj contains: "main_Error1 0", assertTrue
+  clj contains: "main_Error2 1", assertTrue
+  // unhandled errors -> sentinel, which the macro turns into a re-throw
+  clj contains: ":niva.core/miss", assertTrue
+  Assert that: (clj contains: ":niva-ok") equals: false
+  Assert that: (clj contains: ":niva-done") equals: false
+]
+
+Test cljErrorDomainMatchByCoreErrorCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error => [0]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // the base `Error` type has no runtime class, so Object is the catch-all
+  clj contains: "(niva.core/handling [it", assertTrue
+  clj contains: "Object 0", assertTrue
+  clj contains: ":niva.core/miss", assertTrue
+]
+
+// A ByError match with no else branch needs no success/handled bookkeeping:
+// it emits a plain, idiomatic try/catch/condp with an unhandled re-throw.
+Test cljErrorDomainNoElseMatchCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      ^ | () foo
+        | Error1 => [0]
+        | Error2 => [1]
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(catch clojure.lang.ExceptionInfo __cljErr", assertTrue
+  clj contains: "(:value (ex-data __cljErr))", assertTrue
+  clj contains: "(condp instance? it", assertTrue
+  clj contains: "main_Error1 0", assertTrue
+  clj contains: "main_Error2 1", assertTrue
+  // the condp default re-throws so an unexpected error would keep propagating
+  clj contains: "(throw __cljErr)", assertTrue
+  // no macro and no tuples for the else-less shape
+  Assert that: (clj contains: "niva.core/handling") equals: false
+  Assert that: (clj contains: ":niva-ok") equals: false
+]
+
+Test cljTryKeepsExpression = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Int!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ 42
+    ]
+
+    value = () foo try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(main__core_Unit__foo :unit)", assertTrue
+  Assert that: (clj contains: "niva.core/Unit__try") equals: false
+]
+
+Test cljTryPanicsOnNull = [
+  fileMain = """
+    value::Int? = null
+    result = value try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(nil? __tryValue)", assertTrue
+  clj contains: "try on null", assertTrue
+]
+
+Test cljCoreErrorThrowUsesSentinel = [
+  fileMain = """
+    Error throw
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Error__throw :niva.core/Error)", assertTrue
+  Assert that: (clj contains: "core_Error") equals: false
+]
+
+Test cljCoreErrorFromCallbackUsesErrorMatch = [
+  fileMain = """
+    Int sas -> Int! = [
+      1 > 2 ifTrue: [Error throwWithMsg: "hello"]
+      1
+    ]
+
+    | 1 sas
+    | Error => ["handled" echo]
+    |=> ["success" echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/handling [it", assertTrue
+  clj contains: "Object (niva.core/Any__echo \"handled\")", assertTrue
+  Assert that: (clj contains: ":niva.core/Error (let") equals: false
+]

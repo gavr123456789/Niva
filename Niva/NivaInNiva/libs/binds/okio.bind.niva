@@ -5,7 +5,7 @@ Bind package: "okio"  imports: {"okio.Path.Companion.toPath" "okio.Path.*"}  con
     name: String
     parent: Path?
     root: Path?
-    segments: List::String
+    segments: List(String)
     volumeLetter: Char?
 
   String toPath -> Path

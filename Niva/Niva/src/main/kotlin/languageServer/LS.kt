@@ -2,18 +2,20 @@
 
 package main.languageServer
 
-import frontend.resolver.*
-import main.codogen.BuildSystem
-import main.frontend.meta.Token
-import main.frontend.meta.compileError
-import main.frontend.meta.createFakeToken
-import main.frontend.meta.removeColors
-import main.frontend.parser.types.ast.*
-import main.utils.*
-import java.io.File
-import java.net.URI
-import java.util.*
-
+import frontend.resolver.MessageMetadata
+import frontend.resolver.Protocol
+import frontend.resolver.Resolver
+import frontend.resolver.Type
+import frontend.resolver.buildGlobalConstScopeFromFiles
+import frontend.resolver.buildGlobalConstScopeFromStatements
+import frontend.resolver.clearDependenciesFor
+import frontend.resolver.enqueueDependents
+import frontend.resolver.enqueueForReResolve
+import frontend.resolver.getAst
+import frontend.resolver.parseFilesToAST
+import frontend.resolver.processPendingMessageReResolves
+import frontend.resolver.resolveWithBackTracking
+import frontend.resolver.unpackNull
 import io.github.irgaly.kfswatch.KfsDirectoryWatcher
 import io.github.irgaly.kfswatch.KfsEvent
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,64 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import languageServer.readFromJson
 import languageServer.toIdentifierExpr
+import main.codogen.BuildSystem
+import main.frontend.meta.Token
+import main.frontend.meta.compileError
+import main.frontend.meta.createFakeToken
+import main.frontend.meta.createFakeToken2
+import main.frontend.meta.removeColors
+import main.frontend.parser.types.ast.ConstructorDeclaration
+import main.frontend.parser.types.ast.Assign
+import main.frontend.parser.types.ast.BinaryMsg
+import main.frontend.parser.types.ast.CodeBlock
+import main.frontend.parser.types.ast.CollectionAst
+import main.frontend.parser.types.ast.ControlFlow
+import main.frontend.parser.types.ast.Declaration
+import main.frontend.parser.types.ast.DestructingAssign
+import main.frontend.parser.types.ast.DotReceiver
+import main.frontend.parser.types.ast.EnumBranch
+import main.frontend.parser.types.ast.EnumDeclarationRoot
+import main.frontend.parser.types.ast.ErrorDomainDeclaration
+import main.frontend.parser.types.ast.ExtendDeclaration
+import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.ExpressionInBrackets
+import main.frontend.parser.types.ast.IdentifierExpr
+import main.frontend.parser.types.ast.KeywordMsg
+import main.frontend.parser.types.ast.LiteralExpression
+import main.frontend.parser.types.ast.MapCollection
+import main.frontend.parser.types.ast.ManyConstructorDecl
+import main.frontend.parser.types.ast.Message
+import main.frontend.parser.types.ast.MessageDeclaration
+import main.frontend.parser.types.ast.MessageDeclarationBinary
+import main.frontend.parser.types.ast.MessageDeclarationKeyword
+import main.frontend.parser.types.ast.MessageDeclarationUnary
+import main.frontend.parser.types.ast.MessageSend
+import main.frontend.parser.types.ast.NeedInfo
+import main.frontend.parser.types.ast.PairOfErrorAndMessage
+import main.frontend.parser.types.ast.SomeTypeDeclaration
+import main.frontend.parser.types.ast.MethodReference
+import main.frontend.parser.types.ast.ReturnStatement
+import main.frontend.parser.types.ast.Statement
+import main.frontend.parser.types.ast.StaticBuilder
+import main.frontend.parser.types.ast.StaticBuilderDeclaration
+import main.frontend.parser.types.ast.TypeAST
+import main.frontend.parser.types.ast.TypeFieldAST
+import main.frontend.parser.types.ast.TypeAliasDeclaration
+import main.frontend.parser.types.ast.TypeDeclaration
+import main.frontend.parser.types.ast.UnaryMsg
+import main.frontend.parser.types.ast.UnionBranchDeclaration
+import main.frontend.parser.types.ast.UnionRootDeclaration
+import main.frontend.parser.types.ast.VarDeclaration
+import main.utils.GlobalVariables
+import main.utils.MainArgument
+import main.utils.PathManager
+import main.utils.VerbosePrinter
+import main.utils.compileProjFromFile
+import main.utils.div
+import main.utils.listFilesDownUntilNivaIsFoundRecursively
+import java.io.File
+import java.net.URI
+import java.util.*
 
 
 fun Statement.unpackMessage() = if (this is VarDeclaration) {
@@ -71,6 +131,160 @@ private fun messageDeclSignature(md: MessageDeclaration): String {
     }
     return "$receiverKey|${realDecl.getDeclType()}|${realDecl.name}|$argsKey"
 }
+
+private enum class ChangeLineKind {
+    Declaration,
+    MessageBody,
+    None
+}
+
+private fun isLineInMessageHeader(md: MessageDeclaration, line: Int): Boolean {
+    val realDecl = if (md is ConstructorDeclaration) md.msgDeclaration else md
+    if (realDecl.token.line == line) return true
+    if (realDecl.forTypeAst.token.line == line) return true
+    if (realDecl.returnTypeAST?.token?.line == line) return true
+    return when (realDecl) {
+        is MessageDeclarationKeyword -> realDecl.args.any {
+            it.tok.line == line || it.typeAST?.token?.line == line
+        }
+        is MessageDeclarationBinary -> realDecl.arg.tok.line == line || realDecl.arg.typeAST?.token?.line == line
+        else -> false
+    }
+}
+
+private fun isLineInTypeDeclaration(td: SomeTypeDeclaration, line: Int): Boolean {
+    if (td.token.line == line) return true
+    return when (td) {
+        is TypeAliasDeclaration -> td.realTypeAST.token.line == line
+        is UnionRootDeclaration -> {
+            td.fields.any { it.token.line == line } ||
+                td.branches.any { branch ->
+                    branch.token.line == line || branch.fields.any { it.token.line == line }
+                }
+        }
+        is EnumDeclarationRoot -> {
+            td.fields.any { it.token.line == line } ||
+                td.branches.any { branch ->
+                    branch.token.line == line || branch.fieldsValues.any { it.token.line == line }
+                }
+        }
+        is ErrorDomainDeclaration -> isLineInTypeDeclaration(td.unionDeclaration, line)
+        else -> td.fields.any { it.token.line == line }
+    }
+}
+
+private fun messageDeclBodyContainsLine(md: MessageDeclaration, line: Int): Boolean {
+    val realDecl = if (md is ConstructorDeclaration) md.msgDeclaration else md
+    if (realDecl.body.isEmpty()) return false
+    var minLine = Int.MAX_VALUE
+    var maxLine = Int.MIN_VALUE
+    realDecl.body.forEach { st ->
+        val tok = st.token
+        val endLine = if (tok.isMultiline()) tok.lineEnd else tok.line
+        if (tok.line < minLine) minLine = tok.line
+        if (endLine > maxLine) maxLine = endLine
+    }
+    return line in minLine..maxLine
+}
+
+private fun collectLinesForStatements(statements: List<Statement>): Set<Int> {
+    if (statements.isEmpty()) return emptySet()
+    val lines = mutableSetOf<Int>()
+    statements.forEach { st ->
+        val tok = st.token
+        val endLine = if (tok.isMultiline()) tok.lineEnd else tok.line
+        for (line in tok.line..endLine) {
+            lines.add(line)
+        }
+    }
+    return lines
+}
+
+private fun collectFullLineRangeForStatements(statements: List<Statement>): Set<Int> {
+    if (statements.isEmpty()) return emptySet()
+    var minLine = Int.MAX_VALUE
+    var maxLine = Int.MIN_VALUE
+    statements.forEach { st ->
+        val tok = st.token
+        val endLine = if (tok.isMultiline()) tok.lineEnd else tok.line
+        if (tok.line < minLine) minLine = tok.line
+        if (endLine > maxLine) maxLine = endLine
+    }
+    if (minLine == Int.MAX_VALUE || maxLine == Int.MIN_VALUE) return emptySet()
+    val lines = mutableSetOf<Int>()
+    for (line in minLine..maxLine) {
+        lines.add(line)
+    }
+    return lines
+}
+
+private fun findMessageDeclByBodyLine(
+    statements: List<Statement>,
+    line: Int
+): MessageDeclaration? {
+    val msgDecls = collectMessageDeclarationsFromStatements(statements)
+    return msgDecls.firstOrNull { messageDeclBodyContainsLine(it, line) }
+}
+
+private fun classifyChangeLine(statements: List<Statement>, line: Int): Pair<ChangeLineKind, MessageDeclaration?> {
+    val typeDeclHit = statements.filterIsInstance<SomeTypeDeclaration>().any { isLineInTypeDeclaration(it, line) }
+    if (typeDeclHit) return ChangeLineKind.Declaration to null
+
+    val msgDecls = collectMessageDeclarationsFromStatements(statements)
+    if (msgDecls.any { isLineInMessageHeader(it, line) }) {
+        return ChangeLineKind.Declaration to null
+    }
+
+    val bodyDecl = msgDecls.firstOrNull { messageDeclBodyContainsLine(it, line) }
+    return if (bodyDecl != null) ChangeLineKind.MessageBody to bodyDecl else ChangeLineKind.None to null
+}
+
+private fun LS.buildGlobalConstScopeForFile(file: File, mainAst: List<Statement>): MutableMap<String, Type> {
+    return if (pm != null && nonIncrementalStore.isNotEmpty()) {
+        val localpm = pm ?: throw Exception("Local pm == null")
+        val (allMainAst, otherAst) = getMainAstFromNIS(nonIncrementalStore, localpm.pathToNivaMainFile)
+        val mainPkgName = File(localpm.pathToNivaMainFile).nameWithoutExtension
+        resolver.buildGlobalConstScopeFromFiles(mainPkgName, allMainAst, otherAst)
+    } else {
+        val savedPkg = resolver.currentPackageName
+        resolver.currentPackageName = file.nameWithoutExtension
+        val scope = resolver.buildGlobalConstScopeFromStatements(mainAst)
+        resolver.currentPackageName = savedPkg
+        scope
+    }
+}
+
+private fun LS.updateMessageBodyAndReResolve(
+    file: File,
+    mainAst: List<Statement>,
+    newDecl: MessageDeclaration
+): Boolean {
+    val fileAbsolutePath = file.absolutePath
+    val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: return false
+    val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
+    val oldBySig = oldMsgDecls.associateBy { messageDeclSignature(it) }
+    val oldDecl = oldBySig[messageDeclSignature(newDecl)] ?: return false
+
+    val oldReal = if (oldDecl is ConstructorDeclaration) oldDecl.msgDeclaration else oldDecl
+    val newReal = if (newDecl is ConstructorDeclaration) newDecl.msgDeclaration else newDecl
+    val oldBodyLines = collectLinesForStatements(oldReal.body) + collectFullLineRangeForStatements(oldReal.body)
+    oldReal.body.clear()
+    oldReal.body.addAll(newReal.body)
+
+    resolver.clearDependenciesFor(listOf(oldDecl))
+
+    val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
+
+    resolver.enqueueForReResolve(listOf(oldDecl))
+    megaStore.removeLines(fileAbsolutePath, oldBodyLines)
+    resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = true)
+
+    resolver.enqueueDependents(oldDecl)
+    resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+
+    return true
+}
+
 
 
 typealias Line = Int
@@ -132,6 +346,7 @@ class LS(val info: ((String) -> Unit)? = null) {
     // keys: "file:line:char" values: usage tokens keyed by usage position
     val keywordDeclarationUsages: MutableMap<String, MutableMap<String, Token>> = mutableMapOf()
 
+
     fun registerMessageUsage(declarationToken: Token, usageToken: Token) {
         if (!GlobalVariables.isLspMode) return
         val declarationKey = declarationToken.toPositionKey()
@@ -153,10 +368,9 @@ class LS(val info: ((String) -> Unit)? = null) {
             val watcher = KfsDirectoryWatcher(this, dispatcher = Dispatchers.IO)
             watcher.add(watchDirPath)
             watcher.onEventFlow.collect { event ->
-                info?.invoke("watching, got event: " + event.toString())
+//                info?.invoke("watching, got event: " + event.toString())
                 if (event.path.endsWith("json") && (event.event == KfsEvent.Modify || event.event == KfsEvent.Create)) {
                     readDevDataFromFile(jsonDevFilePath, info)
-                    info?.invoke("33333333333333333333")
                 }
             }
         }
@@ -169,10 +383,37 @@ class LS(val info: ((String) -> Unit)? = null) {
     // since one file can contain many pkgs, we need file to declaration map
     val fileToDecl: MutableMap<String, MutableSet<Declaration>> = mutableMapOf()
 
+    fun debugCountsLine(): String {
+        val megaEntries = megaStore.data.values.sumOf { it.values.sumOf { line -> line.size } }
+        val megaUniqueStatements = run {
+            val seen = IdentityHashMap<Statement, Boolean>()
+            megaStore.data.values.forEach { lineMap ->
+                lineMap.values.forEach { list ->
+                    list.forEach { pair -> seen[pair.first] = true }
+                }
+            }
+            seen.size
+        }
+
+
+
+        return "LS counts: " +
+            "megaStore.entries=$megaEntries, " +
+            "megaStore.uniqueStatements=$megaUniqueStatements \n--------"
+    }
+
     class MegaStore(val info: ((String) -> Unit)? = null) {
         // file absolute path to line to a pair of statement + scope of it's line
         val data: MutableMap<String, SortedMap<Line, MutableList<Pair<Statement, Scope>>>> = mutableMapOf()
 
+        fun removeLines(path: String, lines: Set<Line>) {
+            if (lines.isEmpty()) return
+            val file = data[path] ?: return
+            lines.forEach { file.remove(it) }
+            if (file.isEmpty()) {
+                data.remove(path)
+            }
+        }
 
         fun addNew(s: Statement, scope: Scope, prepend: Boolean) {
             val sFile = s.token.file.absolutePath
@@ -224,16 +465,12 @@ class LS(val info: ((String) -> Unit)? = null) {
         // use scope if there is no expression on line
         fun find(path: String, line: Int, character: Int, scope: Scope): LspResult {
             fun <T> checkElementsFromEnd(set: List<T>, returnLast: Boolean = true, check: (T, T) -> Boolean): T? {
-                val list = set
-                info?.invoke("-------\nfind, list = $list")
-                for (i in list.size - 1 downTo 1) {
-                    info?.invoke("i = $i")
-                    if (check(list[i], list[i - 1])) {
-                        return if (returnLast) list[i]
-                        else list[i - 1]
+                for (i in set.size - 1 downTo 1) {
+                    if (check(set[i], set[i - 1])) {
+                        return if (returnLast) set[i]
+                        else set[i - 1]
                     }
                 }
-                info?.invoke("-------")
                 return null
             }
 
@@ -305,25 +542,470 @@ class LS(val info: ((String) -> Unit)? = null) {
                 LspResult.NotFoundFile()
             }
         }
+
+        fun findReceiverBeforePartial(path: String, line: Int, wordStart: Int): LspResult.Found? {
+            val statements = data[path]?.get(line) ?: return null
+            statements.asReversed().forEach { (statement, _) ->
+                val expression = if (statement is VarDeclaration) statement.value else statement
+                if (expression is Message) {
+                    if (expression.token.relPos.start <= wordStart && expression.receiver.token.relPos.end <= wordStart) {
+                        return LspResult.Found(expression.receiver, false)
+                    }
+                    return@forEach
+                }
+                if (expression is MessageSend) {
+                    if (expression.token.relPos.start > wordStart) return@forEach
+
+                    val completedMessage = expression.messages.lastOrNull { it.token.relPos.end <= wordStart }
+                    if (completedMessage != null) {
+                        return LspResult.Found(completedMessage, false)
+                    }
+                    if (expression.receiver.token.relPos.end <= wordStart) {
+                        return LspResult.Found(expression.receiver, false)
+                    }
+                }
+            }
+            return null
+        }
+
+        fun findTypeForNameBefore(path: String, line: Int, name: String): Type? {
+            val lines = data[path] ?: return null
+            lines.headMap(line + 1).toList().asReversed().forEach { (_, statements) ->
+                statements.asReversed().forEach { (statement, scope) ->
+                    scope[name]?.let { return it }
+                    if (statement is VarDeclaration && statement.name == name) {
+                        statement.value.type?.let { return it }
+                    }
+                }
+            }
+            return null
+        }
     }
 }
 
+private data class LspStateSnapshot(
+    val resolver: Resolver?,
+    val megaStoreData: MutableMap<String, SortedMap<Line, MutableList<Pair<Statement, Scope>>>>,
+    val fileToDecl: MutableMap<String, MutableSet<Declaration>>,
+    val varUsageToDeclaration: MutableMap<String, Token>,
+    val varNameToDeclarationToken: MutableMap<String, Token>,
+    val messageDeclarationUsages: MutableMap<String, MutableMap<String, Token>>,
+    val keywordDeclarationUsages: MutableMap<String, MutableMap<String, Token>>,
+    val astResolutionSnapshot: AstResolutionSnapshot,
+    val nonIncrementalStore: MutableMap<String, List<Statement>>? = null
+)
+
+private data class MessageState(
+    val type: Type?,
+    val declaration: MessageDeclaration?,
+    val metadata: MessageMetadata?
+)
+
+private data class MessageDeclarationState(
+    val forType: Type?,
+    val returnType: Type?,
+    val messageData: MessageMetadata?,
+    val possibleErrors: List<PairOfErrorAndMessage>
+)
+
+private data class SomeTypeDeclarationState(
+    val receiver: Type?,
+    val realType: Type?
+)
+
+private data class AstResolutionSnapshot(
+    val expressionTypes: IdentityHashMap<Expression, Type?> = IdentityHashMap(),
+    val messageStates: IdentityHashMap<Message, MessageState> = IdentityHashMap(),
+    val methodReferences: IdentityHashMap<MethodReference, MessageMetadata?> = IdentityHashMap(),
+    val messageDeclarations: IdentityHashMap<MessageDeclaration, MessageDeclarationState> = IdentityHashMap(),
+    val typeDeclarations: IdentityHashMap<SomeTypeDeclaration, SomeTypeDeclarationState> = IdentityHashMap()
+) {
+    fun restore() {
+        expressionTypes.forEach { (expr, type) -> expr.type = type }
+        messageStates.forEach { (msg, state) ->
+            msg.type = state.type
+            msg.declaration = state.declaration
+            msg.msgMetaData = state.metadata
+        }
+        methodReferences.forEach { (ref, method) -> ref.method = method }
+        messageDeclarations.forEach { (decl, state) ->
+            decl.forType = state.forType
+            decl.returnType = state.returnType
+            decl.messageData = state.messageData
+            decl.stackOfPossibleErrors.clear()
+            decl.stackOfPossibleErrors.addAll(state.possibleErrors)
+        }
+        typeDeclarations.forEach { (decl, state) ->
+            decl.receiver = state.receiver
+            if (decl is TypeAliasDeclaration) {
+                decl.realType = state.realType
+            }
+        }
+    }
+}
+
+private fun collectAstResolutionSnapshot(statements: Collection<Statement>): AstResolutionSnapshot {
+    val snapshot = AstResolutionSnapshot()
+    val visited = Collections.newSetFromMap(IdentityHashMap<Statement, Boolean>())
+
+    fun visitExpression(expr: Expression) {
+        snapshot.expressionTypes[expr] = expr.type
+        if (expr is Message) {
+            snapshot.messageStates[expr] = MessageState(expr.type, expr.declaration, expr.msgMetaData)
+        }
+        if (expr is MethodReference) {
+            snapshot.methodReferences[expr] = expr.method
+        }
+    }
+
+    fun visitStatement(statement: Statement?) {
+        if (statement == null || !visited.add(statement)) return
+
+        if (statement is Expression) {
+            visitExpression(statement)
+        }
+
+        when (statement) {
+            is VarDeclaration -> visitStatement(statement.value)
+            is Assign -> visitStatement(statement.value)
+            is ExtendDeclaration -> statement.messageDeclarations.forEach { visitStatement(it) }
+            is ManyConstructorDecl -> statement.messageDeclarations.forEach { visitStatement(it) }
+            is ConstructorDeclaration -> {
+                snapshot.messageDeclarations[statement] = MessageDeclarationState(
+                    statement.forType,
+                    statement.returnType,
+                    statement.messageData,
+                    statement.stackOfPossibleErrors.toList()
+                )
+                statement.body.forEach { visitStatement(it) }
+                visitStatement(statement.msgDeclaration)
+            }
+            is MessageDeclaration -> {
+                snapshot.messageDeclarations[statement] = MessageDeclarationState(
+                    statement.forType,
+                    statement.returnType,
+                    statement.messageData,
+                    statement.stackOfPossibleErrors.toList()
+                )
+                statement.body.forEach { visitStatement(it) }
+            }
+            is SomeTypeDeclaration -> {
+                snapshot.typeDeclarations[statement] = SomeTypeDeclarationState(
+                    statement.receiver,
+                    (statement as? TypeAliasDeclaration)?.realType
+                )
+                when (statement) {
+                    is EnumDeclarationRoot -> statement.branches.forEach { visitStatement(it) }
+                    is ErrorDomainDeclaration -> visitStatement(statement.unionDeclaration)
+                    is UnionRootDeclaration -> statement.branches.forEach { visitStatement(it) }
+                    else -> {}
+                }
+            }
+            is DestructingAssign -> {
+                statement.names.forEach { visitStatement(it) }
+                visitStatement(statement.value)
+            }
+            is ControlFlow.If -> {
+                statement.ifBranches.forEach {
+                    visitStatement(it.ifExpression)
+                    it.otherIfExpressions.forEach { other -> visitStatement(other) }
+                    when (it) {
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchSingleExpr -> visitStatement(it.thenDoExpression)
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchWithBody -> visitStatement(it.body)
+                    }
+                }
+                statement.elseBranch?.forEach { visitStatement(it) }
+            }
+            is ControlFlow.Switch -> {
+                visitStatement(statement.switch)
+                statement.ifBranches.forEach {
+                    visitStatement(it.ifExpression)
+                    it.otherIfExpressions.forEach { other -> visitStatement(other) }
+                    when (it) {
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchSingleExpr -> visitStatement(it.thenDoExpression)
+                        is main.frontend.parser.types.ast.IfBranch.IfBranchWithBody -> visitStatement(it.body)
+                    }
+                }
+                statement.elseBranch?.forEach { visitStatement(it) }
+            }
+            is CodeBlock -> {
+                statement.inputList.forEach { visitStatement(it) }
+                statement.statements.forEach { visitStatement(it) }
+            }
+            is CollectionAst -> statement.initElements.forEach { visitStatement(it) }
+            is ExpressionInBrackets -> visitStatement(statement.expr)
+            is MapCollection -> statement.initElements.forEach { (key, value) ->
+                visitStatement(key)
+                visitStatement(value)
+            }
+            is BinaryMsg -> {
+                visitStatement(statement.receiver)
+                visitStatement(statement.argument)
+                statement.unaryMsgsForArg.forEach { visitStatement(it) }
+                statement.unaryMsgsForReceiver.forEach { visitStatement(it) }
+            }
+            is KeywordMsg -> {
+                visitStatement(statement.receiver)
+                statement.args.forEach { visitStatement(it.keywordArg) }
+            }
+            is StaticBuilder -> visitStatement(statement.receiver)
+            is UnaryMsg -> visitStatement(statement.receiver)
+            is MessageSend -> {
+                visitStatement(statement.receiver)
+                statement.messages.forEach { visitStatement(it) }
+            }
+            is NeedInfo -> visitStatement(statement.expression)
+            is ReturnStatement -> visitStatement(statement.expression)
+            is DotReceiver, is IdentifierExpr, is LiteralExpression, is MethodReference -> {}
+            is TypeAST.InternalType, is TypeAST.Lambda, is TypeAST.UserType -> {}
+        }
+    }
+
+    statements.forEach { visitStatement(it) }
+    return snapshot
+}
+
+private fun LS.collectStatementsForAstResolutionSnapshot(includeNonIncrementalStore: Boolean): List<Statement> {
+    val statements = mutableListOf<Statement>()
+    megaStore.data.values.forEach { lineMap ->
+        lineMap.values.forEach { lineStatements ->
+            lineStatements.forEach { statements.add(it.first) }
+        }
+    }
+    fileToDecl.values.forEach { statements.addAll(it) }
+    if (includeNonIncrementalStore) {
+        nonIncrementalStore.values.forEach { statements.addAll(it) }
+    }
+    return statements
+}
+
+private fun LS.snapshotLspState(includeNonIncrementalStore: Boolean = false): LspStateSnapshot =
+    LspStateSnapshot(
+        resolver = runCatching { resolver }.getOrNull(),
+        megaStoreData = megaStore.data.toMutableMap(),
+        fileToDecl = fileToDecl.toMutableMap(),
+        varUsageToDeclaration = varUsageToDeclaration.toMutableMap(),
+        varNameToDeclarationToken = varNameToDeclarationToken.toMutableMap(),
+        messageDeclarationUsages = messageDeclarationUsages.toMutableMap(),
+        keywordDeclarationUsages = keywordDeclarationUsages.toMutableMap(),
+        astResolutionSnapshot = collectAstResolutionSnapshot(collectStatementsForAstResolutionSnapshot(includeNonIncrementalStore)),
+        nonIncrementalStore = if (includeNonIncrementalStore) nonIncrementalStore.toMutableMap() else null
+    )
+
+private fun LS.clearLspIndexes() {
+    megaStore.data.clear()
+    fileToDecl.clear()
+    varUsageToDeclaration.clear()
+    varNameToDeclarationToken.clear()
+    messageDeclarationUsages.clear()
+    keywordDeclarationUsages.clear()
+}
+
+private fun <K, V> MutableMap<K, V>.replaceWith(other: Map<K, V>) {
+    clear()
+    putAll(other)
+}
+
+private fun LS.restoreLspState(snapshot: LspStateSnapshot) {
+    snapshot.astResolutionSnapshot.restore()
+    val previousResolver = snapshot.resolver
+    if (previousResolver != null) {
+        resolver = previousResolver
+    }
+    megaStore.data.replaceWith(snapshot.megaStoreData)
+    fileToDecl.replaceWith(snapshot.fileToDecl)
+    varUsageToDeclaration.replaceWith(snapshot.varUsageToDeclaration)
+    varNameToDeclarationToken.replaceWith(snapshot.varNameToDeclarationToken)
+    messageDeclarationUsages.replaceWith(snapshot.messageDeclarationUsages)
+    keywordDeclarationUsages.replaceWith(snapshot.keywordDeclarationUsages)
+
+    val previousNonIncrementalStore = snapshot.nonIncrementalStore
+    if (previousNonIncrementalStore != null) {
+        nonIncrementalStore.replaceWith(previousNonIncrementalStore)
+    }
+}
+
+private fun LS.replaceLspStateFrom(other: LS) {
+    resolver = other.resolver
+    pm = other.pm
+    megaStore.data.replaceWith(other.megaStore.data)
+    fileToDecl.replaceWith(other.fileToDecl)
+    varUsageToDeclaration.replaceWith(other.varUsageToDeclaration)
+    varNameToDeclarationToken.replaceWith(other.varNameToDeclarationToken)
+    messageDeclarationUsages.replaceWith(other.messageDeclarationUsages)
+    keywordDeclarationUsages.replaceWith(other.keywordDeclarationUsages)
+    nonIncrementalStore.replaceWith(other.nonIncrementalStore)
+    completionFromScope = other.completionFromScope
+}
+
+private fun LS.resolveFreshInScratch(uriOfChangedFile: String, source: String) {
+    val changedFile = File(URI(uriOfChangedFile))
+    val (mainFile, allOtherFiles2) = readAllFilesFromDisc(changedFile, uriOfChangedFile, source)
+    val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
+    val scratch = LS(info)
+    val scratchPm = PathManager(mainFile.absolutePath, MainArgument.LSP, null)
+    scratch.pm = scratchPm
+
+    val customAst = parseFilesToAST(
+        mainFileContent =
+            if (mainFile.absolutePath == changedFile.absolutePath)
+                source
+            else mainFile.readText(),
+        otherFileContents = allFiles.toList(),
+        mainFilePath = mainFile.absolutePath,
+        resolveOnlyOneFile = false,
+        pathToChangedFile = changedFile,
+        changedFileContent = source
+    )
+
+    scratch.resolver = compileProjFromFile(
+        scratchPm,
+        dontRunCodegen = true,
+        compileOnlyOneFile = false,
+        onEachStatement = { st, currentScope, previousScope, file ->
+            scratch.onEachStatementCall(st, currentScope, previousScope, file)
+        },
+        customAst = Pair(customAst.first, customAst.second),
+        buildSystem = BuildSystem.Amper,
+        previousFilePath = allFiles
+    )
+    scratch.fillNonIncrementalStore(customAst, mainFile)
+    scratch.completionFromScope = emptyMap()
+    replaceLspStateFrom(scratch)
+}
+
 // resolve all with lines to statements lists maps (Map(Line, Obj(List::Statements, scope)) )
-fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int): LspResult {
+//private fun findCurrentWordStart(sourceText: String?, line: Int, character: Int): Int? {
+//    if (sourceText == null) return null
+//    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
+//    val cursor = character.coerceIn(0, sourceLine.length)
+//    var start = cursor
+//    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+//        start--
+//    }
+//    return start.takeIf { it < cursor }
+//}
+
+private fun findCurrentWordStart(
+    sourceText: String?,
+    line: Int,
+    character: Int
+): Int? {
+    if (sourceText == null) return null
+
+    var lineStart = 0
+    repeat(line) {
+        lineStart = sourceText.indexOf('\n', lineStart)
+        if (lineStart == -1) return null
+        lineStart++
+    }
+
+    val cursor = (lineStart + character)
+        .coerceAtMost(sourceText.length)
+
+    var start = cursor
+    while (start > lineStart &&
+        sourceText[start - 1].isNivaCompletionWordPart()
+    ) {
+        start--
+    }
+
+    return start.takeIf { it < cursor }
+}
+
+private fun Char.isNivaCompletionWordPart(): Boolean =
+    isLetterOrDigit() || this == '_' || this == '.'
+
+//private fun findReceiverNameBeforePartial(sourceText: String?, line: Int, wordStart: Int): Pair<String, Int>? {
+//    if (sourceText == null) return null
+//    val sourceLine = sourceText.split('\n').getOrNull(line) ?: return null
+//    var end = wordStart
+//    while (end > 0 && sourceLine[end - 1].isWhitespace()) {
+//        end--
+//    }
+//    var start = end
+//    while (start > 0 && sourceLine[start - 1].isNivaCompletionWordPart()) {
+//        start--
+//    }
+//    if (start == end) return null
+//    return sourceLine.substring(start, end) to start
+//}
+
+private fun findReceiverNameBeforePartial(
+    sourceText: String?,
+    line: Int,
+    wordStart: Int
+): Pair<String, Int>? {
+    if (sourceText == null) return null
+
+    var lineStart = 0
+    repeat(line) {
+        val nl = sourceText.indexOf('\n', lineStart)
+        if (nl == -1) return null
+        lineStart = nl + 1
+    }
+
+    val lineEnd = sourceText.indexOf('\n', lineStart)
+        .takeIf { it != -1 }
+        ?: sourceText.length
+
+    val cursor = wordStart.coerceIn(0, lineEnd - lineStart)
+
+    var end = lineStart + cursor
+    while (end > lineStart && sourceText[end - 1].isWhitespace()) {
+        end--
+    }
+
+    var start = end
+    while (start > lineStart &&
+        sourceText[start - 1].isNivaCompletionWordPart()
+    ) {
+        start--
+    }
+
+    if (start == end) return null
+
+    return sourceText.substring(start, end) to (start - lineStart)
+}
+
+private fun LspResult.Found.expressionType(): Type? {
+    val expr = if (statement is VarDeclaration) statement.value else statement
+    return (expr as? Expression)?.type
+}
+
+fun LS.onCompletion(pathToChangedFile: String, line: Int, character: Int, sourceText: String? = null): LspResult {
     // We don't need to resolve anything on completion, it happens when code changes
     // find statement type
 
     val fileAbsolutePath = File(URI(pathToChangedFile)).absolutePath
     val a = megaStore.find(fileAbsolutePath, line + 1, character, completionFromScope) // vsc count lines from 0
+    if (a !is LspResult.Found || a.expressionType() == null) {
+        val wordStart = findCurrentWordStart(sourceText, line, character)
+        if (wordStart != null) {
+            val beforePartial = megaStore.find(fileAbsolutePath, line + 1, wordStart, completionFromScope)
+            if (beforePartial is LspResult.Found) {
+                return beforePartial
+            }
+            val receiverBeforePartial = megaStore.findReceiverBeforePartial(fileAbsolutePath, line + 1, wordStart)
+            if (receiverBeforePartial != null) {
+                return receiverBeforePartial
+            }
+            val receiverName = findReceiverNameBeforePartial(sourceText, line, wordStart)
+            if (receiverName != null) {
+                val (name, start) = receiverName
+                val type = megaStore.findTypeForNameBefore(fileAbsolutePath, line + 1, name)
+                if (type != null) {
+                    val token = createFakeToken2(name, line + 1, start, start + name.length, File(fileAbsolutePath))
+                    return LspResult.Found(IdentifierExpr(name, token = token).also { it.type = type }, false)
+                }
+            }
+        }
+    }
 
     return a
 }
 
 fun LS.removeDecl2(file: File) {
-
-//    info?.invoke("Current packages: ${resolver.projects["common"]!!.packages.keys}")
-
-
     // цель - удалить из typeDB все методы которые содержались в file
     // у нас есть файл ту декларации методов методы fileToDecl
     // находим в нем того который требуется удалять
@@ -398,7 +1080,7 @@ fun LS.removeDecl2(file: File) {
                         is Type.UserLike -> {
                             val usrLikeTypes = typeDB.userTypes[forType.name]
                             if (usrLikeTypes != null) {
-                                info?.invoke("usrLikeTypes = $usrLikeTypes, forType.pkg = ${forType.pkg} ")
+                                //info?.invoke("usrLikeTypes = $usrLikeTypes, forType.pkg = ${forType.pkg} ")
                                 val w = usrLikeTypes.find { it.pkg == forType.pkg }
                                 val protocolWithMethod = w?.protocols?.values?.find { it.keywordMsgs.contains(d.name) }
                                 protocolWithMethod?.keywordMsgs?.remove(d.name)
@@ -527,7 +1209,7 @@ fun LS.removeDecl2(file: File) {
     // remove the whole package
     if (pkgName != null && pkgName != "core") {
         resolver.projects[resolver.currentProjectName]!!.packages.remove(pkgName)
-        info?.invoke("The whole package removed: $pkgName")
+        //info?.invoke("The whole package removed: $pkgName")
     }
     // fallback: remove any methods declared in this file from all protocols
     fun shouldRemove(meta: MessageMetadata?): Boolean =
@@ -557,78 +1239,123 @@ fun LS.removeDecl2(file: File) {
 }
 
 
-fun LS.resolveIncremental(pathToChangedFile: String, text: String) {
-    val file = File(URI(pathToChangedFile))
-    val fileAbsolutePath = file.absolutePath
+fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: Int? = null) {
+    val previousLspState = snapshotLspState(includeNonIncrementalStore = true)
+    try {
+        val file = File(URI(pathToChangedFile))
+        val fileAbsolutePath = file.absolutePath
+        val oldTypeDeclarations = nonIncrementalStore[fileAbsolutePath]?.typeDeclarationSignatures() ?: emptySet()
+        var parsedChangedFileAst: List<Statement>? = null
 
-    // let's assume user cant change packages names for now, so pkg name always == filename
-    // remove everything that was declarated in this changed file
-    val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: emptySet()
-    val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
-    val oldDepsBySig = mutableMapOf<String, MutableSet<MessageDeclaration>>()
-    val affectedCallers = mutableSetOf<MessageDeclaration>()
-    oldMsgDecls.forEach { old ->
-        resolver.msgDependents[old]?.let { deps ->
-            oldDepsBySig[messageDeclSignature(old)] = deps
-            affectedCallers.addAll(deps)
+        fun parseChangedFileAst(): List<Statement> {
+            val alreadyParsed = parsedChangedFileAst
+            if (alreadyParsed != null) return alreadyParsed
+            val (mainAst) = parseFilesToAST(
+                mainFileContent = text,
+                otherFileContents = resolver.otherFilesPaths,
+                mainFilePath = file.absolutePath,
+                resolveOnlyOneFile = true
+            )
+            parsedChangedFileAst = mainAst
+            return mainAst
         }
-    }
-    val affectedIter = affectedCallers.iterator()
-    while (affectedIter.hasNext()) {
-        val next = affectedIter.next()
-        if (next.token.file.absolutePath == fileAbsolutePath) {
-            affectedIter.remove()
+
+        fun typeDeclarationsChanged(mainAst: List<Statement>): Boolean {
+            val newTypeDeclarations = mainAst.typeDeclarationSignatures()
+            return oldTypeDeclarations != newTypeDeclarations
         }
-    }
-    resolver.clearDependenciesFor(oldMsgDecls)
 
-    removeDecl2(file)
-    megaStore.data.remove(fileAbsolutePath)
-    resolver.reset()
+        val changeLine1Based = changeLine?.plus(1)
+        if (changeLine1Based != null) {
+            val probeAst = parseChangedFileAst()
 
-    val (mainAst) = parseFilesToAST(
-        mainFileContent = text,
-        otherFileContents = resolver.otherFilesPaths,
-        mainFilePath = file.absolutePath,
-        resolveOnlyOneFile = true
-    )
-
-    val newMsgDecls = collectMessageDeclarationsFromStatements(mainAst)
-    val sigToNew = newMsgDecls.associateBy { messageDeclSignature(it) }
-    oldDepsBySig.forEach { (sig, deps) ->
-        val newDecl = sigToNew[sig]
-        if (newDecl != null) {
-            resolver.msgDependents[newDecl] = deps
+            if (typeDeclarationsChanged(probeAst)) {
+                resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+                return
+            }
+            val (kind, newDecl) = classifyChangeLine(probeAst, changeLine1Based)
+            if (kind == ChangeLineKind.Declaration) {
+                resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+                return
+            }
+            if (kind == ChangeLineKind.MessageBody && newDecl != null) {
+                val handled = updateMessageBodyAndReResolve(file, probeAst, newDecl)
+                if (handled) {
+                    completionFromScope = emptyMap()
+                    return
+                }
+            }
+            if (kind == ChangeLineKind.None) {
+                resolveFreshInScratch(pathToChangedFile, text)
+                return
+            }
+            // fall through to full incremental if we couldn't handle it
         }
-    }
 
-    val globalConstScope = if (pm != null && nonIncrementalStore.isNotEmpty()) {
-        val localpm = pm ?: throw Exception("Local pm == null")
-        val (allMainAst, otherAst) = getMainAstFromNIS(nonIncrementalStore, localpm.pathToNivaMainFile)
-        val mainPkgName = File(localpm.pathToNivaMainFile).nameWithoutExtension
-        resolver.buildGlobalConstScopeFromFiles(mainPkgName, allMainAst, otherAst)
-    } else {
-        val savedPkg = resolver.currentPackageName
-        resolver.currentPackageName = file.nameWithoutExtension
-        val scope = resolver.buildGlobalConstScopeFromStatements(mainAst)
-        resolver.currentPackageName = savedPkg
-        scope
-    }
+        val mainAst = parseChangedFileAst()
+        if (typeDeclarationsChanged(mainAst)) {
+            resolveNonIncremental(pathToChangedFile, text, forceFull = true)
+            return
+        }
 
-    // throws on
-    resolver.resolveWithBackTracking(
-        mainAst,
-        emptyList(),
-        file.absolutePath,
-        file.nameWithoutExtension,
-        VerbosePrinter(false),
-        globalConstScopeOverride = globalConstScope,
-    )
+        // let's assume user cant change packages names for now, so pkg name always == filename
+        // remove everything that was declarated in this changed file
+        val oldDecls = fileToDecl[fileAbsolutePath]?.toSet() ?: emptySet()
+        val oldMsgDecls = collectMessageDeclarationsFromDeclarations(oldDecls)
+        val oldDepsBySig = mutableMapOf<String, MutableSet<MessageDeclaration>>()
+        val affectedCallers = mutableSetOf<MessageDeclaration>()
+        oldMsgDecls.forEach { old ->
+            resolver.msgDependents[old]?.let { deps ->
+                oldDepsBySig[messageDeclSignature(old)] = deps
+                affectedCallers.addAll(deps)
+            }
+        }
+        val affectedIter = affectedCallers.iterator()
+        while (affectedIter.hasNext()) {
+            val next = affectedIter.next()
+            if (next.token.file.absolutePath == fileAbsolutePath) {
+                affectedIter.remove()
+            }
+        }
+        resolver.clearDependenciesFor(oldMsgDecls)
 
-    if (affectedCallers.isNotEmpty()) {
-        affectedCallers.forEach { it.clearFromType() }
-        resolver.enqueueForReResolve(affectedCallers)
-        resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+        removeDecl2(file)
+        megaStore.data.remove(fileAbsolutePath)
+        resolver.reset()
+
+        nonIncrementalStore[fileAbsolutePath] = mainAst
+
+        val newMsgDecls = collectMessageDeclarationsFromStatements(mainAst)
+        val sigToNew = newMsgDecls.associateBy { messageDeclSignature(it) }
+        oldDepsBySig.forEach { (sig, deps) ->
+            val newDecl = sigToNew[sig]
+            if (newDecl != null) {
+                resolver.msgDependents[newDecl] = deps
+            }
+        }
+
+        val globalConstScope = buildGlobalConstScopeForFile(file, mainAst)
+
+        // throws on
+        resolver.resolveWithBackTracking(
+            mainAst,
+            emptyList(),
+            file.absolutePath,
+            file.nameWithoutExtension,
+            VerbosePrinter(false),
+            globalConstScopeOverride = globalConstScope,
+        )
+
+        if (affectedCallers.isNotEmpty()) {
+            affectedCallers.forEach { it.clearFromType() }
+            resolver.enqueueForReResolve(affectedCallers)
+            resolver.processPendingMessageReResolves(globalConstScope, callOnEachStatement = false)
+        }
+        completionFromScope = emptyMap()
+    } catch (e: Throwable) {
+        // fallback to full resolve to recover a consistent state
+        restoreLspState(previousLspState)
+        resolveNonIncremental(pathToChangedFile, text, forceFull = true)
     }
 }
 
@@ -653,6 +1380,37 @@ fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri
     return Pair(mainAst, listOfStatements)
 }
 
+private fun buildOrderedAstFromStore(
+    nonIncrementalStore: MutableMap<String, List<Statement>>,
+    mainFile: File,
+    otherFiles: List<File>,
+    changedFile: File,
+    changedFileContent: String
+): Pair<List<Statement>, List<Pair<String, List<Statement>>>> {
+    fun astFor(file: File): List<Statement> {
+        val absolutePath = file.absolutePath
+        nonIncrementalStore[absolutePath]?.let { return it }
+
+        val source =
+            if (absolutePath == changedFile.absolutePath) changedFileContent
+            else file.readText()
+        val ast = getAst(source = source, file = file)
+        nonIncrementalStore[absolutePath] = ast
+        return ast
+    }
+
+    val mainAst = astFor(mainFile)
+    val mainFileAbsolutePath = mainFile.absolutePath
+    val otherAst = otherFiles
+        .asSequence()
+        .distinctBy { it.absolutePath }
+        .filter { it.absolutePath != mainFileAbsolutePath }
+        .map { file -> file.nameWithoutExtension to astFor(file) }
+        .toList()
+
+    return mainAst to otherAst
+}
+
 private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
     return statements.any {
         it is TypeDeclaration ||
@@ -663,35 +1421,94 @@ private fun hasTypeDeclarations(statements: List<Statement>): Boolean {
     }
 }
 
-
-fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver {
-    megaStore.data.clear()
-    fileToDecl.clear()
-    varUsageToDeclaration.clear()
-    varNameToDeclarationToken.clear()
-    messageDeclarationUsages.clear()
-    keywordDeclarationUsages.clear()
-
-    clearNonIncrementalStoreFromTypes(nonIncrementalStore)
-    //    0) clear AST from types
-    //    1) lex parse new changed file
-    //    2) replace its ast in the NIS
-    //    3) resolve everything again
-
-    val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
-    val file = File(URI(uriOfChangedFile))
-    val fileAbsolute = file.absolutePath
-    val mainAst = getAst(source = source, file = file)
-
-    // if there are no type declarations, use incremental resolve for this file only
-    if (!hasTypeDeclarations(mainAst)) {
-        nonIncrementalStore[fileAbsolute] = mainAst
-        resolveIncremental(uriOfChangedFile, source)
-        return resolver
+private fun List<Statement>.typeDeclarationSignatures(): Set<String> {
+    fun TypeAST.key(): String {
+        val nullable = if (isNullable) "?" else ""
+        val mutable = if (isMutable) "mut " else ""
+        val errorsKey = errors?.joinToString(prefix = "!", separator = "|") ?: ""
+        return when (this) {
+            is TypeAST.UserType -> {
+                val args = typeArgumentList
+                    .map { it.key() }
+                    .sorted()
+                    .joinToString(prefix = "(", postfix = ")")
+                "$mutable${names.joinToString(".")}$args$nullable$errorsKey"
+            }
+            is TypeAST.InternalType -> "$mutable$name$nullable$errorsKey"
+            is TypeAST.Lambda -> {
+                val receiver = extensionOfType?.key()?.let { "$it." } ?: ""
+                val args = inputTypesList.joinToString(",") { it.key() }
+                "$mutable$receiver[$args->${returnType.key()}]$nullable$errorsKey"
+            }
+        }
     }
 
-    nonIncrementalStore[fileAbsolute] = mainAst
-    // resolve everything and return resolver
+    fun List<TypeFieldAST>.key(): String =
+        joinToString(prefix = "(", postfix = ")") { "${it.name}:${it.typeAST?.key() ?: ""}" }
+
+    fun SomeTypeDeclaration.baseKey(kind: String): String {
+        val generics = genericFields.sorted().joinToString(prefix = "<", postfix = ">")
+        return "$kind:$typeName$generics:${fields.key()}"
+    }
+
+    val result = mutableSetOf<String>()
+    this.forEach { statement ->
+        when (statement) {
+            is TypeDeclaration -> result.add(statement.baseKey("type"))
+            is TypeAliasDeclaration -> result.add("${statement.baseKey("alias")}:${statement.realTypeAST.key()}")
+            is ErrorDomainDeclaration -> result.add(statement.unionDeclaration.baseKey("error"))
+            is UnionRootDeclaration -> {
+                result.add(statement.baseKey("union"))
+                statement.branches.forEach { result.add(it.baseKey("unionBranch")) }
+            }
+            is EnumDeclarationRoot -> {
+                result.add(statement.baseKey("enum"))
+                statement.branches.forEach {
+                    val values = it.fieldsValues.joinToString(prefix = "(", postfix = ")") { field ->
+                        "${field.name}:${field.value}"
+                    }
+                    result.add("${it.baseKey("enumBranch")}:$values")
+                }
+            }
+            else -> {}
+        }
+    }
+    return result
+}
+
+
+fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String, forceFull: Boolean = false): Resolver {
+    if (pm == null) {
+        return resolveAllFirstTime(uriOfChangedFile, fillNonIncrementalStore = true, changedFileContent = source)
+    }
+
+    val previousLspState = snapshotLspState(includeNonIncrementalStore = true)
+
+    try {
+        val isMainFileRecompiling = uriOfChangedFile.endsWith("main.niva")
+        val file = File(URI(uriOfChangedFile))
+        val fileAbsolute = file.absolutePath
+        val oldHadTypeDeclarations = hasTypeDeclarations(nonIncrementalStore[fileAbsolute] ?: emptyList())
+        val mainAst = getAst(source = source, file = file)
+
+        clearLspIndexes()
+
+        clearNonIncrementalStoreFromTypes(nonIncrementalStore)
+        //    0) clear AST from types
+        //    1) lex parse new changed file
+        //    2) replace its ast in the NIS
+        //    3) resolve everything again
+
+        // if there are no type declarations, use incremental resolve for this file only
+        if (!forceFull && !oldHadTypeDeclarations && !hasTypeDeclarations(mainAst)) {
+            nonIncrementalStore[fileAbsolute] = mainAst
+            resolveIncremental(uriOfChangedFile, source)
+            return resolver
+        }
+
+        val newNonIncrementalStore = nonIncrementalStore.toMutableMap()
+        newNonIncrementalStore[fileAbsolute] = mainAst
+        // resolve everything and return resolver
         val localpm = pm
         if (localpm != null) {
             // adding the current file, if its a new one
@@ -702,17 +1519,32 @@ fun LS.resolveNonIncremental(uriOfChangedFile: String, source: String): Resolver
                 .distinctBy { it.absolutePath }
                 .toMutableList()
 
+            val customAst = buildOrderedAstFromStore(
+                newNonIncrementalStore,
+                File(localpm.pathToNivaMainFile),
+                previousFilePath,
+                file,
+                source
+            )
+
             resolver = compileProjFromFile(
                 localpm,
                 compileOnlyOneFile = false,
                 dontRunCodegen = true,
                 onEachStatement = ::onEachStatementCall,
-                customAst = getMainAstFromNIS(nonIncrementalStore, (pm!!.pathToNivaMainFile)), // astOfTheMain, Ast of everything
+                customAst = customAst, // astOfTheMain, Ast of everything
                 buildSystem = BuildSystem.Amper,// it doesnt matter, since we dont generate the code
                 previousFilePath = previousFilePath
             )
+            nonIncrementalStore.clear()
+            nonIncrementalStore.putAll(newNonIncrementalStore)
+            completionFromScope = emptyMap()
         } else throw Exception("Local pm == null")
-    return resolver
+        return resolver
+    } catch (e: Throwable) {
+        restoreLspState(previousLspState)
+        throw e
+    }
 }
 
 // if we have changed content then replace the read from disc with it, to not to read the old one
@@ -748,8 +1580,7 @@ fun readAllFilesFromDisc(file: File, pathToChangedFile: String, mainContent: Str
                 return Pair(nivaMain, listOfNivaFiles)
             }
 
-            val next = current.parentFile
-            if (next == null) break
+            val next = current.parentFile ?: break
             current = next
             depth++
         }
@@ -777,24 +1608,17 @@ fun LS.resolveAllFirstTime(
     fillNonIncrementalStore: Boolean = false,
     changedFileContent: String? // is null when we re-resolve everything on file closed
 ): Resolver {
+    //info?.invoke("LSP resolveAllFirstTime: start uri=$pathToChangedFileURI textLen=${changedFileContent?.length ?: -1}")
     GlobalVariables.enableLspMode()
-    megaStore.data.clear()
-    varUsageToDeclaration.clear()
-    varNameToDeclarationToken.clear()
-    messageDeclarationUsages.clear()
-    keywordDeclarationUsages.clear()
+    val previousLspState = snapshotLspState()
+    clearLspIndexes()
 //    info?.invoke("pathToChangedFileURI = $pathToChangedFileURI")
 
     val changedFile = File(URI(pathToChangedFileURI))
     assert(changedFile.exists())
-
-
     val (mainFile, allOtherFiles2) = readAllFilesFromDisc(changedFile, pathToChangedFileURI, changedFileContent)
-
-//    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
     val allFiles = allOtherFiles2.sortedBy { file -> file.name }.toMutableList()
-//    info?.invoke("allFiles is ${allFiles.joinToString(", ") { it.name }} ") //all files is ${allFiles.joinToString(", ") { it.name }}
-
+    //info?.invoke("LSP resolveAllFirstTime: main=${mainFile.absolutePath} others=${allFiles.size}")
 
     // Resolve
     // buildSystem doesn't matter here
@@ -802,13 +1626,12 @@ fun LS.resolveAllFirstTime(
     this.pm = pm
 
     try {
-
         // custom ast
         val customAst = parseFilesToAST(
-            mainFileContent = if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null) changedFileContent else {
-//                info?.invoke("!!! main file reread $mainFile")
-                mainFile.readText()
-            },
+            mainFileContent =
+                if (mainFile.absolutePath == changedFile.absolutePath && changedFileContent != null)
+                    changedFileContent
+                else { mainFile.readText() },
             otherFileContents = allFiles.toList(),
             mainFilePath = mainFile.absolutePath,
             resolveOnlyOneFile = false,
@@ -816,56 +1639,72 @@ fun LS.resolveAllFirstTime(
             changedFileContent = changedFileContent
         )
 
-        if (fillNonIncrementalStore)
-            fillNonIncrementalStore(customAst, mainFile)
-
+        val newNonIncrementalStore = if (fillNonIncrementalStore) {
+            buildNonIncrementalStore(customAst, mainFile)
+        } else {
+            null
+        }
         this.resolver = compileProjFromFile(
             pm,
             dontRunCodegen = true,
             compileOnlyOneFile = false,
             onEachStatement = ::onEachStatementCall,
             customAst = Pair(customAst.first, customAst.second),
-            buildSystem = BuildSystem.Amper // doesnt matter since we dont generate code
+            buildSystem = BuildSystem.Amper, // doesnt matter since we dont generate code
+            previousFilePath = allFiles
         )
-        info?.invoke("After first compilation resolver.otherFilesPaths = ${resolver.otherFilesPaths} ")
+        if (newNonIncrementalStore != null) {
+            nonIncrementalStore.clear()
+            nonIncrementalStore.putAll(newNonIncrementalStore)
+        }
         // not sure why reset this?
         this.completionFromScope = emptyMap()
         return resolver
     }
     catch (s: OnCompletionException) {
+        restoreLspState(previousLspState)
+        this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
+        this.completionFromScope = s.scope
         if (s.token != null && s.errorMessage != null) {
             s.token.compileError(s.errorMessage)
         }
-        val emptyResolver =
-            Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
-        this.resolver = emptyResolver
-        this.completionFromScope = s.scope
-
-        info?.invoke("NOT RESOLVED OnCompletionException, error.scope = ${s.scope}, completionFromScope = $completionFromScope , error message = ${s.errorMessage?.removeColors()}")
         return resolver
+    }
+    catch (e: Throwable) {
+        restoreLspState(previousLspState)
+        info?.invoke("LSP resolveAllFirstTime: error ${e::class.simpleName} ${e.message?.removeColors()}")
+        this.resolver = Resolver.empty(otherFilesPaths = allFiles, ::onEachStatementCall, currentFile = mainFile)
+        this.completionFromScope = emptyMap()
+        throw e
     }
 
 }
 
+
+fun buildNonIncrementalStore(
+    // main ast, other ast, otherFiles
+    customAst: Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>>,
+    mainFile: File
+): MutableMap<String, List<Statement>> {
+    val (mainAst, pkgToAst, otherFiles) = customAst
+    val store = mutableMapOf<String, List<Statement>>()
+    store[mainFile.absolutePath] = mainAst
+
+    // add othersAst
+    pkgToAst.forEachIndexed { index, pair ->
+        val file = otherFiles[index]
+        store[file.absolutePath] = pair.second
+    }
+    return store
+}
 
 fun LS.fillNonIncrementalStore(
     // main ast, other ast, otherFiles
     customAst: Triple<List<Statement>, List<Pair<String, List<Statement>>>, List<File>>,
     mainFile: File
 ) {
-    val (mainAst, pkgToAst, otherFiles) = customAst
-    // add main
-//    val uri = mainFile.toURI().toString()
-    val uri = mainFile.absolutePath
-    nonIncrementalStore[uri] = mainAst
-
-    // add othersAst
-    pkgToAst.forEachIndexed { index, pair ->
-        val file = otherFiles[index]
-//        val uri = file.toURI().toString()
-        val uri = file.absolutePath
-        nonIncrementalStore[uri] = pair.second
-    }
+    nonIncrementalStore.clear()
+    nonIncrementalStore.putAll(buildNonIncrementalStore(customAst, mainFile))
 //    fileToDecl[mainFile.absolutePath] = mutableSetOf(createFakeDeclaration())
 
 }

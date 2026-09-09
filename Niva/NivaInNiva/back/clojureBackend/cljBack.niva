@@ -1,0 +1,270 @@
+type CljBackend
+
+type CljOutput
+  files: Map(String, String)
+  entryNamespace: String
+  manifest: CljManifest
+  target: CljTarget
+
+CljOutput legacyMainShim -> String = [
+  genClass = target == CljTarget.Jvm ifTrue: [" (:gen-class)"] ifFalse: [""]
+  ^ "(ns main" + genClass + " (:require [" + entryNamespace + "]))\n" +
+    "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
+]
+
+// Selects the shape of the generated Clojure module.  Program output keeps
+// the normal `main` namespace and `-main` entry point; REPL output is a
+// loadable session namespace whose entry expression is evaluated at load
+// time.
+enum CljEmitMode = Program | Repl
+enum CljTarget = Jvm | Bb
+
+type CljContext
+  imports: mut Set(String)
+  stateNames: mut Set(String)
+  debug: Bool
+  debugEntries: mut List(CljDebugEntry)
+  currentPackage: String
+
+type CljDebugEntry
+  generatedLine: Int
+  generatedEndLine: Int
+  sourceFile: String
+  sourceLine: Int
+  method: String
+
+constructor CljContext newDebug(debug): Bool -> CljContext =
+  CljContext newDebug: debug imports: #() pkg: ""
+
+constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
+    pkg(pkg): String -> CljContext =
+  CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
+    debugEntries: {}! currentPackage: pkg
+
+CljContext addImport(name): String -> Unit = [
+  imports add: name
+]
+
+CljContext addStateName(name): String -> Unit = [
+  stateNames add: name
+]
+
+CljContext isStateName(name): String -> Bool = [
+  ^ stateNames contains: name
+]
+
+String cljDebugQuoted -> String =
+  "\"" + (.replace: "\\" with: "\\\\", replace: "\"" with: "\\\"") + "\""
+
+CljContext addDebugEntry(generatedLine): Int endLine: Int token: Token method: String -> Unit = [
+  file = token file path
+  (debug && (file != "")) ifTrue: [
+    debugEntries add: (CljDebugEntry :generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line :method)
+  ]
+]
+
+String cljLineCount -> Int = [
+  mut result = 1
+  mut i = 0
+  [i < this count] whileTrue: [
+    (this at: i) == '\n', ifTrue: [result <- result + 1]
+    i <- i + 1
+  ]
+  ^ result
+]
+
+CljDebugEntry toCljSourceMapEntries(bodyLineOffset): Int -> List(String) = [
+  entries::mut List(String) = {}!
+  mut line = generatedLine
+  [line <= generatedEndLine] whileTrue: [
+    entries add: ("[\"main.clj\" " + (line + bodyLineOffset) toString + "] [" +
+      (sourceFile cljDebugQuoted) + " " + sourceLine toString + " " + (method cljDebugQuoted) + "]")
+    line <- line + 1
+  ]
+  ^ entries toList
+]
+
+// tracks which locals were declared as mut (so refs to them emit @name)
+type CljScope mutLocals: mut Set(String)
+
+constructor CljScope new = CljScope mutLocals: #()!
+
+CljScope copy -> CljScope = [
+  s = CljScope new
+  s mutLocals addAll: mutLocals
+  ^ s
+]
+
+CljScope isMut(name): String -> Bool = mutLocals contains: name
+
+// single `(let [name value ...])` binding pair
+type CljBinding name: String value: String
+
+extend String [
+  on cljSanitizeIdent -> String =
+        .replace: ".." with: "rangeTo"
+        ,replace: "?" with: "_QM"
+
+  on cljGeneratedNamespace -> String = "niva.generated." + this
+
+  on cljGeneratedPath -> String =
+    // clojure translates - in files into _
+    (this cljGeneratedNamespace replace: "." with: "/",
+      replace: "-" with: "_") + ".clj"
+
+]
+
+IrPackage cljGeneratedNamespace -> String = name cljGeneratedNamespace
+
+IrPackage cljGeneratedPath -> String = name cljGeneratedPath
+
+// mangled function name derived directly from IR
+IrFunction cljFuncNameFromIr -> String = .id cljFuncIdToName
+
+// The IR-issued function id has the shape "pkg.recv.name" (see irIds.niva).
+// This mirrors it as "pkg__recv__name" so we can derive the same name from
+// either an IrFunction (at defn site) or a bare funcId string (at call site)
+// without needing a symbol table.
+// pkg.recv.name -> pkg__recv__name
+String cljFuncIdToName -> String =
+  .split: ".", joinWith: "__" transform: [it cljSanitizeIdent]
+
+
+extend String [
+  // `clojure.string.bind` -> `clojure/string`
+  on cljBindNamespace -> String = .replace: "/" with: "."
+
+  on stripCljPkgPrefix(prefix): String -> String = [
+    pre = prefix + "_"
+    preLen = pre count
+    ^ (.count >= preLen && ((.slice: 0..<preLen) == pre))
+        ifTrue: [.slice: preLen..< .count]
+        ifFalse: [this]
+  ]
+
+  on cljHasPrefix(prefix): String -> Bool = [
+    prefixLen = prefix count
+    ^ (.count >= prefixLen) && ((.slice: 0..<prefixLen) == prefix)
+  ]
+
+  on cljNormalizeTypeId -> String =
+    (.contains: "__") ifTrue: [.substringBefore: "__"] ifFalse: [this]
+
+  on cljPadTo(width): Int -> String =
+    this + (" " repeat: width - this count)
+
+]
+
+IrTypeRef coreFuncNameFromCljCall(name): String -> String = [
+  baseId = typeId cljNormalizeTypeId
+  recvBase = baseId stripCljPkgPrefix: "core"
+
+  // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
+  // this should be solved by lazily generating ?__echo methods for everything or something elce
+  ^ name == "echo"
+      ifTrue: ["Any__echo"]
+      ifFalse: [(recvBase cljSanitizeIdent) + "__" + (name cljSanitizeIdent)]
+]
+
+// type mapping
+IrTypeRef isCljUnitType -> Bool =
+  (kind == IrTypeRefKind.Builtin) && (typeId cljNormalizeTypeId == "core_Unit")
+
+IrTypeRef cljTypeName -> String = [
+  baseId = typeId cljNormalizeTypeId
+  // Error is an abstract core type the emitter replaces it for
+  // Error throw \ throwWithMsg calls
+  // TODO
+  ^ baseId == "core_Error"
+      ifTrue: [":niva.core/Error"]
+      ifFalse: [baseId cljSanitizeIdent]
+]
+
+IrTypeRef cljQualifiedTypeName(ctx): CljContext -> String = [
+  baseName = this cljTypeName
+  owner = ownerPkg
+  canQualify = (ctx currentPackage != "") && (owner != "") &&
+    (owner != "core") && (owner != ctx currentPackage)
+  canQualify ifTrue: [^ (owner cljGeneratedNamespace) + "/" + baseName]
+  ^ baseName
+]
+
+// enum atoms use the generated enum Var instead of a plain keyword
+IrLiteralExpr cljLiteralExpr(ctx): CljContext -> String = [
+  isEnumAtom = (literal kind == IrLiteralKind.Atom) &&
+    (typeRef kind == IrTypeRefKind.Custom) &&
+    (typeRef ownerPkg != "")
+  isEnumAtom ifTrue: [
+    enumName = typeRef cljQualifiedTypeName: ctx
+    ^ enumName + "_" + (literal lexeme cljSanitizeIdent)
+  ]
+  ^ literal toCljLiteral
+]
+
+// ---------------------------------------------------------------------------
+// operator translation for IrOpBin
+// ---------------------------------------------------------------------------
+String cljOperator -> String =
+  | this
+  | "==" => "="
+  | "!=" => "not="
+  | "&&" => "and"
+  | "||" => "or"
+  | "%" => "rem"
+  |=> this
+
+// ---------------------------------------------------------------------------
+// literals
+// ---------------------------------------------------------------------------
+String toCljRawStringLiteral -> String = [
+  content = (this drop: 3) dropLast: 3
+  sb = StringBuilder new
+  mut i = 0
+  [i < content count] whileTrue: [
+    c = content at: i
+    | c
+    | '\\' => [sb append: "\\\\"]
+    | '"'  => [sb append: "\\\""]
+    | '\n' => [sb append: "\\n"]
+    | '\r' => [sb append: "\\r"]
+    | '\t' => [sb append: "\\t"]
+    |=> [sb append: c toString]
+    i <- i inc
+  ]
+  ^ "\"" + sb toString + "\""
+]
+
+IrLiteral toCljLiteral -> String =
+  | kind
+  | IrLiteralKind.Null   => "nil"
+  | IrLiteralKind.Unit   => ":unit"
+  | IrLiteralKind.Bool   => lexeme
+  | IrLiteralKind.Int    => lexeme
+  | IrLiteralKind.Double => lexeme
+  | IrLiteralKind.Float  => lexeme endsWith: "f",
+                                  ifTrue:  [lexeme dropLast: 1]
+                                 ifFalse: [lexeme]
+  | IrLiteralKind.Char   => lexeme toCljCharLiteral
+  | IrLiteralKind.String    => lexeme
+  | IrLiteralKind.RawString => lexeme toCljRawStringLiteral
+  | IrLiteralKind.Atom   => ":" + lexeme
+
+String toCljCharLiteral -> String = [
+  content = (this drop: 1) dropLast: 1
+  ^ | content
+    | "\\n"  => "\\newline"
+    | "\\t"  => "\\tab"
+    | "\\r"  => "\\return"
+    | "\\b"  => "\\backspace"
+    | "\\f"  => "\\formfeed"
+    | " "    => "\\space"
+    | "\\\\" => "\\\\"
+    |=> "\\" + content
+]
+
+Int cljIndent -> String = "  " repeat: this
+
+StringBuilder appendCljIndent(level): Int line: String -> Unit = [
+  this append: (level cljIndent)
+  this appendLine: line
+]

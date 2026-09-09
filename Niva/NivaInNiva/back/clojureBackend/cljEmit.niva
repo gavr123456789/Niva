@@ -1,0 +1,880 @@
+//   * types    -> defrecord
+//   * unions   -> a defrecord per branch (dispatch by instance? in match)
+//   * enums    -> individual defs to distinct keywords
+//   * fns      -> defn
+//   * mut vars -> atoms; @x for reads, (reset! x v) for writes
+//   * blocks   -> single let with `_` bindings for side-effect statements
+//   * IrReturn -> supported only as the trailing statement; anywhere else it
+//                 explodes with `TO DO: "Clojure does not support ^"`
+//   * errors   -> exceptions. `throw` wraps the error record in an ex-info
+//                 (payload under `:value`, matching niva.core/Error__throw);
+//                 propagation is free (the exception unwinds the stack). A
+//                 ByError match dispatches on the record type via `condp
+//                 instance?`: with no else branch it is a plain try/catch that
+//                 re-throws anything unhandled; with an else branch it defers to
+//                 the niva.core/handling macro, which hides the success-vs-handled
+//                 bookkeeping so the generated code stays a readable macro call.
+//
+// IrSetField is intentionally rejected with TO DO for now.
+
+extend IrExpr [
+  on toCljExpr(ctx): CljContext scope: CljScope -> String =
+    | this
+    | IrLiteralExpr => this cljLiteralExpr: ctx
+    | IrVarRef      => [
+        safe = name cljSanitizeIdent
+        (scope isMut: name) ifTrue: ["@" + safe] ifFalse: [safe]
+      ]
+    | IrThisRef  => "this"
+    | IrFieldGet => [
+        recv = receiver toCljExpr: ctx scope: scope
+        "(:" + (field cljSanitizeIdent) + " " + recv + ")"
+      ]
+    | IrTypeRefExpr => ref cljQualifiedTypeName: ctx
+    | IrOpBin => [
+        l = left  toCljExpr: ctx scope: scope
+        r = right toCljExpr: ctx scope: scope
+        // replace + for Strings to str
+        isStrPlus = (op == "+") && ((left typeRef typeId cljNormalizeTypeId) == "core_String")
+        isStrPlus
+          ifTrue:  ["(str " + l + " " + r + ")"]
+          ifFalse: ["(" + (op cljOperator) + " " + l + " " + r + ")"]
+      ]
+    | IrCall     => this callToCljExpr:  ctx scope: scope
+    | IrLambda   => this lambdaToCljExpr: ctx scope: scope
+    | IrBlockExpr => block toCljBlockExpr: ctx scope: scope
+    | IrMatchExpr => this matchToCljExpr: ctx scope: scope
+    | IrNewExpr   => [
+        argsStr = args isNotEmpty
+          ifTrue: [" " + (args joinWith: " " transform: [it toCljExpr: ctx scope: scope])]
+          ifFalse: [""]
+        constructorBind unpack: [bind ->
+          | bind
+          | IrConstructorBindEmit => [
+            bind backend == "clojure" ifTrue: [
+              ^ bind template bindApply0: (args map: [it toCljExpr: ctx scope: scope])
+            ]
+          ]
+        ]
+        constructorName = "->" + (typeId cljNormalizeTypeId cljSanitizeIdent)
+        owner = typeRef ownerPkg
+        canQualify = (ctx currentPackage != "") && (owner != "") &&
+          (owner != "core") && (owner != ctx currentPackage)
+        name = canQualify
+          ifTrue: [(owner cljGeneratedNamespace) + "/" + constructorName]
+          ifFalse: [constructorName]
+        "(" + name + argsStr + ")"
+      ]
+    | IrCollectionLiteral => this collectionToCljExpr: ctx scope: scope
+
+  on isCljCallLike -> Bool =
+    | this
+    | IrCall | IrBlockExpr | IrMatchExpr => true
+    |=> false
+]
+
+// Bind emit expressions are inlined at the call site.
+// declaration from `<namespace>.bind.niva` carries the same information in
+// IrBind, so Clojure uses that namespace directly at the call site
+IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String? = [
+  r = receiverType
+  | r
+  | null => [^ null]
+  |=> r typeId == "core_Bind"
+        ifFalse: [^ null]
+
+  msgNameLocalMaybe = msgName
+  | msgNameLocalMaybe
+  | null => [^ null]
+  |=> [
+    msgNameLocal = msgNameLocalMaybe
+    ^ | msgNameLocal
+    | "emit" => [
+        templateExpr = args first
+        templateExpr irStringLiteralValue unpackOrValue: (templateExpr toCljExpr: ctx scope: scope)
+      ]
+    |=> null
+  ]
+]
+
+IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  isTry = msgName unpack: [it == "try"] or: false
+  isTry ifTrue: [
+    input = args first
+    inputStr = input toCljExpr: ctx scope: scope
+    input typeRef nullable ifTrue: [
+      ^ "(let [__tryValue " + inputStr + "] (if (nil? __tryValue) (throw (ex-info \"try on null\" {})) __tryValue))"
+    ]
+    ^ inputStr
+  ]
+
+  // new-style bind attached during IR generation
+  bind unpack: [bp ->
+    | bp
+    | IrBindByName => [
+        argsStr = args joinWith: " " transform: [it toCljExpr: ctx scope: scope]
+        namespace = bp goPkg cljBindNamespace
+        namespace != "" ifTrue: [ctx addImport: namespace]
+        argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
+        ^ "(" + namespace + "/" + (bp goName cljSanitizeIdent) + argsPart + ")"
+      ]
+    | IrBindEmit => [
+        emitArgVals = args map: [it toCljExpr: ctx scope: scope]
+        ^ bp template bindApply0: emitArgVals
+      ]
+  ]
+
+  // Ordinary `Bind emit:` expressions are inlined at the call site.
+  bindExpr = this tryCljBindExpr: ctx scope: scope
+  bindExpr != null ifTrue: [^ bindExpr unpackOrPANIC]
+
+  argsStr = args joinWith: " " transform: [it toCljExpr: ctx scope: scope]
+  argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
+
+  funcIdLocal = funcId
+  receiverTypeId = receiverType unpack: [it typeId] or: ""
+  compilerCliArgsCall = (msgName unpack: [it == "cliArgs"] or: false) &&
+    ((receiverTypeId contains: "Compiler") ||
+      (funcIdLocal unpack: [it contains: "Compiler"] or: false))
+  compilerCliArgsCall ifTrue: [
+    ^ "(or (some-> (System/getProperty \"niva.cli.args\") read-string vec) [])"
+  ]
+  jvmHostCall = (funcIdLocal unpack: [it contains: "JvmReloadHost"] or: false)
+  jvmHostCall ifTrue: [
+    msgNameLocal = msgName unpackOrPANIC
+    | msgNameLocal
+    | "start" => [
+        ^ "((requiring-resolve 'niva.hot-reload.host/start!)" + argsPart + ")"
+      ]
+    | "reloadChanged" => [
+        ^ "((requiring-resolve 'niva.hot-reload.host/reload-changed!))"
+      ]
+    |=> []
+  ]
+  ^ | funcIdLocal
+    | null => [
+        calleeLocal = callee
+        | calleeLocal
+        | null => [TO DO: "IrCall without funcId must have callee"]
+        |=> [
+            calleeExpr = calleeLocal toCljExpr: ctx scope: scope
+            "(" + calleeExpr + argsPart + ")"
+          ]
+      ]
+    |=> [
+        declPkgLocal = declPkg unpackOrPANIC
+        declPkgLocal == "core"
+          ifTrue: [
+            ctx addImport: "niva.core"
+            msgNameLocal = msgName unpackOrPANIC
+            recvTypeLocal = receiverType unpackOrPANIC
+            coreFn = recvTypeLocal coreFuncNameFromCljCall: msgNameLocal
+            "(niva.core/" + coreFn + argsPart + ")"
+          ]
+          ifFalse: [
+            fn = funcIdLocal cljFuncIdToName
+            isCrossPackage = (ctx currentPackage != "") &&
+              (declPkgLocal != ctx currentPackage)
+            callName = isCrossPackage
+              ifTrue: [(declPkgLocal cljGeneratedNamespace) + "/" + fn]
+              ifFalse: [fn]
+            "(" + callName + argsPart + ")"
+          ]
+      ]
+]
+
+// ---------------------------------------------------------------------------
+// IrLambda
+// ---------------------------------------------------------------------------
+
+IrExpr lambdaToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  | this | IrLambda => [
+    argsStr = args joinWith: " " transform: [it name cljSanitizeIdent]
+
+    innerScope = scope copy
+    // lambda arg mutability is not tracked in IrArg, treat all as immutable locals
+
+    bodyStr = body toCljBlockBody: ctx scope: innerScope
+
+    ^ "(fn [" + argsStr + "] " + bodyStr + ")"
+  ] |=> [TO DO: "lambdaToCljExpr called on non-lambda"]
+]
+
+// ---------------------------------------------------------------------------
+// IrCollectionLiteral
+// ---------------------------------------------------------------------------
+
+IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> String =
+  | this kind
+  | IrCollectionKind.List => "[" + (items joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "]"
+  | IrCollectionKind.Set  => "#{" + (items joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
+  | IrCollectionKind.Map  => [
+      items count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
+      pairs = items asSequence chunked: 2, toList, joinWith: " " transform: [chunk ->
+        key = chunk at: 0
+        value = chunk at: 1
+        (key toCljExpr: ctx scope: scope) + " " + (value toCljExpr: ctx scope: scope)
+      ]
+      "{" + pairs + "}"
+    ]
+
+// Wrap `this` body expression in `(let [<bindings>] <this>)`. Single binding
+// with a single-line body stays compact; otherwise names are padded to a
+// shared column width, split across lines, and the body is placed on its own
+// line (with its own internal newlines re-indented).
+String cljWrapInLet(bindings): List(CljBinding) -> String = [
+  isSingle = bindings count == 1
+  bodyMultiline = this contains: "\n"
+
+  (isSingle && bodyMultiline not) ifTrue: [
+    b = bindings first
+    ^ "(let [" + b name + " " + b value + "] " + this + ")"
+  ]
+
+  bStr = isSingle
+    ifTrue: [
+      b = bindings first
+      b name + " " + b value
+    ]
+    ifFalse: [
+      mut maxLen = 0
+      bindings forEach: [it ->
+        w = it name count
+        w > maxLen ifTrue: [maxLen <- w]
+      ]
+      bindings joinWith: "\n      " transform: [it ->
+        (it name cljPadTo: maxLen) + " " + it value
+      ]
+    ]
+  indented = this replace: "\n" with: "\n  "
+  ^ "(let [" + bStr + "]\n  " + indented + ")"
+]
+
+IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
+  subjectExpr = subject toCljExpr: ctx scope: scope
+  subjectName = "__cljSubject"
+  innerScope = scope copy
+
+  elseBranchLocal = elseBranch
+
+  | kind
+  | IrMatchKind.ByError => [
+      // Errors are exceptions carrying the error record under `:value` (see
+      // IrThrow / niva.core/Error__throw). We dispatch on the record's concrete
+      // type; anything unhandled is re-thrown so it keeps propagating.
+      aliasName = (typeAlias unpackOrValue: "it") cljSanitizeIdent
+      errName = "__cljErr"
+
+      // Shared dispatch: (condp instance? alias  Type body  ...  <default>).
+      // The default differs per shape: standalone re-throws immediately, while
+      // the else form yields a sentinel that niva.core/handling turns into a
+      // re-throw (it must escape the handler before deciding on the else branch).
+      buildCondp = [defaultStr::String ->
+        condpSb = StringBuilder new
+        condpSb append: "(condp instance? "
+        condpSb append: aliasName
+        cases forEach: [c ->
+          typeStr = c assertedTypeRef
+            unpack: [ref ->
+              // Object for record errors(niva errors)
+              (ref typeId cljNormalizeTypeId) == "core_Error"
+                ifTrue:  ["Object"]
+                ifFalse: [ref cljQualifiedTypeName: ctx]
+            ]
+            or: (c condition toCljExpr: ctx scope: innerScope)
+          caseScope = innerScope copy
+          caseScope mutLocals remove: aliasName
+          bodyStr = c body toCljBlockBody: ctx scope: caseScope
+          condpSb append: "\n  "
+          condpSb append: typeStr
+          condpSb append: " "
+          condpSb append: (bodyStr replace: "\n" with: "\n  ")
+        ]
+        condpSb append: "\n  "
+        condpSb append: defaultStr
+        condpSb append: ")"
+        condpSb toString
+      ]
+
+      ^ | elseBranchLocal
+        | null => [
+            // No else branch: a plain, idiomatic try/catch/condp — no wrapping.
+            condpStr = buildCondp do: ("(throw " + errName + ")")
+            sb = StringBuilder new
+            sb append: "(try "
+            sb append: subjectExpr
+            sb append: "\n  (catch clojure.lang.ExceptionInfo "
+            sb append: errName
+            sb append: "\n    (let ["
+            sb append: aliasName
+            sb append: " (:value (ex-data "
+            sb append: errName
+            sb append: "))]\n      "
+            sb append: (condpStr replace: "\n" with: "\n      ")
+            sb append: ")))"
+            sb toString
+          ]
+        |=> [
+            // Else branch present: niva.core/handling hides the success-vs-handled
+            // plumbing, so the generated code stays a readable macro call.
+            ctx addImport: "niva.core"
+            condpStr = buildCondp do: ":niva.core/miss"
+            elseBlock = elseBranchLocal
+            elseScope = innerScope copy
+            elseScope mutLocals remove: aliasName
+            elseStr = elseBlock toCljBlockBody: ctx scope: elseScope
+
+            sb = StringBuilder new
+            sb append: "(niva.core/handling ["
+            sb append: aliasName
+            sb append: " "
+            sb append: subjectExpr
+            sb append: "]\n  "
+            sb append: (condpStr replace: "\n" with: "\n  ")
+            sb append: "\n  "
+            sb append: (elseStr replace: "\n" with: "\n  ")
+            sb append: ")"
+            sb toString
+          ]
+    ]
+  | IrMatchKind.ByType  => [
+      // condp instance? subject Foo (let [alias subject] body) ...
+      sb = StringBuilder new
+      sb append: "(condp instance? "
+      sb append: subjectName
+      cases forEach: [c ->
+        typeStr = c assertedTypeRef unpack: [it cljQualifiedTypeName: ctx]
+                                    or: (c condition toCljExpr: ctx scope: innerScope)
+        aliasName = typeAlias unpackOrValue: "it"
+        caseScope = innerScope copy
+        caseScope mutLocals remove: aliasName
+        bodyStr = c body toCljBlockBodyWithBind: ctx scope: caseScope
+                    bindName: aliasName bindValue: subjectName
+        sb append: "\n  "
+        sb append: typeStr
+        sb append: " "
+        sb append: (bodyStr replace: "\n" with: "\n  ")
+      ]
+      | elseBranchLocal
+      | null => [ sb append: "\n  (throw (ex-info \"no matching type\" {})))" ]
+      |=> [
+          elseBlock = elseBranchLocal
+          elseScope = innerScope copy
+          elseStr = elseBlock toCljBlockBody: ctx scope: elseScope
+          sb append: "\n  "
+          sb append: (elseStr replace: "\n" with: "\n  ")
+          sb append: ")"
+        ]
+      ^ (sb toString) cljWrapInLet: {(CljBinding name: subjectName value: subjectExpr)}
+    ]
+  |=> [
+      // ByValue or ByBool -> cond chain
+      sb = StringBuilder new
+      sb append: "(cond"
+      cases forEach: [c ->
+        cond = c condition toCljExpr: ctx scope: innerScope
+        guardStr = c additionalConditions isNotEmpty
+          ifTrue: [" (and " + (c additionalConditions joinWith: " " transform: [it toCljExpr: ctx scope: innerScope]) + ")"]
+          ifFalse: [""]
+        fullCond = guardStr == ""
+          ifTrue: ["(= " + subjectName + " " + cond + ")"]
+          ifFalse: ["(and (= " + subjectName + " " + cond + ")" + guardStr + ")"]
+        caseScope = innerScope copy
+        bodyStr = c body toCljBlockBody: ctx scope: caseScope
+        sb append: "\n  "
+        sb append: fullCond
+        sb append: " "
+        sb append: (bodyStr replace: "\n" with: "\n  ")
+      ]
+      | elseBranchLocal
+      | null => []
+      |=> [
+          elseBlock = elseBranchLocal
+          elseStr = elseBlock toCljBlockBody: ctx scope: (innerScope copy)
+          sb append: "\n  :else "
+          sb append: (elseStr replace: "\n" with: "\n  ")
+          ()
+        ]
+      sb append: ")"
+      ^ (sb toString) cljWrapInLet: {(CljBinding name: subjectName value: subjectExpr)}
+    ]
+]
+
+// ---------------------------------------------------------------------------
+// blocks
+// ---------------------------------------------------------------------------
+
+extend IrBlock [
+  // Emits the block as a Clojure expression: (let [...] body) with all
+  // statements collected into the bindings vector. Non-binding statements use
+  // `_` as their symbol.
+  on toCljBlockBody(ctx): CljContext scope: CljScope -> String =
+    .toCljBlockBodyWithBind: ctx scope: scope bindName: "" bindValue: ""
+
+  // Same as `toCljBlockBody` but injects an extra binding at the top. Used by
+  // match cases to alias the subject inside a type-cast branch.
+  on toCljBlockBodyWithBind(ctx): CljContext scope: CljScope
+                             bindName: String bindValue: String -> String = [
+    // If the last statement is an IrReturn, treat its expression as the body's
+    // result. IrReturn anywhere else is not allowed on this backend.
+    lastIdx = stmts count - 1
+    mut trailingReturnExpr::IrExpr? = null
+    stmtsToEmit::mut List(IrStmt) = {}!
+    stmts forEachIndexed: [i, st ->
+      | st
+      | IrReturn => [
+          i == lastIdx
+            ifTrue:  [trailingReturnExpr <- st expr]
+            ifFalse: [TO DO: "Clojure does not support ^"]
+        ]
+      |=> [ stmtsToEmit add: st
+            ()]
+    ]
+
+    injectedBinding = bindName != ""
+      ifTrue: [{(CljBinding name: (bindName cljSanitizeIdent) value: bindValue)}]
+      ifFalse: [{CljBinding}]
+    bindings = injectedBinding + (stmtsToEmit map: [it toCljStmtBinding: ctx scope: scope])
+
+    // trailing IrReturn or block result
+    resultExpr::IrExpr? = | trailingReturnExpr
+      | null => result
+      |=> trailingReturnExpr
+
+    resultStr = | resultExpr
+                | null => [resultType isCljUnitType ifTrue: [":unit"] ifFalse: ["nil"]]
+                |=> resultExpr toCljExpr: ctx scope: scope
+
+    ^ bindings isNotEmpty
+      ifTrue: [resultStr cljWrapInLet: bindings]
+      ifFalse: [resultStr]
+  ]
+
+  on toCljBlockExpr(ctx): CljContext scope: CljScope -> String =
+    .toCljBlockBody: ctx scope: scope
+]
+
+// ---------------------------------------------------------------------------
+// statement -> let-binding pair
+// ---------------------------------------------------------------------------
+
+IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
+  ^ | this
+    | IrLet => [
+        goName = name cljSanitizeIdent
+        isPersistent = ctx isStateName: name
+        isPersistent ifTrue: [
+          raw = value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
+          init = "(if (identical? @" + goName + " __niva_state_uninitialized) (reset! " +
+            goName + " " + raw + ") nil)"
+          ^ CljBinding name: "_" value: init
+        ]
+        scope mutLocals remove: name
+        isMut ifTrue: [scope mutLocals add: name]
+        raw = value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
+        valStr = isMut ifTrue: ["(atom " + raw + ")"] ifFalse: [raw]
+        CljBinding name: goName value: valStr
+      ]
+    | IrSetLocal => [
+        goName = name cljSanitizeIdent
+        (scope isMut: name) ifFalse: [TO DO: "Clojure backend: assignment to non-mut var: " + name]
+        valStr = value toCljExpr: ctx scope: scope
+        CljBinding name: "_" value: ("(reset! " + goName + " " + valStr + ")")
+      ]
+    | IrSetField => [TO DO: "Clojure backend: field mutation is not supported (records are immutable)"]
+    | IrDestructure => [
+        valStr = value toCljExpr: ctx scope: scope
+        // build {a :field b :field2 ...} destructure map
+        parts = bindings joinWith: " " transform: [b ->
+          scope mutLocals remove: b name
+          (b name cljSanitizeIdent) + " :" + (b fieldName cljSanitizeIdent)
+        ]
+        CljBinding name: ("{" + parts + "}") value: valStr
+      ]
+    | IrExprStmt => [
+        // Error propagation is automatic here: a call with propagatingErrVar just
+        // throws on failure, and the exception unwinds the stack until a ByError
+        // match (try/catch) handles it — so no special emission is needed.
+        CljBinding name: "_" value: (expr toCljExpr: ctx scope: scope)
+      ]
+    | IrReturn => [TO DO: "Clojure does not support ^"]
+    | IrWhile => [
+        condStr = cond isIrLambda
+          ifTrue:  [cond cljUnwrapLambdaBody: ctx scope: scope]
+          ifFalse: ["(" + (cond toCljExpr: ctx scope: scope) + ")"]
+        bodyStr = body isIrLambda
+          ifTrue:  [body cljUnwrapLambdaBody: ctx scope: scope]
+          ifFalse: [body toCljExpr: ctx scope: scope]
+        CljBinding name: "_" value: ("(while " + condStr + " " + bodyStr + ")")
+      ]
+    | IrThrow => [
+        // JVM can only throw Throwables, so wrap the error record in an ex-info
+        // whose data carries it under `:value` (matching niva.core/Error__throw
+        // and the extraction done by a ByError match).
+        throwErrExpr = errExpr
+        errRecordStr = | throwErrExpr
+          | IrTypeRefExpr => "(->" + (throwErrExpr ref typeId cljNormalizeTypeId cljSanitizeIdent) + ")"
+          |=> throwErrExpr toCljExpr: ctx scope: scope
+        CljBinding name: "_"
+          value: ("(let [__cljErr " + errRecordStr + "] (throw (ex-info (str __cljErr) {:value __cljErr})))")
+      ]
+]
+
+// Unwrap the body of an IrLambda: expose its statements + result inline so that
+// (while (fn [] cond)) becomes (while cond) instead of paying the closure cost.
+IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String =
+  | this | IrLambda => body toCljBlockBody: ctx scope: scope
+  |=> [TO DO: "cljUnwrapLambdaBody: expected IrLambda"]
+
+// ---------------------------------------------------------------------------
+// top-level definitions
+// ---------------------------------------------------------------------------
+
+constructor CljBackend [
+  on emitTypeDef(def): IrTypeDef ctx: CljContext sb: StringBuilder -> Unit = [
+    name = def id cljNormalizeTypeId cljSanitizeIdent
+    fields = def fields joinWith: " " transform: [it name cljSanitizeIdent]
+    sb appendLine: ("^:clj-reload/keep (defrecord " + name + " [" + fields + "])")
+    sb appendLine: ""
+  ]
+
+  on emitUnionDef(def): IrUnionDef ctx: CljContext sb: StringBuilder -> Unit = [
+    // each branch becomes its own defrecord that inlines common fields first
+    def branches forEach: [br ->
+      br isInclude ifFalse: [
+        branchTypeId = def pkgId + "_" + br name
+        branchName = branchTypeId cljSanitizeIdent
+        commonStr = def commonFields joinWith: " " transform: [f -> f name cljSanitizeIdent]
+        branchStr = br fields joinWith: " " transform: [f -> f name cljSanitizeIdent]
+        fieldsStr = commonStr == ""
+          ifTrue: [branchStr]
+          ifFalse: [branchStr == "" ifTrue: [commonStr] ifFalse: [commonStr + " " + branchStr]]
+        sb appendLine: ("^:clj-reload/keep (defrecord " + branchName + " [" + fieldsStr + "])")
+      ]
+    ]
+    sb appendLine: ""
+  ]
+
+  on emitEnumDef(def): IrEnumDef ctx: CljContext sb: StringBuilder -> Unit = [
+    name = def id cljNormalizeTypeId cljSanitizeIdent
+    def values forEach: [v ->
+      valSafe = v cljSanitizeIdent
+      valName = name + "_" + valSafe
+      sb appendLine: ("(def " + valName + " :" + valName + ")")
+    ]
+    sb appendLine: ""
+  ]
+
+  on emitFunction(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit =
+    CljBackend emitFunctionNamed: (fn cljFuncNameFromIr) fn: fn ctx: ctx sb: sb
+
+  // Generic receiver methods are represented by one IR function and a list of
+  // concrete call-site instantiations. Clojure has no dispatch by static type,
+  // so every concrete receiver needs its own function symbol.
+  on emitFunctionNamed(name): String fn(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
+    // fn.args already includes `this` for instance methods
+    generatedLine = (sb toString) cljLineCount
+    fullArgs = fn args joinWith: " " transform: [it name cljSanitizeIdent]
+
+    scope = CljScope new
+    ctx stateNames forEach: [it -> scope mutLocals add: it]
+    body = fn body toCljBlockBody: ctx scope: scope
+
+    (body contains: "\n")
+      ifTrue: [
+        indented = body replace: "\n" with: "\n  "
+        sb appendLine: ("(defn " + name + " [" + fullArgs + "]")
+        sb appendLine: ("  " + indented + ")")
+      ]
+      ifFalse: [
+        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
+    ]
+    sb appendLine: ""
+    generatedEndLine = ((sb toString) cljLineCount) - 2
+    ctx addDebugEntry: generatedLine endLine: generatedEndLine token: fn token method: fn name
+  ]
+
+  on emitStateDef(def): IrStateDef ctx: CljContext sb: StringBuilder -> Unit = [
+    name = def name cljSanitizeIdent
+    sb appendLine: "^:clj-reload/keep (def " + name + " (atom __niva_state_uninitialized))"
+    sb appendLine: ""
+  ]
+
+  on emitEntry(entry): IrBlock stateDefs(stateDefs): List(IrStateDef)
+      ctx(ctx): CljContext sb(sb): StringBuilder -> Unit = [
+    // keep entry execution behind a reload-safe hook
+    entryToken = entry stmts isNotEmpty
+      ifTrue: [(entry stmts first) token]
+      ifFalse: [entry result unpack: [it token] or: FAKE_TOKEN]
+    generatedLine = (sb toString) cljLineCount
+    scope = CljScope new
+    stateDefs forEach: [it -> scope mutLocals add: it name]
+    body = entry toCljBlockBody: ctx scope: scope
+    indented = body replace: "\n" with: "\n  "
+    sb appendLine: "(defn __niva_entry! []"
+    ctx debug
+      ifTrue: [
+        sb appendLine: "  (try"
+        sb appendLine: ("    " + indented replace: "\n" with: "\n    ")
+        sb appendLine: "    (catch ^:sci/error Exception __niva_exception"
+        sb appendLine: "      (__niva_debug_print __niva_exception)))"
+        sb appendLine: ")"
+      ]
+      ifFalse: [sb appendLine: ("  " + indented + ")")]
+    sb appendLine: ""
+    // keep the cli entry point as a thin compatibility wrapper
+    sb appendLine: "(defn -main [& args]"
+    sb appendLine: "  (System/setProperty \"niva.cli.args\" (pr-str (vec args)))"
+    sb appendLine: "  (__niva_entry!))"
+    sb appendLine: ""
+    generatedEndLine = ((sb toString) cljLineCount) - 2
+    ctx addDebugEntry: generatedLine endLine: generatedEndLine token: entryToken method: "__niva_entry!"
+  ]
+
+  // REPL modules have no `-main`: the entry block is emitted as a top-level
+  // expression, so loading/evaluating the generated form returns the Niva
+  // entry result in the target Clojure session.
+  on emitEntryRepl(entry): IrBlock ctx: CljContext sb: StringBuilder -> Unit = [
+    scope = CljScope new
+    entry stmts forEach: [stmt ->
+      | stmt
+      | IrLet => [
+        value = stmt value unpack: [it toCljExpr: ctx scope: scope] or: "nil"
+        sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")
+      ]
+      | IrSetLocal => [
+        value = stmt value toCljExpr: ctx scope: scope
+        isPersistent = scope isMut: stmt name
+        isPersistent
+          ifTrue: [sb appendLine: ("(reset! " + (stmt name cljSanitizeIdent) + " " + value + ")")]
+          ifFalse: [sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")]
+      ]
+      | IrExprStmt => [sb appendLine: (stmt expr toCljExpr: ctx scope: scope)]
+      |=> [
+        binding = stmt toCljStmtBinding: ctx scope: scope
+        wrapped = ":unit" cljWrapInLet: {binding}
+        sb appendLine: wrapped
+      ]
+    ]
+    resultValue = entry result unpack: [it toCljExpr: ctx scope: scope] or: ":unit"
+    sb appendLine: resultValue
+    sb appendLine: ""
+  ]
+
+  on fullOutputFromIrModuleForTarget(ir): IrModule debug: Bool mode: CljEmitMode
+      target(target): CljTarget -> CljOutput = [
+    files::mut Map(String, String) = #{}!
+
+    // Keep the legacy `main` shim loadable even when the source file is empty.
+    // The shim always requires the entry namespace, so an empty package list
+    // still needs a no-op generated entry module.
+    packages = ir packages isEmpty
+      ifTrue: [
+        {(IrPackage
+          name: ir pkg
+          imports: {}
+          dependencies: {}
+          types: {}
+          unions: {}
+          enums: {}
+          stateDefs: {}
+          functions: {})}
+      ]
+      ifFalse: [ir packages]
+
+    packages sortedBy: [it name], forEach: [pkg ->
+      localDependencyNames = pkg dependencyPackageNames filter: [it != "core"]
+      localImports = (localDependencyNames map: [dependency -> dependency cljGeneratedNamespace]) toSet
+      packageEntry = pkg name == ir pkg ifTrue: [ir entry] ifFalse: [null]
+      packageIr = IrModule version: ir version pkg: pkg name packages: {pkg} entry: packageEntry
+      content = CljBackend fullFromIrModule: packageIr debug: debug mode: mode
+        namespace: (pkg cljGeneratedNamespace) initialImports: localImports
+        mainClass: ((pkg name == ir pkg) && (target == CljTarget.Jvm))
+      files at: (pkg cljGeneratedPath) put: content
+    ]
+
+    modules::mut List(CljModuleManifest) = {}!
+    stateVars::mut List(CljStateManifest) = {}!
+    typeShapes::mut List(CljTypeShape) = {}!
+    packages sortedBy: [it name], forEach: [pkg ->
+      modules add: (CljModuleManifest
+        moduleId: pkg name
+        file: pkg cljGeneratedPath
+        deps: ((pkg dependencyPackageNames filter: [it != "core"]) sortedBy: [it]))
+      pkg stateDefs forEach: [state ->
+        stateVars add: (CljStateManifest
+          key: pkg name + "/" + state name
+          varName: state name
+          typeShape: state typeRef canonicalInterfaceString)
+      ]
+      pkg types forEach: [def ->
+        typeShapes add: (CljTypeShape
+          key: pkg name + "/" + def id
+          kind: "record"
+          shape: def cljManifestShape)
+      ]
+      pkg unions forEach: [def ->
+        typeShapes add: (CljTypeShape
+          key: pkg name + "/" + def id
+          kind: "union"
+          shape: def cljManifestShape)
+      ]
+      pkg enums forEach: [def ->
+        typeShapes add: (CljTypeShape
+          key: pkg name + "/" + def id
+          kind: "enum"
+          shape: def cljManifestShape)
+      ]
+    ]
+    manifest = CljManifest
+      version: 1
+      entryNamespace: (ir pkg cljGeneratedNamespace)
+      modules: modules toList
+      stateVars: stateVars toList
+      typeShapes: typeShapes toList
+
+    ^ CljOutput files: files toMap
+      entryNamespace: (ir pkg cljGeneratedNamespace)
+      manifest: manifest target: target
+  ]
+
+  on fullOutputFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> CljOutput = [
+    ^ CljBackend fullOutputFromIrModuleForTarget: ir debug: debug mode: mode
+      target: CljTarget.Jvm
+  ]
+
+  on manifestFromIrModule(ir): IrModule -> CljManifest =
+    (CljBackend fullOutputFromIrModule: ir debug: false mode: CljEmitMode.Program) manifest
+
+  // Public entry point.
+  on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode
+      namespace(namespace): String initialImports(initialImports): Set(String)
+      mainClass(mainClass): Bool -> String = [
+    packageName = ir packages count == 1
+      ifTrue: [ir packages first name]
+      ifFalse: [""]
+    ctx = CljContext newDebug: debug imports: initialImports pkg: packageName
+    // ns declaration is decided at the end; emit bodies first into a scratch buffer
+    body = StringBuilder new
+    functionNames::mut Set(String) = #()!
+    isRepl = mode == CljEmitMode.Repl
+    hasProgramStates = (isRepl not) && (ir packages any: [it stateDefs isNotEmpty])
+    hasProgramStates ifTrue: [
+      body appendLine: "(def ^:private __niva_state_uninitialized (Object.))"
+      body appendLine: ""
+    ]
+
+    ir packages forEach: [pkg ->
+      pkg stateDefs forEach: [state ->
+        isRepl
+          ifTrue: [()]
+          ifFalse: [
+            ctx addStateName: state name
+            CljBackend emitStateDef: state ctx: ctx sb: body
+          ]
+      ]
+      pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
+      pkg unions forEach: [CljBackend emitUnionDef: it ctx: ctx sb: body]
+      pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
+      pkg functions forEach: [fn ->
+        baseName = fn cljFuncNameFromIr
+        functionNames add: baseName
+        CljBackend emitFunction: fn ctx: ctx sb: body
+        fn instantiations forEach: [inst ->
+          specializedId = (fn id replace: (fn receiverType typeId) with: (inst receiverType typeId))
+          specializedName = specializedId cljFuncIdToName
+          functionNames add: specializedName
+          specializedName == baseName ifFalse: [
+            CljBackend emitFunctionNamed: specializedName fn: fn ctx: ctx sb: body
+          ]
+        ]
+      ]
+    ]
+    ir entry unpack: [entry ->
+      isRepl
+        ifTrue: [CljBackend emitEntryRepl: entry ctx: ctx sb: body]
+        ifFalse: [
+          entryPackage = ir packages find: [it name == ir pkg]
+          entryStates = entryPackage unpack: [it stateDefs] or: {}
+          CljBackend emitEntry: entry stateDefs: entryStates ctx: ctx sb: body
+        ]
+    ]
+
+    header = StringBuilder new
+    header appendLine: ";; Code generated by Niva. DO NOT EDIT."
+    nsName = namespace
+    importsList = ctx imports toList sortedBy: [it]
+    emitsMainClass = (isRepl not) && mainClass
+    importsList isEmpty
+      ifTrue:  [
+        // programs need a Java main class for native-image, REPL does not.
+        nsSuffix = emitsMainClass ifTrue: [" (:gen-class))"] ifFalse: [")"]
+        header appendLine: ("(ns " + nsName + nsSuffix)
+      ]
+      ifFalse: [
+        reqs = importsList joinWith: " " transform: [it -> "[" + it + "]"]
+        genClass = emitsMainClass ifTrue: [" (:gen-class)"] ifFalse: [""]
+        header appendLine: ("(ns " + nsName + genClass + " (:require " + reqs + "))")
+    ]
+    functionNamesList = functionNames toList
+    stateNamesList = (ctx stateNames toList) map: [it cljSanitizeIdent]
+    declarationNames = functionNamesList + stateNamesList
+    declarationNames isNotEmpty ifTrue: [
+      header appendLine: ("(declare " + (declarationNames joinWith: " ") + ")")
+    ]
+    header appendLine: ""
+
+    ctx debug ifTrue: [
+      header appendLine: "(declare __niva_source_map)"
+      header appendLine: "(defn- __niva_sci_stacktrace [e]"
+      header appendLine: "  (try"
+      header appendLine: "    (when-let [f (requiring-resolve 'sci.core/stacktrace)]"
+      header appendLine: "      (seq (f e)))"
+      header appendLine: "    (catch Throwable _ nil)))"
+      header appendLine: "(defn- __niva_debug_print [e]"
+      header appendLine: "  (let [actual-error (or (.getCause e) e)]"
+      header appendLine: "    (println (str \"---\\nException: \" (.getMessage actual-error) \"\\n---\" )))"
+      header appendLine: "  (if-let [frames (__niva_sci_stacktrace e)]"
+      header appendLine: "    (loop [frames frames last-info nil]"
+      header appendLine: "      (when frames"
+      header appendLine: "        (let [frame (first frames)"
+      header appendLine: "              file (some-> (:file frame) java.io.File. .getName)"
+      header appendLine: "              line (:line frame)"
+      header appendLine: "              info (when (and file line) (get __niva_source_map [file line]))]"
+      header appendLine: "          (when (and info (not= info last-info))"
+      header appendLine: "            (println (str \"Method: \" (nth info 2) \" File: \" (nth info 0) \":\" (nth info 1))))"
+      header appendLine: "          (recur (next frames) (if info info last-info)))))"
+      header appendLine: "    (loop [frames (seq (.getStackTrace e)) last-info nil]"
+      header appendLine: "      (when frames"
+      header appendLine: "        (let [frame (first frames)"
+      header appendLine: "              info (get __niva_source_map [(.getFileName frame) (.getLineNumber frame)])]"
+      header appendLine: "          (when (and info (not= info last-info))"
+      header appendLine: "            (println (str \"Method: \" (nth info 2) \" File: \" (nth info 0) \":\" (nth info 1))))"
+      header appendLine: "          (recur (next frames) (if info info last-info))))))"
+      header appendLine: "  (System/exit 1))"
+      bodyLineOffset = (header toString) cljLineCount + 1
+      entriesList::mut List(String) = {}!
+      ctx debugEntries forEach: [entriesList addAll: (it toCljSourceMapEntries: bodyLineOffset)]
+      entries = entriesList joinWith: " "
+      header appendLine: ("(def __niva_source_map {" + entries + "})")
+      header appendLine: ""
+    ]
+    header append: (body toString)
+
+    ^ header toString
+  ]
+
+  on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> String = [
+    nsName = mode == CljEmitMode.Repl
+      ifTrue: ["niva.repl.session"]
+      ifFalse: ["main"]
+    ^ CljBackend fullFromIrModule: ir debug: debug mode: mode
+      namespace: nsName initialImports: #() mainClass: (mode == CljEmitMode.Program)
+  ]
+
+  on fullFromIrModule(ir): IrModule debug: Bool -> String =
+    CljBackend fullFromIrModule: ir debug: debug mode: CljEmitMode.Program
+
+  on fullFromIrModule(ir): IrModule -> String =
+    CljBackend fullFromIrModule: ir debug: false
+]
