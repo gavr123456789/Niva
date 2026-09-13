@@ -590,9 +590,18 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
               currentExpr <- IrOpBin op: op left: currentExpr right: argExpr typeRef: newTypeRef token: token
             ]
             ifFalse: [
-              callId = currentType toIrFunctionId: op
+              // fix custom binary methods
+              // binary methods for core types can belong to the current package
+              // so use the receiver type while MessageDeclT keeps the declaration package
+              methodPkg = db typeToMethodNameToMethod at: currentType
+                unpack: [methods ->
+                  method = methods at: op
+                  method unpack: [it pkgName] or: currentPkg
+                ]
+                or: currentPkg
+              callId = currentType toIrFunctionId: op declPkg: methodPkg
               currentTypeRef = currentType toIrTypeRefWithMutErrors: false errorsList: {}
-              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} isConstructor: false isBindCall: false msgName: op declPkg: (currentType pkgName) receiverType: currentTypeRef typeRef: newTypeRef propagatingErrVar: (newTypeRef errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null token: token
+              currentExpr <- IrCall funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} isConstructor: false isBindCall: false msgName: op declPkg: methodPkg receiverType: currentTypeRef typeRef: newTypeRef propagatingErrVar: (newTypeRef errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null token: token
             ]
 
           currentType <- opResultType

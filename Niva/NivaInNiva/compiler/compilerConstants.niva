@@ -705,6 +705,7 @@ static JVM_HOST_SOURCE = """
 (defonce runtime
   (atom {:initialized? false
          :initial-loaded? false
+         :entry-started? false
          :entry-executed? false
          :entry-namespace nil
          :watch-service nil
@@ -720,15 +721,24 @@ static JVM_HOST_SOURCE = """
       (doseq [line (take 8 trace)]
         (println "  at" line)))))
 
-(defn init! [generated-dir entry-namespace]
-  (when-not (:initialized? @runtime)
-    (reload/init
-     {:dirs [generated-dir]
-      :no-reload '#{niva.hot-reload.host}
-      :output :quieter})
-    (swap! runtime assoc
-           :initialized? true
-           :entry-namespace entry-namespace)))
+(defn init!
+  ([generated-dir entry-namespace]
+   (init! generated-dir entry-namespace false))
+  ([generated-dir entry-namespace preserve-vars?]
+   (when-not (:initialized? @runtime)
+     (reload/init
+      {:dirs [generated-dir]
+       :no-reload '#{niva.hot-reload.host}
+       :output :quieter})
+     (when preserve-vars?
+       (reload/init
+        {:dirs [generated-dir]
+         :no-unload (reload/find-namespaces)
+         :no-reload '#{niva.hot-reload.host}
+         :output :quieter}))
+     (swap! runtime assoc
+            :initialized? true
+            :entry-namespace entry-namespace))))
 
 (defn- invoke-entry! []
   (let [entry-symbol (symbol (:entry-namespace @runtime))
@@ -743,23 +753,52 @@ static JVM_HOST_SOURCE = """
     (entry-var)
     (swap! runtime assoc :entry-executed? true)))
 
-(defn initial-load! []
+(defn- initial-code-load! []
   (try
     (reload/reload {:only :all})
-    (when-not (:entry-executed? @runtime)
-      (invoke-entry!))
     (swap! runtime assoc :initial-loaded? true)
     {:ok true}
     (catch Throwable error
       (print-error! "Clojure initial load failed" error)
       {:ok false :error error})))
 
+(defn initial-load! []
+  (let [loaded (initial-code-load!)]
+    (if-not (:ok loaded)
+      loaded
+      (try
+        (when-not (:entry-executed? @runtime)
+          (invoke-entry!))
+        loaded
+        (catch Throwable error
+          (print-error! "Clojure initial entry failed" error)
+          {:ok false :error error})))))
+
+(defn- start-entry! []
+  (let [should-start? (atom false)]
+    (swap! runtime
+           (fn [state]
+             (if (or (not (:initial-loaded? state))
+                     (:entry-started? state)
+                     (:entry-executed? state))
+               state
+               (do
+                 (reset! should-start? true)
+                 (assoc state :entry-started? true)))))
+    (when @should-start?
+      (future
+        (try
+          (invoke-entry!)
+          (catch Throwable error
+            (swap! runtime assoc :entry-started? false)
+            (print-error! "Clojure entry failed" error)))))))
+
 (defn- reload-in-process! []
   (try
     (reload/reload {:only :changed})
-    (when-not (:entry-executed? @runtime)
-      (invoke-entry!))
     (swap! runtime assoc :initial-loaded? true)
+    (when-not (:entry-executed? @runtime)
+      (start-entry!))
     {:ok true}
     (catch Throwable error
       (print-error! "Clojure reload failed" error)
@@ -918,8 +957,9 @@ static JVM_HOST_SOURCE = """
   (swap! runtime assoc :bb-process nil :bb-writer nil))
 
 (defn runtime-loop! [generated-dir entry-namespace]
-  (init! generated-dir entry-namespace)
-  (initial-load!)
+  (init! generated-dir entry-namespace true)
+  (initial-code-load!)
+  (start-entry!)
   (doseq [line (line-seq (java.io.BufferedReader. *in*))]
     (when (= line "reload")
       (reload-in-process!))))
@@ -941,8 +981,9 @@ static JVM_HOST_SOURCE = """
         (watch-jvm! project-root on-change)
         (finally (stop-bb-runtime!))))
     (do
-      (init! generated-dir entry-namespace)
-      (initial-load!)
+      (init! generated-dir entry-namespace true)
+      (initial-code-load!)
+      (start-entry!)
       (watch! project-root on-change runtime-name))))
 """
 

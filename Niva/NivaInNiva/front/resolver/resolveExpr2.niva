@@ -664,7 +664,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       |=> null
     numberOfWrongElementType unpack: [
       wrongElement = elems at: it
-      db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wront type of $wrongElement element, $f type expected")
+      db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wrong type of $wrongElement element, $f type expected")
     ]
 
     astType =

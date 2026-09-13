@@ -124,8 +124,8 @@ IrTypeRef coreFuncNameFromCall(name): String -> String = [
         ifFalse: [recvBaseSafe + "__" + normalized]
 
   name == x ifFalse: [
-    "coreFuncNameFromCall: was: $name became $x"// log
-  ] ifTrue: ["coreFuncNameFromCall: no changes" //log
+    "coreFuncNameFromCall: was: $name became $x"
+  ] ifTrue: ["coreFuncNameFromCall: no changes"
             ]
 
   ^ x
@@ -402,7 +402,7 @@ IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
   ]
 ]
 
-// Collect all IrVarRef names from an IR block (for match alias usage check)
+// collect all IrVarRef names from an IR block (for match alias usage check)
 IrBlock collectIrRefNames -> mut Set(String) = [
   refs::mut Set(String) = #()!
   stmts forEach: [it collectIrStmtRefs: refs]

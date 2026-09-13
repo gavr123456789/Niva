@@ -456,6 +456,22 @@ class ResolverTest {
     }
 
     @Test
+    fun implicitReturnCanFollowExplicitBranchReturns() {
+        val source = """
+            Int foo -> Int = [
+              1 > 2 ifTrue: [
+                ^ 1
+              ]
+              2
+            ]
+        """.trimIndent()
+
+        val (statements, _) = resolveWithResolver(source)
+        val declaration = statements.single() as MessageDeclarationUnary
+        assertTrue(declaration.body.last() is ReturnStatement)
+    }
+
+    @Test
     fun incompatibleLastExpressionIsNotAnImplicitReturn() {
         val source = """
             Int foo -> String = [
