@@ -1,0 +1,684 @@
+Test goTaggedUnionShapes = [
+  fileMain = """
+    type Point
+      x: Int
+      y: Int
+
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    Shape area -> Int =
+    | this
+    | Rectangle => width * height
+    | Circle => radius * radius * 3
+
+    Unit area: Shape -> Int =
+    | area
+    | Rectangle => area width * area height
+    | Circle => area radius * area radius * 3
+
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_Point struct {", assertTrue
+  go contains: "type main_Shape interface { ismain_Shape() }", assertTrue
+  go contains: "type main_Rectangle struct {", assertTrue
+  go contains: "type main_Circle struct {", assertTrue
+  go contains: "func (main_Rectangle) ismain_Shape() {}", assertTrue
+  go contains: "func (main_Circle) ismain_Shape() {}", assertTrue
+  go contains: "func main__Shape__area", assertTrue
+  go contains: "switch __matchSubject.(type) {", assertTrue
+  go contains: "case main_Rectangle:", assertTrue
+  go contains: "this := __matchSubject.(main_Rectangle)", assertTrue
+  go contains: "return (this.width * this.height)", assertTrue
+  go contains: "case main_Circle:", assertTrue
+  go contains: "this := __matchSubject.(main_Circle)", assertTrue
+  go contains: "return ((this.radius * this.radius) * 3)", assertTrue
+  go contains: "default:", assertTrue
+  go contains: "panic(\"invalid type assertion\")", assertTrue
+]
+
+Test goShadowCopyCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "main_Person{p.name, 25}", assertTrue
+]
+
+Test goMutReceiverUsesPointer = [
+  fileMain = """
+    type Person
+      name: String
+
+    mut Person changeName: String = [
+      name <- changeName
+    ]
+
+    Int person: mut Person = [
+      person changeName: "Aboba2"
+    ]
+
+    p::mut Person = Person name: "qwf"
+    p changeName: "Aboba"
+    1 person: p
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func main__Person__changeName(this *main_Person, changeName string)", assertTrue
+  go contains: "func main__core_Int__person(this int, person *main_Person)", assertTrue
+  go contains: "var p main_Person = main_Person{\"qwf\"}", assertTrue
+  go contains: "main__Person__changeName(&p, \"Aboba\")", assertTrue
+  go contains: "main__core_Int__person(1, &p)", assertTrue
+]
+
+Test goBindingsReadFile = [
+  bindFile = """
+    Int read: String -> String = Bind emit: "os.ReadFile($1)"
+  """
+  fileMain = """
+    x = 1 read: "file.txt"
+    x echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain "os.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go contains: "import (", assertTrue
+  go contains: "\"niva_go/core\"", assertTrue
+  go contains: "\"os\"", assertTrue
+  go contains: "os.ReadFile(\"file.txt\")", assertTrue
+]
+
+Test goCoreAnyMethodOwnerCodegen = [
+  fileMain = """
+    1 echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.Any__echo(1)", assertTrue
+  Assert that: (go contains: "core.Int__echo(1)") equals: false
+]
+
+Test goEntryLastExprDoesNotReturn = [
+  fileMain = """
+    1 + 2
+    3 + 4
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "_ = (1 + 2)", assertTrue
+  go contains: "_ = (3 + 4)", assertTrue
+  Assert that: (go contains: "return (3 + 4)") equals: false
+  Assert that: (go contains: "\"niva_go/core\"") equals: false
+]
+
+Test goGenericTypeParams = [
+  fileMain = """
+    type Box
+      value: T
+
+    box = Box value: 1
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_Box[T any] struct {", assertTrue
+  go contains: "value T", assertTrue
+  go contains: "var box main_Box[int] = main_Box[int]{1}", assertTrue
+]
+
+Test goExplicitGenericTypeParams = [
+  fileMain = """
+    type Box(T, G) x: T y: G
+
+    box = Box x: 1 y: "two"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_Box[T any, G any] struct {", assertTrue
+  go contains: "x T", assertTrue
+  go contains: "y G", assertTrue
+  go contains: "var box main_Box[int, string] = main_Box[int, string]{1, \"two\"}", assertTrue
+]
+
+Test goGenericUnionBranchTypeParams = [
+  fileMain = """
+    union Result =
+    | Ok t: T
+    | Baad x: T
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_Result interface { ismain_Result() }", assertTrue
+  go contains: "type main_Ok[T any] struct {", assertTrue
+  go contains: "t T", assertTrue
+  go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
+  go contains: "type main_Baad[T any] struct {", assertTrue
+  go contains: "x T", assertTrue
+  go contains: "func (main_Baad[T]) ismain_Result() {}", assertTrue
+]
+
+Test goExplicitGenericUnionBranchTypeParams = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_Result[T any] interface { ismain_Result() }", assertTrue
+  go contains: "type main_Ok[T any] struct {", assertTrue
+  go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
+  go contains: "var x main_Ok[int] = main_Ok[int]{42}", assertTrue
+]
+
+Test goTypeMatchConcreteSubjectUsesInterfaceTmp = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+
+    | x
+    | Ok => [x t echo]
+    | Baad => [x x echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var __matchSubject any = x", assertTrue
+  go contains: "case main_Ok[int]:", assertTrue
+  go contains: "x := __matchSubject.(main_Ok[int])", assertTrue
+  go contains: "case main_Baad[int]:", assertTrue
+  go contains: "x := __matchSubject.(main_Baad[int])", assertTrue
+]
+
+Test goUnitMatchBranchResultIsEmitted = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+
+    | x
+    | Ok => [1 echo]
+    | Baad => [2 echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "case main_Ok[int]:", assertTrue
+  go contains: "core.Any__echo(1)", assertTrue
+  go contains: "case main_Baad[int]:", assertTrue
+  go contains: "core.Any__echo(2)", assertTrue
+]
+
+//Test goEnumCodegen = [
+//  fileMain = """
+//    enum Color = Red | Green | Blue
+//  """
+//
+//  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+//  go = GoBackend fullFromIrModule: (result toIrModule)
+//
+//  go contains: "type main_Color int", assertTrue
+//  go contains: "main_Color_Red main_Color = iota", assertTrue
+//  go contains: "main_Color_Green", assertTrue
+//  go contains: "main_Color_Blue", assertTrue
+//]
+
+Test goNullableTypeCodegen = [
+  fileMain = """
+    type Person
+      name: String
+
+    type Holder
+      maybeAge: Int?
+      maybePerson: Person?
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "maybeAge *int", assertTrue
+  go contains: "maybePerson *main_Person", assertTrue
+]
+
+Test goWhileTrueCodegen = [
+  fileMain = """
+    mut c = 3
+    [c > 0] whileTrue: [c <- c - 1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "for {", assertTrue
+  go contains: "if !(", assertTrue
+  go contains: ") { break }", assertTrue
+  go contains: ")()", assertTrue
+]
+
+Test goDestructureCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var age int = __destructTmp.age", assertTrue
+  go contains: "var name string = __destructTmp.name", assertTrue
+]
+
+Test goDestructureAliasCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var n string = __destructTmp.name", assertTrue
+  go contains: "var a int = __destructTmp.age", assertTrue
+]
+
+Test goDestructureAliasUnusedCodegen = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "_ = n", assertTrue
+  go contains: "_ = a", assertTrue
+]
+
+Test goNestedMatchCodegen = [
+  fileMain = """
+    x = 1
+    y = 2
+    res = | x
+    | 1 => | y
+            | 2 => 10
+            |=> 20
+    |=> 30
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "__matchSubject :=", assertTrue
+  go contains: "return func()", assertTrue
+]
+
+Test goMatchVariableSubjectNarrowsAlias = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    shape::Shape = Rectangle width: 1 height: 2
+
+    area = | shape
+    | Rectangle => shape width * shape height
+    | Circle => shape radius
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "case main_Rectangle:", assertTrue
+  go contains: "shape := __matchSubject.(main_Rectangle)", assertTrue
+  go contains: "return (shape.width * shape.height)", assertTrue
+  go contains: "case main_Circle:", assertTrue
+  go contains: "shape := __matchSubject.(main_Circle)", assertTrue
+  go contains: "return shape.radius", assertTrue
+]
+
+Test goLambdaArgCodegen = [
+  fileMain = """
+    {1 2 3} forEach: [item::Int -> item echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func(item int)", assertTrue
+]
+
+Test goImplicitLambdaArgCodegen = [
+  fileMain = """
+    {1 2 3} map: [it + 1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.List__map([]int{1, 2, 3}, func(it int) int {", assertTrue
+  go contains: "return (it + 1)", assertTrue
+  Assert that: (go contains: "func() int") equals: false
+]
+
+Test goErrorDomainThrowCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_MyError interface { error; ismain_MyError() }", assertTrue
+  go contains: "func (main_Error1) Error() string { return \"Error1\" }", assertTrue
+  go contains: "func main__core_Unit__foo(this struct{}) (int, error) {", assertTrue
+  go contains: "return 0, main_Error2{404}", assertTrue
+  go contains: "return 42, nil", assertTrue
+]
+
+Test goErrorDomainHandledMatchCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error1 => [0]
+                | Error2 => [1]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func main__core_Unit__bar(this struct{}) int {", assertTrue
+  go contains: "__matchValue, __matchErr := main__core_Unit__foo(core.UnitInstance)", assertTrue
+  go contains: "switch __matchErr.(type) {", assertTrue
+  go contains: "case main_Error1:", assertTrue
+  go contains: "it := __matchErr.(main_Error1)", assertTrue
+  go contains: "it := __matchValue", assertTrue
+  Assert that: (go contains: "func main__core_Unit__bar(this struct{}) (int, error)") equals: false
+]
+
+Test goErrorDomainMatchByCoreErrorCodegen = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error => [0]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "case error:", assertTrue
+  go contains: "it := __matchErr.(error)", assertTrue
+]
+
+Test goTryRethrowsError = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Int!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ 42
+    ]
+
+    value = () foo try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryErr != nil { return 0, __tryErr }", assertTrue
+  go contains: "return __tryValue, nil", assertTrue
+]
+
+Test goTryPanicsOnNull = [
+  fileMain = """
+    value::Int? = null
+    unwrapped = value try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  go contains: "return *__tryValue", assertTrue
+]
+
+Test goTryNullableReferenceValues = [
+  fileMain = """
+    anyValue::Any? = null
+    listValue::List?(Int) = null
+    mapValue::Map?(String, Int) = null
+    anyResult = anyValue try
+    listResult = listValue try
+    mapResult = mapValue try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  Assert that: (go contains: "return *__tryValue") equals: false
+]
+
+Test goTryUnitNullableChecksNull = [
+  fileMain = """
+    value::Unit? = null
+    result = value try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  Assert that: (go contains: "return core.UnitInstance") equals: false
+]
+
+Test goTryErrorableNullableValue = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Unit?!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ null
+    ]
+
+    value = () foo try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryErr != nil { return __tryErr }", assertTrue
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+]
+
+Test goBindPlaceholder10 = [
+  bindFile = """
+    Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int =
+      Bind emit: "$10 + $1"
+  """
+  fileMain = """
+    x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "10 + 1", assertTrue
+]
+
+// New bind design (docs/bind_redesign_plan.md)
+
+// Point 2: single `Bind emit:` body is inlined at the call site (no wrapper func).
+Test goBindInlineEmitUnary = [
+  bindFile = """
+    Int double -> Int = Bind emit: "($0 * 2)"
+  """
+  fileMain = """
+    x = 21 double
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "(21 * 2)", assertTrue
+  // no wrapper function is generated for an inline emit
+  Assert that: (go contains: "func main__core_Int__double") equals: false
+]
+
+// Point 2: keyword form, $0 = this, $1 = first arg, $2 = second arg.
+Test goBindInlineEmitKeyword = [
+  bindFile = """
+    Int sas: Int and: Bool -> Int = Bind emit: "kekeke($1, $0, $2)"
+  """
+  fileMain = """
+    y = 1 sas: 2 and: true
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "kekeke(2, 1, true)", assertTrue
+  Assert that: (go contains: "func main__core_Int__sas__and") equals: false
+]
+
+// Point 1: empty body in a .bind.niva file -> bind by function name.
+// instance method: receiver becomes the first Go argument.
+Test goBindByNameInstance = [
+  bindFile = """
+    String toUpper -> String = []
+  """
+  fileMain = """
+    a = "hi" toUpper
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "strings.bind.extra" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "strings.ToUpper(\"hi\")", assertTrue
+  go contains: "\"strings\"", assertTrue
+]
+
+// Point 1: static (constructor) bind by name -> receiver is NOT an argument.
+Test goBindByNameStatic = [
+  bindFile = """
+    static String atoi: String -> Int = []
+  """
+  fileMain = """
+    b = String atoi: "42"
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "strconv.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "strconv.Atoi(\"42\")", assertTrue
+  go contains: "\"strconv\"", assertTrue
+]
+
+// Point 3: a multi-expr bind-file body stays a real function; its ordinary
+// `Bind emit:` call is inserted inline in that function.
+Test goBindEmitInBody = [
+  bindFile = """
+    Int compute -> Int = [
+      a::Int = Bind emit: "1 + 41"
+      ^ a
+    ]
+  """
+  fileMain = """
+    x = 0 compute
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "1 + 41", assertTrue
+  // a multi-expr bind body is a normal Go function
+  go contains: "func main__core_Int__compute", assertTrue
+]
+
+Test goAtomIdentifierAsStringLiteral = [
+  fileMain = """
+    color = #red
+    other = #blue
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var color string = \"red\"", assertTrue
+  go contains: "var other string = \"blue\"", assertTrue
+]

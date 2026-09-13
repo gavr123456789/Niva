@@ -1,79 +1,95 @@
 constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
   {int str bool char unit t g} = dtc
 
-  collP = NivaProtocol name: "common"
-  // unary
+  collP = NivaProtocol common
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
-  // can throw
+  collP addMethod: (NivaMethod unary: "shuffled" receiverType: collectionType returnT: collectionType)
   collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: collectionType)
   collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: collectionType)
   collP addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
   collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
-  // binary
   collP addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
 
   collP addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: str returnT: bool)
   collP addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: str returnT: bool)
 
-  // keyword
-  collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType ) //TODO nullable
+  collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType )
   collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
+
+  collP addMethod: (NivaMethod singleArgKw: "take" receiverType: collectionType argT: int returnT: collectionType)
+  collP addMethod: (NivaMethod singleArgKw: "takeLast" receiverType: collectionType argT: int returnT: collectionType)
   collP addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
   collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
-  //collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
-  /////
-  // lambdas (map/foreach/filter)
 
   collWithDiffferentGeneric = (dtc collection-with-different-generic: collectionType)
-  // foreach: (item) -> unit
-  itArg = TypeTField name: "it" typeT: itemType
+  itArg = TypeTField name: "it" typeT: itemType isMut: false
   foreachBlock = FuntionT
-                  fields: { itArg }!
+                fields: { itArg }!
                   name: "forEach"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: unit
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
   collP addMethod: (NivaMethod singleArgKw: "forEach" receiverType: collectionType argT: foreachBlock returnT: unit)
 
-  // filter: (item) -> bool
+  iArg = TypeTField name: "i" typeT: int isMut: false
+  foreachIndexedBlock = FuntionT
+                fields: { iArg itArg }!
+                  name: "forEachIndexed"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
+  collP addMethod: (NivaMethod singleArgKw: "forEachIndexed" receiverType: collectionType argT: foreachIndexedBlock returnT: unit)
+
+
   filterBlock = FuntionT
-                  fields: { itArg }!
+                fields: { itArg }!
                   name: "filter"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: bool
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: bool
   collP addMethod: (NivaMethod singleArgKw: "filter" receiverType: collectionType argT: filterBlock returnT: collectionType)
 
-  // map: (item) -> different generic
   mapReturnGeneric = | collWithDiffferentGeneric
-    | ListT => collWithDiffferentGeneric t
-    | SetT => collWithDiffferentGeneric t
-    | MapT => collWithDiffferentGeneric v
-    |=> [TO DO: "Compiler bug, collection type expected, got $collWithDiffferentGeneric"]
+                     | ListT => collWithDiffferentGeneric t
+                     | SetT  => collWithDiffferentGeneric t
+                     | MapT  => collWithDiffferentGeneric v
+                     |=> [TO DO: "Compiler bug, collection type expected, got $collWithDiffferentGeneric"]
 
   mapBlock = FuntionT
-              fields: { itArg }!
+            fields: { itArg }!
               name: "map"
-              genericArgs: {}!
-              pkgName: "core"
-              returnType: mapReturnGeneric
+       genericArgs: {}!
+           pkgName: "core"
+        returnType: mapReturnGeneric
 
   collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
 
-  // injectInto: initial operation: (acc, item) -> acc (List only)
   | collectionType
   | ListT => [
-      accArg = TypeTField name: "acc" typeT: t
+      accArg = TypeTField name: "acc" typeT: t isMut: false
       injectBlock = FuntionT
-                      fields: { accArg itArg }!
+                    fields: { accArg itArg }!
                       name: "injectInto"
-                      genericArgs: {}!
-                      pkgName: "core"
-                      returnType: t
+               genericArgs: {}!
+                   pkgName: "core"
+                returnType: t
 
-      injectArgs = {(TypeTField name: "inject" typeT: t)
-                    (TypeTField name: "into" typeT: injectBlock)}
+      injectArgs = {(TypeTField name: "inject" typeT: t isMut: false)
+                    (TypeTField name: "into" typeT: injectBlock isMut: false)}
       collP addMethod: (NivaMethod manyArgKw: injectArgs receiverType: collectionType returnT: t)
+
+
+      reduceArg = TypeTField name: "acc" typeT: t isMut: false
+      reduceBlock = FuntionT
+                    fields: { reduceArg itArg }!
+                      name: "reduce"
+               genericArgs: {}!
+                   pkgName: "core"
+                returnType: t
+
+      reduceArgs = {(TypeTField name: "reduce" typeT: reduceBlock isMut: false)}
+      collP addMethod: (NivaMethod manyArgKw: reduceArgs receiverType: collectionType returnT: t)
+
     ]
   |=> []
 
@@ -81,27 +97,24 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod singleArgKw: "chunked" receiverType: collectionType argT: int returnT: listOfCollection)
   collP addMethod: (NivaMethod singleArgKw: "partition" receiverType: collectionType argT: filterBlock returnT: listOfCollection)
 
-  // joinTransform: [T -> String] join with ", "
   joinTransformBlock = FuntionT
-                        fields: { itArg }!
+                      fields: { itArg }!
                         name: "joinTransform"
-                        genericArgs: {}!
-                        pkgName: "core"
-                        returnType: str
+                 genericArgs: {}!
+                     pkgName: "core"
+                  returnType: str
   collP addMethod: (NivaMethod singleArgKw: "joinTransform"
-                    receiverType: collectionType
-                    argT: joinTransformBlock
-                    returnT: str)
+                              receiverType: collectionType
+                                      argT: joinTransformBlock
+                                   returnT: str)
 
-  // joinWith: String
   collP addMethod: (NivaMethod singleArgKw: "joinWith"
-                    receiverType: collectionType
+            receiverType: collectionType
                     argT: str
                     returnT: str)
 
-  // joinWith: String transform: [T -> String]
-  joinArgs = {(TypeTField name: "joinWith"  typeT: str)
-              (TypeTField name: "transform" typeT: joinTransformBlock)}
+  joinArgs = {(TypeTField name: "joinWith"  typeT: str isMut: false)
+              (TypeTField name: "transform" typeT: joinTransformBlock isMut: false)}
   collP addMethod: (NivaMethod manyArgKw: joinArgs
                     receiverType: collectionType
                     returnT: str)
@@ -109,6 +122,238 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   ^ collP methods
 ]
 
+constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
+  mapType: NivaType
+  keyType: NivaType
+  valueType: NivaType
+  -> mut Map(String, NivaMethod) = [
+
+  {int bool unit} = dtc
+
+  mapP = NivaProtocol common
+
+  // count, isEmpty, keys
+  mapP addMethod: (
+    NivaMethod unary: "count"
+        receiverType: mapType
+             returnT: int
+  )
+
+  mapP addMethod: (
+    NivaMethod unary: "isEmpty"
+        receiverType: mapType
+             returnT: bool
+  )
+
+  keysType = SetT t: keyType
+  mapP addMethod: (
+    NivaMethod unary: "keys"
+        receiverType: mapType
+             returnT: keysType
+  )
+
+  // map + otherMap
+  mapP addMethod: (
+    NivaMethod binary: "+"
+         receiverType: mapType
+                 argT: mapType
+              returnT: mapType
+  )
+
+  // map - key
+  mapP addMethod: (
+    NivaMethod binary: "-"
+         receiverType: mapType
+                 argT: keyType
+              returnT: mapType
+  )
+
+
+  mapP addMethod: (
+    NivaMethod singleArgKw: "at"
+              receiverType: mapType
+                      argT: keyType
+                   returnT: valueType toNullable
+  )
+
+  mapP addMethod: (
+    NivaMethod singleArgKw: "containsKey"
+              receiverType: mapType
+                      argT: keyType
+                   returnT: bool
+  )
+
+  keyArg = TypeTField
+             name: "key"
+            typeT: keyType
+            isMut: false
+
+  valueArg = TypeTField
+               name: "value"
+              typeT: valueType
+              isMut: false
+
+  foreachBlock = FuntionT
+                 fields: {keyArg valueArg}!
+                   name: "forEach"
+            genericArgs: {}!
+                pkgName: "core"
+             returnType: unit
+
+  mapP addMethod: (
+    NivaMethod singleArgKw: "forEach"
+              receiverType: mapType
+                      argT: foreachBlock
+                   returnT: unit
+  )
+
+  atPutArgs = {
+    (TypeTField
+       name: "at"
+      typeT: valueType
+       isMut: false)
+
+    (TypeTField
+       name: "put"
+      typeT: keyType
+       isMut: false)
+  }
+
+  mapP addMethod: (
+    NivaMethod manyArgKw: atPutArgs
+            receiverType: mapType
+                 returnT: unit
+  )
+
+  ^ mapP methods
+]
+
+
+constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
+  setType: NivaType
+  itemType: NivaType
+  -> mut Map(String, NivaMethod) = [
+
+  {int bool unit} = dtc
+
+  setP = NivaProtocol common
+
+  // count, first, toList
+  setP addMethod: (
+    NivaMethod unary: "count"
+        receiverType: setType
+             returnT: int
+  )
+
+  setP addMethod: (
+    NivaMethod unary: "first"
+        receiverType: setType
+             returnT: itemType
+  )
+
+  listType = ListT t: itemType
+  setP addMethod: (
+    NivaMethod unary: "toList"
+        receiverType: setType
+             returnT: listType
+  )
+
+  // set + otherSet
+  setP addMethod: (
+    NivaMethod binary: "+"
+         receiverType: setType
+                 argT: setType
+              returnT: setType
+  )
+
+  // set - otherSet
+  setP addMethod: (
+    NivaMethod binary: "-"
+         receiverType: setType
+                 argT: setType
+              returnT: setType
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "contains"
+              receiverType: setType
+                      argT: itemType
+                   returnT: bool
+  )
+
+  itemArg = TypeTField
+             name: "it"
+            typeT: itemType
+            isMut: false
+
+  foreachBlock = FuntionT
+                 fields: {itemArg}!
+                   name: "forEach"
+            genericArgs: {}!
+                pkgName: "core"
+             returnType: unit
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "forEach"
+              receiverType: setType
+                      argT: foreachBlock
+                   returnT: unit
+  )
+
+  predicateBlock = FuntionT
+                   fields: {itemArg}!
+                     name: "filter"
+              genericArgs: {}!
+                  pkgName: "core"
+               returnType: bool
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "filter"
+              receiverType: setType
+                      argT: predicateBlock
+                   returnT: setType
+  )
+
+  // mutable Set operations.
+  setP addMethod: (
+    NivaMethod unary: "clear"
+        receiverType: setType
+             returnT: unit
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "add"
+              receiverType: setType
+                      argT: itemType
+                   returnT: unit
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "remove"
+              receiverType: setType
+                      argT: itemType
+                   returnT: bool
+  )
+
+  ^ setP methods
+]
+
+constructor NivaProtocol stringBuilderFromDefaultTypes(dtc): DefaultTypesContainer sb: NivaType -> mut Map(String, NivaMethod) = [
+  {str int} = dtc
+
+  sbProtocol = NivaProtocol name: "arithmetic"
+
+  // unary
+  sbProtocol addMethod: (NivaMethod unary: "count" receiverType: sb returnT: int)
+  sbProtocol addMethod: (NivaMethod unary: "clear" receiverType: sb returnT: sb)
+  sbProtocol addMethod: (NivaMethod unary: "toString" receiverType: sb returnT: str)
+  sbProtocol addMethod: (NivaMethod unary: "trim" receiverType: sb returnT: str)
+  // keyword
+  sbProtocol addMethod: (NivaMethod singleArgKw: "append" receiverType: sb argT: str returnT: sb )
+  sbProtocol addMethod: (NivaMethod singleArgKw: "appendLine" receiverType: sb argT: str returnT: sb )
+
+  ^ sbProtocol methods
+]
 
 constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
   {str bool unit char intRange double} = dtc
@@ -131,14 +376,26 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
   intProtocol addMethod: (NivaMethod binary: "<" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: ">" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
-  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "<=" receiverType: num argT: num  returnT: bool)
 
   intProtocol addMethod: (NivaMethod binary: "==" receiverType: num argT: num  returnT: bool)
   intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)
 
-  num name == "Int" ifTrue: [
+  num name == "Int" ifTrue: [ // not for Float|Double
     intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
   ]
+
+
+  itArg = TypeTField name: "it" typeT: num isMut: false
+  repeatBlock = FuntionT
+                  fields: { itArg }!
+                    name: "repeat"
+             genericArgs: {}!
+                 pkgName: "core"
+              returnType: unit
+
+  intProtocol addMethod: (NivaMethod singleArgKw: "repeat" receiverType: num argT: repeatBlock returnT: unit)
+
 
   ^ intProtocol methods
   // ^intProtocol
@@ -147,7 +404,7 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
 constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {int str bool char unit list} = dtc
 
-  strProto = NivaProtocol name: "common"
+  strProto = NivaProtocol common
   // unary
   strProto addMethod: (NivaMethod unary: "toInt" receiverType: str returnT: int)
   strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
@@ -166,39 +423,38 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
-  strProto addMethod: (NivaMethod singleArgKw: "toInt" receiverType: str argT: int returnT: int)
 
-  itArg = TypeTField name: "it" typeT: char
+  itArg = TypeTField name: "it" typeT: char isMut: false
   foreachBlock = FuntionT
-                  fields: { itArg }!
+                fields: { itArg }!
                   name: "forEach"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: unit
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
   strProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: str argT: foreachBlock returnT: unit)
 
   filterBlock = FuntionT
-                  fields: { itArg }!
+                fields: { itArg }!
                   name: "filter"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: bool
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: bool
   strProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: str argT: filterBlock returnT: str)
 
   mapBlock = FuntionT
-             fields: { (TypeTField name: "it" typeT: char) }!
+           fields: { (TypeTField name: "it" typeT: char isMut: false) }!
              name: "map"
-             genericArgs: {}!
-             pkgName: "core"
-             returnType: str
+      genericArgs: {}!
+          pkgName: "core"
+       returnType: str
 
   strProto addMethod: (NivaMethod singleArgKw: "map"
-                        receiverType: str
+                receiverType: str
                         argT: mapBlock
                         returnT: str)
 
-  args = {(TypeTField name: "replace" typeT: str)
-          (TypeTField name: "with" typeT: str)}
+  args = {(TypeTField name: "replace" typeT: str isMut: false)
+          (TypeTField name: "with" typeT: str isMut: false)}
   strProto addMethod: (NivaMethod manyArgKw: args receiverType: str returnT: str )
 
   ^ strProto methods
@@ -208,21 +464,21 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
 constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
   {str bool unit t} = dtc
 
-  boolProto = NivaProtocol name: "common"
+  boolProto = NivaProtocol common
 
   noArgsFunc = FuntionT
-                fields: {}!
+              fields: {}!
                 name: "noFields"
-                genericArgs: {}!
-                pkgName: "core"
-                returnType: unit
+         genericArgs: {}!
+             pkgName: "core"
+          returnType: unit
 
   no-args-to-t = FuntionT
-                  fields: {}!
+                fields: {}!
                   name: "ifTrueOrIfFalse"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: t
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: t
 
   // unary
   boolProto addMethod: (NivaMethod unary: "toString" receiverType: bool returnT: str)
@@ -237,8 +493,8 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgsFunc returnT: unit )
   boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgsFunc returnT: unit )
 
-  args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t)
-          (TypeTField name: "ifFalse" typeT: no-args-to-t)}
+  args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t isMut: false)
+          (TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)}
   boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
 
 
@@ -251,18 +507,18 @@ constructor NivaProtocol whileTrueFromDefaultTypes(dtc): DefaultTypesContainer  
   blockProto = NivaProtocol name: "block"
 
   condBlock = FuntionT
-                fields: {}!
+              fields: {}!
                 name: "whileTrueCond"
-                genericArgs: {}!
-                pkgName: "core"
-                returnType: bool
+         genericArgs: {}!
+             pkgName: "core"
+          returnType: bool
 
   bodyBlock = FuntionT
-                fields: {}!
+              fields: {}!
                 name: "whileTrueBody"
-                genericArgs: {}!
-                pkgName: "core"
-                returnType: unit
+         genericArgs: {}!
+             pkgName: "core"
+          returnType: unit
 
   blockProto addMethod: (NivaMethod singleArgKw: "whileTrue" receiverType: condBlock argT: bodyBlock returnT: unit)
 
@@ -270,12 +526,13 @@ constructor NivaProtocol whileTrueFromDefaultTypes(dtc): DefaultTypesContainer  
 ]
 
 constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
-  {str bool unit any} = dtc
+  {str bool unit any t} = dtc
 
-  anyProto = NivaProtocol name: "common"
+  anyProto = NivaProtocol common
 
   // unary
-  anyProto addMethod: (NivaMethod unary: "echo" receiverType: any returnT: unit)
+  anyProto addMethod: (NivaMethod unary: "echo" receiverType: t returnT: t)
+  anyProto addMethod: (NivaMethod unary: "echonl" receiverType: any returnT: unit)
   anyProto addMethod: (NivaMethod unary: "toString" receiverType: any returnT: str)
   // binary
   anyProto addMethod: (NivaMethod binary: "==" receiverType: any argT: any returnT: bool)
@@ -286,60 +543,105 @@ constructor NivaProtocol anyFromDefaultTypes(dtc): DefaultTypesContainer  -> mut
 ]
 
 constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
-  {str bind list any} = dtc
+  {str bind list any t} = dtc
   //listAny = ListT
   bindProto = NivaProtocol name: "constructors"
 
-  bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: any)
-  bindProto addMethod: (NivaMethod singleArgCtorKw: "addImport" receiverType: bind argT: any)
-  bindProto addMethod: (NivaMethod twoArgCtorKw: "emit" name2: "args" receiverType: bind argT1: str argT2: list returnType: any)
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: t)
 
   ^bindProto methods
+]
+
+constructor NivaProtocol compilerFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
+  {str compiler} = dtc
+  compilerProto = NivaProtocol name: "constructors"
+  compilerProto addMethod: (NivaMethod
+    name: "cliArgs"
+    receiverType: compiler
+    args: {}
+    returnType: (ListT t: str)
+    forMut: false
+    protocolName: "constructors"
+    pkgName: "core")
+  ^ compilerProto methods
 ]
 
 constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
   {str nothing} = dtc
 
-  // ITS NOT A METHOD ITS CONSTRUCTOR
-  errProto = NivaProtocol name: "common"
-  errProto addMethod: (NivaMethod unary: "throw" receiverType: errorType returnT: nothing)
-  errProto addMethod: (NivaMethod singleArgKw: "throwWithMsg" receiverType: errorType argT: str returnT: nothing)
-  // just for backwards compatibility with first niva
-  errProto addMethod: (NivaMethod singleArgKw: "throwWithMessage" receiverType: errorType argT: str returnT: nothing)
+  errProto = NivaProtocol common
+  errProto addMethod: (NivaMethod
+          name: "throw"
+  receiverType: errorType
+          args: {}
+    returnType: nothing
+  returnErrors: {errorType}
+        forMut: false
+possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: null
+  protocolName: "common"
+    pkgName: "core")
+  errProto addMethod: (NivaMethod
+          name: "throwWithMsg"
+  receiverType: errorType
+          args: {(TypeTField name: "throwWithMsg" typeT: str isMut: false)}
+    returnType: nothing
+  returnErrors: {errorType}
+        forMut: false
+possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: null
+  protocolName: "common"
+    pkgName: "core")
+  errProto addMethod: (NivaMethod
+          name: "throwWithMessage"
+  receiverType: errorType
+          args: {(TypeTField name: "throwWithMessage" typeT: str isMut: false)}
+    returnType: nothing
+  returnErrors: {errorType}
+        forMut: false
+possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: null
+  protocolName: "common"
+    pkgName: "core")
 
   ^ errProto methods
 ]
 
 constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer rangeType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
-  {unit bool t} = dtc
+  {unit bool t int list} = dtc
 
   rangeProto = NivaProtocol name: "range"
 
-  itArg = TypeTField name: "it" typeT: itemType
+  itArg = TypeTField name: "it" typeT: itemType isMut: false
   foreachBlock = FuntionT
-                  fields: { itArg }!
+                fields: { itArg }!
                   name: "forEach"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: unit
-  rangeProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: rangeType argT: foreachBlock returnT: unit)
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
 
-  // filter: (item) -> bool, returns List[item]
+  rangeProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: rangeType argT: foreachBlock returnT: unit)
+  rangeProto addMethod: (NivaMethod unary: "random" receiverType: rangeType returnT: int)
+  rangeProto addMethod: (NivaMethod singleArgKw: "take" receiverType: rangeType argT: int returnT: (ListT t: itemType))
+  rangeProto addMethod: (NivaMethod singleArgKw: "takeLast" receiverType: rangeType argT: int returnT: (ListT t: itemType))
+
   filterBlock = FuntionT
-                  fields: { itArg }!
+                fields: { itArg }!
                   name: "filter"
-                  genericArgs: {}!
-                  pkgName: "core"
-                  returnType: bool
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: bool
   rangeProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: rangeType argT: filterBlock returnT: (ListT t: itemType))
 
-  // map: (item) -> T, returns List[T]
   mapBlock = FuntionT
-              fields: { itArg }!
+            fields: { itArg }!
               name: "map"
-              genericArgs: {}!
-              pkgName: "core"
-              returnType: t
+       genericArgs: {}!
+           pkgName: "core"
+        returnType: t
   rangeProto addMethod: (NivaMethod singleArgKw: "map" receiverType: rangeType argT: mapBlock returnT: (ListT t: t))
 
   rangeProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: rangeType argT: itemType returnT: bool)
@@ -351,52 +653,35 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
 constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
   {str bool unit t int char charRange} = dtc
 
-  charProto = NivaProtocol name: "common"
+  charProto = NivaProtocol common
 
-  // ===== unary (Kotlin-style) =====
-  // fun Char.code: Int   (в Kotlin это property; тут оформим как unary-метод)
   charProto addMethod: (NivaMethod unary: "code" receiverType: char returnT: int)
 
-  // operator fun Char.inc(): Char
   charProto addMethod: (NivaMethod unary: "inc" receiverType: char returnT: char)
 
-  // operator fun Char.dec(): Char
   charProto addMethod: (NivaMethod unary: "dec" receiverType: char returnT: char)
 
-  // fun Char.isDigit(): Boolean
   charProto addMethod: (NivaMethod unary: "isDigit" receiverType: char returnT: bool)
 
-  // fun Char.isLetter(): Boolean
   charProto addMethod: (NivaMethod unary: "isLetter" receiverType: char returnT: bool)
 
-  // fun Char.isLetterOrDigit(): Boolean
   charProto addMethod: (NivaMethod unary: "isLetterOrDigit" receiverType: char returnT: bool)
 
-  // fun Char.isLowerCase(): Boolean
   charProto addMethod: (NivaMethod unary: "isLowerCase" receiverType: char returnT: bool)
 
-  // fun Char.isUpperCase(): Boolean
   charProto addMethod: (NivaMethod unary: "isUpperCase" receiverType: char returnT: bool)
 
-  // fun Char.isWhitespace(): Boolean
   charProto addMethod: (NivaMethod unary: "isWhitespace" receiverType: char returnT: bool)
 
-  // fun Char.lowercaseChar(): Char
   charProto addMethod: (NivaMethod unary: "lowercaseChar" receiverType: char returnT: char)
 
-  // fun Char.uppercaseChar(): Char
   charProto addMethod: (NivaMethod unary: "uppercaseChar" receiverType: char returnT: char)
 
-  // operator fun Char.equals(other: Char): Boolean  (в Kotlin это ==)
   charProto addMethod: (NivaMethod binary: "==" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: "!=" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: ".." receiverType: char argT: char returnT: charRange)
 
-  // operator fun Char.plus(other: Int): Char
-  //charProto addMethod: (NivaMethod binary: "+" receiverType: char argT: int returnT: char)
 
-  // operator fun Char.minus(other: Int): Char
-  //charProto addMethod: (NivaMethod binary: "-" receiverType: char argT: int returnT: char)
 
   ^charProto methods
 ]
@@ -409,46 +694,55 @@ constructor NivaMethod binary(name): String receiverType: NivaType argT: NivaTyp
   NivaMethod name: name :receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 constructor NivaMethod singleArgKw(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
-  NivaMethod name: name + ":" :receiverType args: {(TypeTField name: name typeT: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+  NivaMethod name: name :receiverType args: {(TypeTField name: name typeT: argT isMut: false)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 
 
 constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: NivaType  =
-  NivaMethod
-    name: (manyArgKw joinWith: ":" transform: [it name]) + ":"
-    :receiverType
-    args: manyArgKw
-    returnType: returnT
-    forMut: false
-    protocolName: "common"
-    pkgName: "core"
+   NivaMethod name: (manyArgKw joinWith: "__" transform: [it name])
+                  :receiverType
+              args: manyArgKw
+        returnType: returnT
+            forMut: false
+      protocolName: "common"
+          pkgName: "core"
 
 constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType =
-  NivaMethod
-    defaultConstructorWithName: name + ":"
-    :receiverType
-    args: {(TypeTField name: name typeT: argT)}
-    returnType: receiverType
-    decl: null
-    protocolName: "constructors"
-    pkgName: "core"
+                                                     NivaMethod
+    defaultConstructorWithName: name
+            :receiverType
+        args: {(TypeTField name: name typeT: argT isMut: false)}
+  returnType: receiverType
+        decl: null
+protocolName: "constructors"
+     pkgName: "core"
 
 constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType returnType: NivaType =
   NivaMethod
-    defaultConstructorWithName: name + ":"
-    :receiverType
-    args: {(TypeTField name: name typeT: argT)}
-    :returnType
-    decl: null
-    protocolName: "constructors"
-    pkgName: "core"
+    defaultConstructorWithName: name
+                              :receiverType
+                          args: {(TypeTField name: name typeT: argT isMut: false)}
+                              :returnType
+                          decl: null
+                  protocolName: "constructors"
+                       pkgName: "core"
 
 constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: NivaType argT1: NivaType argT2: NivaType returnType: NivaType =
   NivaMethod
-    defaultConstructorWithName: name1 + ":" + name2 + ":"
-    :receiverType
-    args: {(TypeTField name: name1 typeT: argT1), (TypeTField name: name2 typeT: argT2)}
-    :returnType
-    decl: null
-    protocolName: "constructors"
-    pkgName: "core"
+    defaultConstructorWithName: name1 + "__" + name2
+        :receiverType
+    args: {(TypeTField name: name1 typeT: argT1 isMut: false), (TypeTField name: name2 typeT: argT2 isMut: false)}
+            :returnType
+        decl: null
+protocolName: "constructors"
+     pkgName: "core"
+
+constructor NivaMethod threeArgCtorKw(name1): String name2: String name3: String receiverType: NivaType argT1: NivaType argT2: NivaType argT3: NivaType returnType: NivaType =
+  NivaMethod
+    defaultConstructorWithName: name1 + "__" + name2 + "__" + name3
+            :receiverType
+        args: {(TypeTField name: name1 typeT: argT1 isMut: false), (TypeTField name: name2 typeT: argT2 isMut: false), (TypeTField name: name3 typeT: argT3 isMut: false)}
+            :returnType
+        decl: null
+protocolName: "constructors"
+     pkgName: "core"

@@ -44,13 +44,13 @@ Test escape = [
 ]
 
 Test rawMultiLineString = [
-  quote = '"' toString
+  quote = "\""
   triple = quote + quote + quote
   input = triple + "escaped\n \\n \\t\nString" + triple
   tokens = LexTest input: input
 
   Assert that: tokens count equals: 1
-  Assert that: (tokens at: 0) kind equals: TokenType.String
+  Assert that: (tokens at: 0) kind equals: TokenType.RawString
 ]
 
 Test unitTypeLex = [
@@ -83,7 +83,23 @@ Test integers = [
     Assert that: it end equals: (expectedEnds at: i)
   ]
 ]
-// skiping spaces should append `pos` so tokens have correct start
+
+Test integersWithUnderscore = [
+  tokens = LexTest input: "1_000_000 -2_345"
+
+  expectedKinds = {TokenType.Integer TokenType.Integer}
+  expectedLexemes = {"1_000_000" "-2_345"}
+  expectedStarts = {1 11}
+  expectedEnds =   {10 17}
+
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+    Assert that: it start equals: (expectedStarts at: i)
+    Assert that: it end equals: (expectedEnds at: i)
+  ]
+]
+// spaces keep token start positions
 Test parseFromSpace = [
   tokens = LexTest input: "   1  "
 
@@ -184,18 +200,32 @@ Test identifierNullable = [
   ]
 ]
 
+Test identifierBang = [
+  tokens = LexTest input: "foobar! foobar ! read-file! String!Error Int!{Error}"
+  expectedKinds = {TokenType.Identifier TokenType.Identifier TokenType.Bang TokenType.Identifier
+                   TokenType.Identifier TokenType.Bang TokenType.Identifier
+                   TokenType.Identifier TokenType.Bang TokenType.OpenBrace TokenType.Identifier TokenType.CloseBrace}
+  expectedLexemes = {"foobar!" "foobar" "!" "read-file!" "String" "!" "Error"
+                     "Int" "!" "{" "Error" "}"}
+
+  Assert that: tokens count equals: expectedKinds count
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
 Test strings = [
   LexTest checkThat: """ "" "sas" "sus" """
           equals: {TokenType.String TokenType.String TokenType.String}
 ]
 
 Test keywords = [
-  LexTest checkThat: "type union constructor enum builder mut errordomain true false null Unit on"
+  LexTest checkThat: "type union constructor enum mut errordomain true false null Unit on"
           equals: {TokenType.Type
                    TokenType.Union
                    TokenType.Constructor
                    TokenType.Enum
-                   TokenType.Builder
                    TokenType.Mut
                    TokenType.ErrorDomain
                    TokenType.True
@@ -210,11 +240,6 @@ Test singleNum = [
 ]
 
 
-// comments are skipped now
-// Test comment = [
-//   LexTest checkThat: "// qwf ars \" qwf"
-//           equals: {TokenType.Comment}
-// ]
 
 
 Test controlFlow = [
@@ -241,4 +266,43 @@ Test enumDeclaration = [
                    TokenType.If
                    TokenType.Identifier
                   }
+]
+
+Test atomIdentifier = [
+  tokens = LexTest input: "#red #blue #green_2"
+  expectedKinds = {TokenType.AtomIdentifier TokenType.AtomIdentifier TokenType.AtomIdentifier}
+  expectedLexemes = {"#red" "#blue" "#green_2"}
+
+  Assert that: tokens count equals: expectedKinds count
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind   equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
+Test atomIdentifierMixed = [
+  tokens = LexTest input: "x #red 42"
+  expectedKinds = {TokenType.Identifier TokenType.AtomIdentifier TokenType.Integer}
+  expectedLexemes = {"x" "#red" "42"}
+
+  Assert that: tokens count equals: expectedKinds count
+  tokens forEachIndexed: [ i, it ->
+    Assert that: it kind   equals: (expectedKinds at: i)
+    Assert that: it lexeme equals: (expectedLexemes at: i)
+  ]
+]
+
+Test sourceFileInTokens = [
+  filePath = "src/mymodule.niva"
+  sf = SourceFile path: filePath
+  tokens = Lexer get-tokens: "x y z" file: sf
+
+  tokens forEach: [it ->
+    Assert that: it file path equals: filePath
+  ]
+]
+
+Test sourceFileFakeIsUnknown = [
+  tokens = LexTest input: "hello"
+  Assert that: (tokens at: 0) file path equals: ""
 ]

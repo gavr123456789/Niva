@@ -136,7 +136,7 @@ fun generateMessages(
     )
 
     is BinaryMsg -> {
-        if (i > 0 && msg.customEqualityMethodName() != null) {
+        if (i > 0 && msg.customEqualityCall() != null) {
             b.insert(0, "(")
             b.append(")")
         }
@@ -672,9 +672,17 @@ fun generateUnarySends(receiver: Receiver, messages: List<UnaryMsg>) = buildStri
     }
 }
 
-private fun BinaryMsg.customEqualityMethodName(): String? {
+private class CustomEqualityCall(val methodName: String, val negate: Boolean)
+
+private fun BinaryMsg.customEqualityCall(): CustomEqualityCall? {
+    if (declaration == null && msgMetaData?.declaration == null) return null
+
+    if (selectorName == "!=" && msgMetaData?.name == "==") {
+        return CustomEqualityCall("equal_niva", negate = true)
+    }
+
     val customName = nivaEqualityMethodName(selectorName) ?: return null
-    return if (declaration != null || msgMetaData?.declaration != null) customName else null
+    return CustomEqualityCall(customName, negate = false)
 }
 
 fun generateSingleBinary(
@@ -684,7 +692,7 @@ fun generateSingleBinary(
     @Suppress("UNUSED_PARAMETER") invisibleArgs: List<String>? = null,
 ) = buildString {
 
-    binaryMsg.customEqualityMethodName()?.also { customEqualityName ->
+    binaryMsg.customEqualityCall()?.also { customEqualityCall ->
         if (i == 0) {
             if (receiver !is DotReceiver) {
                 append(
@@ -696,9 +704,10 @@ fun generateSingleBinary(
                 append("this")
             }
         }
-        append(".", customEqualityName, "(")
+        append(".", customEqualityCall.methodName, "(")
         append(generateUnarySends(binaryMsg.argument, binaryMsg.unaryMsgsForArg))
         append(")")
+        if (customEqualityCall.negate) append(".not()")
         return@buildString
     }
 

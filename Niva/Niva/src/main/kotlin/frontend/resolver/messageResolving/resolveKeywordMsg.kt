@@ -2,6 +2,7 @@ package main.frontend.resolver.messageResolving
 
 import frontend.parser.parsing.MessageDeclarationType
 import frontend.resolver.*
+import main.frontend.meta.CompilerError
 import main.frontend.meta.Token
 import main.utils.CYAN
 import main.utils.RESET
@@ -404,7 +405,12 @@ fun Resolver.resolveKeywordMsg(
                 val currentArgType = kwArg.keywordArg.type
                 if (kwArgFromDb.name == kwArg.name && currentArgType != null && kwArgFromDb is Type.UnknownGenericType) {
                     val realTypeForKwFromDb = fromReceiverAndfromArgsTable[kwArgFromDb.name]!!
-                    val isResolvedGenericParamEqualRealParam = compare2Types(realTypeForKwFromDb, currentArgType, statement.token)
+                    val isResolvedGenericParamEqualRealParam = compare2Types(
+                        realTypeForKwFromDb,
+                        currentArgType,
+                        statement.token,
+                        unpackNullForFirst = true
+                    )
                     if (!isResolvedGenericParamEqualRealParam) {
                         statement.token.compileError("Generic type error, type $YEL${kwArgFromDb.name}${RESET} of $WHITE$statement${RESET} was resolved to $YEL$realTypeForKwFromDb${RESET} but found $YEL$currentArgType")
                     }
@@ -672,15 +678,49 @@ fun Resolver.resolveKwArgs(
     }
 
 
-    val realArgs = if (filterGenerics) usualArgs else codeBlocks
+    val realArgs = if (filterGenerics) usualArgs else codeBlocks + usualArgs.filter { it.keywordArg.type == null }
     realArgs.forEach {
         val arg = it.keywordArg
         if (arg.type == null) {
+            val expectedArgType = argsTypesFromDb?.getOrNull(args.indexOf(it))?.let { expected ->
+                if (letterToRealType != null) {
+                    resolveReturnTypeIfGeneric(expected, mutableMapOf(), letterToRealType.toMutableMap())
+                } else {
+                    expected
+                }
+            }
+            val expectedConstructorArg = if (arg is ExpressionInBrackets) arg.expr else arg
+            if (expectedArgType is Type.UnionRootType) {
+                fun seedReceiver(receiver: Receiver?) {
+                    val identifier = receiver as? IdentifierExpr ?: return
+                    val branchType = expectedArgType.branches.find { branch -> branch.name == identifier.name } ?: return
+                    identifier.type = branchType
+                    identifier.isType = true
+                }
+
+                when (expectedConstructorArg) {
+                    is KeywordMsg -> seedReceiver(expectedConstructorArg.receiver)
+                    is MessageSendKeyword -> {
+                        seedReceiver(expectedConstructorArg.receiver)
+                        seedReceiver((expectedConstructorArg.messages.firstOrNull() as? KeywordMsg)?.receiver)
+                    }
+                    else -> {}
+                }
+            }
+
             currentLevel++
             currentArgumentNumber = args.indexOf(it)
-            resolveSingle(arg, previousAndCurrentScope, statement)
-            if (arg.type == null) arg.token.compileError("Compiler bug: can't resolve type of argument: ${WHITE}${it.name}: ${it.keywordArg}")
-            currentLevel--
+            try {
+                resolveSingle(arg, previousAndCurrentScope, statement)
+                if (arg.type == null) arg.token.compileError("Compiler bug: can't resolve type of argument: ${WHITE}${it.name}: ${it.keywordArg}")
+            } catch (e: CompilerError) {
+                if (filterGenerics && argsTypesFromDb == null && e.noColorsMsg.contains("is defined in many packages")) {
+                    return@forEach
+                }
+                throw e
+            } finally {
+                currentLevel--
+            }
         }
     }
 }
@@ -722,7 +762,7 @@ fun Resolver.resolveKwArgsGenerics(
                     receiverType.typeArgumentList.find { it.beforeGenericResolvedName == typeFromDBForThisArg.name }
                 if (argTypeWithSameLetter != null) {
                     // receiver has the same generic param resolved
-                    if (!compare2Types( argTypeWithSameLetter, argType, it.keywordArg.token)) {
+                    if (!compare2Types(argTypeWithSameLetter, argType, it.keywordArg.token, unpackNullForFirst = true)) {
                         it.keywordArg.token.compileError("${CYAN}${it.name}$RESET: $WHITE${it.keywordArg}$RESET arg has type $YEL$argType${RESET} but ${YEL}$argTypeWithSameLetter$RESET expected")
                     }
                 }

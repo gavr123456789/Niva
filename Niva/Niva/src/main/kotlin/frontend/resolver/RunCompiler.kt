@@ -45,11 +45,24 @@ private fun Resolver.fillFieldsWithResolvedTypes () {
                 )
 
                 if (resolvedFromDifferentFileType != null) {
-                    val resolveAndRemoveField = { field2: FieldNameAndParent ->
+                    val resolveAndRemoveField = resolveAndRemoveField@ { field2: FieldNameAndParent ->
 
                         val fieldToRemove = field2.parent.fields.first { it.name == field2.fieldName }
                         val ast = field2.parent.typeDeclaration!!.fields.first { it.name == fieldToRemove.name }.typeAST!!
-                        val resolvedType = ast.toType(typeDB, typeTable)
+                        val savedPackageName = currentPackageName
+                        val resolvedType = try {
+                            changePackage(field2.parent.pkg, field2.ast.token)
+                            ast.toType(typeDB, typeTable, resolver = this)
+                        } catch (e: CompilerError) {
+                            if (e.noColorsMsg.startsWith("Can't find user type:")) {
+                                return@resolveAndRemoveField
+                            }
+                            throw e
+                        } finally {
+                            if (currentPackageName != savedPackageName) {
+                                changePackage(savedPackageName, field2.ast.token)
+                            }
+                        }
 
                         // remove field with placeholder, and replace type to real type inside placeholder
                         // because we still need to generate correct types, and they are generated from Declarations(with placeholders in Fields)
@@ -84,7 +97,8 @@ private fun Resolver.buildGlobalConstScope(globalDeclarations: List<Pair<String,
     val previousScope = mutableMapOf<String, Type>()
     val unresolved = globalDeclarations.toMutableList()
     var lastError: CompilerError? = null
-
+    val savedSuppress = suppressOnEachStatement
+    suppressOnEachStatement = true
     do {
         var progress = false
         val iter = unresolved.iterator()
@@ -111,6 +125,7 @@ private fun Resolver.buildGlobalConstScope(globalDeclarations: List<Pair<String,
         }
         if (!progress) break
     } while (unresolved.isNotEmpty())
+    suppressOnEachStatement = savedSuppress
 
     if (unresolved.isNotEmpty()) {
         if (lastError != null) {
