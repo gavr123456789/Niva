@@ -12,10 +12,6 @@ CljOutput legacyMainShim -> String = [
     "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
 ]
 
-// Selects the shape of the generated Clojure module.  Program output keeps
-// the normal `main` namespace and `-main` entry point; REPL output is a
-// loadable session namespace whose entry expression is evaluated at load
-// time.
 enum CljEmitMode = Program | Repl
 enum CljTarget = Jvm | Bb
 
@@ -121,10 +117,7 @@ IrPackage cljGeneratedPath -> String = name cljGeneratedPath
 // mangled function name derived directly from IR
 IrFunction cljFuncNameFromIr -> String = .id cljFuncIdToName
 
-// The IR-issued function id has the shape "pkg.recv.name" (see irIds.niva).
-// This mirrors it as "pkg__recv__name" so we can derive the same name from
-// either an IrFunction (at defn site) or a bare funcId string (at call site)
-// without needing a symbol table.
+// convert ir function id to clojure name
 // pkg.recv.name -> pkg__recv__name
 String cljFuncIdToName -> String =
   .split: ".", joinWith: "__" transform: [it cljSanitizeIdent]

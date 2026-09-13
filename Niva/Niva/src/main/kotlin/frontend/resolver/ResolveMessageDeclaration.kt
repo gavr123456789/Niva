@@ -316,8 +316,7 @@ fun Resolver.resolveMessageDeclaration(
             if (
                 statement.isSingleExpression ||
                 statement.returnTypeAST == null ||
-                statement.returnType == null ||
-                wasThereTopLevelReturn
+                statement.returnType == null
             ) {
                 return
             }

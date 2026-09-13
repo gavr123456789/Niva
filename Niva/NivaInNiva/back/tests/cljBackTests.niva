@@ -490,6 +490,22 @@ Test cljCoreCallGoesToCoreNs = [
   clj contains: "[niva.core]", assertTrue
 ]
 
+Test cljCustomBinaryOnCoreReceiverUsesDeclaringPackage = [
+  fileMain = """
+    String - x::String -> Bool = [
+      true
+    ]
+    "en" - "sas", echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(defn main__core_String__- [this x] true)", assertTrue
+  clj contains: "(main__core_String__- \"en\" \"sas\")", assertTrue
+  Assert that: (clj contains: "niva.core/String__-") equals: false
+]
+
 Test cljGenericEchoKeepsValue = [
   fileMain = """
     x = 1 echo

@@ -1,22 +1,12 @@
-//   * types    -> defrecord
-//   * unions   -> a defrecord per branch (dispatch by instance? in match)
-//   * enums    -> individual defs to distinct keywords
-//   * fns      -> defn
-//   * mut vars -> atoms; @x for reads, (reset! x v) for writes
-//   * blocks   -> single let with `_` bindings for side-effect statements
-//   * IrReturn -> supported only as the trailing statement; anywhere else it
-//                 explodes with `TO DO: "Clojure does not support ^"`
-//   * errors   -> exceptions. `throw` wraps the error record in an ex-info
-//                 (payload under `:value`, matching niva.core/Error__throw);
-//                 propagation is free (the exception unwinds the stack). A
-//                 ByError match dispatches on the record type via `condp
-//                 instance?`: with no else branch it is a plain try/catch that
-//                 re-throws anything unhandled; with an else branch it defers to
-//                 the niva.core/handling macro, which hides the success-vs-handled
-//                 bookkeeping so the generated code stays a readable macro call.
-//
-// IrSetField is intentionally rejected with TO DO for now.
-
+// types    -> records
+// unions   -> one record per branch with type based matching
+// enums    -> separate keywords
+// fns      -> defn
+// mut vars -> atoms with deref for reads and reset for writes
+// blocks   -> one let with unused bindings for side effects
+// return   -> only supported as the last statement
+// errors   -> exceptions
+// setfield -> not supported yet
 extend IrExpr [
   on toCljExpr(ctx): CljContext scope: CljScope -> String =
     | this
@@ -34,7 +24,7 @@ extend IrExpr [
     | IrOpBin => [
         l = left  toCljExpr: ctx scope: scope
         r = right toCljExpr: ctx scope: scope
-        // replace + for Strings to str
+        // replace + for Strings to str, its not possible to overload + for str natively
         isStrPlus = (op == "+") && ((left typeRef typeId cljNormalizeTypeId) == "core_String")
         isStrPlus
           ifTrue:  ["(str " + l + " " + r + ")"]
@@ -73,9 +63,8 @@ extend IrExpr [
     |=> false
 ]
 
-// Bind emit expressions are inlined at the call site.
-// declaration from `<namespace>.bind.niva` carries the same information in
-// IrBind, so Clojure uses that namespace directly at the call site
+// bind emit expressions are inlined at the call site
+// declarations from <namespace>.bind.niva already store the namespace in irbind
 IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String? = [
   r = receiverType
   | r

@@ -17,10 +17,8 @@ import utils.testingLS
 
 fun main(args: Array<String>) {
 
-    val x = mutableMapOf(1 to "a", 2 to "b")
-    x.putAll(mapOf(3 to "4"))
-//    val args = arrayOf("run","")
-//        testingLS()
+    //    val args = arrayOf("run","")/
+    //        testingLS()
     if (help(args))
         return
     run(args)
