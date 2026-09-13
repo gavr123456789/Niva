@@ -1,5 +1,24 @@
 
 
+Test typeFieldCanReferenceTypeDeclaredLater = [
+  fileMain = """
+    type Box a: Kek
+    type Kek b: Int
+
+    x = Box a: (Kek b: 42)
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  box = result db findByTypeName: "Box" inPkg: "main"
+  | box
+  | TypeT => [
+    Assert that: box fields first typeT name equals: "Kek"
+  ]
+  |=> [TO DO: "Box must be TypeT"]
+]
+
 Test constructorReturnType = [
   fileMain = """
     type FS
@@ -25,6 +44,338 @@ Test constructorReturnType = [
   ]
   |=> false assert: ""
 
+]
+
+Test errorEffectsMismatch = [
+  fileMain = """
+    Unit sas -> Int = [
+      Error throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 1
+]
+
+Test declaredReturnTypeMustMatchLastExpression = [
+  fileMain = """
+    Int fooBar -> Int = [
+      "str"
+    ]
+
+    1 fooBar
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test nothingReturnMatchesDeclaredReturnType = [
+  fileMain = """
+    errordomain MyError =
+    | Error2 code: Int
+
+    Unit fail -> Int!{Error2} = [
+      (Error2 code: 404) throw
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test errorEffectsDeclared = [
+  fileMain = """
+    Unit sas -> Int!Error = [
+      Error throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+
+  msgDecl = result fileToStatements at: "main", unpackOrPANIC, at: 0
+  | msgDecl
+  | MessageDeclT => [
+    Assert that: msgDecl returnType listOfErrors count equals: 1
+    Assert that: msgDecl body listOfErrors count equals: 1
+    Assert that: msgDecl body listOfErrors first name equals: "Error"
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+]
+
+Test errorEffectsInferFromBang = [
+  fileMain = """
+    Unit sas -> Int! = [
+      Error throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+
+  msgDecl = result fileToStatements at: "main", unpackOrPANIC, at: 0
+  | msgDecl
+  | MessageDeclT => [
+    Assert that: msgDecl returnType listOfErrors count equals: 1
+    Assert that: msgDecl returnType listOfErrors first name equals: "Error"
+    Assert that: msgDecl body listOfErrors count equals: 1
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+]
+
+Test declaredErrorEffectsRequireBodyErrors = [
+  fileMain = """
+    Unit inferredButClean -> Int! = [42]
+    Unit explicitButClean -> Int!Error = [42]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+
+  Assert that: errors count equals: 2
+  errors forEach: [err ->
+    err msg contains: "body cannot produce an error", assertTrue
+  ]
+]
+
+Test inlineBindDeclarationAllowsDeclaredErrorEffect = [
+  bindFile = """
+    String readFile -> String!Error =
+      Bind emit: "(slurp $0)"
+  """
+  fileMain = "x = \"hi\" readFile"
+
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test inlineBindWithoutDeclaredErrorEffectDoesNotInferOne = [
+  bindFile = """
+    String readFile -> String =
+      Bind emit: "(slurp $0)"
+  """
+  fileMain = "x = \"hi\" readFile"
+
+  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test tryRethrowsIntoEnclosingFunctionAndUnwrapsVariable = [
+  fileMain = """
+    Int sas -> Int! = [
+      1 > 2 ifTrue: [Error throwWithMsg: "hello"]
+      1
+    ]
+
+    Int sus -> Int!Error = [
+      x = this sas try
+      x inc inc
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  sus = result fileToStatements at: "main", unpackOrPANIC, at: 1
+  | sus
+  | MessageDeclT => [
+    Assert that: sus body listOfErrors count equals: 1
+    Assert that: sus body listOfErrors first name equals: "Error"
+  ]
+  |=> [TO DO: "MessageDeclT expected"]
+]
+
+Test callbackErrorsPropagateToEnclosingDeclarationAndMatch = [
+  fileMain = """
+    Int sas -> Int! = [
+      1 > 2 ifTrue: [Error throwWithMsg: "hello"]
+      1
+    ]
+
+    | 1 sas
+    | Error => [0]
+    |=> [1]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  typedMatch = result entryPointExpressions last
+  | typedMatch
+  | MatchT => [
+    Assert that: typedMatch subject typeInfo listOfErrors count equals: 1
+    Assert that: typedMatch subject typeInfo listOfErrors first name equals: "Error"
+  ]
+  |=> [TO DO: "MatchT expected"]
+]
+
+Test errorEffectsPropagateFromCall = [
+  fileMain = """
+    Unit throwing -> Int!Error = [
+      Error throw
+      ^ 42
+    ]
+
+    Unit caller -> Int = [
+      () throwing
+      ^ 1
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]
+
+Test errorableReceiverOnlyAllowsAnyMethods = [
+  fileMain = """
+    Unit readFile -> String!Error = [
+      Error throw
+      ^ "text"
+    ]
+
+    text = () readFile
+    text echo
+    text + " new text!"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test tryRequiresErrorableOrNullableReceiver = [
+  fileMain = """
+    value = 42 try
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+  Assert that: errors count equals: 1
+  | errors first
+  | ErrorInvalidTry => [
+      Assert that: (errors first msg contains: "try can only be used on errorable or nullable values") equals: true
+    ]
+  |=> [Assert that: false equals: true]
+]
+
+Test errorDomainDeclaredErrors = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainDeclaredRoot = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!MyError = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainDeclaredCoreError = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!Error = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainMatch = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error1 => [0]
+                | Error2 => [1]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test errorDomainMatchByCoreError = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+    | Error2 code: Int
+
+    Unit foo -> Int!{Error1 Error2} = [
+      (Error2 code: 404) throw
+      (Error1 text: "something went wrong") throw
+      ^ 42
+    ]
+
+    Unit bar -> Int = [
+      default = | () foo
+                | Error => [0]
+                |=> [it]
+      ^ default
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
 ]
 
 Test findingGenericRoot = [
@@ -286,6 +637,106 @@ Test collectionsTestingMapTry = [
 
 ]
 
+Test unionBranchesCanBeCollectionElements = [
+  fileMain = """
+    union DifferentTypes =
+    | IntType x: Int
+    | StrType x: String
+    | BoolType x: Bool
+
+    i = IntType x: 1
+    s = StrType x: "a"
+    b = BoolType x: true
+
+    anyList = {i b s i b}
+    anyMap = #{"int" i "str" s "bool" b}
+
+    anyList forEach: [
+      | it
+      | IntType => "int!" echo
+      | StrType => "String!" echo
+      | BoolType => "bool!" echo
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test charLiteralAndProtocol = [
+  fileMain = """
+    Char foo = "hiii" echo
+
+    ch = 'a'
+    ch foo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test nestedCollectionsAndExprInBracketsTypes = [
+  fileMain = """
+    {{1 2} {3}}
+    {(1 inc) (2 inc)}
+    #{1 {1 2}}
+    emptyNested::List(List(Int)) = {{} {}}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result entryPointExpressions
+
+  Assert that: db listOfErrors count equals: 0
+
+  checkListOfLists = [
+    t = typedAst at: 0, typeInfo t
+    | t
+    | ListT => [
+      inner = t t
+      | inner
+      | ListT => Assert that: inner t name equals: "Int"
+      |=> [TO DO: "List(List(Int)) expected, got $t"]
+    ]
+    |=> [TO DO: "list expected, got $t"]
+  ] do
+
+  checkListOfExprInBrackets = [
+    t = typedAst at: 1, typeInfo t
+    | t
+    | ListT => Assert that: t t name equals: "Int"
+    |=> [TO DO: "list expected, got $t"]
+  ] do
+
+  checkMapWithListValue = [
+    t = typedAst at: 2, typeInfo t
+    | t
+    | MapT => [
+      Assert that: t k name equals: "Int"
+      Assert that: t v name equals: "List"
+    ]
+    |=> [TO DO: "map expected, got $t"]
+  ] do
+
+  // empty nested collections take their type from the declaration
+  checkEmptyNested = [
+    decl = typedAst at: 3
+    | decl
+    | VarDeclarationT => [
+      t = decl value typeInfo t
+      | t
+      | ListT => [
+        inner = t t
+        | inner
+        | ListT => Assert that: inner t name equals: "Int"
+        |=> [TO DO: "List(List(Int)) expected, got $t"]
+      ]
+      |=> [TO DO: "list expected, got $t"]
+    ]
+    |=> [TO DO: "var declaration expected, got $decl"]
+  ] do
+]
+
 Test listMapFilterForEachChain = [
   fileMain = """
     list = {1 2 3}
@@ -301,7 +752,7 @@ Test listMapFilterForEachChain = [
   chainExpr = typedAst at: 1
   | chainExpr
   | KeywordMsgT => [
-    Assert that: chainExpr dbMsg name equals: "forEach:"
+    Assert that: chainExpr dbMsg name equals: "forEach"
     Assert that: chainExpr typeInfo t name equals: "Unit"
 
     recv = chainExpr receiver
@@ -310,7 +761,7 @@ Test listMapFilterForEachChain = [
       inner = recv value
       | inner
       | KeywordMsgT => [
-        Assert that: inner dbMsg name equals: "filter:"
+        Assert that: inner dbMsg name equals: "filter"
         t = inner typeInfo t
         | t
         | ListT => Assert that: t t name equals: "Int"
@@ -399,7 +850,7 @@ Test listMapFilterForEachChain = [
       kVal = kDecl value
       | kVal
       | KeywordMsgT => [
-        Assert that: kVal dbMsg name equals: "add:"
+        Assert that: kVal dbMsg name equals: "add"
         Assert that: kVal typeInfo t name equals: "Int"
       ]
       |=> [TO DO: "KeywordMsgT expected"]
@@ -418,6 +869,7 @@ Test codeblockReturnType = [
     [a::Int, b::Int ->
       a + b
     ]
+    {1} map: [it inc]
 
 
   """
@@ -426,6 +878,7 @@ Test codeblockReturnType = [
 
 
   db = result db
+  Assert that: db listOfErrors count equals: 0
   typedAst = result entryPointExpressions
   checkFirst = [
     codeBlock = typedAst at: 0
@@ -502,6 +955,26 @@ Test destructAssignDefinesVars = [
     {age name} = alice
     age echo
     name echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test destructAssignAliasesDefineVars = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    name = "Bob"
+    age = 1
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+    n echo
+    a echo
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
@@ -729,8 +1202,8 @@ Test nullableMatchExhaustiveNarrows = [
     x::Int? = 1
 
     | x
-    | null => "meh" echo
-    |=> x inc echo
+    | null => [("meh" echo) ()]
+    |=> [(x inc echo) ()]
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
@@ -751,4 +1224,353 @@ Test nullableMatchRequiresElse = [
   db = result db
 
   Assert that: db listOfErrors count equals: 1
+]
+
+Test unionMatchVariableNarrowsSubject = [
+  fileMain = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+
+    shape::Shape = Rectangle width: 1 height: 2
+
+    area = | shape
+    | Rectangle => shape width * shape height
+    | Circle => shape radius
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test explicitGenericUnionMatchVariableNarrowsSubject = [
+  fileMain = """
+    union Result(T) =
+    | Ok t: T
+    | Baad x: T
+
+    x = Ok t: 42
+
+    | x
+    | Ok => [x t echo]
+    | Baad => [x x echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 0
+]
+
+Test shadowCopyKind = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+
+  Assert that: db listOfErrors count equals: 0
+
+  stmt = typedAst at: 2
+  | stmt
+  | VarDeclarationT => [
+    msg = stmt value
+    | msg
+    | KeywordMsgT => [
+      Assert that: msg kind equals: MessageSendKind.ShadowCopy
+    ]
+    |=> [TO DO: "KeywordMsgT expected"]
+  ]
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test shadowCopyAllFieldsError = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    p = Person name: "Alice" age: 24
+    p2 = p name: "qwf" age: 25
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  Assert that: db listOfErrors count equals: 1
+]
+
+Test immutableNestedCopyUpdateLowersToShadowCopies = [
+  fileMain = """
+    type Money value: Int currency: String
+    type Wallet money: Money id: Int
+    type Person wallet: Wallet name: String
+
+    person = Person
+      wallet: (Wallet money: (Money value: 1 currency: "EUR") id: 7)
+      name: "Alice"
+    updated = person wallet money value <- 13
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  typedAst = result fileToStatements at: "main", unpackOrPANIC
+
+  Assert that: db listOfErrors count equals: 0
+  updatedDecl = typedAst last
+  | updatedDecl
+  | VarDeclarationT => [
+    Assert that: updatedDecl value typeInfo t name equals: "Person"
+    outerCopy = updatedDecl value
+    | outerCopy
+    | KeywordMsgT => [
+      Assert that: outerCopy kind equals: MessageSendKind.ShadowCopy
+      walletCopy = outerCopy args first expr
+      | walletCopy
+      | KeywordMsgT => [
+        Assert that: walletCopy kind equals: MessageSendKind.ShadowCopy
+        moneyCopy = walletCopy args first expr
+        | moneyCopy
+        | KeywordMsgT => Assert that: moneyCopy kind equals: MessageSendKind.ShadowCopy
+        |=> [TO DO: "Money shadow copy expected"]
+      ]
+      |=> [TO DO: "Wallet shadow copy expected"]
+    ]
+    |=> [TO DO: "Person shadow copy expected"]
+  ]
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test immutableNestedCopyUpdateRejectsNonGetter = [
+  fileMain = """
+    type Money value: Int
+    type Wallet money: Money
+    type Person wallet: Wallet
+
+    Money same -> Money = this
+    person = Person wallet: (Wallet money: (Money value: 1))
+    updated = person wallet money same value <- 13
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test immutableNestedCopyUpdateChecksValueType = [
+  fileMain = """
+    type Money value: Int
+    type Wallet money: Money
+    type Person wallet: Wallet
+
+    person = Person wallet: (Wallet money: (Money value: 1))
+    updated = person wallet money value <- "wrong"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test nullableReceiverMessageDecl = [
+  fileMain = """
+    T? orDefault: default::T -> T = [
+      | this
+      | null => ^default
+      |=> ^this
+    ]
+
+    x::Int? = null
+    y = x orDefault: 42
+    z::String? = "sas"
+    w = z orDefault: "nope"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  yDecl = typedAst at: 1
+  | yDecl
+  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  wDecl = typedAst at: 3
+  | wDecl
+  | VarDeclarationT => Assert that: wDecl value typeInfo t name equals: "String"
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test nullableReceiverMessageDeclForConcreteType = [
+  fileMain = """
+    G? isNil -> Bool = [
+      ^ this == null
+    ]
+
+    Int? orZero -> Int = [
+      | this
+      | null => ^0
+      |=> ^this
+    ]
+
+    x::Int? = null
+    y = x orZero
+    z = x isNil
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  yDecl = typedAst at: 1
+  | yDecl
+  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  zDecl = typedAst at: 2
+  | zDecl
+  | VarDeclarationT => Assert that: zDecl value typeInfo t name equals: "Bool"
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+/// a method declared for the exact inner type wins over the generic one with the same name
+Test nullableReceiverExactTypeWinsOverGeneric = [
+  fileMain = """
+    T? orDefaultOrPanic -> Int = [
+      ^ 42
+    ]
+
+    String? orDefaultOrPanic -> String = [
+      ^ "no"
+    ]
+
+    x::Int? = null
+    fromGeneric = x orDefaultOrPanic
+    y::String? = null
+    fromExact = y orDefaultOrPanic
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  genericDecl = typedAst at: 1
+  | genericDecl
+  | VarDeclarationT => Assert that: genericDecl value typeInfo t name equals: "Int"
+  |=> [TO DO: "VarDeclarationT expected"]
+
+  exactDecl = typedAst at: 3
+  | exactDecl
+  | VarDeclarationT => Assert that: exactDecl value typeInfo t name equals: "String"
+  |=> [TO DO: "VarDeclarationT expected"]
+]
+
+Test setProtocolMethods = [
+  fileMain = """
+    set = #(1 2 3)
+    set count
+    set first
+    set toList
+    set contains: 2
+    set filter: [it > 1]
+    set + #(4)
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+  Assert that: db listOfErrors count equals: 0
+
+  typedAst = result entryPointExpressions
+
+  countType = typedAst at: 1, typeInfo t
+  Assert that: countType name equals: "Int"
+
+  firstType = typedAst at: 2, typeInfo t
+  Assert that: firstType name equals: "Int"
+
+  toListType = typedAst at: 3, typeInfo t
+  | toListType
+  | ListT => Assert that: toListType t name equals: "Int"
+  |=> [TO DO: "list expected but got: $toListType"]
+
+  containsType = typedAst at: 4, typeInfo t
+  Assert that: containsType name equals: "Bool"
+
+  filteredType = typedAst at: 5, typeInfo t
+  | filteredType
+  | SetT => Assert that: filteredType t name equals: "Int"
+  |=> [TO DO: "set expected but got: $filteredType"]
+
+  mergedType = typedAst at: 6, typeInfo t
+  | mergedType
+  | SetT => Assert that: mergedType t name equals: "Int"
+  |=> [TO DO: "set expected but got: $mergedType"]
+]
+
+Test structureInfoMarkdownAndTypePath = [
+  fileMain = """
+    type Hidden value: Int
+
+    type Person
+      name: String
+      age: Int
+
+    Person greet -> String = "hello"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  allInfo = result db structureInfo
+  (allInfo contains: "## Package `main`") assertTrue
+  (allInfo contains: "type Person") assertTrue
+  (allInfo contains: "    name: String") assertTrue
+  (allInfo contains: "    age: Int") assertTrue
+  (allInfo contains: "#### Methods") assertTrue
+  (allInfo contains: "- `greet -> String`") assertTrue
+
+  personInfo = result db structureInfoFor: "main.Person"
+  (personInfo contains: "type Person") assertTrue
+  (personInfo contains: "    name: String") assertTrue
+  (personInfo contains: "    age: Int") assertTrue
+  Assert that: (personInfo contains: "type Hidden") equals: false
+
+  invalidInfo = result db structureInfoFor: "Person"
+  (invalidInfo contains: "Expected a type path in the form `package.Type`") assertTrue
+]
+
+Test compileTimeInfoMessage = [
+  fileMain = """
+    type Person name: String
+    Person greet -> String = "hello"
+
+    p = Person name: "Alice"
+    p infoFull
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  infoExpr = result entryPointExpressions last
+  | infoExpr
+  | UnitExprT => []
+  |=> [TO DO: "compile-time info should be erased to Unit"]
+
+  personInfo = result db compileTimeInfoFor: (result db findByTypeName: "Person" inPkg: "main") showSourceLocations: true
+  (personInfo contains: "type Person ( main.niva:2 )") assertTrue
+  (personInfo contains: "    name: String") assertTrue
+  (personInfo contains: "- `greet -> String` ( main.niva:3 )") assertTrue
 ]

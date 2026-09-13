@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import main.codogen.codegenKt
 import java.io.File
+import kotlin.test.assertTrue
 
 fun generateKotlin(source: String): String {
     val ast = getAstTest(source)
@@ -41,6 +42,42 @@ fun generateMainKotlin(source: String): String {
 
 class CodogenTest {
 
+    @Test
+    fun implicitReturnIsGeneratedForLastCompatibleExpression() {
+        val source = """
+            Int foo -> Int = [
+              x = 12
+              x + 42
+            ]
+        """.trimIndent()
+
+        val ktCode = generateKotlin(source)
+
+        assertTrue(ktCode.contains("return ("))
+        assertTrue(ktCode.contains("x + 42)"))
+    }
+
+
+    @Test
+    fun customEqualityUsesEqualNivaForInequality() {
+        val source = """
+            type Sas
+
+            Sas == x: Sas = true
+
+            Sas new == Sas new, echo
+            Sas new != Sas new, echo
+        """.trimIndent()
+        val ktCode = generateMainKotlin(source)
+        val expected = "\n" + """
+            //@ Niva.iml:::5
+            (Sas().equal_niva(Sas())).echo()
+
+            //@ Niva.iml:::6
+            (Sas().equal_niva(Sas()).not()).echo()
+        """.trimIndent() + "\n"
+        assertEquals(expected, ktCode)
+    }
 
 
     @Test

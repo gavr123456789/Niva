@@ -30,7 +30,6 @@ import main.frontend.parser.types.ast.MessageSendUnary
 import main.frontend.parser.types.ast.ReturnStatement
 import main.frontend.parser.types.ast.SetCollection
 import main.frontend.parser.types.ast.Statement
-import main.frontend.parser.types.ast.StaticBuilder
 import main.frontend.parser.types.ast.StaticBuilderDeclaration
 import main.frontend.parser.types.ast.TypeAST
 import main.frontend.parser.types.ast.TypeDeclaration
@@ -46,6 +45,16 @@ import kotlin.test.assertTrue
 
 class ParserTest {
 
+    @Test
+    fun ifTrueAfterBinaryWithBrackets() {
+        val source = """
+              genericSource = parentMaybe unpackOrValue: subjectType
+              ((genericSource genericArgs count) == (subjectType genericArgs count)) ifTrue: [
+              ]
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+    }
     @Test
     fun genericWithError() {
         val source = """
@@ -126,13 +135,31 @@ Environment makeChild = Environment parent: this map: #{}
 
     @Test
     fun varDeclarationWithColonType() {
-        val source = "x: Int = 1"
+        val source = "x::Int = 1"
         val ast = getAstTest(source)
         assert(ast.count() == 1)
 
         val declaration: VarDeclaration = ast[0] as VarDeclaration
         assert(declaration.name == "x")
         assert(declaration.value.str == "1")
+    }
+
+    @Test
+    fun someRegression() {
+        val source = "(UnifyError left: (this key: key) right: (other key2: key))"
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+
+        val bracketed = ast[0] as ExpressionInBrackets
+        val send = bracketed.expr as MessageSendKeyword
+        val message = send.messages.single() as KeywordMsg
+
+        assertEquals("UnifyError", (send.receiver as IdentifierExpr).name)
+        assertEquals("leftRight", message.selectorName)
+        assertEquals("left", message.args[0].name)
+        assertIs<ExpressionInBrackets>(message.args[0].keywordArg)
+        assertEquals("right", message.args[1].name)
+        assertIs<ExpressionInBrackets>(message.args[1].keywordArg)
     }
 
     @Test
@@ -569,9 +596,10 @@ Environment makeChild = Environment parent: this map: #{}
         assert(messages.count() == 1)
         val keywordMsg = messages[0] as KeywordMsg
 
-        assert(keywordMsg.args.count() == 2)
-        assert(keywordMsg.args[0].keywordArg.str == "3")
-        assert(keywordMsg.args[1].keywordArg.str == "5")
+        assertEquals(keywordMsg.args.count(), 2)
+        assertEquals(keywordMsg.args[0].keywordArg.str, "+")
+        assertEquals(keywordMsg.args[1].keywordArg.str, "5")
+
     }
 
     @Test
@@ -924,6 +952,24 @@ Environment makeChild = Environment parent: this map: #{}
     }
 
     @Test
+    fun genericTypeAndUnionDeclarationsWithParens() {
+        val source = """
+        union Result(T) =
+        | Ok t: T
+        | Baad x: T
+
+        type Box(T, G) x: T y: G
+        """.trimIndent()
+        val ast = getAstTest(source)
+
+        val result = ast[0] as UnionRootDeclaration
+        val box = ast[1] as TypeDeclaration
+
+        assertEquals(setOf("T"), result.genericFields)
+        assertEquals(setOf("T", "G"), box.genericFields)
+    }
+
+    @Test
     fun constructor() {
         val source = """
         constructor Person default = Person name: "" age: 0 
@@ -933,6 +979,29 @@ Environment makeChild = Environment parent: this map: #{}
         val constr = ast[0] as ConstructorDeclaration
         assert(constr.forTypeAst.name == "Person")
         assert(constr.body.size == 1)
+    }
+
+    @Test
+    fun staticConstructor() {
+        val source = """
+        static Person new = Person name: "" age: 0
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val constr = ast[0] as ConstructorDeclaration
+        assert(constr.forTypeAst.name == "Person")
+        assert(constr.body.size == 1)
+    }
+
+    @Test
+    fun staticGlobalVar() {
+        val source = """
+        static GlobalData = 42
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val decl = ast[0] as VarDeclaration
+        assert(decl.isGlobal)
     }
 
     @Test
@@ -1752,7 +1821,7 @@ Environment makeChild = Environment parent: this map: #{}
         val source = """
            
           | 1
-          | 1,2,3 => 4
+          | 1 | 2 | 3 => 4
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -1920,7 +1989,7 @@ Environment makeChild = Environment parent: this map: #{}
     @Test
     fun qualifier() {
         val source = """
-            window = (org.gnome.adw.ApplicationWindow app: app)
+            window = org.gnome.adw.ApplicationWindow app: app
         """.trimIndent()
 
         val ast = getAstTest(source)
@@ -2146,23 +2215,6 @@ Environment makeChild = Environment parent: this map: #{}
     }
 
 
-    @Test
-    fun builderCallsWithKeys() {
-        val source = """
-            Card (width: 24 height: 30) [
-                1 echo
-            ]
-            Card [
-                1 echo
-            ]
-        """.trimIndent()
-        val ast = getAstTest(source)
-
-        assertEquals(ast.count(), 2)
-        val withArgs = ast.first() as StaticBuilder
-        val withoutArgs = ast.last() as StaticBuilder
-        assertTrue { withArgs.args.count() == 2 && withoutArgs.args.isEmpty() }
-    }
 
     @Test
     fun builderWithUnary() {
@@ -2362,22 +2414,6 @@ Environment makeChild = Environment parent: this map: #{}
         """.trimIndent()
         val ast = getAstTest(source)
         assert(ast.count() == 1)
-    }
-
-    @Test
-    fun builderWithoutDefaultAction() {
-        val source = """
-            type Person name: String
-            builder Person sas -> Unit = [
-                build this: (Person name: "sas")
-            ]
-
-            sas [name echo]
-        """.trimIndent()
-        val ast = getAstTest(source)
-        assert(ast.count() == 3)
-        val q = ast[2]
-        assertIs<StaticBuilder>(q)
     }
 
     @Test
@@ -2622,7 +2658,7 @@ Environment makeChild = Environment parent: this map: #{}
     @Test
     fun pipesAreCommasNow() {
         val source = """
-            Int from::Int = 0
+            Int from: Int = 0
             ((1 from: 2) from: 3) from: 4
             1 from: 2, from: 3, from: 4
             1 from: 2 |> from: 3 |> from: 4

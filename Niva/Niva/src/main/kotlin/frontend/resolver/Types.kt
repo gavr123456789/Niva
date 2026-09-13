@@ -948,33 +948,36 @@ fun TypeAST.toType(
                 return result
             }
 
+            fun findUserType(): Type? =
+                if (resolver != null) {
+                    resolver.getAnyType(name, mutableMapOf(), mutableMapOf(), null, this.token)
+                } else {
+                    typeTable[name]
+                }
+
+            fun unresolvedUserType(): Type.UnresolvedType {
+                if (parentType == null || resolvingFieldName == null || typeDeclaration == null) {
+                    this.token.compileError("Can't find user type: ${YEL}$name")
+                }
+
+                typeDB.addUnresolvedField(
+                    name,
+                    FieldNameAndParent(
+                        resolvingFieldName,
+                        parentType,
+                        typeDeclaration = typeDeclaration,
+                        ast = realParentAstFromGeneric ?: this
+                    )
+                )
+                return Type.UnresolvedType()
+            }
+
+            fun findUserTypeOrUnresolved(): Type =
+                findUserType() ?: unresolvedUserType()
+
             if (this.typeArgumentList.isNotEmpty()) {
                 // need to know what Generic name(like T), become what real type(like Int) to replace fields types from T to Int
-                val typeFromDb =
-                    if (resolver != null)
-                        resolver.getAnyType(name,mutableMapOf(), mutableMapOf(), null, this.token )
-                    else
-                        typeTable[name]
-                            //?: this.token.compileError("Can't find user type: ${YEL}$name")
-                if (typeFromDb == null) {
-
-                    if (parentType == null || resolvingFieldName == null || typeDeclaration == null) {
-                        // we are not resolving type fields of different type
-                        // yes, these 3 are not null when we are doing that
-                        this.token.compileError("Can't find user type: ${YEL}$name")
-                    }
-
-                    typeDB.addUnresolvedField(
-                        name,
-                        FieldNameAndParent(
-                            resolvingFieldName,
-                            parentType,
-                            typeDeclaration = typeDeclaration,
-                            ast = realParentAstFromGeneric ?: this
-                        )
-                    )
-                    return Type.UnresolvedType()
-                }
+                val typeFromDb = findUserTypeOrUnresolved()
                 // Type DB
                 if (typeFromDb is Type.UserLike) {
                     val copy = typeFromDb.copy(customPkg)
@@ -986,7 +989,8 @@ fun TypeAST.toType(
                     val typeArgs = this.typeArgumentList.mapIndexed { i, it ->
                         val typeOfArg = it.toType(
                             typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration,
-                            realParentAstFromGeneric = realParentAstFromGeneric ?: this
+                            realParentAstFromGeneric = realParentAstFromGeneric ?: this,
+                            resolver = resolver
                         )
                         letterToTypeMap[copy.typeArgumentList[i].name] = typeOfArg
                         typeOfArg
@@ -1013,30 +1017,13 @@ fun TypeAST.toType(
                         result
                     validateAstTypeHasGenericsDeclared(resultWithErrors)
                     return resultWithErrors
+                } else if (typeFromDb is Type.UnresolvedType) {
+                    return replaceToNullableAndAddErrorsIfNeeded(typeFromDb)
                 } else {
-                    this.token.compileError("Panic: type: ${YEL}${this.name}${RED} with typeArgumentList cannot but be Type.UserType")
+                    this.token.compileError("Type arguments can be used only with user types, but ${YEL}${this.name}${RED} resolved to $typeFromDb")
                 }
             }
-            val type = typeTable[name]
-            if (type == null) {
-
-                if (parentType == null || resolvingFieldName == null || typeDeclaration == null) {
-                    // we are not resolving type fields of different type
-                    this.token.compileError("Can't find user type: ${YEL}$name")
-                }
-
-
-                typeDB.addUnresolvedField(
-                    name,
-                    FieldNameAndParent(
-                        resolvingFieldName,
-                        parentType,
-                        typeDeclaration = typeDeclaration,
-                        ast = realParentAstFromGeneric ?: this
-                    )
-                )
-                return Type.UnresolvedType()
-            }
+            val type = findUserTypeOrUnresolved()
 
             val type2 = if (this.isMutable) {
                 (type).copyAnyType().also {
@@ -1055,14 +1042,14 @@ fun TypeAST.toType(
         is TypeAST.Lambda -> {
 
             val extensionOfType = if (this.extensionOfType != null) {
-                extensionOfType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
+                extensionOfType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration, resolver = resolver)
             } else null
 
 
             val args = if (extensionOfType != null) {
                 inputTypesList.drop(1).map {
                     KeywordArg(
-                        type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration),
+                        type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration, resolver = resolver),
                         name = it.name
                     )
                 }.toMutableList().also {
@@ -1072,12 +1059,12 @@ fun TypeAST.toType(
                 }
             } else inputTypesList.map {
                 KeywordArg(
-                    type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration), name = it.name
+                    type = it.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration, resolver = resolver), name = it.name
                 )
             }.toMutableList()
 
             val returnType =
-                this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration)
+                this.returnType.toType(typeDB, typeTable, parentType, resolvingFieldName, typeDeclaration, resolver = resolver)
 
             val lambdaType = Type.Lambda(
                 args = args,

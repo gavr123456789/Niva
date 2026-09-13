@@ -3,6 +3,13 @@ Test cliArgs = [
   result = ArgParser args: args
   Assert that: (result option) equals: CompilerOption.Run
   Assert that: (result verbose) equals: true
+  Assert that: result backend equals: CompilerBackend.Clj
+]
+
+Test cliArgsEmptyMeansRunMain = [
+  result = ArgParser args: {String}
+  Assert that: result option equals: CompilerOption.Run
+  Assert that: result path equals: null
 ]
 
 
@@ -12,3 +19,108 @@ Test cliArgsHelp = [
   Assert that: result option equals: CompilerOption.Help
 ]
 
+Test cliArgsRunGoBackend = [
+  args = {"run" ".niva_go/testss.niva" "--backend=go"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Run
+  Assert that: result path equals: ".niva_go/testss.niva"
+  Assert that: result backend equals: CompilerBackend.Go
+]
+
+Test cliArgsReplEmission = [
+  args = {"build" "main.niva" "--backend=clojure" "--repl" "--repl-line=7"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Build
+  Assert that: result backend equals: CompilerBackend.Clj
+  Assert that: result repl equals: true
+  Assert that: result replLine equals: 7
+]
+
+Test cliArgsNativeCljBuild = [
+  args = {"build" "main.niva" "--backend=clj" "--native"} toList
+  result = ArgParser args: args
+  Assert that: result option equals: CompilerOption.Build
+  Assert that: result backend equals: CompilerBackend.Clj
+  Assert that: result nativeBuild equals: true
+]
+
+Test cliArgsIncrementalFlag = [
+  result = ArgParser args: {"run" "main.niva" "--incremental"} toList
+  Assert that: result incremental equals: true
+]
+
+Test cliArgsIncrementalIsOptIn = [
+  clean = ArgParser args: {"run" "main.niva"} toList
+  incremental = ArgParser args: {"run" "main.niva" "--backend=lsp" "--incremental"} toList
+
+  Assert that: clean incremental equals: false
+  Assert that: incremental backend equals: CompilerBackend.Lsp
+  Assert that: incremental incremental equals: true
+]
+
+Test cliArgsInfoTypePath = [
+  result = ArgParser args: {"info" "main.Person"} toList
+  Assert that: result option equals: CompilerOption.Info
+  Assert that: result path equals: "main.Person"
+]
+
+Test cliArgsBuildDefaultsToMain = [
+  result = ArgParser args: {"build"} toList
+  Assert that: result option equals: CompilerOption.Build
+  Assert that: result path equals: null
+]
+
+Test cliArgsOptionsWithoutPath = [
+  result = ArgParser args: {"run" "--backend=go" "--verbose"} toList
+  Assert that: result option equals: CompilerOption.Run
+  Assert that: result path equals: null
+  Assert that: result backend equals: CompilerBackend.Go
+  Assert that: result verbose equals: true
+]
+
+Test cliArgsRejectsExtraPositionals = [
+  result = ArgParser args: {"run" "main.niva" "extra.niva"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsSeparatedOptionValue = [
+  result = ArgParser args: {"run" "--backend" "go"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsWatchDefaultsToJvm = [
+  result = ArgParser args: {"watch" "main.niva"} toList
+  Assert that: result option equals: CompilerOption.Watch
+  Assert that: result runtime equals: CompilerRuntime.Bb
+  Assert that: result target equals: CompilerTarget.Bb
+]
+
+Test cliArgsWatchRuntimeSelection = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime" "jvm" "--target=bb"} toList
+  Assert that: result option equals: CompilerOption.Watch
+  Assert that: result runtime equals: CompilerRuntime.Jvm
+  Assert that: result target equals: CompilerTarget.Bb
+
+  rejected = ArgParser args: {"watch" "main.niva" "--runtime=bb"} toList
+  Assert that: rejected runtime equals: CompilerRuntime.Bb
+]
+
+Test cliArgsRejectsMissingRuntimeValue = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsFlagAsRuntimeValue = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime" "--target=jvm"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsInvalidRuntime = [
+  result = ArgParser args: {"watch" "main.niva" "--runtime" "native"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsInvalidTarget = [
+  result = ArgParser args: {"watch" "main.niva" "--target=cloud"} toList
+  Assert that: result option equals: CompilerOption.Help
+]

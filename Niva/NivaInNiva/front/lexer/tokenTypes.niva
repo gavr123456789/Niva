@@ -5,14 +5,16 @@ enum TokenType =
   // Literal types
   |Integer
   |String
+  |RawString
   |Char
   |Float // 4.2f
   |Double // 4.2
   |Identifier|NullableIdentifier|IdentifierColon|IdentifierDoubleColon
+  |AtomIdentifier // #word, e.g. #red #blue
 //    Binary| Octal| Hex|
 
   // Keywords
-  |Type|Union|Constructor|Enum|Builder|Mut|ErrorDomain|Extend
+  |Type|Union|Constructor|Enum|Mut|ErrorDomain|Extend
   |True|False|Null
   |On // on for many messages declarations
 
@@ -22,9 +24,6 @@ enum TokenType =
 
 
   |If // |
-  |PipeOperator // |>
-
-
   |Then // =>
   |Else // |=>
 
@@ -38,44 +37,49 @@ enum TokenType =
   |UnitTok // ()
 
   // punctuation
-  |Dot| Cascade| Comma| Colon| Apostrophe// . : `
-  |DotOpenBracket // .[
+  |Dot| Cascade| Comma| Colon// . :
   |Ampersand // &
 
-  |NoMatch  // Used internally by the symbol table
-  |Comment   // Useful for documentation comments| pragmas| etc.
   |DocComment   // Useful for documentation comments| pragmas| etc.
   |BinarySymbol    // A generic symbol
   |Assign // =
-  |DoubleColon
-  |EndOfLine // \n and next line starts not from the dot
 
   |InlineReplWithNum // >Number| >3
   |InlineReplWithQuestion // >?
-  |Underscore // _
   |Bang // !
   |Invalid // used for identifiers
+
+type SourceFile
+  path: String
+static fakeSourceFile = SourceFile path: ""
+//constructor SourceFile fake = SourceFile path: ""
+
 
 type Token
   kind: TokenType
   lexeme: String
   line: Int
   start: Int end: Int // at line
+  file: SourceFile
 
 Token toString = "$kind($lexeme)"
-Token toPosition = "testss.niva:" + line toString + ":" + start toString // TODO add file path
+Token toPosition = file path + ":" + line toString + ":" + start toString
+Token printGoLine-intoSb(sb): StringBuilder =
+  file path != "" ifTrue: [sb appendLine: ("//line " + file path + ":" + line toString)]
 
-constructor Token fake = Token
+static FAKE_TOKEN = Token
   kind: TokenType.Identifier
   lexeme: "FakeToken"
   line: 1
   start: 0 end: 1
+  file: fakeSourceFile
 
-constructor Token eof = Token
+static EOF_TOKEN = Token
   kind: TokenType.EndOfFile
   lexeme: ""
   line: 1
   start: 0 end: 1
+  file: fakeSourceFile
 
 extend Token [
   on isIdentifier =
@@ -88,14 +92,12 @@ extend Token [
 
 ]
 
-/// gets keyword name outputs token type, or identifier if its not kw
-constructor Token lookupKeyword::String -> TokenType = | lookupKeyword
+static Token lookupKeyword: String -> TokenType = | lookupKeyword
 | "type" => TokenType.Type
 | "mut" => TokenType.Mut
 | "union" => TokenType.Union
 | "enum" => TokenType.Enum
-| "builder" => TokenType.Builder
-| "constructor" => TokenType.Constructor
+| "constructor" | "static" => TokenType.Constructor
 | "errordomain" => TokenType.ErrorDomain
 | "extend" => TokenType.Extend
 | "on" => TokenType.On

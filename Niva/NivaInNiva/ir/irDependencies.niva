@@ -1,0 +1,292 @@
+type IrDependencyCollector
+  currentPkg: String
+  localPackages: Set(String)
+  dependencies: mut List(IrDependency)
+  seen: mut Set(String)
+
+constructor IrDependencyCollector forPackage(pkg): String localPackages: Set(String) -> IrDependencyCollector =
+  IrDependencyCollector currentPkg: pkg :localPackages dependencies: {}! seen: #()!
+
+IrDependencyKind stableName -> String =
+  | this
+  | IrDependencyKind.Type => "type"
+  | IrDependencyKind.Call => "call"
+  | IrDependencyKind.Constructor => "constructor"
+  | IrDependencyKind.Explicit => "explicit"
+
+IrDependency stableKey -> String =
+  toPkg + "|" + kind stableName + "|" + symbol + "|" + token file path +
+    "|" + token line toString + "|" + token start toString
+
+IrDependencyCollector addDependencyTo(targetPkg): String kind(kind): IrDependencyKind token(token): Token symbol(symbol): String -> Unit = [
+  shouldAdd = (targetPkg != currentPkg) && (localPackages contains: targetPkg)
+  shouldAdd ifTrue: [
+    dependency = IrDependency fromPkg: currentPkg toPkg: targetPkg :kind :token :symbol
+    key = dependency stableKey
+    seen contains: key, ifFalse: [
+      seen add: key
+      dependencies add: dependency
+    ]
+  ]
+]
+
+IrTypeRef collectDependenciesInto(collector): IrDependencyCollector at(token): Token -> Unit = [
+  collector addDependencyTo: ownerPkg kind: IrDependencyKind.Type token: token symbol: typeId
+  args forEach: [it collectDependenciesInto: collector at: token]
+  returnType unpack: [it collectDependenciesInto: collector at: token]
+  errors forEach: [it collectDependenciesInto: collector at: token]
+]
+
+IrBlock collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
+  stmts forEach: [it collectDependenciesInto: collector]
+  result unpack: [it collectDependenciesInto: collector]
+]
+
+IrStmt collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
+  | this
+  | IrLet => [
+      typeRef collectDependenciesInto: collector at: token
+      value unpack: [it collectDependenciesInto: collector]
+    ]
+  | IrSetLocal => [value collectDependenciesInto: collector]
+  | IrSetField => [
+      receiver collectDependenciesInto: collector
+      value collectDependenciesInto: collector
+    ]
+  | IrDestructure => [
+      bindings forEach: [it typeRef collectDependenciesInto: collector at: token]
+      value collectDependenciesInto: collector
+    ]
+  | IrExprStmt => [expr collectDependenciesInto: collector]
+  | IrReturn => [expr unpack: [it collectDependenciesInto: collector]]
+  | IrWhile => [
+      cond collectDependenciesInto: collector
+      body collectDependenciesInto: collector
+    ]
+  | IrThrow => [errExpr collectDependenciesInto: collector]
+]
+
+IrExpr collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
+  typeRef collectDependenciesInto: collector at: token
+  | this
+  | IrLiteralExpr => []
+  | IrVarRef => []
+  | IrThisRef => []
+  | IrFieldGet => [receiver collectDependenciesInto: collector]
+  | IrCall => [
+      callKind = isConstructor
+        ifTrue: [IrDependencyKind.Constructor]
+        ifFalse: [IrDependencyKind.Call]
+      callSymbol = funcId unpackOrValue: (msgName unpackOrValue: "<dynamic>")
+      declPkg unpack: [
+        collector addDependencyTo: it kind: callKind token: token symbol: callSymbol
+      ]
+      paramTypes forEach: [it collectDependenciesInto: collector at: token]
+      receiverType unpack: [it collectDependenciesInto: collector at: token]
+      callee unpack: [it collectDependenciesInto: collector]
+      args forEach: [it collectDependenciesInto: collector]
+    ]
+  | IrLambda => [
+      args forEach: [it typeRef collectDependenciesInto: collector at: token]
+      body collectDependenciesInto: collector
+    ]
+  | IrBlockExpr => [block collectDependenciesInto: collector]
+  | IrMatchExpr => [
+      subject collectDependenciesInto: collector
+      cases forEach: [matchCase ->
+        matchCase condition collectDependenciesInto: collector
+        matchCase additionalConditions forEach: [it collectDependenciesInto: collector]
+        matchCase assertedTypeRef unpack: [it collectDependenciesInto: collector at: matchCase condition token]
+        matchCase body collectDependenciesInto: collector
+      ]
+      elseBranch unpack: [it collectDependenciesInto: collector]
+    ]
+  | IrNewExpr => [
+      collector addDependencyTo: typeRef ownerPkg
+        kind: IrDependencyKind.Constructor token: token symbol: typeId
+      args forEach: [it collectDependenciesInto: collector]
+    ]
+  | IrCollectionLiteral => [items forEach: [it collectDependenciesInto: collector]]
+  | IrOpBin => [
+      left collectDependenciesInto: collector
+      right collectDependenciesInto: collector
+    ]
+  | IrTypeRefExpr => [ref collectDependenciesInto: collector at: token]
+]
+
+IrFunction collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
+  receiverType collectDependenciesInto: collector at: token
+  args forEach: [it typeRef collectDependenciesInto: collector at: token]
+  returnType collectDependenciesInto: collector at: token
+  instantiations forEach: [instantiation ->
+    instantiation receiverType collectDependenciesInto: collector at: token
+    instantiation argTypes forEach: [it collectDependenciesInto: collector at: token]
+    instantiation returnType collectDependenciesInto: collector at: token
+  ]
+  body collectDependenciesInto: collector
+]
+
+IrPackage collectDependencyEvidence(localPackages): Set(String) entry(entry): IrBlock? -> List(IrDependency) = [
+  collector = IrDependencyCollector forPackage: name localPackages: localPackages
+
+  imports forEach: [import ->
+    import kind == IrImportKind.Local ifTrue: [
+      collector addDependencyTo: import name kind: IrDependencyKind.Explicit
+        token: FAKE_TOKEN symbol: import name
+    ]
+  ]
+
+  types forEach: [definition ->
+    definition fields forEach: [it typeRef collectDependenciesInto: collector at: definition token]
+  ]
+  unions forEach: [definition ->
+    definition commonFields forEach: [it typeRef collectDependenciesInto: collector at: definition token]
+    definition branches forEach: [branch ->
+      branch fields forEach: [it typeRef collectDependenciesInto: collector at: branch token]
+    ]
+  ]
+  functions forEach: [it collectDependenciesInto: collector]
+  stateDefs forEach: [state ->
+    state typeRef collectDependenciesInto: collector at: state token
+    state initializer unpack: [it collectDependenciesInto: collector]
+  ]
+  entry unpack: [it collectDependenciesInto: collector]
+
+  ^ collector dependencies toList sortedBy: [it stableKey]
+]
+
+IrModule withNormalizedDependencies -> IrModule = [
+  localPackages = packages map: [it name], toSet
+  normalizedPackages = packages map: [modulePkg ->
+    packageEntry = modulePkg name == pkg ifTrue: [entry] ifFalse: [null]
+    evidence = modulePkg collectDependencyEvidence: localPackages entry: packageEntry
+    IrPackage
+      name: modulePkg name
+      imports: modulePkg imports
+      dependencies: evidence
+      types: modulePkg types
+      unions: modulePkg unions
+      enums: modulePkg enums
+      stateDefs: modulePkg stateDefs
+      functions: modulePkg functions
+  ]
+
+  ^ IrModule version: version pkg: pkg packages: normalizedPackages entry: entry
+]
+
+type IrTarjanState
+  nextIndex: Int
+  indices: mut Map(String, Int)
+  lowLinks: mut Map(String, Int)
+  stack: mut List(String)
+  onStack: mut Set(String)
+  components: mut List(List(String))
+  packagesByName: Map(String, IrPackage)
+
+constructor IrTarjanState forPackages(packages): List(IrPackage) -> IrTarjanState = [
+  packagesByName::mut Map(String, IrPackage) = #{}!
+  packages forEach: [packagesByName at: it name put: it]
+  ^ IrTarjanState nextIndex: 0 indices: #{}! lowLinks: #{}! stack: {}! onStack: #()! components: {}! packagesByName: packagesByName
+]
+
+mut IrTarjanState strongConnect(node): String -> Unit = [
+  nodeIndex = nextIndex
+  nextIndex <- nextIndex + 1
+  indices at: node put: nodeIndex
+  lowLinks at: node put: nodeIndex
+  stack add: node
+  onStack add: node
+
+  modulePkg = packagesByName at: node, unpackOrPANIC
+  modulePkg dependencyPackageNames forEach: [target ->
+    targetIndex = indices at: target
+    | targetIndex
+    | null => [
+      this strongConnect: target
+      nodeLow = lowLinks at: node, unpackOrPANIC
+      targetLow = lowLinks at: target, unpackOrPANIC
+      targetLow < nodeLow ifTrue: [lowLinks at: node put: targetLow]
+    ]
+    |=> [
+      onStack contains: target, ifTrue: [
+        nodeLow = lowLinks at: node, unpackOrPANIC
+        targetIndex < nodeLow ifTrue: [lowLinks at: node put: targetIndex]
+      ]
+    ]
+  ]
+
+  nodeLow = lowLinks at: node, unpackOrPANIC
+  nodeLow == nodeIndex ifTrue: [
+    component::mut List(String) = {}!
+    [
+      member = stack last
+      stack remove: member
+      onStack remove: member
+      component add: member
+      member != node
+    ] whileTrue: []
+    components add: (component toList sortedBy: [it])
+  ]
+]
+
+IrModule stronglyConnectedPackageComponents -> List(List(String)) = [
+  state::mut IrTarjanState = IrTarjanState forPackages: packages
+  packages map: [it name], sortedBy: [it], forEach: [packageName ->
+    existingIndex = state indices at: packageName
+    existingIndex == null ifTrue: [state strongConnect: packageName]
+  ]
+  ^ state components toList sortedBy: [it first]
+]
+
+IrModule dependencyCycleFor(component): List(String) -> IrDependencyCycle = [
+  packagesByName::mut Map(String, IrPackage) = #{}!
+  packages forEach: [packagesByName at: it name put: it]
+  componentSet = component toSet
+  visitedAt::mut Map(String, Int) = #{}!
+  pathNodes::mut List(String) = {}!
+  pathEdges::mut List(IrDependency) = {}!
+  mut current = component first
+
+  [(visitedAt at: current) == null] whileTrue: [
+    visitedAt at: current put: pathNodes count
+    pathNodes add: current
+    modulePkg = packagesByName at: current, unpackOrPANIC
+    edge = modulePkg dependencies
+      filter: [componentSet contains: it toPkg]
+      ,sortedBy: [it stableKey]
+      ,first
+    pathEdges add: edge
+    current <- edge toPkg
+  ]
+
+  cycleStart = visitedAt at: current, unpackOrPANIC
+  ^ IrDependencyCycle
+    packages: (pathNodes toList drop: cycleStart)
+    edges: (pathEdges toList drop: cycleStart)
+]
+
+IrModule dependencyCycles -> List(IrDependencyCycle) =
+  this stronglyConnectedPackageComponents
+    filter: [it count > 1]
+    ,map: [this dependencyCycleFor: it]
+
+IrDependency diagnosticLine -> String = [
+  path = token file path == "" ifTrue: [fromPkg + ".niva"] ifFalse: [token file path]
+  ^ "  " + path + ":" + token line toString + "  " + fromPkg + " -> " + toPkg +
+    "  (" + kind stableName + " " + symbol + ")"
+]
+
+IrDependencyCycle diagnostic -> String =
+  "Cyclic Niva module dependency:\n" +
+    (edges joinWith: "\n" transform: [it diagnosticLine])
+
+IrModule dependencyCycleDiagnostics -> List(String) =
+  this dependencyCycles map: [it diagnostic]
+
+IrModule validateNoDependencyCycles -> IrModule = [
+  diagnostics = this dependencyCycleDiagnostics
+  diagnostics isNotEmpty ifTrue: [
+    TO DO: (diagnostics joinWith: "\n\n")
+  ]
+  ^ this
+]

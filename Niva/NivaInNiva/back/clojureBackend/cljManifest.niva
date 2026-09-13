@@ -1,0 +1,124 @@
+// manifest describes generated modules and saved state
+// reload uses it to find changes that require a restart
+
+type CljModuleManifest
+  moduleId: String
+  file: String
+  deps: List(String)
+
+type CljStateManifest
+  key: String
+  varName: String
+  typeShape: String
+
+type CljTypeShape
+  key: String
+  kind: String
+  shape: String
+
+type CljManifest
+  version: Int
+  entryNamespace: String
+  modules: List(CljModuleManifest)
+  stateVars: List(CljStateManifest)
+  typeShapes: List(CljTypeShape)
+
+String cljManifestQuoted -> String =
+  "\"" + (.replace: "\\" with: "\\\\", replace: "\"" with: "\\\"", replace: "\n" with: "\\n") + "\""
+
+CljModuleManifest canonical -> String =
+  "module|" + moduleId + "|" + file + "|" + (deps sortedBy: [it], joinWith: ",")
+
+CljStateManifest canonical -> String =
+  "state|" + key + "|" + varName + "|" + typeShape
+
+CljTypeShape canonical -> String =
+  "shape|" + key + "|" + kind + "|" + shape
+
+IrTypeDef cljManifestShape -> String =
+  "record|" + id + "|" + (typeParams joinWith: ",") + "|" +
+    (fields joinWith: "," transform: [it canonicalInterfaceString])
+
+IrUnionDef cljManifestShape -> String =
+  "union|" + id + "|" + (typeParams joinWith: ",") + "|" +
+    (commonFields joinWith: "," transform: [it canonicalInterfaceString]) + "|" +
+    (branches joinWith: "," transform: [branch ->
+      branch name + (branch isInclude ifTrue: ["+"] ifFalse: ["="]) + "(" +
+        (branch fields joinWith: "," transform: [it canonicalInterfaceString]) + ")"
+    ]) + "|" + (isErrorDomain ifTrue: ["error"] ifFalse: ["plain"])
+
+IrEnumDef cljManifestShape -> String =
+  "enum|" + id + "|" + (values joinWith: ",")
+
+CljManifest canonical -> String = [
+  parts::mut List(String) = {}!
+  parts add: ("version|" + version toString)
+  parts add: ("entry-ns|" + entryNamespace)
+  modules map: [it canonical], sortedBy: [it], forEach: [parts add: it]
+  stateVars map: [it canonical], sortedBy: [it], forEach: [parts add: it]
+  typeShapes map: [it canonical], sortedBy: [it], forEach: [parts add: it]
+  ^ parts joinWith: "\n"
+]
+
+CljManifest edn -> String = [
+  moduleParts = (modules sortedBy: [it moduleId]) joinWith: " " transform: [module ->
+    (module moduleId cljManifestQuoted) + " {:file " +
+      (module file cljManifestQuoted) + " :deps [" +
+      ((module deps sortedBy: [it]) joinWith: " " transform: [it cljManifestQuoted]) + "]}"
+  ]
+  stateParts = (stateVars sortedBy: [it key]) joinWith: " " transform: [state ->
+    (state key cljManifestQuoted) + " {:var " + (state varName cljManifestQuoted) +
+      " :type " + (state typeShape cljManifestQuoted) + "}"
+  ]
+  shapeParts = (typeShapes sortedBy: [it key]) joinWith: " " transform: [shape ->
+    (shape key cljManifestQuoted) + " {:kind :" + shape kind + " :shape " +
+      (shape shape cljManifestQuoted) + "}"
+  ]
+  ^ "{:version " + version toString + " :entry-ns " + (entryNamespace cljManifestQuoted) +
+    " :modules {" + moduleParts + "} :state-vars {" + stateParts +
+    "} :type-shapes {" + shapeParts + "}}\n"
+]
+
+CljTypeShape? CljManifest typeShape(key): String -> CljTypeShape? =
+  typeShapes find: [it key == key]
+
+CljStateManifest? CljManifest stateVar(key): String -> CljStateManifest? =
+  stateVars find: [it key == key]
+
+CljManifest incompatibleChanges(previous): CljManifest? -> List(String) = [
+  changes::mut List(String) = {}!
+  previous unpack: [old ->
+    old typeShapes sortedBy: [it key], forEach: [oldShape ->
+      currentShape = this typeShape: oldShape key
+      | currentShape
+      | null => [
+        changes add: ("type shape removed: " + oldShape key)
+        ()
+      ]
+      |=> [
+        oldShape shape != currentShape shape ifTrue: [
+          changes add: ("type shape changed: " + oldShape key +
+            " (" + oldShape kind + ")")
+          ()
+        ] ifFalse: [()]
+        ()
+      ]
+    ]
+    old stateVars sortedBy: [it key], forEach: [oldState ->
+      currentState = this stateVar: oldState key
+      | currentState
+      | null => [
+        changes add: ("state var removed: " + oldState key)
+        ()
+      ]
+      |=> [
+        oldState typeShape != currentState typeShape ifTrue: [
+          changes add: ("state var type changed: " + oldState key)
+          ()
+        ] ifFalse: [()]
+        ()
+      ]
+    ]
+  ]
+  ^ changes toList
+]

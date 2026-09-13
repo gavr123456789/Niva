@@ -529,14 +529,14 @@ fun createRangeProtocols(
     boolType: Type.InternalType,
     itType: Type.InternalType,
     unitType: Type.InternalType,
+    intType: Type.InternalType,
 
     listOfIt: Type.UserType,
     sequenceOfIt: Type.UserType,
     differentGenericType: Type.UnknownGenericType,
     listOfDifferentGeneric: Type.UserType
 ): MutableMap<String, Protocol> {
-    //     listType: Type.UserType,
-    //    sequenceType: Type.UserType,
+
     val protocol = Protocol(
         name = "common",
         unaryMsgs = mutableMapOf(
@@ -553,6 +553,9 @@ fun createRangeProtocols(
         ),
         keywordMsgs = mutableMapOf(
             createKeyword(KeywordArg("step", itType), rangeType, "The step of the progression"),
+            createKeyword(KeywordArg("take", intType), listOfIt, "Returns a list containing first n elements."),
+
+
 
             createForEachKeyword(itType, unitType),
             createMapKeyword(itType, differentGenericType, listOfDifferentGeneric),
@@ -777,6 +780,10 @@ fun createListProtocols(
             createKeyword(KeywordArg("dropLast", intType), listType, "new list except last n elements."),
             createKeyword(KeywordArg("chunked", intType), listOfLists, "Splits this collection into a list of lists each not exceeding the given size"),
             createKeyword(KeywordArg("joinWith", stringType), stringType, """{1 2 3} joinWith: ", " is 1, 2, 3""").rename("joinToString"),
+
+            createKeyword(KeywordArg("take", intType), listType, "Returns a list containing first n elements"),
+            createKeyword(KeywordArg("takeLast", intType), listType, "Returns a list containing last n elements"),
+
             createKeyword(
                 KeywordArg(
                     "joinTransform",
@@ -801,7 +808,8 @@ fun createListProtocols(
                     "indexOfFirst",
                     Type.Lambda(mutableListOf(KeywordArg("indexOfFirst", itType)), boolType)
                 ),
-                intType
+                intType,
+                "Returns index of the first element, or -1 if the list does not contain such element"
             ),
             createKeyword(
                 KeywordArg(
@@ -815,14 +823,16 @@ fun createListProtocols(
                     "any",
                     Type.Lambda(mutableListOf(KeywordArg("any", itType)), boolType)
                 ),
-                boolType
+                boolType,
+                "Returns true if collection has at least one element"
             ),
             createKeyword(
                 KeywordArg(
                     "indexOfLast",
                     Type.Lambda(mutableListOf(KeywordArg("indexOfLast", itType)), boolType)
                 ),
-                intType
+                intType,
+                "Returns index of the last element, or -1 if the list does not contain such element"
             ),
 
             createKeyword(
@@ -1371,7 +1381,7 @@ fun createMapProtocols(
         )
         val mutKwMsgs = mutableMapOf(
             createKeyword(KeywordArg("remove", keyType), Type.NullableType(keyType), forMutable = true),
-            createKeyword(KeywordArg("putAll", mutableMapType), unitType, forMutable = true),
+            createKeyword(KeywordArg("putAll", mapType), unitType, forMutable = true),
             createKeyword(
                 "atPut",
                 listOf(

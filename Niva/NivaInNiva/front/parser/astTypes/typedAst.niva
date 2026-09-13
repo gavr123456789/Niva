@@ -11,7 +11,6 @@ extend TypeInfo [
 ]
 
 NivaType toTypeInfoDefault -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: {}!]
-NivaType toTypeInfoWithErrors(errors): List(NivaType) -> TypeInfo = [^ TypeInfo t: this isMut: false listOfErrors: errors]
 // constructor TypeInfo default: t::NivaType =
 //   TypeInfo :t isMut: false
 
@@ -22,13 +21,18 @@ type MatchBranchT
 
 enum AssignKind = TO_THIS_FIELD | TO_LOCAL_MUT
 
+type DestructureBindingT
+  localName: String
+  fieldName: String
+  isUsed: Bool
+
 union TypedExpr2 token: Token typeInfo: TypeInfo =
 | ^LiteralExprT
 | IdentifierT        name: String path: List(String)? isNameOfTheType: Bool
 | ExprInBracketsT    value: TypedExpr2
-| VarDeclarationT    name: String value: TypedExpr2 astType: AstType2? isMut: Bool
+| VarDeclarationT    name: String value: TypedExpr2 astType: AstType2? isMut: Bool isUsed: Bool
 | AssignT            name: String value: TypedExpr2 kind: AssignKind
-| DestructingAssignT names: List(String) value: TypedExpr2 // {name} = person
+| DestructingAssignT bindings: List(DestructureBindingT) value: TypedExpr2 // {name} = person, {local = field} = person
 
 | ^CollectionLiteralT
 | ^MessageSendT
@@ -53,6 +57,7 @@ type NameAndExprT name: Identifier expr: TypedExpr2
 type TypedBody
   v: List(TypedExpr2)
   t: NivaType
+  listOfErrors: List::NivaType
 
 type NameAndTypeInfo name: String typeInfo: TypeInfo
 
@@ -65,10 +70,11 @@ type UnionBranchT
   token: Token
 
 union TypedDeclaration token: Token =
-| TypeDeclT name: String fields: List::TypeFieldT
+| TypeDeclT name: String genericParams: List(String) fields: List::TypeFieldT
 | EnumDeclT
 | UnionDeclT
   name: String
+  genericParams: List(String)
   commonUnionFields: List::TypeFieldT
   branches: List::UnionBranchT
 | ExtendDeclT
@@ -97,6 +103,7 @@ union LiteralExprT token: Token typeInfo: TypeInfo =
 | BooleanExprT
 | NullExprT
 | UnitExprT
+| AtomExprT name: String // #red -> name = "red"
 
 
 union CollectionLiteralT token: Token elements: TypedBody typeInfo: TypeInfo =
@@ -116,9 +123,3 @@ union MessageSendT receiver: TypedExpr2 token: Token typeInfo: TypeInfo dbMsg: N
 | KeywordMsgT
   args: List(NameAndExprT) // expr - Primary or UnaryMsg or BinaryMsg
   kind: MessageSendKind
-
-
-// constructors
-
-constructor IdentifierT fromToken: Token typeInfo: TypeInfo isNameOfTheType: Bool=
-  IdentifierT name: (fromToken lexeme) token: fromToken path: null :typeInfo :isNameOfTheType

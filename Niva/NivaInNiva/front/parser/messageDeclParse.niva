@@ -1,7 +1,7 @@
 
 type KeywordDeclParts
   args: List::NameAndAstType
-  nameParts: List::String
+  nameParts: List(String)
 
 type KeywordDeclArg
   arg: NameAndAstType
@@ -40,7 +40,7 @@ mut Parser
 
       .match: TokenType.Assign, ifFalse: [
         .restoreFrom: savePosition
-        ^ .nextExperssion: .step
+        ^ .nextExpression: .step
       ]
       // Int inc ->? = ^[]
       isSingleExpr = .peek kind != TokenType.OpenBracket
@@ -63,14 +63,14 @@ mut Parser
 
       .match: TokenType.Assign, ifFalse: [
         .restoreFrom: savePosition
-        ^ .nextExperssion: .step
+        ^ .nextExpression: .step
       ]
 
       isSingleExpr = .peek kind != TokenType.OpenBracket
       body = .parseBodyOrSingleExpr
-      kwName = kwParts2 nameParts joinWith: ":" transform: [
+      kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
-      ], + ":"
+      ]
       msgDecl = MessageDecl
         receiver: receiverType
         name: kwName
@@ -91,7 +91,7 @@ mut Parser
     kwParts = .parseKeywordDeclArgsFrom: tok2
     kwParts == null ifTrue: [
       .restoreFrom: savePosition
-      ^ .nextExperssion: .step
+      ^ .nextExpression: .step
     ]
     kwParts2 = kwParts unpackOrPANIC
 
@@ -99,15 +99,15 @@ mut Parser
 
     .match: TokenType.Assign, ifFalse: [
       .restoreFrom: savePosition
-      ^ .nextExperssion: .step
+      ^ .nextExpression: .step
     ]
     // Int a::Int b::Int ->? = ^[]
 
     isSingleExpr = .peek kind != TokenType.OpenBracket
     body = .parseBodyOrSingleExpr
-    kwName = kwParts2 nameParts joinWith: ":" transform: [
+    kwName = kwParts2 nameParts joinWith: "__" transform: [
       it
-    ], + ":"
+    ]
     msgDecl = MessageDecl
       receiver: receiverType
       name: kwName
@@ -130,7 +130,7 @@ mut Parser
       (arg kind == TokenType.IdentifierColon)
     isArgName ifFalse: [
       .restoreFrom: savePosition
-      ^.nextExperssion: .step
+      ^.nextExpression: .step
     ]
     argType = .parseType
 
@@ -159,7 +159,7 @@ mut Parser
   ]
   |=> [
     .restoreFrom: savePosition
-    ^.nextExperssion: .step
+    ^.nextExpression: .step
   ]
 
   ^ result
@@ -172,17 +172,16 @@ extend mut Parser [
     .matchAssert: TokenType.OpenBracket
 
     decls = List(MessageDecl) val: {}, toMut
-    mut c = true
-    [c] whileTrue: [
+    [
       .peek kind == TokenType.CloseBracket ifTrue: [
         .step
-        c <- false
+        false
       ] ifFalse: [
         onTok = .matchAssert: TokenType.On
         decls add: (.parseMessageDeclForReceiver: receiverType token: onTok isConstructor: false)
-        ()
+        true
       ]
-    ]
+    ] whileTrue: []
 
     ^ ExtendDecl receiver: receiverType messages: decls toList token: tok
   ]
@@ -221,9 +220,9 @@ extend mut Parser [
 
         isSingleExpr = .peek kind != TokenType.OpenBracket
         body = .parseBodyOrSingleExpr
-        kwName = kwParts nameParts joinWith: ":" transform: [
+        kwName = kwParts nameParts joinWith: "__" transform: [
           it
-        ], + ":"
+        ]
 
         MessageDecl
           receiver: receiverType name: kwName args: kwParts args :returnType :token :body :isSingleExpr :isConstructor
@@ -242,9 +241,9 @@ extend mut Parser [
 
       isSingleExpr = .peek kind != TokenType.OpenBracket
       body = .parseBodyOrSingleExpr
-      kwName = kwParts2 nameParts joinWith: ":" transform: [
+      kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
-      ], + ":"
+      ]
       MessageDecl
           receiver: receiverType name: kwName args: kwParts2 args :returnType :token :body :isSingleExpr :isConstructor
     ]
@@ -289,7 +288,7 @@ extend mut Parser [
 
   on parseKeywordDeclArgsFrom(firstTok): Token -> KeywordDeclParts? = [
     args::mut List::NameAndAstType = {}!
-    nameParts::mut List::String = {}!
+    nameParts::mut List(String) = {}!
 
     firstArg = .parseKeywordDeclArgFrom: firstTok
     firstArg == null ifTrue: [^ null]
@@ -297,18 +296,17 @@ extend mut Parser [
     args add: firstArg2 arg
     nameParts add: firstArg2 namePart
 
-    mut c = true
-    [c] whileTrue: [
+    [
       nextArg = .tryParseKeywordDeclArg
       nextArg == null ifTrue: [
-        c <- false
+        false
       ] ifFalse: [
         nextArg2 = nextArg unpackOrPANIC
         args add: nextArg2 arg
         nameParts add: nextArg2 namePart
-        ()
+        true
       ]
-    ]
+    ] whileTrue: []
 
     ^ KeywordDeclParts args: args toList nameParts: nameParts toList
   ]
@@ -376,7 +374,7 @@ extend mut Parser [
       externalName = tok lexeme
 
       mut ok = .match: TokenType.OpenParen
-      mut localTok = Token eof
+      mut localTok = EOF_TOKEN
       ok ifTrue: [
         localTok <- .peek
         ok <- (localTok kind == TokenType.Identifier)

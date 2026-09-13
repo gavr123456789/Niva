@@ -1,0 +1,241 @@
+Test irTypeAndMethod = [
+  fileMain = """
+    type Person
+      name: String
+
+    Person greet -> String = [
+      ^ "hi"
+    ]
+
+    p = Person name: "Ada"
+    p greet
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModule
+
+  typeDef = ir types first
+  Assert that: typeDef name equals: "Person"
+  Assert that: typeDef id equals: "main_Person"
+  Assert that: typeDef fields count equals: 1
+  field = typeDef fields at: 0
+  Assert that: field name equals: "name"
+
+  fnMaybe = ir functions find: [it name == "greet"]
+  | fnMaybe
+  | null => [TO DO: "greet function not found"]
+  |=> [
+    fn = fnMaybe
+    Assert that: fn args count equals: 1
+    firstArg = fn args at: 0
+    Assert that: firstArg name equals: "this"
+  ]
+]
+
+Test irFieldAliasesAreIrLetBindings = [
+  fileMain = """
+    type Person
+      name: String
+      age: Int
+
+    Person describe -> String = [
+      name
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  ir = result toIrModule
+
+  fnMaybe = ir functions find: [it name == "describe"]
+  | fnMaybe
+  | null => [TO DO: "describe function not found"]
+  |=> [
+    fn = fnMaybe
+    Assert that: fn body stmts count equals: 2
+
+    firstStmt = fn body stmts at: 0
+    | firstStmt
+    | IrLet => [Assert that: firstStmt name equals: "name"]
+    |=> [TO DO: "expected IrLet for name field"]
+  ]
+]
+
+Test irDependenciesCoverCrossPackageTypesCallsConstructorsAndGenerics = [
+  personFile = """
+    type Person name: String
+
+    Person greet -> String = [
+      ^ name
+    ]
+  """
+  boxFile = """
+    type Box(T) value: T
+
+    Box(T) unwrap -> T = [
+      ^ value
+    ]
+  """
+  envelopeFile = """
+    type Envelope payload: Box(Person)
+  """
+  mainFile = """
+    alice = Person name: "Alice"
+    greeting = alice greet
+    boxed = Box value: alice
+    unwrapped = boxed unwrap
+    envelope = Envelope payload: boxed
+    envelope
+  """
+
+  result = ResolverHelper resolve: #{
+    "main" mainFile
+    "person" personFile
+    "box" boxFile
+    "envelope" envelopeFile
+  } entryPoint: "main"
+  ir = result toIrModule
+
+  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+  Assert that: mainPkg dependencyPackageNames equals: {"box" "envelope" "person"}
+
+  personCall = mainPkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Call)
+  ]
+  | personCall
+  | null => [TO DO: "Expected a call dependency from main to person"]
+  |=> [
+    Assert that: (personCall symbol contains: "greet") equals: true
+    Assert that: personCall token file path equals: "main.niva"
+  ]
+
+  personConstructor = mainPkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Constructor)
+  ]
+  Assert that: (personConstructor != null) equals: true
+
+  envelopePkg = ir packages find: [it name == "envelope"], unpackOrPANIC
+  Assert that: envelopePkg dependencyPackageNames equals: {"box" "person"}
+  genericPersonType = envelopePkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Type)
+  ]
+  Assert that: (genericPersonType != null) equals: true
+
+  boxPkg = ir packages find: [it name == "box"], unpackOrPANIC
+  Assert that: boxPkg dependencyPackageNames equals: {"person"}
+  genericInstantiationType = boxPkg dependencies find: [
+    (it toPkg == "person") && (it kind == IrDependencyKind.Type)
+  ]
+  Assert that: (genericInstantiationType != null) equals: true
+
+  personPkg = ir packages find: [it name == "person"], unpackOrPANIC
+  Assert that: personPkg dependencyPackageNames isEmpty equals: true
+]
+
+Test irDependenciesCoverTypeMatchAndKeepProvenance = [
+  shapeFile = """
+    union Shape =
+    | Rectangle width: Int height: Int
+    | Circle radius: Int
+  """
+  mainFile = """
+    shape::Shape = Rectangle width: 2 height: 3
+
+    | shape
+    | Rectangle => shape width
+    | Circle => shape radius
+  """
+
+  result = ResolverHelper resolve: #{"main" mainFile "shapes" shapeFile} entryPoint: "main"
+  ir = result toIrModule
+  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+
+  Assert that: mainPkg dependencyPackageNames equals: {"shapes"}
+  matchType = mainPkg dependencies find: [
+    (it toPkg == "shapes") &&
+    (it kind == IrDependencyKind.Type) &&
+    (it symbol contains: "Rectangle")
+  ]
+  | matchType
+  | null => [TO DO: "Expected a type-match dependency from main to shapes"]
+  |=> [
+    Assert that: matchType token file path equals: "main.niva"
+    Assert that: (matchType token line > 1) equals: true
+  ]
+]
+
+Test irDependenciesExcludeExternalBindPackages = [
+  bindFile = """
+    type Clock
+    static Clock now -> Clock = []
+  """
+  mainFile = """
+    Clock now
+  """
+
+  result = ResolverHelper resolve: #{"main" mainFile "java.time.bind" bindFile}
+    entryPoint: "main" backend: "clj"
+  ir = result toIrModule
+  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+
+  Assert that: mainPkg dependencyPackageNames isEmpty equals: true
+]
+
+Test irDependencyCyclesReportTwoNodeCycleWithSourceEvidence = [
+  aFile = """
+    type Alpha beta: Beta
+  """
+  bFile = """
+    type Beta alpha: Alpha
+  """
+
+  result = ResolverHelper resolve: #{"a" aFile "b" bFile} entryPoint: "a"
+  ir = result toIrModuleUncheckedFromEntryLine: 0
+  cycles = ir dependencyCycles
+
+  Assert that: cycles count equals: 1
+  cycle = cycles first
+  Assert that: cycle packages equals: {"a" "b"}
+  Assert that: cycle edges count equals: 2
+  diagnostic = cycle diagnostic
+  Assert that: (diagnostic contains: "Cyclic Niva module dependency:") equals: true
+  Assert that: (diagnostic contains: "a.niva:2  a -> b  (type b_Beta)") equals: true
+  Assert that: (diagnostic contains: "b.niva:2  b -> a  (type a_Alpha)") equals: true
+]
+
+Test irDependencyCyclesReportConcretePathForThreeNodeCycle = [
+  aFile = """
+    Int aStep -> Int = [^ this bStep]
+  """
+  bFile = """
+    Int bStep -> Int = [^ this cStep]
+  """
+  cFile = """
+    Int cStep -> Int = [^ this aStep]
+  """
+
+  result = ResolverHelper resolve: #{"a" aFile "b" bFile "c" cFile} entryPoint: "a"
+  ir = result toIrModuleUncheckedFromEntryLine: 0
+  cycles = ir dependencyCycles
+
+  Assert that: cycles count equals: 1
+  cycle = cycles first
+  Assert that: cycle packages equals: {"a" "b" "c"}
+  Assert that: cycle edges count equals: 3
+  Assert that: (cycle diagnostic contains: "c -> a") equals: true
+]
+
+Test irDependencyCyclesIgnoreAcyclicGraphAndSamePackageReferences = [
+  modelFile = """
+    type Node next: Node?
+
+    Node identity -> Node = [^ this]
+  """
+  mainFile = """
+    type App node: Node
+  """
+
+  result = ResolverHelper resolve: #{"main" mainFile "model" modelFile} entryPoint: "main"
+  ir = result toIrModuleUncheckedFromEntryLine: 0
+
+  Assert that: ir dependencyCycles isEmpty equals: true
+]

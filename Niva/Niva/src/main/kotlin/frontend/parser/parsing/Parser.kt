@@ -83,7 +83,7 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         }
     }
 
-    if (kind == TokenType.Constructor || kind == TokenType.Fun) {
+    if (kind == TokenType.Constructor || kind == TokenType.Fun || kind == TokenType.Static) {
         if (check(TokenType.OpenBracket, 2)) {
             return manyConstructorsDecl(pragmas)
         }
@@ -164,10 +164,10 @@ private fun Parser.inlineParsing(
 }
 
 fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
-    val x = step()
-    if (x.kind != TokenType.Identifier) {
+    if (!check(TokenType.Identifier)) {
         return null
     }
+    val x = step()
     val dotMatched = match(TokenType.Dot)
     val listOfIdentifiersPath = mutableListOf(x.lexeme)
     if (dotMatched) {
@@ -182,7 +182,7 @@ fun Parser.dotSeparatedIdentifiers(): IdentifierExpr? {
 
 fun Parser.isVarDeclarationStart(): Boolean {
     val savePoint = current
-    match(TokenType.Global)
+    match(listOf(TokenType.Global, TokenType.Static))
     match(TokenType.Mut)
 
     val isVarDeclaration = when {
@@ -564,22 +564,6 @@ fun Parser.statements(): List<Statement> {
     }
 
     return this.tree
-}
-
-// Skips tokens on the current line until it matches [target], consuming it as well
-fun Parser.skipUntilOnLineInclusive(target: TokenType): Boolean {
-    while (true) {
-        // dont go outside of the line
-        if (check(TokenType.EndOfFile) || check(TokenType.EndOfLine) || check(TokenType.Comment)) {
-            return false
-        }
-
-        if (match(target)) {
-            return true
-        }
-
-        step(1)
-    }
 }
 
 fun Parser.checkEndOfLineOrFile(i: Int = 0) =
