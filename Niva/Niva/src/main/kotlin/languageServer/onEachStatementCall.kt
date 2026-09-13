@@ -2,10 +2,12 @@ package main.languageServer
 
 import frontend.resolver.KeywordMsgMetaData
 import frontend.resolver.Type
+import frontend.resolver.unpackNull
 import main.frontend.parser.types.ast.ConstructorDeclaration
 import main.frontend.parser.types.ast.Declaration
 import main.frontend.parser.types.ast.DestructingAssign
 import main.frontend.parser.types.ast.Expression
+import main.frontend.parser.types.ast.InternalTypes
 import main.frontend.parser.types.ast.ManyConstructorDecl
 import main.frontend.parser.types.ast.Message
 import main.frontend.parser.types.ast.MessageDeclaration
@@ -18,12 +20,25 @@ import main.frontend.meta.Token
 import java.io.File
 import main.utils.GlobalVariables
 
+private fun Type?.isLspSkippedTestReceiver(): Boolean {
+    val type = this?.unpackNull() ?: return false
+    return type is Type.InternalType && type.name == InternalTypes.Test.name
+}
+
+private fun MessageDeclaration.hasLspSkippedTestReceiver(): Boolean {
+    val realDeclaration = (this as? ConstructorDeclaration)?.msgDeclaration ?: this
+    return realDeclaration.forTypeAst.name == InternalTypes.Test.name ||
+        realDeclaration.forType.isLspSkippedTestReceiver()
+}
+
 fun LS.onEachStatementCall(
     st: Statement,
     currentScope: Map<String, Type>?,
     previousScope: Map<String, Type>?,
     file2: File
 ) {
+    if (previousScope?.get("this").isLspSkippedTestReceiver()) return
+
     fun addStToMegaStore(s: Statement, prepend: Boolean = false) {
         megaStore.addNew(
             s = s,
@@ -37,7 +52,7 @@ fun LS.onEachStatementCall(
     }
 
     // recursively register all IdentifierExpr usages within an expression
-    fun registerIdentifierUsages(expr: Expression) {
+//    fun registerIdentifierUsages(expr: Expression) {
 //        val scope =
 //            if (currentScope != null && previousScope != null)
 //                currentScope + previousScope
@@ -92,7 +107,7 @@ fun LS.onEachStatementCall(
 //            }
 //            else -> {}
 //        }
-    }
+//    }
 
     fun registerMessageUsageIfPossible(decl: MessageDeclaration?, usageToken: Token) {
         if (!GlobalVariables.isLspMode || decl == null) return
@@ -141,12 +156,14 @@ fun LS.onEachStatementCall(
                 is MethodReference -> {
                     registerMethodReferenceUsage(st)
                 }
-                is Expression -> registerIdentifierUsages(st)
+                is Expression -> {} //registerIdentifierUsages(st)
             }
 
         }
 
         is Declaration -> {
+            if (st is MessageDeclaration && st.hasLspSkippedTestReceiver()) return
+
             // fill fileToDecl
             val setOfStatements = this.fileToDecl[file2.absolutePath]
             if (setOfStatements != null) {
@@ -199,9 +216,11 @@ fun LS.onEachStatementCall(
                 messageDecl(st)
             }
             if (st is ManyConstructorDecl) {
-                st.messageDeclarations.forEach {
-                    messageDecl(it)
-                }
+                st.messageDeclarations.asSequence()
+                    .filterNot { it.hasLspSkippedTestReceiver() }
+                    .forEach {
+                        messageDecl(it)
+                    }
             }
         }
 

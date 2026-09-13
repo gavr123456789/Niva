@@ -1,5 +1,7 @@
-Unit nya = ()meow
+union Result(T) =
+| Ok t: T
+| Baad x: T
 
-Unit meow = [
-    ^false
-]
+type Box(T, G) x: T y: G
+
+x = Ok t: 42

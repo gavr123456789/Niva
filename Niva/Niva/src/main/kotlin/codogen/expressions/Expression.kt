@@ -13,19 +13,19 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
     if (isInlineRepl) {
         append("NivaDevModeDB.db.add((")
     }
-
-    val keywordGenerate = { kw: KeywordMsg ->
+    
+    fun keywordGenerate(kw: KeywordMsg): String {
         evalPragmas(kw)
-        generateSingleKeyword(0, kw.receiver, kw.kind == KeywordLikeType.Constructor, kw)
+        return generateSingleKeyword(0, kw.receiver, kw.kind == KeywordLikeType.Constructor, kw)
     }
 
-    val unaryGenerate = { unaryMsg: UnaryMsg ->
+    fun unaryGenerate(unaryMsg: UnaryMsg): String {
         evalPragmas(unaryMsg)
-        generateSingleUnary(1, unaryMsg.receiver, unaryMsg)
+        return generateSingleUnary(1, unaryMsg.receiver, unaryMsg)
     }
-    val binaryGenerate = { binary: BinaryMsg ->
+    fun binaryGenerate(binary: BinaryMsg): String {
         evalPragmas(binary)
-        generateSingleBinary(1, binary.receiver, binary)
+        return generateSingleBinary(1, binary.receiver, binary)
     }
     append(
         when (this@generateExpression) {
@@ -51,15 +51,8 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is LiteralExpression.UnitExpr -> "Unit"
             is DotReceiver -> "this"
 
-            is ListCollection -> {
-                generateList()
-            }
-
-            is SetCollection -> {
-                generateSet()
-            }
-
-
+            is ListCollection -> generateList()
+            is SetCollection -> generateSet()
             is MapCollection -> generateMap()
             is ControlFlow.If -> generateIf()
             is ControlFlow.Switch -> generateSwitch()
@@ -67,9 +60,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             // when message is receiver
             is BinaryMsg -> binaryGenerate(this@generateExpression)
             is KeywordMsg -> keywordGenerate(this@generateExpression)
-
-            is UnaryMsg ->
-                unaryGenerate(this@generateExpression)
+            is UnaryMsg -> unaryGenerate(this@generateExpression)
 
             // we dont need to generate types if this is arg list.forEach: {it ~~: Int~~ -> ...}
             is CodeBlock -> generateCodeBlock(
@@ -81,11 +72,7 @@ fun Expression.generateExpression(replaceLiteral: String? = null, withNullChecks
             is MethodReference -> generateMethodReference()
         }
     )
-    // OLD
-//    if (isInlineRepl) {
-//        val fileAndLine = token.file.absolutePath + ":::" + token.line
-//        append(", \"\"\"$fileAndLine\"\"\", $inlineReplCounter)")
-//    }
+
     if (isInlineRepl) {
         generateAddDevDataFunCall(this, token)
     }

@@ -22,22 +22,7 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     val typeName = matchAssertAnyIdent("name of the type expected")
     // type Person^ name: string age: int
 
-    val genericTypeParams = mutableListOf<Token>()
-    if (match(TokenType.DoubleColon)) {
-        genericTypeParams.add(
-            matchAssertAnyIdent("inside type declaration after `Type::` generic param expected")
-        )
-    } else if (match(TokenType.OpenParen)) {
-        if (check(TokenType.CloseParen)) {
-            peek().compileError("inside type declaration generic param expected")
-        }
-        do {
-            genericTypeParams.add(
-                matchAssertAnyIdent("inside type declaration generic param expected")
-            )
-        } while (match(TokenType.Comma))
-        matchAssert(TokenType.CloseParen, "closing paren in generic params expected")
-    }
+    val genericTypeParams = genericParamsAfterTypeName("type declaration")
 
     skipNewLinesAndComments()
 
@@ -58,6 +43,26 @@ fun Parser.typeDeclaration(pragmas: MutableList<Pragma>): TypeDeclaration {
     }
 
     return result
+}
+
+private fun Parser.genericParamsAfterTypeName(declarationKind: String): List<Token> {
+    val genericTypeParams = mutableListOf<Token>()
+    if (match(TokenType.DoubleColon)) {
+        genericTypeParams.add(
+            matchAssertAnyIdent("inside $declarationKind after `Type::` generic param expected")
+        )
+    } else if (match(TokenType.OpenParen)) {
+        if (check(TokenType.CloseParen)) {
+            peek().compileError("inside $declarationKind generic param expected")
+        }
+        do {
+            genericTypeParams.add(
+                matchAssertAnyIdent("inside $declarationKind generic param expected")
+            )
+        } while (match(TokenType.Comma))
+        matchAssert(TokenType.CloseParen, "closing paren in generic params expected")
+    }
+    return genericTypeParams
 }
 
 fun Parser.enumDeclaration(pragmas: MutableList<Pragma>): EnumDeclarationRoot {
@@ -336,6 +341,7 @@ fun Parser.errordomainDeclaration(pragmas: MutableList<Pragma>): ErrorDomainDecl
 fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed: Token? = null): UnionRootDeclaration {
     val unionTok = firstTokAlreadyParsed ?: step()
     val unionName = dotSeparatedIdentifiers() ?: unionTok.compileError("name of the union expected")
+    val genericTypeParams = genericParamsAfterTypeName("union declaration")
     skipNewLinesAndComments()
     val localFields = if (check(TokenType.Assign)) emptyList() else typeFields()
     val isThereBrunches = match(TokenType.Assign) //|| checkAfterSkip(TokenType.Colon)
@@ -389,6 +395,7 @@ fun Parser.unionDeclaration(pragmas: MutableList<Pragma>, firstTokAlreadyParsed:
         token = unionTok,
         fields = localFields,
         pragmas = pragmas,
+        genericFields = genericTypeParams.mapTo(mutableSetOf()) { it.lexeme },
         pkg = if (unionName.names.count() > 1) unionName.names.dropLast(1).joinToString(".") else null
     )
     if (isThereBrunches) {

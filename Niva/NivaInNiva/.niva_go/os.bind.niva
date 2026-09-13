@@ -1,0 +1,6 @@
+
+String readFile -> String =
+  Bind emit: "func() string { b, err := os.ReadFile($0); if err != nil { panic(err) }; return string(b) }()"
+
+String writeFile: String -> Unit =
+  Bind emit: "func() { err := os.WriteFile($0, []byte($1), 0644); if err != nil { panic(err) } }()"

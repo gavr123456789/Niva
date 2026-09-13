@@ -1,34 +1,35 @@
 extend mut Parser [
   on parseTypeErrors -> AstTypeErrors? = [
-    .match: TokenType.Bang, ifFalse: [^ null]
+    | true
+    | (.match: TokenType.Bang) not => null
+    |=> [
+      .match: TokenType.OpenBrace, ifTrue: [
+        names::mut List(String) = {}!
+        [
+          tok = .peek
+          tok kind == TokenType.CloseBrace ifTrue: [
+            false
+          ] ifFalse: [
+            nameTok = .matchAssertAnyIdent: "error name expected"
+            names add: nameTok lexeme
+            .match: TokenType.Comma
+            true
+          ]
+        ] whileTrue: []
 
-    .match: TokenType.OpenBrace, ifTrue: [
-      names::mut List(String) = {}!
-      mut c = true
-      [c] whileTrue: [
+        names isEmpty ifTrue: [TO DO: "error list cannot be empty"]
+        .matchAssert: TokenType.CloseBrace
+        AstTypeErrors kind: AstTypeErrorsKind.List names: names toList
+      ] ifFalse: [
         tok = .peek
-        tok kind == TokenType.CloseBrace ifTrue: [
-          c <- false
+        tok isIdentifier ifTrue: [
+          nameTok = .step
+          AstTypeErrors kind: AstTypeErrorsKind.Single names: {(nameTok lexeme)}!
         ] ifFalse: [
-          nameTok = .matchAssertAnyIdent: "error name expected"
-          names add: nameTok lexeme
-          .match: TokenType.Comma
-          Unit
+          AstTypeErrors kind: AstTypeErrorsKind.Any names: {}
         ]
       ]
-
-      names isEmpty ifTrue: [TO DO: "error list cannot be empty"]
-      .matchAssert: TokenType.CloseBrace
-      ^ AstTypeErrors kind: AstTypeErrorsKind.List names: names toList
     ]
-
-    tok = .peek
-    tok isIdentifier ifTrue: [
-      nameTok = .step
-      ^ AstTypeErrors kind: AstTypeErrorsKind.Single names: {(nameTok lexeme)}!
-    ]
-
-    ^ AstTypeErrors kind: AstTypeErrorsKind.Any names: {}
   ]
 
   /// List::Set::Int
@@ -40,50 +41,29 @@ extend mut Parser [
   on parseGenericType -> AstType = [
 
     isMut = .match: TokenType.Mut
-    identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString
+    pos = .peek toPosition
+    identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString + "\n" + pos
     isNullable = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
 
 
+    genericParams::mut List::AstType = {}!
     isListLike = identifier kind == TokenType.IdentifierDoubleColon
-    isListLike ifTrue: [
-      recursiveGenerics = .parseGenericType
+    isListLike ifTrue: [genericParams add: .parseGenericType]
 
-      ^ AstType
-          name: name
-          isNullable: isNullable
-          genericParams: {recursiveGenerics}
-          tok: identifier
-          isMut: isMut
-          errors: .parseTypeErrors
-    ]
-
-    isMapLike = .match: TokenType.OpenParen
+    isMapLike = isListLike not && (.match: TokenType.OpenParen)
     isMapLike ifTrue: [
-      typeArgumentList::mut List::AstType = {}!
-
-      mut continue = true
-      [continue] whileTrue: [
-        typeArgumentList add: .parseGenericType
-        continue <- .match: TokenType.Comma
-      ]
-
+      [
+        genericParams add: .parseGenericType
+        .match: TokenType.Comma
+      ] whileTrue: []
       .matchAssert: TokenType.CloseParen
-
-      ^ AstType
-          name: name
-          isNullable: isNullable
-          genericParams: typeArgumentList toList
-          tok: identifier
-          isMut: isMut
-          errors: .parseTypeErrors
     ]
 
-    // nor Type() nor Type::
-    ^ AstType
+    AstType
         name: name
         isNullable: isNullable
-        genericParams: {}
+        genericParams: genericParams toList
         tok: identifier
         isMut: isMut
         errors: .parseTypeErrors
@@ -92,7 +72,7 @@ extend mut Parser [
   on parseType -> AstType2 = [
     itLambda = .match: TokenType.OpenBracket
 
-    ^ itLambda
+    itLambda
         ifTrue: [
           // [Int, String -> Int]
           // [ -> ]

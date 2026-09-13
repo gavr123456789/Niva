@@ -103,8 +103,8 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
             val x = mutableMapOf<String, Type>()
             val resolveFailed = resolveDeclarations(it, x, resolveBody = false)
 
-            if (onEachStatement != null && !resolveFailed) { // its true only in LSP mode
-                onEachStatement(it, x, mutableMapOf(), it.token.file) // this.currentResolvingFileName
+            if (!resolveFailed) { // its true only in LSP mode
+                emitOnEachStatement(it, x, mutableMapOf(), it.token.file) // this.currentResolvingFileName
             }
             // remember doc comments to resolve references from them later
             val docComment = it.docComment
@@ -202,7 +202,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                             }
 
                             resolveDeclarations(decl, emptyScope, resolveBody = false)
-                            onEachStatement?.invoke(decl, emptyScope, emptyScope, decl.token.file) // Bind content
+                            emitOnEachStatement(decl, emptyScope, emptyScope, decl.token.file) // Bind content
                         } else {
                             decl.token.compileError("There can be only declarations inside Bind, but found $WHITE$decl")
                         }
@@ -250,7 +250,7 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                         // lsp
                                         val emptyScope: MutableMap<String, Type> = mutableMapOf()
 
-                                        onEachStatement?.invoke( // Bind getters
+                                        emitOnEachStatement( // Bind getters
                                             msgDeclGetter,
                                             emptyScope,
                                             emptyScope,
@@ -330,14 +330,14 @@ fun Resolver.resolveDeclarationsOnly(statements: List<Statement>) {
                                         // lsp
                                         val emptyScope: MutableMap<String, Type> = mutableMapOf()
 
-                                        onEachStatement?.invoke( // Bind fields
+                                        emitOnEachStatement( // Bind fields
                                             msgDeclGetter,
                                             emptyScope,
                                             emptyScope,
                                             msgDeclGetter.token.file
                                         )
 
-                                        onEachStatement?.invoke( // Bind fields
+                                        emitOnEachStatement( // Bind fields
                                             msgDeclSetter, // setter
                                             emptyScope,
                                             emptyScope,

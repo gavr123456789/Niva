@@ -26,12 +26,80 @@ Test varDeclarationExpr -> Unit = [
   statements = TestParse withInput: input expectedCount: 2
 ]
 
+Test destructuringAssignAliases -> Unit = [
+  input = """
+    {n = name a = age} = p
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+  expr = statements first
+  | expr
+  | DestructingAssign => [
+    Assert that: expr bindings count equals: 2
+    first = expr bindings at: 0
+    second = expr bindings at: 1
+    Assert that: first localName equals: "n"
+    Assert that: first fieldName equals: "name"
+    Assert that: second localName equals: "a"
+    Assert that: second fieldName equals: "age"
+  ]
+  |=> [TO DO: "DestructingAssign expected"]
+]
+
+Test destructuringAssignAliasesInProgram -> Unit = [
+  input = """
+    type Person
+      name: String
+      age: Int
+
+    alice = Person name: "Alice" age: 24
+    {n = name a = age} = alice
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 3
+  expr = statements last
+  | expr
+  | DestructingAssign => [
+    Assert that: expr bindings count equals: 2
+    first = expr bindings at: 0
+    second = expr bindings at: 1
+    Assert that: first localName equals: "n"
+    Assert that: first fieldName equals: "name"
+    Assert that: second localName equals: "a"
+    Assert that: second fieldName equals: "age"
+  ]
+  |=> [TO DO: "DestructingAssign expected"]
+]
+
 Test mutVarDeclarationExpr -> Unit = [
   input = """
     mut x = 56
     x <- 2
   """ trimIndent
   statements = TestParse withInput: input expectedCount: 2
+]
+
+Test immutableNestedCopyUpdateExpr -> Unit = [
+  input = """
+    y = x wallet money value <- 13
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 1
+
+  declaration = statements first
+  | declaration
+  | VarDeclaration => [
+    copyUpdate = declaration value
+    | copyUpdate
+    | ImmutableCopyUpdate => [
+      Assert that: copyUpdate target selector name equals: "value"
+      Assert that: copyUpdate value token lexeme equals: "13"
+
+      moneyGetter = copyUpdate target receiver
+      | moneyGetter
+      | UnaryMsg => Assert that: moneyGetter selector name equals: "money"
+      |=> [TO DO: "money getter UnaryMsg expected"]
+    ]
+    |=> [TO DO: "ImmutableCopyUpdate expected"]
+  ]
+  |=> [TO DO: "VarDeclaration expected"]
 ]
 
 
@@ -70,6 +138,79 @@ Test listLiterals -> Unit = [
   |=> [TO DO: "$list is not set literal"]
 
 
+]
+
+Test nestedCollectionLiterals -> Unit = [
+  input = """
+    {{1 2 3} {1 2}}
+    #({1 2} #(3) #{4 5})
+    #{1 {1 2} 2 #(3)}
+    {{{1}}}
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 4
+
+  outerList = statements at: 0
+  | outerList
+  | ListLiteral => [
+    elements = outerList elements unTypedBody
+    Assert that: elements count equals: 2
+    first = elements first
+    | first
+    | ListLiteral => Assert that: first elements unTypedBody count equals: 3
+    |=> [TO DO: "$first is not list literal"]
+  ]
+  |=> [TO DO: "$outerList is not list literal"]
+
+  set = statements at: 1
+  | set
+  | SetLiteral => Assert that: set elements unTypedBody count equals: 3
+  |=> [TO DO: "$set is not set literal"]
+
+  map = statements at: 2
+  | map
+  | MapLiteral => Assert that: map elements unTypedBody count equals: 4
+  |=> [TO DO: "$map is not map literal"]
+
+  deep = statements at: 3
+  | deep
+  | ListLiteral => Assert that: deep elements unTypedBody count equals: 1
+  |=> [TO DO: "$deep is not list literal"]
+]
+
+Test exprInBracketsInsideCollectionLiterals -> Unit = [
+  input = """
+    {(1 inc) (2 + 3) 4}
+    #((1 inc) (2 dec))
+    #{(1 inc) (2 dec)}
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 3
+
+  list = statements at: 0
+  | list
+  | ListLiteral => [
+    elements = list elements unTypedBody
+    Assert that: elements count equals: 3
+    first = elements first
+    | first
+    | ExprInBrackets => [
+      inner = first value
+      | inner
+      | UnaryMsg => Assert that: inner selector name equals: "inc"
+      |=> [TO DO: "unary msg expected inside brackets, got $inner"]
+    ]
+    |=> [TO DO: "$first is not expr in brackets"]
+  ]
+  |=> [TO DO: "$list is not list literal"]
+
+  set = statements at: 1
+  | set
+  | SetLiteral => Assert that: set elements unTypedBody count equals: 2
+  |=> [TO DO: "$set is not set literal"]
+
+  map = statements at: 2
+  | map
+  | MapLiteral => Assert that: map elements unTypedBody count equals: 2
+  |=> [TO DO: "$map is not map literal"]
 ]
 
 Test returnStatement -> Unit = [
@@ -127,6 +268,24 @@ Test codeBlockStatement -> Unit = [
 
 
 
+
+Test atomIdentifierExpr -> Unit = [
+  input = """
+    #red
+    #blue
+  """ trimIndent
+  statements = TestParse withInput: input expectedCount: 2
+  first = statements at: 0
+  second = statements at: 1
+
+  | first
+  | AtomIdentifier => Assert that: first name equals: "red"
+  |=> [TO DO: "AtomIdentifier expected, got " + first toString]
+
+  | second
+  | AtomIdentifier => Assert that: second name equals: "blue"
+  |=> [TO DO: "AtomIdentifier expected, got " + second toString]
+]
 
 Test failingComment = [
   input = """

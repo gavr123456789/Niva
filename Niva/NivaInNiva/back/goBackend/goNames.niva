@@ -1,0 +1,69 @@
+static GO_KEYWORDS = #("break" "default" "func" "interface" "select"
+                        "case" "defer" "go" "map" "struct"
+                        "chan" "else" "goto" "package" "switch"
+                        "const" "fallthrough" "if" "range" "type"
+                        "continue" "for" "import" "return" "var")
+
+extend String [
+  on isGoKeyword -> Bool = GO_KEYWORDS contains: this
+
+  // Go package qualifier used at call sites: last path segment of an import path
+  // "net/http" -> "http", "os" -> "os"
+  on goPkgQualifier -> String = this substringAfterLast: "/"
+
+  // verrry badd, need iterate over symbols
+  on goSanitizeIdent -> String =
+        .replace: ".." with: "rangeTo"
+        ,replace: "==" with: "equals"
+        ,replace: "!=" with: "notEquals"
+        ,replace: ">=" with: "gte"
+        ,replace: "<=" with: "lte"
+        ,replace: ">" with: "gt"
+        ,replace: "<" with: "lt"
+        ,replace: "||" with: "or"
+        ,replace: "&&" with: "and"
+        ,replace: "+" with: "plus"
+        ,replace: "-" with: "minus"
+        ,replace: "*" with: "times"
+        ,replace: "/" with: "div"
+        ,replace: "%" with: "rem"
+        //,replace: ":" with: "__"
+        ,replace: "." with: "_"
+        ,replace: "/" with: "_"
+        ,replace: "?" with: "_Nullable"
+        ,replace: "(" with: "_"
+        ,replace: ")" with: "_"
+        ,replace: "," with: "_"
+        ,replace: " " with: "_"
+
+  on toSafeGoIdent -> String = [
+    mut s = this goSanitizeIdent
+    s count > 0 ifTrue: [
+      first = s at: 0
+      first isDigit ifTrue: [s <- "_" + s]
+    ]
+    s isGoKeyword ifTrue: [s <- s + "_"]
+
+    areEqual = . == s
+    areEqual ifTrue: [
+      "toSafeGoIdent: before = $this after = $s" //debug
+    ]
+    ^ s
+  ]
+
+  on uniqueName(used): mut Set(String) -> String = [
+    base = this
+    used contains: base, ifFalse: [
+      used add: base
+      ^ base
+    ]
+    mut i = 1
+    mut candidate = base + "_" + i toString
+    [used contains: candidate] whileTrue: [
+      i <- i + 1
+      candidate <- base + "_" + i toString
+    ]
+    used add: candidate
+    ^ candidate
+  ]
+]

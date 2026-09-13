@@ -7,73 +7,87 @@ type FileContent = String
 
 type NivaSourceFile
   path: String
-  nameWithoutExt: String
+  relativePath: String
 
 type IO_Container
   readFile:   [FilePath -> String]
   writeFile:  [FilePath, FileContent -> Unit]
-  walkDir:    [FilePath -> List::NivaSourceFile]
+  walkDir:    [FilePath -> List(NivaSourceFile)]
   getParent:  [String -> String]
+  createDirectories: [String -> Unit]
+  deleteRecursively: [String -> Unit]
   currentDir: String
-  runProgram: [List::String -> ]
+  runProgram: [List(String) -> Int]
+  runProgramFromPath: [String, List(String) -> Int]
+
 
 constructor IO_Container new -> IO_Container = [
   readFile::[FilePath -> String] = [path::String ->
     FileSystem read: (path toPath)
   ]
 
-
-  writeFile = [path::String , fileContent::FileContent ->
+  writeFile = [path: String, fileContent: FileContent ->
     FileSystem write: path toPath
                content: fileContent
-    Unit
+    ()
   ]
 
-  walkDir::[FilePath -> List::NivaSourceFile] = [path::String ->
-    x = FileSystem listRecursively: path toPath
+  walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
+    root = path toPath normalized
+    // Okio keeps `.` as a path segment after normalization. Recursive entries
+    // do not contain that segment, so dropping it used to turn a root-level
+    // `main.niva` into an empty relative path and `.niva_clj/main.niva` into
+    // `main.niva`.
+    rootSegmentCount = root toString == "."
+      ifTrue: [0]
+      ifFalse: [root segments count]
+    x = FileSystem listRecursively: root
 
     x map: [
-      NivaSourceFile path: it toString nameWithoutExt: (it name substringBeforeLast: ".")
+      normalized = it normalized
+      relativePath = (normalized segments drop: rootSegmentCount) joinWith: "/"
+      NivaSourceFile path: normalized toString relativePath: relativePath
     ]
   ]
 
-  getParent = [path::String -> path toPath parent unpackOrPANIC toString]
+  getParent = [path: String -> path toPath parent unpackOrPANIC toString]
 
-  runProgram = [args::List::String ->
-    processBuilder = ProcessBuilder command: args
-    processBuilder redirectOutput start waitFor
-    Unit
+  createDirectories = [path: String ->
+    FileSystem createDirectories: (path toPath)
+    ()
   ]
 
-  ^ IO_Container :readFile :writeFile :walkDir :getParent currentDir: "." :runProgram
+  deleteRecursively = [path: String ->
+    FileSystem deleteRecursively: (path toPath)
+    ()
+  ]
+
+  runProgram = [args: List(String) ->
+    processBuilder = ProcessBuilder command: args
+    processBuilder redirectOutput start waitFor
+  ]
+
+  runProgramFromPath = [path: String, args: List(String) ->
+    processBuilder = ProcessBuilder command: args dir: path
+    processBuilder redirectAll start waitFor
+  ]
+
+  ^ IO_Container :readFile :writeFile :walkDir :getParent
+    :createDirectories :deleteRecursively
+    currentDir: "." :runProgram :runProgramFromPath
 ]
+
+
 
 compilerTry = [
-  path = Compiler cliArgs //"~/Documents/Fun/niva_demo/main.niva"
-  NivaCompiler runArgs: path withIO: IO_Container new
-]
+  path = Compiler cliArgs
+  NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
+] do
 
 compilerTry2 = [
-  path = {"run" ".niva_js/testss.niva"} //"~/Documents/Fun/niva_demo/main.niva"
-  //t1 = System currentTimeMillis
-  //t1 echo
-  NivaCompiler runArgs: path withIO: IO_Container new
-  //diff = System currentTimeMillis - t1
-  //diff echo // 60 toLong / 1000 toLong, echo
+  cliArgs = Compiler cliArgs
+  path = cliArgs isEmpty
+    ifTrue: [{"run" ".niva_clj/main.niva" "--runtime=bb"}]
+    ifFalse: [cliArgs]
+  NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
 ]
-
-
-//odin = [
-//  program = "+ + * ) - /"
-//  acc <- 0
-//  program forEach: [
-//    | it
-//    | '+' => acc <- acc inc
-//    | '-' => acc <- acc dec
-//    | '*' => acc <- acc * 2
-//    | '/' => acc <- acc / 2
-//    | ')'=> acc <- acc * acc
-//    |=> []
-//  ]
-//  "The program $program calculates the value $acc" echo
-//]
