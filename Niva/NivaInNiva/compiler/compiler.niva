@@ -378,7 +378,7 @@ constructor NivaCompiler [
           watchRuntime = runtime == CompilerRuntime.Bb ifTrue: ["bb"] ifFalse: ["jvm"]
           config = CompilerConfigFingerprint
             compilerVersion: "nin-watch" irSchema: "nir/v0" backend: "clj"
-            target: watchRuntime abiOptions: "" coreAbiHash: ""
+            target: watchRuntime abiOptions: "" hotReload: true coreAbiHash: ""
           mut session = CompilerSession empty
           mut requestVersion = 0
           mut entryNamespace = "niva.generated." + entryPoint

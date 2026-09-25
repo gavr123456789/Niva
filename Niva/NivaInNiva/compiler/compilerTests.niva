@@ -61,7 +61,7 @@ Test resolverKeepsRealSourcePath = [
 constructor CompilerConfigFingerprint incrementalTest -> CompilerConfigFingerprint =
   CompilerConfigFingerprint compilerVersion: "test-compiler"
     irSchema: "nir/v0" backend: "clj" target: "jvm"
-    abiOptions: "" coreAbiHash: "test-core"
+    abiOptions: "" hotReload: false coreAbiHash: "test-core"
 
 Map(String, String) incrementalTestSnapshot(revision): Int -> WorkspaceSnapshot =
   WorkspaceSnapshot fromSources: .toNivaSourceInputs revision: revision

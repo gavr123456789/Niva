@@ -26,13 +26,15 @@ type CompilerConfigFingerprint
   backend: String
   target: String
   abiOptions: String
+  hotReload: Bool
   coreAbiHash: String
 
 CompilerConfigFingerprint resolutionKey -> String =
   compilerVersion + "|" + irSchema + "|" + coreAbiHash
 
 CompilerConfigFingerprint backendKey -> String =
-  .resolutionKey + "|" + backend + "|" + target + "|" + abiOptions
+  .resolutionKey + "|" + backend + "|" + target + "|" + abiOptions +
+    "|" + (hotReload ifTrue: ["hot-reload"] ifFalse: ["program"])
 
 IrTypeRefKind incrementalStableName -> String =
   | this
@@ -217,16 +219,19 @@ type CompilerBackendArtifact
 
 CompilerCandidate emitBackend -> CompilerBackendArtifact = [
   backend = compilerConfig backend
+  cljMode = compilerConfig hotReload
+    ifTrue: [CljEmitMode.HotReload]
+    ifFalse: [CljEmitMode.Program]
   content =
     | backend
-    | "clj" => [CljBackend fullFromIrModule: irModule]
+    | "clj" => [CljBackend fullFromIrModule: irModule debug: false mode: cljMode]
     |=> [TO DO: "incremental backend is not available for " + backend]
   cljTarget = compilerConfig target == "bb"
     ifTrue: [CljTarget.Bb]
     ifFalse: [CljTarget.Jvm]
   output = backend == "clj"
     ifTrue: [CljBackend fullOutputFromIrModuleForTarget: irModule
-      debug: false mode: CljEmitMode.Program target: cljTarget]
+      debug: false mode: cljMode target: cljTarget]
     ifFalse: [null]
   CompilerBackendArtifact
     backend: backend

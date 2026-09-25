@@ -523,7 +523,10 @@ constructor CljBackend [
   on emitTypeDef(def): IrTypeDef ctx: CljContext sb: StringBuilder -> Unit = [
     name = def id cljNormalizeTypeId cljSanitizeIdent
     fields = def fields joinWith: " " transform: [it name cljSanitizeIdent]
-    sb appendLine: ("^:clj-reload/keep (defrecord " + name + " [" + fields + "])")
+    typeDef = ctx hotReload
+      ifTrue: ["^:clj-reload/keep (defrecord " + name + " [" + fields + "])"]
+      ifFalse: ["(defrecord " + name + " [" + fields + "])"]
+    sb appendLine: typeDef
     sb appendLine: ""
   ]
 
@@ -538,7 +541,10 @@ constructor CljBackend [
         fieldsStr = commonStr == ""
           ifTrue: [branchStr]
           ifFalse: [branchStr == "" ifTrue: [commonStr] ifFalse: [commonStr + " " + branchStr]]
-        sb appendLine: ("^:clj-reload/keep (defrecord " + branchName + " [" + fieldsStr + "])")
+        typeDef = ctx hotReload
+          ifTrue: ["^:clj-reload/keep (defrecord " + branchName + " [" + fieldsStr + "])"]
+          ifFalse: ["(defrecord " + branchName + " [" + fieldsStr + "])"]
+        sb appendLine: typeDef
       ]
     ]
     sb appendLine: ""
@@ -597,7 +603,9 @@ constructor CljBackend [
       ifFalse: [entry result unpack: [it token] or: FAKE_TOKEN]
     generatedLine = (sb toString) cljLineCount
     scope = CljScope new
-    stateDefs forEach: [it -> scope mutLocals add: it name]
+    stateDefs forEach: [it ->
+      (ctx isStateName: it name) ifTrue: [scope mutLocals add: it name]
+    ]
     body = entry toCljBlockBody: ctx scope: scope
     indented = body replace: "\n" with: "\n  "
     sb appendLine: "(defn __niva_entry! []"
@@ -743,21 +751,24 @@ constructor CljBackend [
       ifTrue: [ir packages first name]
       ifFalse: [""]
     ctx = CljContext newDebug: debug imports: initialImports pkg: packageName
+      hotReload: (mode == CljEmitMode.HotReload)
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut Set(String) = #()!
     isRepl = mode == CljEmitMode.Repl
-    hasProgramStates = (isRepl not) && (ir packages any: [it stateDefs isNotEmpty])
+    isHotReload = mode == CljEmitMode.HotReload
+    hasProgramStates = isHotReload && (ir packages any: [it stateDefs isNotEmpty])
     hasProgramStates ifTrue: [
       body appendLine: "(def ^:private __niva_state_uninitialized (Object.))"
       body appendLine: ""
     ]
 
+    // TODO parallel
     ir packages forEach: [pkg ->
       pkg stateDefs forEach: [state ->
-        isRepl
-          ifTrue: [()]
-          ifFalse: [
+        isHotReload
+          ifFalse: [()]
+          ifTrue: [
             ctx addStateName: state name
             CljBackend emitStateDef: state ctx: ctx sb: body
           ]

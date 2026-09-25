@@ -12,13 +12,14 @@ CljOutput legacyMainShim -> String = [
     "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
 ]
 
-enum CljEmitMode = Program | Repl
+enum CljEmitMode = Program | Repl | HotReload
 enum CljTarget = Jvm | Bb
 
 type CljContext
   imports: mut Set(String)
   stateNames: mut Set(String)
   debug: Bool
+  hotReload: Bool
   debugEntries: mut List(CljDebugEntry)
   currentPackage: String
 
@@ -30,12 +31,16 @@ type CljDebugEntry
   method: String
 
 constructor CljContext newDebug(debug): Bool -> CljContext =
-  CljContext newDebug: debug imports: #() pkg: ""
+  CljContext newDebug: debug imports: #() pkg: "" hotReload: false
+
+constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
+    pkg(pkg): String hotReload(hotReload): Bool -> CljContext =
+  CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
+    hotReload: hotReload debugEntries: {}! currentPackage: pkg
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
-  CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
-    debugEntries: {}! currentPackage: pkg
+  CljContext newDebug: debug imports: imports pkg: pkg hotReload: false
 
 CljContext addImport(name): String -> Unit = [
   imports add: name

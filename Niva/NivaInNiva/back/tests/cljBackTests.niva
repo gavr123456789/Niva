@@ -249,7 +249,7 @@ Test cljPackageRequireDoesNotRunEntry = [
   result = ResolverHelper resolve: #{"main" source "main.bind" bindSource} entryPoint: "main" backend: "clj"
   Assert that: result db listOfErrors count equals: 0
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
-    debug: false mode: CljEmitMode.Program
+    debug: false mode: CljEmitMode.HotReload
 
   io = IO_Container new
   root = ".niva_clj/entry-hook"
@@ -451,13 +451,29 @@ Test cljReplStateInitializersUsePlainValues = [
   Assert that: (clj contains: "@a") equals: false
 ]
 
-Test cljMutVarAsAtom = [
+Test cljProgramMutVarUsesLocalAtom = [
   fileMain = """
     mut c = 3
     c <- 4
   """
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  Assert that: (clj contains: "__niva_state_uninitialized") equals: false
+  Assert that: (clj contains: "^:clj-reload/keep") equals: false
+  clj contains: "(defn __niva_entry! []\n  (let [c (atom 3)", assertTrue
+  Assert that: (clj contains: "(reset! c 3)") equals: false
+  clj contains: "(reset! c 4)", assertTrue
+]
+
+Test cljHotReloadMutVarUsesPersistentAtom = [
+  fileMain = """
+    mut c = 3
+    c <- 4
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.HotReload
 
   clj contains: "(def ^:private __niva_state_uninitialized (Object.))", assertTrue
   clj contains: "^:clj-reload/keep (def c (atom __niva_state_uninitialized))", assertTrue
