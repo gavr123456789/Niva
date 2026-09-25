@@ -1,0 +1,43 @@
+// LSP Transport: formatting and reading JSON-RPC 2.0 frames
+
+type LspTransport
+
+type LspParsedMessage
+  isRequest: Bool
+  id: JsonValue?
+  method: String
+  params: JsonValue?
+
+constructor LspTransport formatFrame(jsonPayload): String -> String = [
+  payloadLen = jsonPayload utf8Length
+  header = "Content-Length: " + (payloadLen toString) + "\r\n\r\n"
+  ^ header + jsonPayload
+]
+
+constructor LspTransport readFrame -> String? = [
+  raw = "" readLspFrame
+  raw == "" ifTrue: [^ null]
+  ^ raw
+]
+
+constructor LspTransport parseMessage(rawJson): String -> LspParsedMessage = [
+  parsed = rawJson toJson
+  methodVal = parsed atKey: "method"
+  methodStr = methodVal getStr
+
+  idVal::JsonValue? = | parsed
+    | JObject => parsed map at: "id"
+    |=> null
+
+  paramsVal::JsonValue? = | parsed
+    | JObject => parsed map at: "params"
+    |=> null
+
+  isReq = idVal != null
+
+  ^ LspParsedMessage
+    isRequest: isReq
+    id: idVal
+    method: methodStr
+    params: paramsVal
+]

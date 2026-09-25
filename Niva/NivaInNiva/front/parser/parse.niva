@@ -425,6 +425,7 @@ extend mut Parser [
     ^ | tok kind
       | TokenType.Type => [.typeDeclaration: tok]
       | TokenType.Union => [.unionTypeDeclaration: tok]
+      | TokenType.Enum => [.unionTypeDeclaration: tok]
       | TokenType.ErrorDomain => [.unionTypeDeclaration: tok]
       | TokenType.Extend => [
         .parseExtendBlock: tok

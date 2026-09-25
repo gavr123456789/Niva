@@ -49,10 +49,25 @@ constructor NivaBuildSystem [
             ],
             sortedBy: [it relativePath]
 
-        files nivaModuleCollisionError unpack: [TO DO: it]
+        // The self-hosted compiler is normally launched from the project
+        // root, where p is ".". Libraries are still part of the source graph
+        // in that case (the LSP uses JSON_parser and stdio bindings).
+        hasLibs = FileSystem exists: ("libs" toPath)
+        allFiles = hasLibs
+          ifTrue: [
+            libFiles = io walkDir path: "libs",
+              filter: [
+                (it relativePath endsWith: ".niva") &&
+                  ((it relativePath isHiddenPath) not)
+              ]
+            files + libFiles
+          ]
+          ifFalse: [files]
+
+        allFiles nivaModuleCollisionError unpack: [TO DO: it]
 
         sources::mut List(NivaSourceInput) = {}!
-        files forEach: [source ->
+        allFiles forEach: [source ->
             content = io readFile path: source path
             sources add: (NivaSourceInput
               moduleId: source nivaModuleId
@@ -347,7 +362,7 @@ constructor NivaCompiler [
           | CompilerBackend.Go => "go"
           | CompilerBackend.Js => "js"
           | CompilerBackend.Clj => "clj"
-          | CompilerBackend.Lsp => TO DO: "no lsp binary"
+          | CompilerBackend.Lsp => "go"
 
         // for `info package.Type`, we always start from main
         // path arg in info mode is PKG.TYPE
@@ -516,6 +531,10 @@ constructor NivaCompiler [
         | CompilerOption.Help => []
         | CompilerOption.Daemon => []
         | CompilerOption.RunTests => []
+        | CompilerOption.LspServer => [
+            server::mut LspServer = LspServer new
+            server run
+          ]
         | CompilerOption.Info => [
             resolver = runOrBuild do
             info = path unpack: [resolver db structureInfoFor: it]

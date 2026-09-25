@@ -1,0 +1,74 @@
+// LSP Server: message dispatching and lifecycle management
+
+type LspServer
+  isInitialized: Bool
+  isShutdown: Bool
+  isExited: Bool
+
+constructor LspServer new -> LspServer =
+  LspServer isInitialized: false isShutdown: false isExited: false
+
+mut LspServer handleMessage(msg): LspParsedMessage -> JObject? = [
+  method = msg method
+
+  | method
+  | "initialize" => [
+    isInitialized <- true
+    ^ JsonRpcResponse success: (msg id) result: (LspCapabilities serverCapabilities)
+  ]
+  | "initialized" => [
+    // Notification after initialize handshake
+    ^ null
+  ]
+  | "shutdown" => [
+    isShutdown <- true
+    ^ JsonRpcResponse success: (msg id) result: (JNull new)
+  ]
+  | "exit" => [
+    isExited <- true
+    ^ null
+  ]
+  |=> [
+    msg isRequest ifTrue: [
+      ^ JsonRpcResponse error: (msg id) code: -32601.0 message: ("Method not found: " + method)
+    ]
+    ^ null
+  ]
+]
+
+mut LspServer processRawMessage(rawJson): String -> String? = [
+  parsedMsg = LspTransport parseMessage: rawJson
+  response = this handleMessage: parsedMsg
+  | response
+  | null => null
+  |=> [
+    respObj = response
+    payload = respObj toJsonStr
+    ^ LspTransport formatFrame: payload
+  ]
+]
+
+mut LspServer run -> Unit = [
+  mut running = true
+  [running] whileTrue: [
+    frame = LspTransport readFrame
+    | frame
+    | null => running <- false
+    |=> [
+      raw = frame
+      raw validLspJson ifFalse: [
+        error = JsonRpcResponse error: null code: -32700.0 message: "Parse error"
+        (LspTransport formatFrame: (error toJsonStr)) writeLspStdout
+      ] ifTrue: [
+        response = this processRawMessage: raw
+        response unpack: [it writeLspStdout]
+      ]
+      isExited ifTrue: [running <- false]
+    ]
+  ]
+  isExited ifTrue: [
+    code = isShutdown ifTrue: [0] ifFalse: [1]
+    code lspExit
+  ]
+  ()
+]

@@ -58,6 +58,12 @@ Test cliArgsIncrementalIsOptIn = [
   Assert that: incremental incremental equals: true
 ]
 
+Test cliArgsLspDefaultsToGo = [
+  result = ArgParser args: {"lsp"} toList
+  Assert that: result option equals: CompilerOption.LspServer
+  Assert that: result backend equals: CompilerBackend.Go
+]
+
 Test cliArgsInfoTypePath = [
   result = ArgParser args: {"info" "main.Person"} toList
   Assert that: result option equals: CompilerOption.Info

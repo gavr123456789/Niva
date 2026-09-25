@@ -1,0 +1,55 @@
+// Unit tests for LSP Phase 1: JSON-RPC Transport and Server Handshake
+
+Test lspFormatFrame = [
+  payload = "{\"jsonrpc\":\"2.0\"}"
+  frame = LspTransport formatFrame: payload
+  expected = "Content-Length: 17\r\n\r\n{\"jsonrpc\":\"2.0\"}"
+  Assert that: frame equals: expected
+]
+
+Test lspParseInitializeRequest = [
+  reqJson = """{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}"""
+  parsed = LspTransport parseMessage: reqJson
+  Assert that: parsed isRequest equals: true
+  Assert that: parsed method equals: "initialize"
+  idNum = parsed id unpackOrPANIC getNum
+  Assert that: idNum equals: 1.0
+]
+
+Test lspInitializeResponse = [
+  server::mut LspServer = LspServer new
+  reqJson = """{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}"""
+  responseFrame = server processRawMessage: reqJson
+  Assert that: (responseFrame != null) equals: true
+
+  rawFrame = responseFrame unpackOrPANIC
+  Assert that: (rawFrame startsWith: "Content-Length: ") equals: true
+  Assert that: (rawFrame contains: "\"capabilities\"") equals: true
+  Assert that: (rawFrame contains: "\"textDocumentSync\"") equals: true
+  Assert that: (server isInitialized) equals: true
+]
+
+Test lspShutdownAndExit = [
+  server::mut LspServer = LspServer new
+  initJson = """{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}"""
+  server processRawMessage: initJson
+
+  shutdownJson = """{"jsonrpc": "2.0", "id": 2, "method": "shutdown"}"""
+  shutdownResp = server processRawMessage: shutdownJson
+  Assert that: (shutdownResp != null) equals: true
+  Assert that: (server isShutdown) equals: true
+
+  exitJson = """{"jsonrpc": "2.0", "method": "exit"}"""
+  exitResp = server processRawMessage: exitJson
+  Assert that: exitResp equals: null
+]
+
+Test lspMethodNotFound = [
+  server::mut LspServer = LspServer new
+  unknownReq = """{"jsonrpc": "2.0", "id": 42, "method": "custom/unknown"}"""
+  resp = server processRawMessage: unknownReq
+  Assert that: (resp != null) equals: true
+  raw = resp unpackOrPANIC
+  Assert that: (raw contains: "Method not found") equals: true
+  Assert that: (raw contains: "-32601") equals: true
+]

@@ -1,0 +1,59 @@
+// Small Go-only stdio surface used by the self-hosted LSP server.
+// Reading one byte at a time avoids losing bytes to a temporary buffered
+// reader between JSON-RPC frames.
+Bind package: "os" imports: {"strings" "strconv" "encoding/json"} content: [
+  String readLspFrame -> String =
+    Bind emit: """
+      func() string {
+        readByte := func() (byte, bool) {
+          b := make([]byte, 1)
+          n, err := os.Stdin.Read(b)
+          if err != nil || n == 0 { return 0, false }
+          return b[0], true
+        }
+
+        header := make([]byte, 0, 64)
+        for {
+          b, ok := readByte()
+          if !ok { return "" }
+          header = append(header, b)
+          n := len(header)
+          if n >= 4 && string(header[n-4:]) == "\\r\\n\\r\\n" { break }
+        }
+
+        contentLength := -1
+        for _, line := range strings.Split(string(header), "\\r\\n") {
+          if strings.HasPrefix(line, "Content-Length:") {
+            value := strings.TrimSpace(strings.TrimPrefix(line, "Content-Length:"))
+            parsed, err := strconv.Atoi(value)
+            if err == nil { contentLength = parsed }
+          }
+        }
+        if contentLength < 0 { return "" }
+
+        payload := make([]byte, contentLength)
+        offset := 0
+        for offset < contentLength {
+          n, err := os.Stdin.Read(payload[offset:])
+          if err != nil || n == 0 { return "" }
+          offset += n
+        }
+        return string(payload)
+      }()"""
+
+  String writeLspStdout -> Unit =
+    Bind emit: """
+      func() {
+        _, err := os.Stdout.Write([]byte($0))
+        if err != nil { panic(err) }
+      }()"""
+
+  String utf8Length -> Int =
+    Bind emit: "len([]byte($0))"
+
+  String validLspJson -> Bool =
+    Bind emit: "json.Valid([]byte($0))"
+
+  Int lspExit -> Unit =
+    Bind emit: "os.Exit($0)"
+]
