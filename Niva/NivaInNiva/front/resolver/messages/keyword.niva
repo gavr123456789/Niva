@@ -149,7 +149,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
 
   Assert that: kwMsgDB args count equals: args count
-         andSay: (receiverTyped token toPosition + " " + kwMsgDB toString + " has different abount of arguments ")
+         andSay: (receiverTyped token toPosition + " " + kwMsgDB toString + " has different amount of arguments ")
 
 
 
