@@ -1,0 +1,49 @@
+// unsafe helper getters
+JsonValue atKey::String -> JsonValue = [
+  | this
+  | JObject => [
+      value = map at: atKey
+      | value
+      | null => Error throwWithMessage: "no such key `$atKey`", orPANIC
+      |=> [ ^ value ]
+  ]
+  |=> Error throwWithMessage: "thats not an object, thats $this", orPANIC
+]
+
+JsonValue atIndex::Int -> JsonValue = [
+  | this
+  | JArray => [
+      value = list atOrNull: atIndex
+      | value
+      | null => Error throwWithMessage: "no such index `$atIndex`, length = " + list count toString, orPANIC
+      |=> [ ^ value ]
+  ]
+  |=> Error throwWithMessage: "thats not an array, thats $this", orPANIC
+]
+
+JsonValue unsafeToArray -> JArray =  | this
+  | JArray => this
+  |=> Error throwWithMessage: "thats not an array, thats $this", orPANIC
+
+JsonValue first -> JsonValue = this unsafeToArray list first
+JsonValue last -> JsonValue = this unsafeToArray list last
+
+
+
+JsonValue ifNotNull: [ JsonValue -> ] -> Unit = | this
+  | JNull => []
+  |=> [
+    ifNotNull value: this
+  ]
+
+JsonValue getStr -> String = | this
+  | JString => value
+  |=> Error throwWithMessage: "thats not a string, thats $this", orPANIC
+
+JsonValue getNum -> Double = | this
+  | JNumber => value
+  |=> Error throwWithMessage: "thats not a number, thats $this", orPANIC
+
+JsonValue getBool -> Bool = | this
+  | JBool => value
+  |=> Error throwWithMessage: "thats not an bool, thats $this", orPANIC

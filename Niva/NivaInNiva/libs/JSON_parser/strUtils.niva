@@ -1,0 +1,45 @@
+String surroundWith: String and: String =
+  surroundWith + this + and
+
+String surroundWith(x): String =
+  x + this + x
+
+String packForJson -> String =
+   this escape surroundWith: "\""
+
+String escape =
+  this replace: "\\" with: "\\\\",
+  replace: "\"" with: "\\\"",
+  replace: "\n" with: "\\n",
+  replace: "\r" with: "\\r",
+  replace: "\t" with: "\\t",
+  replace: "\'" with: "\\'"
+
+String unescape -> String = [
+  sb = StringBuilder new
+  mut i = 0
+  [ i < this count ] whileTrue: [
+    c = this at: i
+
+    c == '\\' ifTrue: [
+      i <- i inc
+      i < this count, ifTrue: [
+        esc = this at: i
+        str = | esc
+        | '\\' => "\\"
+        | '"' => "\""
+        | 'n' => "\n"
+        | 'r' => "\r"
+        | 't' => "\t"
+        | '\'' => "'"
+        |=> esc toString
+        sb append: str
+      ]
+    ] ifFalse: [
+      sb append: c toString
+      i <- i
+    ]
+    i <- i inc
+  ]
+  ^ sb toString
+]
