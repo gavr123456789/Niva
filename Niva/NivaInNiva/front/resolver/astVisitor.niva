@@ -155,7 +155,14 @@ TypeDeclVisitor
           db registerUnionIds: "core.Error" branches: {rootId}
         ]
       ]
-      | EnumDecl => TO DO: "EnumDecl"
+      | EnumDecl => [
+        noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
+        noFieldsTypes at: it name put: noFieldsType
+        db addNewType: noFieldsType inPkg: pkgName
+        db registerTypeDeclaration: noFieldsType token: it token
+        db addNewConstructor: noFieldsType generateDefaultConstructor forType: noFieldsType
+        ()
+      ]
       |=> []
     ]
   ]

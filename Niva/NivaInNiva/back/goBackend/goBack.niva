@@ -471,7 +471,13 @@ extend IrExpr [
 
   on toGoExpr(ctx): GoContext scope: GoScope -> String =
     | this
-    | IrLiteralExpr => literal toGoLiteral
+    | IrLiteralExpr => [
+        isEnumAtom = (literal kind == IrLiteralKind.Atom) &&
+                     (typeRef kind == IrTypeRefKind.Custom)
+        isEnumAtom
+          ifTrue: [(ctx goTypeNameFor: typeRef typeId) + "_" + (literal lexeme toSafeGoIdent)]
+          ifFalse: [literal toGoLiteral]
+    ]
     | IrVarRef      => name toSafeGoIdent
     | IrThisRef  => "this"
     | IrFieldGet => [
@@ -742,7 +748,13 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
           ]
       ]
       sb appendIndent: 2 line: "default:"
-      sb appendIndent: 3 line: (retType isGoUnitType ifTrue: ["return " + errName] ifFalse: ["return " + (retType goZeroValue: ctx) + ", " + errName])
+      retType isGoUnitType
+        ifTrue: [sb appendIndent: 3 line: (retErrors isEmpty ifTrue: ["return"] ifFalse: ["return " + errName])]
+        ifFalse: [
+          retErrors isEmpty
+            ifTrue: [sb appendIndent: 3 line: ("return " + (retType goZeroValue: ctx))]
+            ifFalse: [sb appendIndent: 3 line: ("return " + (retType goZeroValue: ctx) + ", " + errName)]
+        ]
       sb appendIndent: 2 line: "}"
       sb appendIndent: 1 line: "}"
 

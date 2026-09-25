@@ -230,6 +230,14 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
       IrLiteralExpr literal: (this toIrLiteral) typeRef: exprType token: token
     ]
     | IdentifierT => [
+      // `Color.Red` is identifier with dotted path so last path component is the enum value
+      isEnumValue = isNameOfTheType && (path unpack: [parts -> parts count > 1] or: false)
+      isEnumValue ifTrue: [
+        ^ IrLiteralExpr
+            literal: (IrLiteral kind: IrLiteralKind.Atom lexeme: ((path unpackOrPANIC) last))
+            typeRef: exprType
+            token: token
+      ]
       isNameOfTheType
         ifTrue: [IrTypeRefExpr ref: (typeInfo toIrTypeRef) typeRef: exprType token: token]
         ifFalse: [
@@ -874,9 +882,9 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
 TypedStatement toIrEnums(db): TyperDB currentPkg: String -> List(IrEnumDef) =
   | this
   | EnumDeclT => [
-    enumType = db findByTypeName: "" + token lexeme inPkg: currentPkg
+    enumType = db findByTypeName: name inPkg: currentPkg
     enumId = enumType toIrTypeId
-    {(IrEnumDef id: enumId pkgId: currentPkg name: "" + token lexeme values: {String} token: token)}
+    {(IrEnumDef id: enumId pkgId: currentPkg name: name values: values token: token)}
   ]
   |=> {IrEnumDef}
 

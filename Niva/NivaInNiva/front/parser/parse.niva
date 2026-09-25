@@ -36,7 +36,9 @@ extend mut Parser [
     tok kind == TokenType.Return ifFalse: [TO DO: "^ expected"]
 
     savePosition = current
-    isThereAValue = (.peek kind == TokenType.If) || ((.primary: .peek) != null)
+    isThereAValue = (.peek kind == TokenType.If) ||
+                    (.peek kind == TokenType.Dot) ||
+                    ((.primary: .peek) != null)
     .restoreFrom: savePosition
 
     value = isThereAValue ifTrue: [.nextExpression: .step] ifFalse: [null]
@@ -425,6 +427,7 @@ extend mut Parser [
     ^ | tok kind
       | TokenType.Type => [.typeDeclaration: tok]
       | TokenType.Union => [.unionTypeDeclaration: tok]
+      | TokenType.Enum => [.enumDeclaration: tok]
       | TokenType.ErrorDomain => [.unionTypeDeclaration: tok]
       | TokenType.Extend => [
         .parseExtendBlock: tok
