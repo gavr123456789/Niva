@@ -41,18 +41,21 @@ GoContext addImport(name): String -> Unit = [
 ]
 
 type GoScope
-       locals: mut Set(String)
-pointerLocals: mut Set(String)
+               locals: mut Set(String)
+        pointerLocals: mut Set(String)
+nullablePointerLocals: mut Set(String)
 
-constructor GoScope new = GoScope locals: #()! pointerLocals: #()!
+constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
   newPointers::mut Set(String) = #()!
+  newNullablePointers::mut Set(String) = #()!
   newLocals addAll: locals
   newPointers addAll: pointerLocals
+  newNullablePointers addAll: nullablePointerLocals
 
-  ^ GoScope locals: newLocals pointerLocals: newPointers
+  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers
 ]
 
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
@@ -258,6 +261,11 @@ extend IrTypeRef [
     | IrTypeRefKind.Builtin => (.isGoRefLike) || ((typeId goNormalizeTypeId) == "core_Any") || ((typeId goNormalizeTypeId) == "core_Error")
     |=> false
 
+  // Nullable simple types should be pointers in go
+  // lists, maps, functions and interfaces can use nil
+  on needsGoNullablePointer -> Bool =
+    nullable && (.isGoNullableReferenceValue not)
+
   on isGoUnitType -> Bool =
     (kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_Unit")
 
@@ -269,7 +277,7 @@ extend IrTypeRef [
       | IrTypeRefKind.Builtin => [
           baseId = typeId goNormalizeTypeId
           | baseId
-          | "core_Int" | "core_Double" | "core_Float" | "core_Char" => "0"
+          | "core_Int" | "core_Long" | "core_Int64" | "core_Double" | "core_Float" | "core_Char" => "0"
           | "core_String"                                           => "\"\""
           | "core_Bool"                                             => "false"
           | "core_Unit"                                             => "core.UnitInstance"
@@ -307,6 +315,7 @@ extend IrTypeRef [
       | IrTypeRefKind.Builtin => [
           | baseId
           | "core_Int"     => "int"
+          | "core_Long"   | "core_Int64" => "int64"
           | "core_Double"  => "float64"
           | "core_Float"   => "float32"
           | "core_String"  => "string"
@@ -456,8 +465,27 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
 
 
 extend IrExpr [
+  on toGoNullableInitExpr(ctx): GoContext scope: GoScope targetType: IrTypeRef -> String = [
+    valueStr = this toGoExpr: ctx scope: scope
+    isNull = | this
+      | IrLiteralExpr => literal kind == IrLiteralKind.Null
+      |=> false
+
+    (typeRef nullable || isNull) ifTrue: [^ valueStr]
+    // add new(expr) for simple types(feature of go 1.27)
+    "new(" + (targetType goBaseType: ctx) + "(" + valueStr + "))"
+  ]
+
   on toGoArgExpr(ctx): GoContext scope: GoScope paramType: IrTypeRef -> String = [
     exprStr = this toGoExpr: ctx scope: scope
+    // nullable should have *
+    isNullablePointerRef = | this
+      | IrVarRef => scope nullablePointerLocals contains: name
+      |=> this typeRef nullable && (this typeRef isGoNullableReferenceValue not)
+    isNullablePointerRef && (paramType nullable not) ifTrue: [
+      ^ "*" + exprStr
+    ]
+
     paramType needsGoAddressAtCall ifFalse: [^ exprStr]
 
     alreadyPointer =
@@ -898,6 +926,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
   | IrLet => [
       goName = name toSafeGoIdent
       scope locals add: name
+      typeRef needsGoNullablePointer ifTrue: [scope nullablePointerLocals add: name]
       valueLocal = value
       typeStr = typeRef toGoType: ctx
       | valueLocal
@@ -911,7 +940,9 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
             Unit
           ]
           ifFalse: [
-            valueStr = valueExpr toGoExpr: ctx scope: scope
+            valueStr = typeRef needsGoNullablePointer
+              ifTrue: [valueExpr toGoNullableInitExpr: ctx scope: scope targetType: typeRef]
+             ifFalse: [valueExpr toGoExpr: ctx scope: scope]
             sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
           ]
       ]
