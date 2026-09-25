@@ -1,0 +1,103 @@
+type JsonParser
+    input: String
+    pos: Int
+
+JsonParser peek -> Char = input at: pos
+mut JsonParser advance = pos <- pos inc
+
+mut JsonParser skipWhitespace = [
+    [(pos < input count) &&
+    (input at: pos, isWhitespace)]
+        whileTrue: [ pos <- pos inc ]
+]
+
+mut JsonParser consume(expected): Char =
+    this peek == expected
+        ifTrue: [ this advance ]
+        ifFalse: [ ("Expected " + expected toString) echo ]
+
+mut JsonParser parseLiteral -> String = [
+    start = pos
+    [ (pos < input count) && (" ,]}" contains: (input at: pos, toString), not) ]
+        whileTrue: [ pos <- pos inc ]
+    ^ input substringFrom: start to: pos
+]
+
+mut JsonParser parseValue -> JsonValue = [
+    .skipWhitespace
+    c = .peek
+
+    res = | c
+    | '{' => .parseObject
+    | '[' => .parseArray
+    | '"' => JString value: .parseString
+    | 't' => [
+        .parseLiteral
+        JBool value: true
+    ]
+    | 'f' => [
+        .parseLiteral
+        JBool value: false
+    ]
+    | 'n' => [
+        .parseLiteral
+        JNull new
+    ]
+    |=> JNumber value: .parseLiteral toDouble
+
+    this skipWhitespace
+    ^ res
+]
+
+mut JsonParser parseString -> String = [
+    this consume: '"'
+    sb = StringBuilder new
+    [ (pos < input count) && (this peek != '"') ] whileTrue: [
+        c = this peek
+        this advance
+        sb append: c toString
+
+        c == '\\' ifTrue: [
+            pos < input count ifTrue: [
+                sb append: this peek toString
+                this advance
+            ]
+        ]
+    ]
+    this consume: '"'
+    ^ sb toString unescape
+]
+
+mut JsonParser parseArray -> JArray = [
+    .consume: '['
+    list::mut List(JsonValue) = {}
+    [ .peek != ']' ] whileTrue: [
+        list add: .parseValue
+        .skipWhitespace
+        .peek == ',' ifTrue: [ .consume: ',' ]
+    ]
+    .consume: ']'
+    ^ JArray list: list
+]
+
+mut JsonParser parseObject -> JObject = [
+    .consume: '{'
+    map::mut Map(String, JsonValue) = #{}
+    [ .peek != '}' ] whileTrue: [
+        .skipWhitespace
+        key = .parseString
+        .skipWhitespace
+        .consume: ':'
+        map at: key put: .parseValue
+        .skipWhitespace
+        .peek == ',' ifTrue: [ .consume: ',' ]
+    ]
+    .consume: '}'
+    ^ JObject map: map
+]
+
+/// simple way to get json from str
+String toJson -> JsonValue = [
+  parser::mut JsonParser = JsonParser input: this pos: 0
+  ^ parser parseValue
+]
