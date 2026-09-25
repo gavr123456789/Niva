@@ -1509,7 +1509,7 @@ Statement interfaceCanonical -> String = [
           branch name + (branch isInclude ifTrue: ["+"] ifFalse: ["="]) + "(" +
             (branch fields joinWith: "," transform: [it interfaceCanonicalTypeField]) + ")"
         ])
-    | EnumDecl => "enum|" + token lexeme
+    | EnumDecl => "enum|" + name + "|" + (values joinWith: ",")
     | ExtendDecl => "extend|" + receiver interfaceCanonicalType + "|" +
         (messages joinWith: "," transform: [it interfaceCanonical])
     | MessageDecl => this interfaceCanonical
@@ -1792,7 +1792,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
           ()
         ]
         | EnumDecl => [
-          typedList add: (EnumDeclT token: it token)
+          typedList add: (EnumDeclT name: it name values: it values token: it token)
           ()
         ]
         | UnionDecl => [

@@ -19,7 +19,7 @@ type UnionBranch
 
 union Declaration token: Token =
   | TypeDecl name: String genericParams: List(String) fields: List(TypeField)
-  | EnumDecl
+  | EnumDecl name: String values: List(String)
   | UnionDecl
     name: String
     genericParams: List(String)

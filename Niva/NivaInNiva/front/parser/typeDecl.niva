@@ -46,6 +46,29 @@ extend mut Parser [
       token: tok
     ^ res
   ]
+
+  /// enum Color = Red | Green | Blue
+  on enumDeclaration(tok): Token -> EnumDecl = [
+    nameTok = .step
+    .matchAssert: TokenType.Assign
+
+    values::mut List(String) = {}!
+    firstValue = .matchAssertAnyIdent: "name of the enum value expected"
+    values add: firstValue lexeme
+
+    [
+      .match: TokenType.If, ifTrue: [
+        valueTok = .matchAssertAnyIdent: "name of the enum value expected"
+        values add: valueTok lexeme
+        true
+      ] ifFalse: [
+        false
+      ]
+    ] whileTrue: []
+
+    ^ EnumDecl name: nameTok lexeme values: values toList token: tok
+  ]
+
   /// union name = (| (field1: astType)*)*
   /// union Color = Red | Blue | Green
   /// union Car genericField = Foo field1: Int | Bar field2: Int
