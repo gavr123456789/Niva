@@ -523,6 +523,11 @@ extend mut Parser [
         comma-chained-expr1 = .commaChainedExprs: tok receiver: exprInBrackets
         comma-chained-expr1
    ]
+   | TokenType.Dot => [
+        // `.foo` -> `this foo`
+        thisIdentifier = Identifier name: "this" token: tok path: null
+        .commaChainedExprs: tok receiver: thisIdentifier
+   ]
    | TokenType.If => .parseMatch: tok
    | TokenType.IdentifierDoubleColon => .parseVarDeclExpr: tok name: tok lexeme isMut: false // VarDeclaration: `x::Int`
    |=> [
