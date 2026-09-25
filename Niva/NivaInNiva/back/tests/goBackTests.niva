@@ -243,19 +243,21 @@ Test goUnitMatchBranchResultIsEmitted = [
   go contains: "core.Any__echo(2)", assertTrue
 ]
 
-//Test goEnumCodegen = [
-//  fileMain = """
-//    enum Color = Red | Green | Blue
-//  """
-//
-//  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-//  go = GoBackend fullFromIrModule: (result toIrModule)
-//
-//  go contains: "type main_Color int", assertTrue
-//  go contains: "main_Color_Red main_Color = iota", assertTrue
-//  go contains: "main_Color_Green", assertTrue
-//  go contains: "main_Color_Blue", assertTrue
-//]
+Test goEnumCodegen = [
+  fileMain = """
+    enum Color = Red | Green | Blue
+    x = Color.Red
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_Color int", assertTrue
+  go contains: "main_Color_Red main_Color = iota", assertTrue
+  go contains: "main_Color_Green", assertTrue
+  go contains: "main_Color_Blue", assertTrue
+  go contains: "var x main_Color = main_Color_Red", assertTrue
+]
 
 Test goNullableTypeCodegen = [
   fileMain = """

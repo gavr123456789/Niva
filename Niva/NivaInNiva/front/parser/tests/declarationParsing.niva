@@ -112,6 +112,21 @@ Test parseUnion -> Unit = [
 
 ]
 
+Test parseEnum -> Unit = [
+  input = """
+    enum Color = Red | Blue | Green
+  """ trimIndent
+
+  statements = TestParse withInput: input expectedCount: 1
+  enumDecl = statements first
+  | enumDecl
+  | EnumDecl => [
+      Assert that: enumDecl name equals: "Color"
+      Assert that: enumDecl values equals: {"Red" "Blue" "Green"}
+    ]
+  |=> []
+]
+
 Test parseTypeDeclarationGenerics -> Unit = [
   input = """
     type Box(T, G) x: T y: G

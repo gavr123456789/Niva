@@ -71,7 +71,7 @@ type UnionBranchT
 
 union TypedDeclaration token: Token =
 | TypeDeclT name: String genericParams: List(String) fields: List::TypeFieldT
-| EnumDeclT
+| EnumDeclT name: String values: List(String)
 | UnionDeclT
   name: String
   genericParams: List(String)
