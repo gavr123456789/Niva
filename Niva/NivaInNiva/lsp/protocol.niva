@@ -1,0 +1,115 @@
+// LSP Protocol Types and JSON-RPC message construction using libs/JSON_parser
+
+type JsonRpcRequest
+  jsonrpc: String
+  id: JsonValue?
+  method: String
+  params: JsonValue?
+
+type JsonRpcResponse
+  jsonrpc: String
+  id: JsonValue?
+  result: JsonValue?
+  error: JsonValue?
+
+type JsonRpcNotification
+  jsonrpc: String
+  method: String
+  params: JsonValue?
+
+type LspCapabilities
+
+constructor JsonRpcResponse success(id): JsonValue? result: JsonValue -> JObject = [
+  map::mut Map(String, JsonValue) = #{}
+  map at: "jsonrpc" put: (JString value: "2.0")
+  | id
+  | null => map at: "id" put: (JNull new)
+  |=> map at: "id" put: id
+  map at: "result" put: result
+  ^ JObject map: map
+]
+
+constructor JsonRpcResponse error(id): JsonValue? code: Double message: String -> JObject = [
+  errMap::mut Map(String, JsonValue) = #{}
+  errMap at: "code" put: (JNumber value: code)
+  errMap at: "message" put: (JString value: message)
+
+  map::mut Map(String, JsonValue) = #{}
+  map at: "jsonrpc" put: (JString value: "2.0")
+  | id
+  | null => map at: "id" put: (JNull new)
+  |=> map at: "id" put: id
+  map at: "error" put: (JObject map: errMap)
+  ^ JObject map: map
+]
+
+constructor JsonRpcNotification method(method): String params(params): JsonValue -> JObject = [
+  map::mut Map(String, JsonValue) = #{}
+  map at: "jsonrpc" put: (JString value: "2.0")
+  map at: "method" put: (JString value: method)
+  map at: "params" put: params
+  ^ JObject map: map
+]
+
+// Standard Server Capabilities
+// textDocumentSync: 1 (Full)
+// hoverProvider: true
+// definitionProvider: true
+constructor LspCapabilities serverCapabilities -> JObject = [
+  syncOptions::mut Map(String, JsonValue) = #{}
+  syncOptions at: "openClose" put: (JBool value: true)
+  syncOptions at: "change" put: (JNumber value: 1.0) // TextDocumentSyncKind.Full
+  syncOptions at: "save" put: (JBool value: true)
+
+  caps::mut Map(String, JsonValue) = #{}
+  caps at: "textDocumentSync" put: (JObject map: syncOptions)
+  caps at: "hoverProvider" put: (JBool value: true)
+  caps at: "definitionProvider" put: (JBool value: true)
+
+  serverInfo::mut Map(String, JsonValue) = #{}
+  serverInfo at: "name" put: (JString value: "niva-lsp")
+  serverInfo at: "version" put: (JString value: "0.1.0")
+
+  resultMap::mut Map(String, JsonValue) = #{}
+  resultMap at: "capabilities" put: (JObject map: caps)
+  resultMap at: "serverInfo" put: (JObject map: serverInfo)
+
+  ^ JObject map: resultMap
+]
+
+type LspPosition
+  line: Int
+  character: Int
+
+LspPosition toJson -> JObject = [
+  map::mut Map(String, JsonValue) = #{}
+  map at: "line" put: (JNumber value: (line toDouble))
+  map at: "character" put: (JNumber value: (character toDouble))
+  ^ JObject map: map
+]
+
+type LspRange
+  start: LspPosition
+  end: LspPosition
+
+LspRange toJson -> JObject = [
+  map::mut Map(String, JsonValue) = #{}
+  map at: "start" put: (start toJson)
+  map at: "end" put: (end toJson)
+  ^ JObject map: map
+]
+
+type LspDiagnosticItem
+  range: LspRange
+  severity: Int // 1 = Error, 2 = Warning, 3 = Information, 4 = Hint
+  source: String
+  message: String
+
+LspDiagnosticItem toJson -> JObject = [
+  map::mut Map(String, JsonValue) = #{}
+  map at: "range" put: (range toJson)
+  map at: "severity" put: (JNumber value: (severity toDouble))
+  map at: "source" put: (JString value: source)
+  map at: "message" put: (JString value: message)
+  ^ JObject map: map
+]

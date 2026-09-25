@@ -39,6 +39,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         niva build [FILE] [OPTIONS]
         niva watch [FILE] [OPTIONS]
         niva ir [FILE] [OPTIONS]
+        niva lsp [OPTIONS]
         niva info — print packages, types, fields, and methods as Markdown
         niva info PACKAGE.TYPE — print information about one type
 
@@ -69,6 +70,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     | "watch" => CompilerOption.Watch
     | "ir" => CompilerOption.Ir
     | "info" => CompilerOption.Info
+    | "lsp" => CompilerOption.LspServer
     |=> CompilerOption.Help
 
   option == CompilerOption.Help ifTrue: [
@@ -82,7 +84,9 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut replLine = 0
   mut nativeBuild = false
   mut incremental = false
-  mut backend = CompilerBackend.Clj
+  mut backend = option == CompilerOption.LspServer
+    ifTrue: [CompilerBackend.Go]
+    ifFalse: [CompilerBackend.Clj]
   mut runtime = CompilerRuntime.Bb
   mut target = CompilerTarget.Bb
   mut invalid = false
@@ -126,20 +130,26 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | "--help" => explicitHelp <- true
         | "--runtime" => [
           value = readSeparatedValue do: i
-          value unpack: [raw ->
-            parsed = raw compilerRuntimeFromCli
-            parsed == null ifTrue: [invalid <- true] ifFalse: [
-              parsed unpack: [runtime <- it]
-            ]
+          | value
+          | null => invalid <- true
+          |=> [
+            raw = value
+            | raw
+            | "jvm" => runtime <- CompilerRuntime.Jvm
+            | "bb" => runtime <- CompilerRuntime.Bb
+            |=> invalid <- true
           ]
         ]
         | "--target" => [
           value = readSeparatedValue do: i
-          value unpack: [raw ->
-            parsed = raw compilerTargetFromCli
-            parsed == null ifTrue: [invalid <- true] ifFalse: [
-              parsed unpack: [target <- it]
-            ]
+          | value
+          | null => invalid <- true
+          |=> [
+            raw = value
+            | raw
+            | "jvm" => target <- CompilerTarget.Jvm
+            | "bb" => target <- CompilerTarget.Bb
+            |=> invalid <- true
           ]
         ]
         |=> [
@@ -152,43 +162,43 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
             | "lsp" => backend <- CompilerBackend.Lsp
             |=> invalid <- true
           ] ifFalse: [
-            arg startsWith: "--repl-line=",
-              ifTrue: [replLine <- (arg substringAfter: "=") toInt]
-              ifFalse: [
-                arg startsWith: "--runtime=",
-                  ifTrue: [
-                    value = arg substringAfter: "="
-                    parsed = value compilerRuntimeFromCli
-                    parsed == null ifTrue: [invalid <- true] ifFalse: [
-                      parsed unpack: [runtime <- it]
-                    ]
-                  ]
-                  ifFalse: [
-                    arg startsWith: "--target=",
-                      ifTrue: [
-                        value = arg substringAfter: "="
-                        parsed = value compilerTargetFromCli
-                        parsed == null ifTrue: [invalid <- true] ifFalse: [
-                          parsed unpack: [target <- it]
-                        ]
-                      ]
-                      ifFalse: [invalid <- true]
-                  ]
+            arg startsWith: "--repl-line=", ifTrue: [
+              replLine <- (arg substringAfter: "=") toInt
+            ] ifFalse: [
+              arg startsWith: "--runtime=", ifTrue: [
+                value = arg substringAfter: "="
+                | value
+                | "jvm" => runtime <- CompilerRuntime.Jvm
+                | "bb" => runtime <- CompilerRuntime.Bb
+                |=> invalid <- true
+              ] ifFalse: [
+                arg startsWith: "--target=", ifTrue: [
+                  value = arg substringAfter: "="
+                  | value
+                  | "jvm" => target <- CompilerTarget.Jvm
+                  | "bb" => target <- CompilerTarget.Bb
+                  |=> invalid <- true
+                ] ifFalse: [invalid <- true]
               ]
+            ]
           ]
         ]
       ]
     ]
   ]
 
-  explicitHelp ifTrue: [help echo; ^ ArgsParsed help]
+  explicitHelp ifTrue: [
+    help echo
+    ^ ArgsParsed help
+  ]
   | true
   | invalid => ArgsParsed help
-  |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl
+  |=> ArgsParsed path: path option: option backend: backend runtime: runtime
+    target: target verbose: verbose debug: debug repl: repl
     replLine: replLine nativeBuild: nativeBuild incremental: incremental
 ]
 
-enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | Help
+enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | LspServer | Help
 enum CompilerBackend = Go | Js | Clj | Lsp
 enum CompilerRuntime = Jvm | Bb
 enum CompilerTarget = Jvm | Bb
