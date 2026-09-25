@@ -276,6 +276,45 @@ Test goNullableTypeCodegen = [
   go contains: "maybePerson *main_Person", assertTrue
 ]
 
+Test goNullableValueInitializerCodegen = [
+  fileMain = """
+    type Person
+      name: String
+
+    nullableValue::Int? = 42
+    nullableNull::Int? = null
+    nullableText::String? = "text"
+    nullableComputed::Int? = 1 + 2
+    nullablePerson::Person? = Person name: "Ada"
+    nullableAgain::Int? = nullableValue
+    result = | nullableValue
+      | null => 0
+      |=> nullableValue inc
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var nullableValue *int = new(int(42))", assertTrue
+  go contains: "var nullableNull *int = nil", assertTrue
+  go contains: "var nullableText *string = new(string(\"text\"))", assertTrue
+  go contains: "var nullableComputed *int = new(int((1 + 2)))", assertTrue
+  go contains: "var nullablePerson *main_Person = new(main_Person(main_Person{\"Ada\"}))", assertTrue
+  go contains: "var nullableAgain *int = nullableValue", assertTrue
+  go contains: "core.Int__inc(*nullableValue)", assertTrue
+]
+
+Test goNullableInt64UsesNonNullableTarget = [
+  valueType = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int64" ownerPkg: "core" args: {} returnType: null isMut: false nullable: false errors: {}
+  nullableType = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int64" ownerPkg: "core" args: {} returnType: null isMut: false nullable: true errors: {}
+  value = IrLiteralExpr literal: (IrLiteral kind: IrLiteralKind.Int lexeme: "42") typeRef: valueType token: FAKE_TOKEN
+  symbols = GoSymbolTable typeNames: #{}! funcNames: #{}! packageNames: #{}! fileNames: #{}!
+  ctx = GoContext forSymbols: symbols
+  go = value toGoNullableInitExpr: ctx scope: (GoScope new) targetType: nullableType
+
+  Assert that: go equals: "new(int64(42))"
+]
+
 Test goWhileTrueCodegen = [
   fileMain = """
     mut c = 3
