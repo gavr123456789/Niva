@@ -593,7 +593,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
               // fix custom binary methods
               // binary methods for core types can belong to the current package
               // so use the receiver type while MessageDeclT keeps the declaration package
-              methodPkg = db typeToMethodNameToMethod at: currentType
+              methodPkg = db typeToMethodNameToMethod at: currentType,
                 unpack: [methods ->
                   method = methods at: op
                   method unpack: [it pkgName] or: currentPkg
