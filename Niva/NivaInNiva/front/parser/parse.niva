@@ -514,8 +514,21 @@ extend mut Parser [
       e
     ]
    | TokenType.Mut => [
-        name = .step // tok is mut here, so we need name
-        .parseVarDeclExpr: name name: name lexeme isMut: true
+        nextTok = .peek
+        isTypeName = | nextTok kind
+                    | TokenType.Identifier
+                    | TokenType.NullableIdentifier
+                    | TokenType.IdentifierDoubleColon => nextTok lexeme first isUpperCase
+                    |=> false
+
+        isTypeName ifTrue: [
+          typeIdentifier = .parseDotSeparatedIdentifier: .step
+          mutableType = MutableTypeIdentifier identifier: typeIdentifier token: tok
+          .commaChainedExprs: tok receiver: mutableType
+        ] ifFalse: [
+          name = .step // tok is mut here, so we need name
+          .parseVarDeclExpr: name name: name lexeme isMut: true
+        ]
     ]
    | TokenType.OpenParen => [
         inner = .nextExpression: .step

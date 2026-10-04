@@ -42,8 +42,6 @@ fun Parser.statement(parseMsgDecls: Boolean = true): Statement {
         val isItMsgDeclaration = checkTypeOfMessageDeclaration2()
         if (isItMsgDeclaration != null) {
             return messageDeclaration(isItMsgDeclaration, pragmas)
-        } else {
-            peek().compileError("Parser bug, variable declaration or message declaration for mutable type expected")
         }
     }
 
@@ -385,6 +383,10 @@ fun Parser.expression(
         return methodReference()
     }
 
+    val mutableTypePrefix = if (
+        check(TokenType.Mut) && checkIdentifier(1) && peek(1).lexeme.firstOrNull()?.isUpperCase() == true
+    ) step() else null
+
     val messageSend = messageSend(dontParseKeywordsAndUnaryNewLines, dot)
 
     val fixPosition = { m: MessageSend ->
@@ -401,6 +403,19 @@ fun Parser.expression(
         fixPosition(messageSend)
         messageSend
     }
+
+    val expressionResult = mutableTypePrefix?.let { token ->
+        val receiver = ExpressionInBrackets(unwrapped, null, token)
+        val toMut = UnaryMsg(
+            receiver = receiver,
+            selectorName = "toMut",
+            identifier = listOf("toMut"),
+            type = null,
+            token = token,
+            declaration = null,
+        )
+        MessageSendUnary(receiver, mutableListOf(toMut), token = token)
+    } ?: unwrapped
 
     skipNewLinesAndComments()
 
@@ -428,7 +443,7 @@ fun Parser.expression(
                 if (isSingleExpression) {
 
                     IfBranch.IfBranchSingleExpr(
-                        ifExpression = unwrapped,
+                        ifExpression = expressionResult,
                         thenDoExpression = singleExpr,
                         emptyList()
                     )
@@ -445,7 +460,7 @@ fun Parser.expression(
                         codeBlock!!
                     }
                     IfBranch.IfBranchWithBody(
-                        ifExpression = unwrapped,
+                        ifExpression = expressionResult,
                         body = body,
                         emptyList()
                     )
@@ -453,13 +468,13 @@ fun Parser.expression(
             ),
             kind = ControlFlowKind.Statement,
             elseBranch = elseBranch,
-            token = unwrapped.token,
+            token = expressionResult.token,
         )
 
         return singleIf
     }
 
-    return unwrapped
+    return expressionResult
 }
 
 fun Parser.parseDocComment(): DocComment? {
