@@ -310,7 +310,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     token: token
     typeInfo: (TypeInfo
                   t: canonicalReturnType
-                  isMut: kwMsgDB forMut
+                  isMut: kwMsgDB forMut || (isTypeReceiver && receiverTypedExpr typeInfo isMut)
                   listOfErrors: (callErrors normalizeErrorList))
     dbMsg: kwMsgDB
 

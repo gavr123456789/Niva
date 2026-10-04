@@ -539,6 +539,16 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     |=> IdentifierT :name :path :token typeInfo: varType isNameOfTheType: false
 
   ]
+  | MutableTypeIdentifier => [
+    typeIdentifier = identifier
+    q = db findByTypeName: typeIdentifier name
+    IdentifierT
+      name: typeIdentifier name
+      path: typeIdentifier path
+      token: typeIdentifier token
+      typeInfo: (TypeInfo t: q isMut: true listOfErrors: {})
+      isNameOfTheType: true
+  ]
   | ExprInBrackets => [
     valueT = value toTypedExprFromDb2: db withContext: c
     ExprInBracketsT value: valueT :token typeInfo: valueT typeInfo
