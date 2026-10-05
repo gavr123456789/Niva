@@ -294,25 +294,25 @@ Other bindings: https://github.com/gavr123456789/bazar/tree/main/Bindings
 </details>
 
 ## Features
-- Simple expression based syntax inspired by Smalltalk
-- Smalltalk like hierarchy: projects -> packages -> protocols -> methods
-- Everything is an object and every method has a receiver(this\self)
-  - So methods can be defined for core types like Int or List(unlike go)
-  - Methods are not tied to type declaration, you can define new method from different file(like go)
-  - That means you can define `5 days` that returns seconds, just like in Ruby, but in a statically typed lang
-  - Smalltalk syntax is great for creating DSLs without any complicated macros or AST manipulations: `1d/12m/2028y`,
-    in Java-like lang it would look like: `(1.d()) / (12.m()) / (2028.y())`
-  - Operators are nothing special — they are just methods, but you cannot define new kinds of operators(so + for Vectors is ok, but no UFO like <=> from functional langs)
-- Simple semantics - the whole lang is essentially types(type\enum\union) and methods for them.
-  - [type](https://gavr123456789.github.io/niva-site/type-declaration.html) is sum of fields, [enum](https://gavr123456789.github.io/niva-site/enum.html) is union of objects, [union](https://gavr123456789.github.io/niva-site/unions.html) is union of types
-- No build system, project files etc, `niva run` to compile and run project.
-- IDE support - LSP with plugins for [VSC](https://github.com/gavr123456789/niva-vscode-bundle) and [Zed](https://github.com/gavr123456789/zed-niva) (check some demos [here](https://github.com/gavr123456789/niva-vscode-bundle?tab=readme-ov-file#features-include))
-- No NPE, nullability works the same as in Kotlin\Swift\TS
-- Errors work like a middle ground between values and exceptions (think Nim or Roc effects). In any given scope, all possible errors form a union you can match against exhaustively. [Error docs](https://gavr123456789.github.io/niva-site/error-handling.html)
-- JVM\Kotlin compatibility, easy lib [bindings](https://github.com/gavr123456789/bazar) ([File example](https://github.com/gavr123456789/bazar/blob/main/Bindings/Files/simpleReadWrite.bind.niva))
-- Easy serialize any obj via Dynamic type, no Docs yet, but its like json for JS or EDN for Clojure, write `Dynamic toJson` method and you get toJson for every type(since every type can be converted to\from Dynamic)
+
+- Simple expression-based syntax inspired by Smalltalk
+- Smalltalk-like hierarchy: projects -> packages -> protocols -> methods
+- Everything is an object, and every method has a receiver (`this`/`self`)
+  - So methods can be defined for core types like `Int` or `List` (unlike in Go)
+  - Methods are not tied to a type declaration; you can define a new method in a different file (like in Go)
+  - That means you can define `5 days`, which returns seconds, just like in Ruby, but in a statically typed language
+  - Smalltalk syntax is great for creating DSLs without any complicated macros or AST manipulations: `1d/12m/2028y`; in a Java-like language, it would look like this: `(1.d()) / (12.m()) / (2028.y())`
+  - Operators are nothing special—they are just methods—but you cannot define new kinds of operators (so `+` for Vectors is OK, but no UFO-like `<=>` from functional languages)
+- Simple semantics—the whole language is essentially types (`type`/`enum`/`union`) and methods for them.
+  - A [type](https://gavr123456789.github.io/niva-site/type-declaration.html) is a sum of fields, an [enum](https://gavr123456789.github.io/niva-site/enum.html) is a union of objects, and a [union](https://gavr123456789.github.io/niva-site/unions.html) is a union of types
+- No build system, project files, etc.—just use `niva run` to compile and run a project.
+- IDE support—LSP with plugins for [VSC](https://github.com/gavr123456789/niva-vscode-bundle) and [Zed](https://github.com/gavr123456789/zed-niva) (check out some demos [here](https://github.com/gavr123456789/niva-vscode-bundle?tab=readme-ov-file#features-include))
+- No NPEs; nullability works the same as in Kotlin/Swift/TS
+- Errors work like a middle ground between values and exceptions (think Nim or Roc effects). In any given scope, all possible errors form a union that you can match against exhaustively. [Error docs](https://gavr123456789.github.io/niva-site/error-handling.html)
+- JVM/Kotlin compatibility and easy library [bindings](https://github.com/gavr123456789/bazar) ([File example](https://github.com/gavr123456789/bazar/blob/main/Bindings/Files/simpleReadWrite.bind.niva))
+- Easily serialize any object via the `Dynamic` type. There are no docs yet, but it’s like JSON for JS or EDN for Clojure: write a `Dynamic toJson` method, and you get `toJson` for every type (since every type can be converted to/from `Dynamic`)
 - Docgen and unit tests included
-- No imports until full type name + fields clash. Since every modern IDE adds imports for you I decided to make the same on the compiler level
+- No imports until the full type name and fields clash. Since every modern IDE adds imports for you, I decided to do the same at the compiler level
 
 
 
