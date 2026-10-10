@@ -395,6 +395,17 @@ fun getAst(source: String, file: File): List<Statement> {
     return ast
 }
 
+fun nivaSourceModuleId(file: File): String {
+    val kotlinBindingSuffix = ".kotlin.bind.niva"
+    return if (file.name == "stackTrace.kotlin.bind.niva" || file.name == "compiler.kotlin.bind.niva") {
+        file.name.removeSuffix(kotlinBindingSuffix)
+    } else if (file.name.endsWith(kotlinBindingSuffix)) {
+        file.name.removeSuffix(kotlinBindingSuffix) + ".bind"
+    } else {
+        file.nameWithoutExtension
+    }
+}
+
 // third param is list of file paths
 @OptIn(DelicateCoroutinesApi::class)
 fun parseFilesToAST(
@@ -488,7 +499,7 @@ fun parseFilesToAST(
 
                         verbosePrinter?.print { "${localMark.getMs()} ms Parsing file ${file.name}: alone "+ RESET }
                         verbosePrinter?.print { RED + "${markBeforeAsync.getMs()} ms Parsing file ${file.name}: ended at" + RESET}
-                        file.nameWithoutExtension to getAst(source = src, file = file)
+                        nivaSourceModuleId(file) to getAst(source = src, file = file)
                     }
                 }
 

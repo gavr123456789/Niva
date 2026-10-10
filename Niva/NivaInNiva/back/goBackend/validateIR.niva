@@ -60,7 +60,8 @@ IrTypeRef validateGoTypeRefs(knownTypeIds): Set(String) goErrors: mut List(GoIrE
   shouldCheck =
     (kind == IrTypeRefKind.Custom) &&
     (baseId isGeneric not) &&
-    (baseId hasPrefix: "core_", not)
+    (baseId hasPrefix: "core_", not) &&
+    ((baseId contains: "/") not)
 
   shouldCheck && (knownTypeIds contains: baseId, not) ifTrue: [
     goErrors add: (GoIrError message: ("unknown Go IR type id: " + baseId))

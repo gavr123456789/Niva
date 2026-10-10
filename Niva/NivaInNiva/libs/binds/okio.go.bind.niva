@@ -1,0 +1,62 @@
+extend Path [
+  on normalized -> Path =
+    Bind goPkg: "path/filepath" emit: "libs_binds_io_Path{value: filepath.Clean($0.value)}"
+
+  on segments -> List(String) =
+    Bind goPkg: "strings" emit: "strings.FieldsFunc($0.value, func(r rune) bool { return r == '/' || r == '\\' })"
+
+  on name -> String =
+    Bind goPkg: "path/filepath" emit: "filepath.Base($0.value)"
+
+  on parent -> Path? =
+    Bind goPkg: "path/filepath" emit: """(func() *libs_binds_io_Path { parent := filepath.Dir($0.value); if parent == "." || parent == $0.value { return nil }; return &libs_binds_io_Path{value: parent} })()"""
+
+  on root -> Path? =
+    Bind goPkg: "path/filepath,os" emit: """(func() *libs_binds_io_Path { if !filepath.IsAbs($0.value) { return nil }; return &libs_binds_io_Path{value: filepath.VolumeName($0.value) + string(os.PathSeparator)} })()"""
+
+  on volumeLetter -> Char? =
+    Bind goPkg: "path/filepath" emit: """(func() *rune { volume := filepath.VolumeName($0.value); if len(volume) < 2 || volume[1] != ':' { return nil }; letter := rune(volume[0]); return &letter })()"""
+
+  on / x: String -> Path =
+    Bind goPkg: "path/filepath" emit: "libs_binds_io_Path{value: filepath.Join($0.value, $1)}"
+
+]
+
+constructor FileSystem read::Path -> String =
+  Bind goPkg: "os" emit: "(func() string { data, err := os.ReadFile($0.value); if err != nil { panic(err) }; return string(data) })()"
+
+constructor FileSystem write::Path content::String -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { if err := os.WriteFile($0.value, []byte($1), 0o666); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor FileSystem metadata::Path -> FileMetadata =
+  Bind goPkg: "os" emit: "(func() libs_binds_io_FileMetadata { info, err := os.Lstat($0.value); if err != nil { panic(err) }; var symlink *libs_binds_io_Path; if info.Mode()&os.ModeSymlink != 0 { target, err := os.Readlink($0.value); if err != nil { panic(err) }; symlink = &libs_binds_io_Path{value: target} }; size := int(info.Size()); modified := int(info.ModTime().UnixMilli()); return libs_binds_io_FileMetadata{info.Mode().IsRegular(), info.IsDir(), symlink, &size, nil, &modified, nil} })()"
+
+constructor FileSystem exists::Path -> Bool =
+  Bind goPkg: "os" emit: "(func() bool { _, err := os.Stat($0.value); return err == nil })()"
+
+constructor FileSystem list::Path -> List(Path) =
+  Bind goPkg: "os" emit: "(func() []libs_binds_io_Path { entries, err := os.ReadDir($0.value); if err != nil { panic(err) }; prefix := $0.value; if len(prefix) > 0 && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' { prefix += string(os.PathSeparator) }; paths := make([]libs_binds_io_Path, 0, len(entries)); for _, entry := range entries { paths = append(paths, libs_binds_io_Path{value: prefix+entry.Name()}) }; return paths })()"
+
+constructor FileSystem listRecursively::Path -> List(Path) =
+  Bind goPkg: "os" emit: "(func() []libs_binds_io_Path { paths := []libs_binds_io_Path{}; var walk func(string); walk = func(dir string) { entries, err := os.ReadDir(dir); if err != nil { panic(err) }; prefix := dir; if len(prefix) > 0 && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' { prefix += string(os.PathSeparator) }; for _, entry := range entries { path := prefix+entry.Name(); paths = append(paths, libs_binds_io_Path{value: path}); if entry.IsDir() { walk(path) } } }; walk($0.value); return paths })()"
+
+constructor FileSystem delete::Path -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { if err := os.Remove($0.value); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor FileSystem deleteRecursively::Path -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { if err := os.RemoveAll($0.value); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor FileSystem createDirectory::Path -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { if err := os.Mkdir($0.value, 0o755); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor FileSystem createDirectories::Path -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { if err := os.MkdirAll($0.value, 0o755); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor FileSystem copyFrom::Path to::Path -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { data, err := os.ReadFile($0.value); if err != nil { panic(err) }; if err := os.WriteFile($1.value, data, 0o666); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor FileSystem moveFrom::Path to::Path -> Unit =
+  Bind goPkg: "os" emit: "(func() core.Unit { if err := os.Rename($0.value, $1.value); err != nil { panic(err) }; return core.UnitInstance })()"
+
+constructor ProcessRunner run::List(String) dir::String? -> Int =
+  Bind goPkg: "os/exec,os" emit: """(func() int { if len($0) == 0 { panic("empty command") }; cmd := exec.Command($0[0], $0[1:]...); var dir *string = $1; if dir != nil { cmd.Dir = *dir }; cmd.Stdin = os.Stdin; cmd.Stdout = os.Stdout; cmd.Stderr = os.Stderr; err := cmd.Run(); if err == nil { return 0 }; if exitError, ok := err.(*exec.ExitError); ok { return exitError.ExitCode() }; panic(err) })()"""

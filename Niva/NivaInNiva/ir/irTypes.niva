@@ -138,7 +138,7 @@ union IrStmt token: Token =
 // IrBindEmit:   single `Bind emit:` body -> template inlined at each call site.
 //               ($0 = receiver(this), $1 = first keyword arg)
 union IrBind =
-| IrBindByName goPkg: String goName: String isStatic: Bool
+| IrBindByName goPkg: String goName: String isStatic: Bool isGoNameExplicit: Bool
 // goPkg is the package from the `.bind` file and is auto-imported at the call site
 | IrBindEmit template: String goPkg: String?
 
@@ -186,7 +186,10 @@ extend IrTypeRef [
     |=> false
 
   on isGoPointerParam -> Bool =
-    isMut && (kind == IrTypeRefKind.Custom) && (.isGoRefLike not)
+    isMut && (
+      ((kind == IrTypeRefKind.Builtin) && (typeId == "core_List")) ||
+      ((kind == IrTypeRefKind.Custom) && (.isGoRefLike not))
+    )
 
   on needsGoAddressAtCall -> Bool =
     .isGoPointerParam && (nullable not)

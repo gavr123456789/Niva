@@ -1,5 +1,9 @@
 # Оставшиеся блокеры self-hosting через Clojure
 
+> Эта страница описывает отдельную Clojure-дорожку. Для текущего плана
+> self-hosting через Go см. [go-self-hosting-remaining-blockers.md](go-self-hosting-remaining-blockers.md).
+> Пункты ниже не блокируют Go-путь, кроме общих проблем компилятора и runtime.
+
 ## Цель
 
 После устранения нелокальных `^` обеспечить реальный запуск self-hosted-компилятора, сгенерированного Clojure backend.

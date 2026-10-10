@@ -224,22 +224,25 @@ extend mut Parser [
     | TokenType.OpenBrace => [
       body = .parseCollectionBody: TokenType.CloseBrace
       .matchAssert: TokenType.CloseBrace
-      ListLiteral token: tok elements: body
+      isMutable = .match: TokenType.Bang
+      ListLiteral token: tok elements: body isMutable: isMutable
     ]
     | TokenType.OpenBraceHash => [
       body = .parseCollectionBody: TokenType.CloseBrace
       .matchAssert: TokenType.CloseBrace
+      isMutable = .match: TokenType.Bang
 
       body unTypedBody count % 2 != 0 ifTrue: [
         TO DO: "elements count in Map should be even"
       ]
 
-      MapLiteral token: tok elements: body
+      MapLiteral token: tok elements: body isMutable: isMutable
     ]
     | TokenType.OpenParenHash => [
       body = .parseCollectionBody: TokenType.CloseParen
       .matchAssert: TokenType.CloseParen
-      SetLiteral token: tok elements: body
+      isMutable = .match: TokenType.Bang
+      SetLiteral token: tok elements: body isMutable: isMutable
     ]
     |=> null
   ]

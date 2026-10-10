@@ -663,17 +663,34 @@ Test goBindInlineEmitKeyword = [
 // instance method: receiver becomes the first Go argument.
 Test goBindByNameInstance = [
   bindFile = """
-    String toUpper -> String = []
+    String toUpper -> String = Bind goPkg: "strings" goName: "ToUpper"
   """
   fileMain = """
     a = "hi" toUpper
   """
-  result = ResolverHelper resolve: #{"main" fileMain "strings.bind.extra" bindFile} entryPoint: "main"
+  result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "strings.ToUpper(\"hi\")", assertTrue
   go contains: "\"strings\"", assertTrue
+]
+
+Test goBindEmitImportsAllDeclaredPackages = [
+  bindFile = """
+    String trim -> String = Bind goPkg: "fmt,strings" emit: "fmt.Sprint(strings.TrimSpace($0))"
+  """
+  fileMain = """
+    value = "  niva  " trim
+    value echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  Assert that: (go contains: "fmt.Sprint(strings.TrimSpace(\"  niva  \"))") equals: true
+  Assert that: (go contains: "\"fmt\"") equals: true
+  Assert that: (go contains: "\"strings\"") equals: true
 ]
 
 // Point 1: static (constructor) bind by name -> receiver is NOT an argument.

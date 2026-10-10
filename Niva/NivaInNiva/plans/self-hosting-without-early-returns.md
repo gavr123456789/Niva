@@ -1,5 +1,9 @@
 # Подготовка NivaInNiva к self-hosting через Clojure
 
+> Это Clojure-специфичный план: Go backend поддерживает `IrReturn`, поэтому
+> удаление нелокальных `^` не блокирует self-hosting через Go. Актуальная
+> дорожка Go описана в [go-self-hosting-remaining-blockers.md](go-self-hosting-remaining-blockers.md).
+
 ## Цель
 
 

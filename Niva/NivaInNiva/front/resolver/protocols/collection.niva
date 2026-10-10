@@ -1,0 +1,136 @@
+constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
+  {int str bool char unit t g} = dtc
+
+  collP = NivaProtocol common
+  collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
+  collP addMethod: (NivaMethod unary: "shuffled" receiverType: collectionType returnT: collectionType)
+  collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: collectionType)
+  collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: collectionType)
+  collP addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
+  collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
+  collP addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
+
+  collP addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: str returnT: bool)
+  collP addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: str returnT: bool)
+
+  collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: int returnT: itemType )
+  collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: bool )
+
+  collP addMethod: (NivaMethod singleArgKw: "take" receiverType: collectionType argT: int returnT: collectionType)
+  collP addMethod: (NivaMethod singleArgKw: "takeLast" receiverType: collectionType argT: int returnT: collectionType)
+  collP addMethod: (NivaMethod singleArgKw: "drop" receiverType: collectionType argT: int returnT: collectionType )
+  collP addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: collectionType argT: int returnT: collectionType )
+
+  collWithDiffferentGeneric = (dtc collection-with-different-generic: collectionType)
+  itArg = TypeTField name: "it" typeT: itemType isMut: false
+  foreachBlock = FuntionT
+                fields: { itArg }!
+                  name: "forEach"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
+  collP addMethod: (NivaMethod singleArgKw: "forEach" receiverType: collectionType argT: foreachBlock returnT: unit)
+
+  iArg = TypeTField name: "i" typeT: int isMut: false
+  foreachIndexedBlock = FuntionT
+                fields: { iArg itArg }!
+                  name: "forEachIndexed"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
+  collP addMethod: (NivaMethod singleArgKw: "forEachIndexed" receiverType: collectionType argT: foreachIndexedBlock returnT: unit)
+
+
+  filterBlock = FuntionT
+                fields: { itArg }!
+                  name: "filter"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: bool
+  collP addMethod: (NivaMethod singleArgKw: "filter" receiverType: collectionType argT: filterBlock returnT: collectionType)
+
+  mapReturnGeneric = | collWithDiffferentGeneric
+                     | ListT => collWithDiffferentGeneric t
+                     | SetT  => collWithDiffferentGeneric t
+                     | MapT  => collWithDiffferentGeneric v
+                     |=> [TO DO: "Compiler bug, collection type expected, got $collWithDiffferentGeneric"]
+
+  mapBlock = FuntionT
+            fields: { itArg }!
+              name: "map"
+       genericArgs: {}!
+           pkgName: "core"
+        returnType: mapReturnGeneric
+
+  collP addMethod: (NivaMethod singleArgKw: "map" receiverType: collectionType argT: mapBlock returnT: collWithDiffferentGeneric)
+
+  | collectionType
+  | ListT => [
+      accArg = TypeTField name: "acc" typeT: t isMut: false
+      injectBlock = FuntionT
+                    fields: { accArg itArg }!
+                      name: "injectInto"
+               genericArgs: {}!
+                   pkgName: "core"
+                returnType: t
+
+      injectArgs = {(TypeTField name: "inject" typeT: t isMut: false)
+                    (TypeTField name: "into" typeT: injectBlock isMut: false)}
+      collP addMethod: (NivaMethod manyArgKw: injectArgs receiverType: collectionType returnT: t)
+
+
+      reduceArg = TypeTField name: "acc" typeT: t isMut: false
+      reduceBlock = FuntionT
+                    fields: { reduceArg itArg }!
+                      name: "reduce"
+               genericArgs: {}!
+                   pkgName: "core"
+                returnType: t
+
+      reduceArgs = {(TypeTField name: "reduce" typeT: reduceBlock isMut: false)}
+      collP addMethod: (NivaMethod manyArgKw: reduceArgs receiverType: collectionType returnT: t)
+
+      collP addMethod: (NivaMethod unary: "clear" receiverType: collectionType returnT: unit forMut: true)
+      collP addMethod: (NivaMethod singleArgKw: "add" receiverType: collectionType argT: t returnT: unit forMut: true)
+      collP addMethod: (NivaMethod singleArgKw: "addFirst" receiverType: collectionType argT: t returnT: unit forMut: true)
+      collP addMethod: (NivaMethod singleArgKw: "addAll" receiverType: collectionType argT: collectionType returnT: unit forMut: true)
+      collP addMethod: (NivaMethod singleArgKw: "removeAt" receiverType: collectionType argT: int returnT: unit forMut: true)
+
+      addAtArgs = {(TypeTField name: "at" typeT: int isMut: false)
+                   (TypeTField name: "add" typeT: t isMut: false)}
+      collP addMethod: (NivaMethod manyArgKw: addAtArgs receiverType: collectionType returnT: unit forMut: true)
+
+      setArgs = {(TypeTField name: "at" typeT: int isMut: false)
+                 (TypeTField name: "set" typeT: t isMut: false)}
+      collP addMethod: (NivaMethod manyArgKw: setArgs receiverType: collectionType returnT: unit forMut: true)
+    ]
+  |=> []
+
+  listOfCollection = ListT t: collectionType
+  collP addMethod: (NivaMethod singleArgKw: "chunked" receiverType: collectionType argT: int returnT: listOfCollection)
+  collP addMethod: (NivaMethod singleArgKw: "partition" receiverType: collectionType argT: filterBlock returnT: listOfCollection)
+
+  joinTransformBlock = FuntionT
+                      fields: { itArg }!
+                        name: "joinTransform"
+                 genericArgs: {}!
+                     pkgName: "core"
+                  returnType: str
+  collP addMethod: (NivaMethod singleArgKw: "joinTransform"
+                              receiverType: collectionType
+                                      argT: joinTransformBlock
+                                   returnT: str)
+
+  collP addMethod: (NivaMethod singleArgKw: "joinWith"
+            receiverType: collectionType
+                    argT: str
+                    returnT: str)
+
+  joinArgs = {(TypeTField name: "joinWith"  typeT: str isMut: false)
+              (TypeTField name: "transform" typeT: joinTransformBlock isMut: false)}
+  collP addMethod: (NivaMethod manyArgKw: joinArgs
+                    receiverType: collectionType
+                    returnT: str)
+
+  ^ collP methods
+]

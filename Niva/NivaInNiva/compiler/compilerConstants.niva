@@ -580,8 +580,8 @@ static NIVA_CORE_SOURCE = """
   (swap! s conj item)
   :unit)
 
-(defn List__mut_addAt [s i item]
-  (require-atom s 'List__mut_addAt)
+(defn List__mut_at__add [s i item]
+  (require-atom s 'List__mut_at__add)
   (swap! s
          (fn [items]
            (let [items (vec items)]
@@ -591,7 +591,7 @@ static NIVA_CORE_SOURCE = """
   :unit)
 
 (defn List__mut_addFirst [s item]
-  (List__mut_addAt s 0 item))
+  (List__mut_at__add s 0 item))
 
 (defn List__mut_addAll [s other]
   (require-atom s 'List__mut_addAll)
@@ -608,8 +608,8 @@ static NIVA_CORE_SOURCE = """
              (into (subvec items 0 i) (subvec items (clojure.core/inc i))))))
   :unit)
 
-(defn List__mut_set [s i item]
-  (require-atom s 'List__mut_set)
+(defn List__mut_at__set [s i item]
+  (require-atom s 'List__mut_at__set)
   (swap! s
          (fn [items]
            (when (or (neg? i) (>= i (count items)))
@@ -668,9 +668,14 @@ static NIVA_CORE_SOURCE = """
 (defn Map__at [s k] (get s k))
 (defn Map__containsKey [s k] (contains? s k))
 
-(defn Map__mut_putAt [s k v]
-  (require-atom s 'Map__mut_putAt)
+(defn Map__mut_at__put [s k v]
+  (require-atom s 'Map__mut_at__put)
   (swap! s assoc k v)
+  :unit)
+
+(defn Map__mut_clear [s]
+  (require-atom s 'Map__mut_clear)
+  (reset! s {})
   :unit)
 
 ;; StringBuilder

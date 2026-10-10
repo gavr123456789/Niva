@@ -1,0 +1,46 @@
+Project loadPackages: {"com.squareup.okio:okio:3.6.0"}
+
+Bind package: "okio" imports: {"okio.Path.Companion.toPath as toOkioPath" "io.*"} content: [
+  @emit: """Path(value = java.nio.file.Paths.get($0.value).normalize().toString().ifEmpty { "." })"""
+  Path normalized -> Path
+  @emit: "java.nio.file.Paths.get($0.value).root?.toString()?.let { Path(value = it) }"
+  Path root -> Path?
+  @emit: "($0.value.toOkioPath().volumeLetter)"
+  Path volumeLetter -> Char?
+  @emit: "java.nio.file.Paths.get($0.value).toString().replace('\\', '/').split('/').filter { it.isNotEmpty() }"
+  Path segments -> List(String)
+  @emit: "java.nio.file.Paths.get($0.value).fileName.toString()"
+  Path name -> String
+  @emit: "java.nio.file.Paths.get($0.value).parent?.toString()?.let { Path(value = it) }"
+  Path parent -> Path?
+  @emit: "Path(value = java.nio.file.Paths.get($0.value).resolve($1).toString())"
+  Path / x: String -> Path
+  @emit: "okio.FileSystem.SYSTEM.read($1.value.toOkioPath()) { readUtf8() }"
+  constructor FileSystem read::Path -> String
+  @emit: "okio.FileSystem.SYSTEM.write($1.value.toOkioPath()) { writeUtf8($2) }"
+  constructor FileSystem write::Path content::String -> Unit
+
+  @emit: "okio.FileSystem.SYSTEM.metadata($1.value.toOkioPath()).let { metadata -> io.FileMetadata(isRegularFile = metadata.isRegularFile, isDirectory = metadata.isDirectory, symlinkTarget = metadata.symlinkTarget?.toString()?.let { Path(value = it) }, size = metadata.size?.toInt(), createdAtMillis = metadata.createdAtMillis?.toInt(), lastModifiedAtMillis = metadata.lastModifiedAtMillis?.toInt(), lastAccessedAtMillis = metadata.lastAccessedAtMillis?.toInt()) }"
+  constructor FileSystem metadata::Path -> FileMetadata
+  @emit: "okio.FileSystem.SYSTEM.exists($1.value.toOkioPath())"
+  constructor FileSystem exists::Path -> Bool
+  @emit: "okio.FileSystem.SYSTEM.list($1.value.toOkioPath()).map { Path(value = it.toString()) }"
+  constructor FileSystem list::Path -> List(Path)
+  @emit: "okio.FileSystem.SYSTEM.listRecursively($1.value.toOkioPath()).toList().map { Path(value = it.toString()) }"
+  constructor FileSystem listRecursively::Path -> List(Path)
+  @emit: "okio.FileSystem.SYSTEM.delete($1.value.toOkioPath())"
+  constructor FileSystem delete::Path -> Unit
+  @emit: "okio.FileSystem.SYSTEM.deleteRecursively($1.value.toOkioPath())"
+  constructor FileSystem deleteRecursively::Path -> Unit
+  @emit: "okio.FileSystem.SYSTEM.createDirectory($1.value.toOkioPath())"
+  constructor FileSystem createDirectory::Path -> Unit
+  @emit: "okio.FileSystem.SYSTEM.createDirectories($1.value.toOkioPath())"
+  constructor FileSystem createDirectories::Path -> Unit
+  @emit: "okio.FileSystem.SYSTEM.copy($1.value.toOkioPath(), $2.value.toOkioPath())"
+  constructor FileSystem copyFrom::Path to::Path -> Unit
+  @emit: "okio.FileSystem.SYSTEM.atomicMove($1.value.toOkioPath(), $2.value.toOkioPath())"
+  constructor FileSystem moveFrom::Path to::Path -> Unit
+
+  @emit: "java.lang.ProcessBuilder($1).directory($2?.let { java.io.File(it.toString()) }).redirectInput(java.lang.ProcessBuilder.Redirect.INHERIT).redirectOutput(java.lang.ProcessBuilder.Redirect.INHERIT).redirectError(java.lang.ProcessBuilder.Redirect.INHERIT).start().waitFor()"
+  constructor ProcessRunner run::List(String) dir::String? -> Int
+]

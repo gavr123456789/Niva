@@ -1,0 +1,7 @@
+type System
+
+constructor System currentTimeMillis -> Long =
+  Bind goPkg: "time" emit: "time.Now().UnixMilli()"
+
+constructor System nanoTime -> Long =
+  Bind goPkg: "time" emit: "time.Now().UnixNano()"

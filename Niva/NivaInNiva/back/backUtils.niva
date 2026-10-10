@@ -23,6 +23,7 @@ extend NivaType [
   ]
   on isNumericType -> Bool = [
     ^ (.isCoreTypeNamed: "Int") ||
+      (.isCoreTypeNamed: "Long") ||
       (.isCoreTypeNamed: "Double") ||
       (.isCoreTypeNamed: "Float")
   ]

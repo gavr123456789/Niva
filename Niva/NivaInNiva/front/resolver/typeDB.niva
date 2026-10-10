@@ -50,12 +50,13 @@ constructor TyperDB new -> TyperDB = [
   sb = TypeT noFieldsWithName: "StringBuilder" pkgName: "core"
   corePkg types at: "StringBuilder" put: sb
 
-  {char int float double str bool bind compiler error unit nothing any t list map set intRange charRange} = dtc
+  {char int long float double str bool bind compiler error unit nothing any t list map set intRange charRange} = dtc
 
   listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
   mapProtocol     = NivaProtocol mapFromDefaultTypes: dtc mapType: map keyType: map k valueType: map v
   setProtocol     = NivaProtocol setFromDefaultTypes: dtc setType: set itemType: set t
   intProtocol     = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc int
+  longProtocol    = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc long
   doubleProtocol  = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc double
   strProtocol     = NivaProtocol stringFromDefaultTypes: dtc
   boolProtocol    = NivaProtocol boolFromDefaultTypes: dtc
@@ -72,6 +73,7 @@ constructor TyperDB new -> TyperDB = [
     char charProtocol
 
     int intProtocol
+    long longProtocol
     double doubleProtocol
 
     // Each literal must stay separate: sharing a map makes methods leak between types.
@@ -99,6 +101,7 @@ constructor TyperDB new -> TyperDB = [
   constructorsCache::mut Map(NivaType, mut Map(String, NivaMethod)) = #{
     char (#{}!)
     int (#{}!)
+    long longProtocol
     float (#{}!)
     double (#{}!)
     str (#{}!)
@@ -1066,9 +1069,12 @@ extend TyperDB [
                           TO DO: "Searching for $name method but its not found for type $receiverType"]
               |=> foundInAnyMaybe
             ]
-        ]
+      ]
       |=> methodMaybe
 
+    method forMut && (receiver typeInfo isMut not) ifTrue: [
+      this addErrorFromTok: receiver token withMsg: "Method $name requires a mutable receiver"
+    ]
 
     result =
       | method returnType
@@ -1545,8 +1551,8 @@ Map(String, String) toNivaSourceInputs -> List(NivaSourceInput) = [
 // parse bind source name into import path
 String parseBindFileName -> String? = [
   marker = ".bind"
-  (this contains: marker) ifFalse: [^ null]
-  pkgRaw = this substringBeforeLast: marker
+  (this endsWith: marker) ifFalse: [^ null]
+  pkgRaw = this dropLast: marker count
   pkgRaw count == 0 ifTrue: [^ null]
   ^ pkgRaw replace: "." with: "/"
 ]

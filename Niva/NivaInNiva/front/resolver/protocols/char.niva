@@ -1,0 +1,36 @@
+constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
+  {str bool unit t int char charRange} = dtc
+
+  charProto = NivaProtocol common
+
+  charProto addMethod: (NivaMethod unary: "code" receiverType: char returnT: int)
+
+  charProto addMethod: (NivaMethod unary: "inc" receiverType: char returnT: char)
+
+  charProto addMethod: (NivaMethod unary: "dec" receiverType: char returnT: char)
+
+  charProto addMethod: (NivaMethod unary: "isDigit" receiverType: char returnT: bool)
+
+  charProto addMethod: (NivaMethod unary: "isLetter" receiverType: char returnT: bool)
+
+  charProto addMethod: (NivaMethod unary: "isLetterOrDigit" receiverType: char returnT: bool)
+
+  charProto addMethod: (NivaMethod unary: "isLowerCase" receiverType: char returnT: bool)
+
+  charProto addMethod: (NivaMethod unary: "isUpperCase" receiverType: char returnT: bool)
+
+  charProto addMethod: (NivaMethod unary: "isWhitespace" receiverType: char returnT: bool)
+
+  charProto addMethod: (NivaMethod unary: "lowercaseChar" receiverType: char returnT: char)
+
+  charProto addMethod: (NivaMethod unary: "uppercaseChar" receiverType: char returnT: char)
+
+  charProto addMethod: (NivaMethod binary: "==" receiverType: char argT: char returnT: bool)
+  charProto addMethod: (NivaMethod binary: "!=" receiverType: char argT: char returnT: bool)
+  charProto addMethod: (NivaMethod binary: ".." receiverType: char argT: char returnT: charRange)
+
+
+
+  ^charProto methods
+]
+

@@ -114,11 +114,11 @@ extend String [
 
 ]
 
-IrTypeRef coreFuncNameFromCall(name): String -> String = [
+IrTypeRef coreFuncNameFromCall(name): String forMut(isMutable): Bool -> String = [
   baseId = typeId goNormalizeTypeId
   recvBase = baseId stripPkgPrefix: "core"
   recvBaseSafe = recvBase toSafeGoIdent
-  normalized = name goSanitizeIdent
+  normalized = (isMutable ifTrue: ["mut_"] ifFalse: [""]) + (name goSanitizeIdent)
 
   // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
   // this should be solved by lazily generating ?__echo methods for everything or something elce
@@ -531,11 +531,16 @@ extend IrExpr [
                 paramType = paramTypes at: i
                 it toGoArgExpr: ctx scope: scope paramType: paramType
               ], goCallArgs
-              ^ (bp goPkg goPkgQualifier) + "." + (bp goName bindCapitalizeFirst) + "(" + byNameArgs + ")"
+              goName = bp isGoNameExplicit
+                ifTrue: [bp goName]
+                ifFalse: [bp goName bindCapitalizeFirst]
+              ^ (bp goPkg goPkgQualifier) + "." + goName + "(" + byNameArgs + ")"
             ]
           | IrBindEmit => [
-              // emits from a .bind.niva file auto-import that Go package
-              bp goPkg unpack: [ctx addImport: it]
+              // emit templates import their declared package
+              bp goPkg unpack: [importPaths ->
+                (importPaths split: ",") forEach: [ctx addImport: it]
+              ]
               // $0 = receiver/this, $1 = first keyword arg, ...
               emitArgVals = args map: [it toGoExpr: ctx scope: scope]
               ^ bp template bindApply0: emitArgVals
@@ -567,7 +572,8 @@ extend IrExpr [
                 ctx addImport: "niva_go/core"
                 msgNameLocal = msgName unpackOrPANIC
                 recvTypeLocal = receiverType unpackOrPANIC
-                coreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal
+                mutReceiver = paramTypes isNotEmpty && (paramTypes first isMut)
+                coreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal forMut: mutReceiver
                 "core." + coreFn + "(" + argsStr + ")"
               ]
               ifFalse: [
