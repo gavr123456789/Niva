@@ -1,0 +1,4 @@
+type Sha256
+
+constructor Sha256 digest(text): String -> String =
+  Bind goPkg: "crypto/sha256" emit: """(func() string { digest := sha256.Sum256([]byte($0)); digits := "0123456789abcdef"; encoded := make([]byte, len(digest)*2); for i, value := range digest { encoded[i*2] = digits[value>>4]; encoded[i*2+1] = digits[value&15] }; return string(encoded) })()"""

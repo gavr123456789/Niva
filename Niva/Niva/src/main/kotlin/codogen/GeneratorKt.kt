@@ -584,6 +584,8 @@ fun GeneratorKt.generateKtProject(
             val pkgsWithNeededImportsInCurrentImports = pkg.imports.intersect(bindPackagesWithNeededImport)
             pkgsWithNeededImportsInCurrentImports.forEach {
                 pkg.concreteImports.addAll(pkgNameToNeededImports[it]!!)
+                pkg.imports -= it
+                pkg.importsFromUse -= it
             }
         }
     }

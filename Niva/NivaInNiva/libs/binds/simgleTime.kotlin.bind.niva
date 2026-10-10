@@ -3,5 +3,3 @@ Bind package: "java.lang" content: [
   constructor System currentTimeMillis -> Long
   constructor System nanoTime -> Long
 ]
-
-//System currentTimeMillis echo

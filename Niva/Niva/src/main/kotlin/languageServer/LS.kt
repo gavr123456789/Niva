@@ -13,6 +13,7 @@ import frontend.resolver.enqueueDependents
 import frontend.resolver.enqueueForReResolve
 import frontend.resolver.getAst
 import frontend.resolver.parseFilesToAST
+import frontend.resolver.nivaSourceModuleId
 import frontend.resolver.processPendingMessageReResolves
 import frontend.resolver.resolveWithBackTracking
 import frontend.resolver.unpackNull
@@ -247,7 +248,7 @@ private fun LS.buildGlobalConstScopeForFile(file: File, mainAst: List<Statement>
         resolver.buildGlobalConstScopeFromFiles(mainPkgName, allMainAst, otherAst)
     } else {
         val savedPkg = resolver.currentPackageName
-        resolver.currentPackageName = file.nameWithoutExtension
+        resolver.currentPackageName = nivaSourceModuleId(file)
         val scope = resolver.buildGlobalConstScopeFromStatements(mainAst)
         resolver.currentPackageName = savedPkg
         scope
@@ -1341,7 +1342,7 @@ fun LS.resolveIncremental(pathToChangedFile: String, text: String, changeLine: I
             mainAst,
             emptyList(),
             file.absolutePath,
-            file.nameWithoutExtension,
+            nivaSourceModuleId(file),
             VerbosePrinter(false),
             globalConstScopeOverride = globalConstScope,
         )
@@ -1369,7 +1370,7 @@ fun getMainAstFromNIS(nonIncrementalStore: Map<String, List<Statement>>, mainUri
         if (mainAst == null && absolutePath == mainUrlStr)
             mainAst = ast
         else {
-            val pkgName = File(absolutePath).nameWithoutExtension
+            val pkgName = nivaSourceModuleId(File(absolutePath))
             listOfStatements.add(Pair(pkgName, ast))
         }
 
@@ -1405,7 +1406,7 @@ private fun buildOrderedAstFromStore(
         .asSequence()
         .distinctBy { it.absolutePath }
         .filter { it.absolutePath != mainFileAbsolutePath }
-        .map { file -> file.nameWithoutExtension to astFor(file) }
+        .map { file -> nivaSourceModuleId(file) to astFor(file) }
         .toList()
 
     return mainAst to otherAst

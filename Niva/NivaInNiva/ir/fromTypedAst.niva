@@ -90,18 +90,22 @@ extend MessageDecl [
         recv = firstExpr receiver
         recvIsBind = | recv | Identifier => recv name == "Bind" |=> false
         recvIsBind ifTrue: [
-          (firstExpr args count == 1) ifTrue: [
-            firstArg = firstExpr args first
-            (firstArg name name == "emit") ifTrue: [
-              | firstArg expr
+          emitArg = firstExpr args find: [it name toString == "emit"]
+          hasSupportedArgs = (firstExpr args count == 1) ||
+            ((firstExpr args count == 2) &&
+              (firstExpr args any: [it name toString == "goPkg"]))
+          hasSupportedArgs ifTrue: [
+            emitArg unpack: [emitEntry ->
+              emitValue = emitEntry expr
+              | emitValue
               | StringExpr => [
-                tok = firstArg expr token
+                tok = emitValue token
                 tok kind == TokenType.RawString
                   ifTrue: [tok lexeme unquoteRawLiteral]
                   ifFalse: [tok lexeme unquoteLiteral]
               ]
               |=> null
-            ] ifFalse: [null]
+            ] or: null
           ] ifFalse: [null]
         ] ifFalse: [null]
       ]
@@ -109,20 +113,47 @@ extend MessageDecl [
     ]
   ]
 
+  on bindConfigArg(name): String -> String? = [
+    exprs = body unTypedBody
+    exprs count == 1 ifFalse: [^ null]
+    firstExpr = exprs first
+    | firstExpr
+    | KeywordMsg => [
+      recv = firstExpr receiver
+      recvIsBind = | recv | Identifier => recv name == "Bind" |=> false
+      recvIsBind ifFalse: [^ null]
+      nameLocal = name
+      arg = firstExpr args find: [it name toString == nameLocal]
+      arg unpack: [argValue ->
+        value = argValue expr
+        | value
+        | StringExpr => value token lexeme unquoteLiteral
+        |=> null
+      ] or: null
+    ]
+    |=> null
+  ]
+
   on bindPlanWith(db): TyperDB pkg: String -> IrBind? = [
     isBind = db isBindMessageDecl: this
     isBind ifFalse: [^ null]
 
+    explicitGoPkg = .bindConfigArg: "goPkg"
+    explicitGoName = .bindConfigArg: "goName"
     .bindIsEmptyBody ifTrue: [
-      // Keep the declared foreign name intact. Go applies its exported-name
-      // convention during emission; Clojure names (for example `upper-case`)
-      // must not be capitalized.
+      // keep foreign names unchanged for clojure
       ^ IrBindByName goPkg: pkg goName: .bindFirstKey isStatic: isConstructor
+          isGoNameExplicit: false
+    ]
+    explicitGoName unpack: [goName ->
+      goPkg = explicitGoPkg unpackOrValue: pkg
+      ^ IrBindByName goPkg: goPkg goName: goName isStatic: isConstructor
+          isGoNameExplicit: true
     ]
     tmpl = .bindEmitTemplate
     tmpl unpack: [t ->
-      // emits inside a .bind.niva file auto-import that file's Go package
-      IrBindEmit template: t goPkg: pkg
+      goPkg = explicitGoPkg unpackOrValue: pkg
+      IrBindEmit template: t goPkg: goPkg
     ] or: null
   ]
 ]

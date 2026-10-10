@@ -1,0 +1,7 @@
+static JvmReloadHost start(projectRoot): String generatedDir: String
+    entryNamespace(entryNamespace): String runtime(runtime): String
+    onChange(onChange): [Unit -> Unit] -> Unit =
+  Bind goPkg: "niva_go/core" emit: """(func() core.Unit { panic("watch is only supported for clojure"); return core.UnitInstance })()"""
+
+static JvmReloadHost reloadChanged -> Unit =
+  Bind goPkg: "niva_go/core" emit: """(func() core.Unit { panic("watch is only supported for clojure"); return core.UnitInstance })()"""

@@ -554,18 +554,26 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ExprInBracketsT value: valueT :token typeInfo: valueT typeInfo
   ]
   | MapLiteral     => [
-    this elements unTypedBody count % 2 != 0 ? [
-      db addErrorMessage: (ErrorWrongArgCount tok: this token msg: "Number of arguments for Map should be even")
-    ]
-    this elements unTypedBody isEmpty ? [
-      TO DO: "Can't infer type of the Map collection without elements"
-    ]
     expectedMap = expectedType unpack: [ et ->
       unwrapped = et unwrapNullable
       | unwrapped
       | MapT => unwrapped
       |=> null
     ] or: null
+
+    this elements unTypedBody count % 2 != 0 ? [
+      db addErrorMessage: (ErrorWrongArgCount tok: this token msg: "Number of arguments for Map should be even")
+    ]
+    this elements unTypedBody isEmpty ? [
+      expectedMap == null ifTrue: [TO DO: "Can't infer type of the Map collection without elements"]
+      mapType = expectedMap unpackOrPANIC
+      typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
+      db addCollectionInstantiationIfAbsent: mapType
+      ^ MapLiteralT
+        :token
+        elements: typedBody
+        typeInfo: (TypeInfo t: mapType isMut: isMutable listOfErrors: {})
+    ]
 
     typedBody = elements
       resolveCollectionElements: db
@@ -615,7 +623,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     MapLiteralT
       :token
       elements: typedBody
-      typeInfo: mapType toTypeInfoDefault
+      typeInfo: (TypeInfo t: mapType isMut: isMutable listOfErrors: {})
   ]
   | ListLiteral | SetLiteral => [
     this elements unTypedBody isEmpty ? [
@@ -636,12 +644,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         | ListT => [
           typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
           db addCollectionInstantiationIfAbsent: expectedCollectionType
-          ^ ListLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
+          ^ ListLiteralT :token elements: typedBody typeInfo: (TypeInfo t: expectedCollectionType isMut: isMutable listOfErrors: {})
         ]
         | SetT => [
           typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
           db addCollectionInstantiationIfAbsent: expectedCollectionType
-          ^ SetLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
+          ^ SetLiteralT :token elements: typedBody typeInfo: (TypeInfo t: expectedCollectionType isMut: isMutable listOfErrors: {})
         ]
         |=> [TO DO: "Expected List|Set for empty collection, got " + expectedCollectionType toString]
 
@@ -681,11 +689,11 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       | this
       | ListLiteral => [
         newType = db addCollectionInstantiationIfAbsent: (ListT t: f)
-        ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
+        ListLiteralT :token elements: typedBody typeInfo: (TypeInfo t: newType isMut: isMutable listOfErrors: {})
       ]
       | SetLiteral => [
         newType = db addCollectionInstantiationIfAbsent: (SetT t: f)
-        SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
+        SetLiteralT :token elements: typedBody typeInfo: (TypeInfo t: newType isMut: isMutable listOfErrors: {})
       ]
       | MapLiteral => [TO DO:"Impossible, we are inside ListLiteral | SetLiteral, but niva dont shrinc enougth"]
 

@@ -1,0 +1,39 @@
+constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+  {str bool unit t} = dtc
+
+  boolProto = NivaProtocol common
+
+  noArgsFunc = FuntionT
+              fields: {}!
+                name: "noFields"
+         genericArgs: {}!
+             pkgName: "core"
+          returnType: unit
+
+  no-args-to-t = FuntionT
+                fields: {}!
+                  name: "ifTrueOrIfFalse"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: t
+
+  // unary
+  boolProto addMethod: (NivaMethod unary: "toString" receiverType: bool returnT: str)
+  boolProto addMethod: (NivaMethod unary: "not" receiverType: bool returnT: bool)
+  // binary
+  boolProto addMethod: (NivaMethod binary: "==" receiverType: bool argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "!=" receiverType: bool argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "||" receiverType: bool argT: bool returnT: bool)
+  boolProto addMethod: (NivaMethod binary: "&&" receiverType: bool argT: bool returnT: bool)
+
+  // keyword
+  boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgsFunc returnT: unit )
+  boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgsFunc returnT: unit )
+
+  args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t isMut: false)
+          (TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)}
+  boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
+
+
+  ^boolProto methods
+]

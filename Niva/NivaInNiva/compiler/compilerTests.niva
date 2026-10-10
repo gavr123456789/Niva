@@ -40,6 +40,73 @@ Test sameBasenameInDifferentDirectoriesHasDistinctModuleIds = [
   Assert that: ({first second} nivaModuleCollisionError) equals: null
 ]
 
+Test platformBindingSelectionUsesFilenameSuffix = [
+  common = "src/nested/io.niva"
+  kotlin = "src/nested/io.kotlin.bind.niva"
+  go = "src/nested/io.go.bind.niva"
+  legacy = "src/nested/io.bind.niva"
+  pathOnly = "go.bind.niva/src/io.niva"
+
+  Assert that: (common nivaSourceForBackend: "go") equals: true
+  Assert that: (common nivaSourceForBackend: "clj") equals: true
+  Assert that: (go nivaSourceForBackend: "go") equals: true
+  Assert that: (go nivaSourceForBackend: "clj") equals: false
+  Assert that: (kotlin nivaSourceForBackend: "go") equals: false
+  Assert that: (legacy nivaSourceForBackend: "go") equals: false
+  Assert that: (pathOnly nivaSourceForBackend: "go") equals: true
+  Assert that: (legacy isLegacyBindingFile) equals: true
+]
+
+Test platformBindingSuffixKeepsLogicalModuleId = [
+  common = "libs/binds/io.niva" nivaModuleIdFromRelativePath
+  kotlin = "libs/binds/okio.kotlin.bind.niva" nivaModuleIdFromRelativePath
+  go = "libs/binds/okio.go.bind.niva" nivaModuleIdFromRelativePath
+  old = "libs/binds/okio.bind.niva" nivaModuleIdFromRelativePath
+
+  Assert that: common equals: "libs.binds.io"
+  Assert that: kotlin equals: "libs.binds.okio.bind"
+  Assert that: go equals: "libs.binds.okio.bind"
+  Assert that: old equals: "libs.binds.okio.bind"
+  Assert that: (old parseBindFileName) equals: "libs/binds/okio"
+]
+
+Test buildLoaderFiltersBindingsBeforeParsing = [
+  io = IO_Container new
+  root = ".niva_go/binding-loader-tests"
+  io deleteRecursively path: root
+  io createDirectories path: root
+  io writeFile file: root + "/main.niva" content: "1 echo"
+  io writeFile file: root + "/shared.niva" content: "type Shared value: String"
+  io writeFile file: root + "/io.niva" content: "type SharedPath value: String"
+  io createDirectories path: root + "/folder.go.bind"
+  io writeFile file: root + "/folder.go.bind/common.niva" content: "type NestedSource value: String"
+  io writeFile file: root + "/okio.go.bind.niva" content: "String trim -> String = []"
+  io writeFile file: root + "/kotlinOnly.kotlin.bind.niva" content: "not valid Niva {{{"
+  io writeFile file: root + "/legacy.bind.niva" content: "not valid Niva {{{"
+
+  goSources = NivaBuildSystem findAllFilesFrom: root + "/main.niva"
+    withIO: io backend: "go"
+  Assert that: goSources count equals: 5
+  goBindings = goSources filter: [it relativePath == "okio.go.bind.niva"]
+  Assert that: goBindings count equals: 1
+  Assert that: (goBindings first moduleId) equals: "okio.bind"
+  Assert that: (goSources any: [it relativePath == "shared.niva"]) equals: true
+  Assert that: (goSources any: [it relativePath == "io.niva"]) equals: true
+  Assert that: (goSources any: [it relativePath == "folder.go.bind/common.niva"]) equals: true
+  goResolved = ResolverHelper resolveSources: goSources entryPoint: "main" backend: "go"
+  Assert that: goResolved db listOfErrors count equals: 0
+
+  commonSources = NivaBuildSystem findAllFilesFrom: root + "/main.niva"
+    withIO: io backend: "clj"
+  Assert that: commonSources count equals: 4
+  Assert that: (commonSources any: [it relativePath == "shared.niva"]) equals: true
+  Assert that: (commonSources any: [it relativePath == "io.niva"]) equals: true
+  Assert that: (commonSources any: [it relativePath == "folder.go.bind/common.niva"]) equals: true
+  cljResolved = ResolverHelper resolveSources: commonSources entryPoint: "main" backend: "clj"
+  Assert that: cljResolved db listOfErrors count equals: 0
+  io deleteRecursively path: root
+]
+
 Test resolverKeepsRealSourcePath = [
   realPath = "/project/model/user.niva"
   sources = {

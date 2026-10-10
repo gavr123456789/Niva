@@ -1,0 +1,43 @@
+constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
+  {str nothing} = dtc
+
+  errProto = NivaProtocol common
+  errProto addMethod: (NivaMethod
+          name: "throw"
+  receiverType: errorType
+          args: {}
+    returnType: nothing
+  returnErrors: {errorType}
+        forMut: false
+possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: null
+  protocolName: "common"
+    pkgName: "core")
+  errProto addMethod: (NivaMethod
+          name: "throwWithMsg"
+  receiverType: errorType
+          args: {(TypeTField name: "throwWithMsg" typeT: str isMut: false)}
+    returnType: nothing
+  returnErrors: {errorType}
+        forMut: false
+possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: null
+  protocolName: "common"
+    pkgName: "core")
+  errProto addMethod: (NivaMethod
+          name: "throwWithMessage"
+  receiverType: errorType
+          args: {(TypeTField name: "throwWithMessage" typeT: str isMut: false)}
+    returnType: nothing
+  returnErrors: {errorType}
+        forMut: false
+possibleErrors: {}
+          kind: MessageSendKind.Call
+          decl: null
+  protocolName: "common"
+    pkgName: "core")
+
+  ^ errProto methods
+]

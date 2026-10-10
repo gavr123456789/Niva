@@ -33,7 +33,8 @@ constructor IO_Container new -> IO_Container = [
   ]
 
   walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
-    root = path toPath normalized
+    pathValue = path toPath
+    root = pathValue normalized
     // Okio keeps `.` as a path segment after normalization. Recursive entries
     // do not contain that segment, so dropping it used to turn a root-level
     // `main.niva` into an empty relative path and `.niva_clj/main.niva` into
@@ -50,7 +51,11 @@ constructor IO_Container new -> IO_Container = [
     ]
   ]
 
-  getParent = [path: String -> path toPath parent unpackOrPANIC toString]
+  getParent = [path: String ->
+    pathValue = path toPath
+    parent = pathValue parent
+    parent unpackOrPANIC toString
+  ]
 
   createDirectories = [path: String ->
     FileSystem createDirectories: (path toPath)
@@ -63,13 +68,11 @@ constructor IO_Container new -> IO_Container = [
   ]
 
   runProgram = [args: List(String) ->
-    processBuilder = ProcessBuilder command: args
-    processBuilder redirectOutput start waitFor
+    ProcessRunner run: args dir: null
   ]
 
   runProgramFromPath = [path: String, args: List(String) ->
-    processBuilder = ProcessBuilder command: args dir: path
-    processBuilder redirectAll start waitFor
+    ProcessRunner run: args dir: path
   ]
 
   ^ IO_Container :readFile :writeFile :walkDir :getParent
@@ -82,12 +85,14 @@ constructor IO_Container new -> IO_Container = [
 compilerTry = [
   path = Compiler cliArgs
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
-] do
+]
 
 compilerTry2 = [
   cliArgs = Compiler cliArgs
   path = cliArgs isEmpty
-    ifTrue: [{"run" ".niva_clj/main.niva" "--runtime=bb"}]
+    ifTrue: [{"run" ".niva_go/_test.niva" "--backend=go"}]
+    // run the clojure smoke test
+    // show cli help
     ifFalse: [cliArgs]
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
-]
+] do

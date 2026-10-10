@@ -1,0 +1,58 @@
+constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+  {int str bool char unit list} = dtc
+
+  strProto = NivaProtocol common
+  // unary
+  strProto addMethod: (NivaMethod unary: "toInt" receiverType: str returnT: int)
+  strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
+  strProto addMethod: (NivaMethod unary: "reversed" receiverType: str returnT: str)
+  strProto addMethod: (NivaMethod unary: "lowercase" receiverType: str returnT: str)
+  strProto addMethod: (NivaMethod unary: "isEmpty" receiverType: str returnT: bool)
+  // binary
+  strProto addMethod: (NivaMethod binary: "+" receiverType: str argT: str returnT: str)
+
+  strProto addMethod: (NivaMethod binary: "==" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: "!=" receiverType: str argT: str returnT: bool)
+
+  // keyword
+  strProto addMethod: (NivaMethod singleArgKw: "at" receiverType: str argT: int returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: str argT: str returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
+  strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
+  strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )
+
+  itArg = TypeTField name: "it" typeT: char isMut: false
+  foreachBlock = FuntionT
+                fields: { itArg }!
+                  name: "forEach"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: unit
+  strProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: str argT: foreachBlock returnT: unit)
+
+  filterBlock = FuntionT
+                fields: { itArg }!
+                  name: "filter"
+           genericArgs: {}!
+               pkgName: "core"
+            returnType: bool
+  strProto addMethod: (NivaMethod singleArgKw: "filter" receiverType: str argT: filterBlock returnT: str)
+
+  mapBlock = FuntionT
+           fields: { (TypeTField name: "it" typeT: char isMut: false) }!
+             name: "map"
+      genericArgs: {}!
+          pkgName: "core"
+       returnType: str
+
+  strProto addMethod: (NivaMethod singleArgKw: "map"
+                receiverType: str
+                        argT: mapBlock
+                        returnT: str)
+
+  args = {(TypeTField name: "replace" typeT: str isMut: false)
+          (TypeTField name: "with" typeT: str isMut: false)}
+  strProto addMethod: (NivaMethod manyArgKw: args receiverType: str returnT: str )
+
+  ^ strProto methods
+]

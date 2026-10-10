@@ -487,15 +487,25 @@ fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): Muta
 
     for (file in filesAndDirs) {
         if (!file.name.startsWith("_") && !file.name.startsWith(".")) {
-            if (file.isFile && (file.extension == ext)) {
-                fileList.add(file)
+            if (file.isFile && file.extension == ext) {
+                val name = file.name
+                val isKotlinBinding = name.endsWith(".kotlin.bind.niva")
+                val isGoBinding = name.endsWith(".go.bind.niva")
+                val isUnmarkedBinding = name.endsWith(".bind.niva") &&
+                    !isKotlinBinding && !isGoBinding
+
+                if (ext != "niva" || (!isGoBinding && !isUnmarkedBinding)) {
+                    fileList.add(file)
+                } else if (isUnmarkedBinding) {
+                    println("Skipping unmarked binding file ${file.path}; rename it to .kotlin.bind.niva or .go.bind.niva")
+                }
             } else if (file.isDirectory) {
                 fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
             }
         }
     }
 
-    return fileList
+    return fileList.sortedBy { it.absolutePath.replace(File.separatorChar, '/') }.toMutableList()
 }
 
 // refactor - separate full resolve and generating the code into 2 functions

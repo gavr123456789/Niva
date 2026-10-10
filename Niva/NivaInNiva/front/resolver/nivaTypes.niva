@@ -338,6 +338,7 @@ extend TypeT [
 constructor UnresolvedGenericT name: String = UnresolvedGenericT name: name letter: name pkgName: "core"
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
 constructor IntegerT new = IntegerT name: "Int"     pkgName: "core"
+constructor IntegerT long = IntegerT name: "Long"   pkgName: "core"
 constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
 constructor DoubleT new  = DoubleT  name: "Double"  pkgName: "core"
 constructor BoolT new    = BoolT    name: "Bool"    pkgName: "core"
@@ -557,6 +558,7 @@ extend NivaPkg [
 type DefaultTypesContainer
   char: CharT
   int: IntegerT
+  long: IntegerT
   float: FloatT
   double: DoubleT
   str: StringT
@@ -587,6 +589,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   w = (UnresolvedGenericT name: "W")
   char = CharT new
   int = IntegerT new
+  long = IntegerT long
   float = FloatT new
   double = DoubleT new
   str = StringT new
@@ -622,7 +625,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     genericArgs: {}!
 
   dtc = DefaultTypesContainer
-    :char :int :float :double :str :bool :bind :compiler :error :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
+    :char :int :long :float :double :str :bool :bind :compiler :error :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
   ^ dtc
 ]
 
@@ -639,6 +642,7 @@ DefaultTypesContainer collection-with-different-generic(collection): NivaType ->
 constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   dtc = DefaultTypesContainer new
   {char, int, float, double, str, bool, bind, compiler, error, unit,
+  long,
   // utils
   nothing, any,
   // T
@@ -653,6 +657,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "String" str
     "Char" char
     "Int" int
+    "Long" long
     "Float" float
     "Double" double
     "Bind" bind

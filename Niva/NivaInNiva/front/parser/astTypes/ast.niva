@@ -192,7 +192,7 @@ constructor AstType name: String tok: Token = AstType
   tok: tok
 
 
-union CollectionLiteral token: Token elements: Body =
+union CollectionLiteral token: Token elements: Body isMutable: Bool =
   | ListLiteral
   | SetLiteral
   | MapLiteral

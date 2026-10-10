@@ -1,10 +1,18 @@
 /// takes main/entry file and collects all the files for compilation
 type NivaBuildSystem
 
-String nivaModuleIdFromRelativePath -> String =
-  .replace: "\\" with: "/"
-  ,dropLast: ".niva" count
-  ,replace: "/" with: "."
+String nivaModuleIdFromRelativePath -> String = [
+  normalized = this replace: "\\" with: "/"
+  fileName = normalized substringAfterLast: "/"
+  withoutKotlinSuffix = (fileName endsWith: ".kotlin.bind.niva")
+    ifTrue: [(normalized substringBeforeLast: ".kotlin.bind.niva") + ".bind.niva"]
+    ifFalse: [normalized]
+  withoutPlatformSuffix = (fileName endsWith: ".go.bind.niva")
+    ifTrue: [(normalized substringBeforeLast: ".go.bind.niva") + ".bind.niva"]
+    ifFalse: [withoutKotlinSuffix]
+  modulePath = withoutPlatformSuffix dropLast: ".niva" count
+  ^ modulePath replace: "/" with: "."
+]
 
 String nivaModuleCollisionKey -> String =
   .lowercase, replace: "-" with: "_"
@@ -17,6 +25,27 @@ String isHiddenPath -> Bool = [
 
 NivaSourceFile nivaModuleId -> String =
   relativePath nivaModuleIdFromRelativePath
+
+String nivaSourceForBackend(backend): String -> Bool = [
+  normalized = this replace: "\\" with: "/"
+  fileName = normalized substringAfterLast: "/"
+  isGoBinding = fileName endsWith: ".go.bind.niva"
+  isKotlinBinding = fileName endsWith: ".kotlin.bind.niva"
+  isLegacyBinding = (fileName endsWith: ".bind.niva") &&
+    (isGoBinding not) && (isKotlinBinding not)
+  isCommonSource = (fileName endsWith: ".niva") && (isLegacyBinding not) &&
+    (isGoBinding not) && (isKotlinBinding not)
+
+  ^ isCommonSource || ((backend == "go") && isGoBinding)
+]
+
+String isLegacyBindingFile -> Bool = [
+  normalized = this replace: "\\" with: "/"
+  fileName = normalized substringAfterLast: "/"
+  isGoBinding = fileName endsWith: ".go.bind.niva"
+  isKotlinBinding = fileName endsWith: ".kotlin.bind.niva"
+  (fileName endsWith: ".bind.niva") && (isGoBinding not) && (isKotlinBinding not)
+]
 
 List(NivaSourceFile) nivaModuleCollisionError -> String? = [
   seen::mut Map(String, String) = #{}!
@@ -37,17 +66,26 @@ List(NivaSourceFile) nivaModuleCollisionError -> String? = [
 ]
 
 constructor NivaBuildSystem [
-    on findAllFilesFrom(path): String? withIO(io): IO_Container -> List(NivaSourceInput) = [
+    on findAllFilesFrom(path): String? withIO(io): IO_Container backend(backend): String -> List(NivaSourceInput) = [
         // path is to main.niva, need to get its paret to start search
         p = path unpack: [str -> io getParent path: str]
                  or: io currentDir
 
-        files = io walkDir path: p,
+        walkedFiles = io walkDir path: p,
             filter: [
               (it relativePath endsWith: ".niva") &&
                 ((it relativePath isHiddenPath) not)
             ],
             sortedBy: [it relativePath]
+
+        walkedFiles forEach: [source ->
+          (source relativePath isLegacyBindingFile) ifTrue: [
+            ("Skipping unmarked binding file " + source relativePath +
+              "; rename it to .go.bind.niva or .kotlin.bind.niva") echo
+          ]
+        ]
+
+        files = walkedFiles filter: [it relativePath nivaSourceForBackend: backend]
 
         files nivaModuleCollisionError unpack: [TO DO: it]
 
@@ -100,6 +138,8 @@ type WatchQueueState
   building: Bool
   pending: Bool
 
+type JvmReloadHost
+
 constructor WatchQueueState empty -> WatchQueueState =
   WatchQueueState building: false pending: false
 
@@ -112,76 +152,6 @@ WatchQueueState buildFinished -> WatchQueueState =
   | true
   | pending => WatchQueueState building: true pending: false
   |=> WatchQueueState building: false pending: false
-
-type JvmReloadHost
-
-@emit: """run {
-  val cljRoot = java.io.File($2).parentFile
-    ?: error("Cannot find Clojure output root")
-  val classpathProcess = ProcessBuilder("clojure", "-Spath")
-    .directory(cljRoot)
-    .redirectErrorStream(true)
-    .start()
-  val classpath = classpathProcess.inputStream.bufferedReader().readText().trim()
-  val classpathExit = classpathProcess.waitFor()
-  check(classpathExit == 0) {
-    "Cannot resolve Clojure hot reload classpath: " + classpath
-  }
-  val urls = classpath.split(java.io.File.pathSeparator)
-    .filter { it.isNotBlank() }
-    .map { path ->
-      val file = java.io.File(path)
-      (if (file.isAbsolute) file else java.io.File(cljRoot, path)).toURI().toURL()
-    }
-    .toTypedArray()
-  val loader = java.net.URLClassLoader(urls, JvmReloadHost::class.java.classLoader)
-  val thread = Thread.currentThread()
-  val previousLoader = thread.contextClassLoader
-  thread.contextClassLoader = loader
-  try {
-    fun invokeNivaClj(function: Any, vararg args: Any?): Any? {
-      val method = function.javaClass.methods.first {
-        it.name == "invoke" && it.parameterCount == args.size
-      }
-      return method.invoke(function, *args)
-    }
-    val clojure = loader.loadClass("clojure.java.api.Clojure")
-    val varMethod = clojure.getMethod("var", Any::class.java, Any::class.java)
-    val readMethod = clojure.getMethod("read", String::class.java)
-    val requireFunction = varMethod.invoke(null, "clojure.core", "require")
-    val hostSymbol = readMethod.invoke(null, "niva.hot-reload.host")
-    invokeNivaClj(requireFunction, hostSymbol)
-    val startFunction = varMethod.invoke(null, "niva.hot-reload.host", "start!")
-    invokeNivaClj(startFunction, $1, $2, $3, $4, Runnable { ($5)() })
-  } catch (error: Throwable) {
-    error.printStackTrace()
-    throw error
-  } finally {
-    thread.contextClassLoader = previousLoader
-  }
-}"""
-static JvmReloadHost start(projectRoot): String generatedDir: String
-    entryNamespace(entryNamespace): String runtime(runtime): String
-    onChange(onChange): [Unit -> Unit] -> Unit = []
-
-@emit: """run {
-  val thread = Thread.currentThread()
-  val loader = thread.contextClassLoader
-  val previousLoader = thread.contextClassLoader
-  try {
-    val clojure = loader.loadClass("clojure.java.api.Clojure")
-    val varMethod = clojure.getMethod("var", Any::class.java, Any::class.java)
-    val reloadFunction = varMethod.invoke(null, "niva.hot-reload.host", "reload-changed!")
-    val method = reloadFunction.javaClass.methods.first {
-      it.name == "invoke" && it.parameterCount == 0
-    }
-    method.invoke(reloadFunction)
-    Unit
-  } finally {
-    thread.contextClassLoader = previousLoader
-  }
-}"""
-static JvmReloadHost reloadChanged -> Unit = []
 
 type CljGenerationResult
   generationId: String
@@ -354,12 +324,13 @@ constructor NivaCompiler [
         rootFile = option == CompilerOption.Info
           ifTrue: ["main.niva"]
           ifFalse: [path unpackOrValue: "main.niva"]
-        entryPoint = rootFile toPath name substringBeforeLast: "."
+        rootPath = rootFile toPath
+        entryPoint = rootPath name substringBeforeLast: "."
         //t2 = measureTimeFrom from: t1 text: "arg-parsed"
 
         runOrBuild = [
 
-          sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
+          sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io backend: backendStr
           //t3 = measureTimeFrom from: t2 text: "collect-files"
 
           resolver = ResolverHelper resolveSources: sources entryPoint: entryPoint backend: backendStr
@@ -374,7 +345,8 @@ constructor NivaCompiler [
         runWatch = [
           rootFile = path unpackOrValue: "main.niva"
           projectRoot = io getParent path: rootFile
-          entryPoint = rootFile toPath name substringBeforeLast: "."
+          rootPath = rootFile toPath
+          entryPoint = rootPath name substringBeforeLast: "."
           watchRuntime = runtime == CompilerRuntime.Bb ifTrue: ["bb"] ifFalse: ["jvm"]
           config = CompilerConfigFingerprint
             compilerVersion: "nin-watch" irSchema: "nir/v0" backend: "clj"
@@ -386,7 +358,7 @@ constructor NivaCompiler [
           compileAndPublish = [
             mut publishedOk = false
             requestVersion <- requestVersion + 1
-            sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io
+            sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io backend: "clj"
             snapshot = WorkspaceSnapshot fromSources: sources revision: requestVersion
               entryPoint: entryPoint documentVersions: #{}
             result = session compileSnapshot: snapshot config: config
