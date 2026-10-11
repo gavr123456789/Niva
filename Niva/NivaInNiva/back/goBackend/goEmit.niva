@@ -156,7 +156,15 @@ constructor GoBackend [
   ]
 
   on emitEntry(entry): IrBlock ctx: GoContext sb: StringBuilder -> Unit = [
+    ctx addImport: "fmt"
+    ctx addImport: "os"
     sb appendLine: "func main() {"
+    sb appendIndent: 1 line: "defer func() {"
+    sb appendIndent: 2 line: "if recovered := recover(); recovered != nil {"
+    sb appendIndent: 3 line: "fmt.Fprintln(os.Stderr, recovered)"
+    sb appendIndent: 3 line: "os.Exit(1)"
+    sb appendIndent: 2 line: "}"
+    sb appendIndent: 1 line: "}()"
     scope = GoScope new
     entry blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: entry resultType
     entryResult = entry result

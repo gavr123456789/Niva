@@ -352,9 +352,9 @@ extend mut Parser [
     | arg
     | null => [
       this restoreFrom: savePoint
-      ^ null
+      null
     ]
-    |=> [^ arg]
+    |=> arg
   ]
 
   on parseKeywordDeclArgFrom(tok): Token -> KeywordDeclArg? = [

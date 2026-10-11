@@ -34,17 +34,17 @@ String isTestSource -> Bool = [
 NivaSourceFile nivaModuleId -> String =
   relativePath nivaModuleIdFromRelativePath
 
-String nivaSourceForBackend(backend): String -> Bool = [
+String nivaCommonSource -> Bool = [
   normalized = this replace: "\\" with: "/"
   fileName = normalized substringAfterLast: "/"
-  isGoBinding = fileName endsWith: ".go.bind.niva"
-  isKotlinBinding = fileName endsWith: ".kotlin.bind.niva"
-  isLegacyBinding = (fileName endsWith: ".bind.niva") &&
-    (isGoBinding not) && (isKotlinBinding not)
-  isCommonSource = (fileName endsWith: ".niva") && (isLegacyBinding not) &&
-    (isGoBinding not) && (isKotlinBinding not)
+  isBinding = (fileName endsWith: ".bind.niva")
+  (fileName endsWith: ".niva") && (isBinding not)
+]
 
-  ^ isCommonSource || ((backend == "go") && isGoBinding)
+String isBindingFile -> Bool = [
+  normalized = this replace: "\\" with: "/"
+  fileName = normalized substringAfterLast: "/"
+  fileName endsWith: ".bind.niva"
 ]
 
 String isLegacyBindingFile -> Bool = [
@@ -74,6 +74,47 @@ List(NivaSourceFile) nivaModuleCollisionError -> String? = [
   ^ collisionError
 ]
 
+List(NivaSourceInput) nivaInputCollisionError -> String? = [
+  seen::mut Map(String, String) = #{}!
+  mut collisionError::String? = null
+  this sortedBy: [it relativePath], forEach: [source ->
+    collisionKey = source moduleId nivaModuleCollisionKey
+    existingPath = seen at: collisionKey
+    | existingPath
+    | null => [seen at: collisionKey put: source relativePath]
+    |=> [
+      existingPath != source relativePath ifTrue: [
+        collisionError <- "Niva module id collision: `" + existingPath + "` and `" +
+          source relativePath + "` both normalize to `" + collisionKey + "`"
+      ]
+    ]
+  ]
+  ^ collisionError
+]
+
+type NivaBindingProvider
+  backend: String
+  moduleId: String
+  relativePath: String
+
+String toNivaBindingProvider -> NivaBindingProvider = [
+  fields = this split: "|"
+  fields count == 3 ifFalse: [
+    TO DO: "invalid niva.bindings row: " + this
+    NivaBindingProvider backend: "" moduleId: "" relativePath: ""
+  ]
+  NivaBindingProvider backend: (fields at: 0) moduleId: (fields at: 1) relativePath: (fields at: 2)
+]
+
+String parseNivaBindingManifest -> List(NivaBindingProvider) = [
+  providers::mut List(NivaBindingProvider) = {}!
+  (this split: "\n") forEach: [line ->
+    trimmed = line
+    trimmed isEmpty ifFalse: [providers add: (trimmed toNivaBindingProvider)]
+  ]
+  ^ providers toList
+]
+
 constructor NivaBuildSystem [
     on findAllFilesFrom(path): String? withIO(io): IO_Container backend(backend): String -> List(NivaSourceInput) = [
         // path is to main.niva, need to get its paret to start search
@@ -84,26 +125,31 @@ constructor NivaBuildSystem [
         walkedFiles = io walkDir path: p,
             filter: [
               (it relativePath endsWith: ".niva") &&
-                ((it relativePath isHiddenPath) not) &&
                 ((it relativePath isTestSource) not)
             ],
             sortedBy: [it relativePath]
 
+        manifestPath = p + "/niva.bindings"
+        hasBindingManifest = FileSystem exists: (manifestPath toPath)
+        providers = hasBindingManifest
+          ifTrue: [(io readFile path: manifestPath) parseNivaBindingManifest]
+          ifFalse: [{}]
+        providerPaths = (providers map: [it relativePath]) toSet
+
         walkedFiles forEach: [source ->
-          (source relativePath isLegacyBindingFile) ifTrue: [
-            ("Skipping unmarked binding file " + source relativePath +
-              "; rename it to .go.bind.niva or .kotlin.bind.niva") echo
+          ((source relativePath isHiddenPath) not) &&
+            (source relativePath isBindingFile) &&
+            ((providerPaths contains: source relativePath) not) ifTrue: [
+            ("Skipping binding file without a provider in niva.bindings: " +
+              source relativePath) echo
             ()
           ]
         ]
 
-        files = walkedFiles filter: [it relativePath nivaSourceForBackend: backend]
-
-        collisionError = files nivaModuleCollisionError
-        | collisionError
-        | null => []
-        |=> [TO DO: collisionError
-          ()
+        files = walkedFiles filter: [source ->
+          isVisible = (source relativePath isHiddenPath) not
+          isListedProvider = providerPaths contains: source relativePath
+          isVisible && (isListedProvider not) && (source relativePath nivaCommonSource)
         ]
 
         sources::mut List(NivaSourceInput) = {}!
@@ -114,6 +160,30 @@ constructor NivaBuildSystem [
               relativePath: source relativePath
               path: source path
               content: content)
+        ]
+
+        (providers filter: [it backend == backend]) forEach: [provider ->
+          selectedFile = walkedFiles find: [it relativePath == provider relativePath]
+          selectedFileMaybe = selectedFile
+          | selectedFileMaybe
+          | null => [TO DO: "binding manifest source not found: " + provider relativePath
+            ()
+          ]
+          |=> [
+            sources add: (NivaSourceInput
+              moduleId: provider moduleId
+              relativePath: selectedFileMaybe relativePath
+              path: selectedFileMaybe path
+              content: (io readFile path: selectedFileMaybe path))
+            ()
+          ]
+        ]
+
+        collisionError = sources nivaInputCollisionError
+        | collisionError
+        | null => []
+        |=> [TO DO: collisionError
+          ()
         ]
 
         sources toList
@@ -387,6 +457,7 @@ constructor NivaCompiler [
           resolver db listOfErrors isNotEmpty ifTrue: [
             resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
             TO DO: "Resolver errors: " + resolver_errors
+            System exitWith: 1
             ()
           ]
 

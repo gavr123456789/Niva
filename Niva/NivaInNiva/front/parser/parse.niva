@@ -830,14 +830,12 @@ extend mut Parser [
   /// if current is out of bounds returns EOF
   /// otherwise returns token at current position
   on peek -> Token = [
-    // current >= tokens count, ifTrue: [
-    //   ^ EOF_TOKEN
-    // ]
-
-    tokens at: current
+    outOfBounds = (current < 0) || (current >= tokens count)
+    ^ outOfBounds ifTrue: [Token eof] ifFalse: [tokens at: current]
   ]
   on peekAt(distance): Int -> Token = [
     realDistance = current + distance
-    tokens at: realDistance
+    outOfBounds = (realDistance < 0) || (realDistance >= tokens count)
+    ^ outOfBounds ifTrue: [Token eof] ifFalse: [tokens at: realDistance]
   ]
 ]

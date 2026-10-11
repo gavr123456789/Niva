@@ -189,6 +189,7 @@ extend MessageDecl [
             | null => pkg
             |=> explicitGoPkgMaybe
           bindPlanResult <- IrBindEmit template: tmplMaybe goPkg: goPkg
+            isGoSpecific: (explicitGoPkgMaybe != null)
           ()
         ]
       ]
@@ -246,7 +247,7 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
         chain forEach: [t ->
           ownerMethod == null ifTrue: [
             m = getMethodFromType t: t
-            mMaybe = m
+            mMaybe::NivaMethod? = m
             | mMaybe
             | null => []
             |=> [
@@ -259,7 +260,7 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
           chain forEach: [t ->
             ownerMethod == null ifTrue: [
               m = getMethodFromType t: t
-              mMaybe = m
+              mMaybe::NivaMethod? = m
               | mMaybe
               | null => []
               |=> [

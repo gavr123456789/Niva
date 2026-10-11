@@ -43,21 +43,13 @@ Test sameBasenameInDifferentDirectoriesHasDistinctModuleIds = [
   Assert that: ({first second} nivaModuleCollisionError) equals: null
 ]
 
-Test platformBindingSelectionUsesFilenameSuffix = [
-  common = "src/nested/io.niva"
-  kotlin = "src/nested/io.kotlin.bind.niva"
-  go = "src/nested/io.go.bind.niva"
-  legacy = "src/nested/io.bind.niva"
-  pathOnly = "go.bind.niva/src/io.niva"
+Test bindingManifestParsesUnmarkedProviderPaths = [
+  providers = "go|io.bind|providers/io.niva\n" parseNivaBindingManifest
 
-  Assert that: (common nivaSourceForBackend: "go") equals: true
-  Assert that: (common nivaSourceForBackend: "clj") equals: true
-  Assert that: (go nivaSourceForBackend: "go") equals: true
-  Assert that: (go nivaSourceForBackend: "clj") equals: false
-  Assert that: (kotlin nivaSourceForBackend: "go") equals: false
-  Assert that: (legacy nivaSourceForBackend: "go") equals: false
-  Assert that: (pathOnly nivaSourceForBackend: "go") equals: true
-  Assert that: (legacy isLegacyBindingFile) equals: true
+  Assert that: providers count equals: 1
+  Assert that: (providers first backend) equals: "go"
+  Assert that: (providers first moduleId) equals: "io.bind"
+  Assert that: (providers first relativePath) equals: "providers/io.niva"
 ]
 
 Test platformBindingSuffixKeepsLogicalModuleId = [
@@ -86,6 +78,8 @@ Test buildLoaderFiltersBindingsBeforeParsing = [
   io writeFile file: root + "/okio.go.bind.niva" content: "String trim -> String = []"
   io writeFile file: root + "/kotlinOnly.kotlin.bind.niva" content: "not valid Niva {{{"
   io writeFile file: root + "/legacy.bind.niva" content: "not valid Niva {{{"
+  io writeFile file: root + "/niva.bindings"
+    content: "go|okio.bind|okio.go.bind.niva\n"
 
   goSources = NivaBuildSystem findAllFilesFrom: root + "/main.niva"
     withIO: io backend: "go"
@@ -110,6 +104,33 @@ Test buildLoaderFiltersBindingsBeforeParsing = [
   io deleteRecursively path: root
 ]
 
+Test buildLoaderUsesBindingManifest = [
+  io = IO_Container new
+  root = ".niva_go/binding-manifest-tests"
+  io deleteRecursively path: root
+  io createDirectories path: root + "/providers"
+  io writeFile file: root + "/main.niva" content: "1 echo"
+  io writeFile file: root + "/shared.niva" content: "type Shared value: String"
+  io writeFile file: root + "/providers/io.niva"
+    content: "String trim -> String = Bind goPkg: \"strings\" emit: \"strings.TrimSpace($0)\""
+  io writeFile file: root + "/unlisted.go.bind.niva" content: "not valid Niva {{{"
+  io writeFile file: root + "/niva.bindings"
+    content: "go|provider.bound|providers/io.niva\n"
+
+  goSources = NivaBuildSystem findAllFilesFrom: root + "/main.niva"
+    withIO: io backend: "go"
+  Assert that: goSources count equals: 3
+  providerSource = goSources filter: [it moduleId == "provider.bound"]
+  Assert that: providerSource count equals: 1
+  Assert that: (providerSource first relativePath) equals: "providers/io.niva"
+  Assert that: (goSources any: [it relativePath == "unlisted.go.bind.niva"]) equals: false
+
+  cljSources = NivaBuildSystem findAllFilesFrom: root + "/main.niva"
+    withIO: io backend: "clj"
+  Assert that: (cljSources any: [it relativePath == "providers/io.niva"]) equals: false
+  io deleteRecursively path: root
+]
+
 Test goProjectGenerationCreatesCleanModule = [
   io = IO_Container new
   root = ".niva_go/go-project-tests"
@@ -124,6 +145,21 @@ Test goProjectGenerationCreatesCleanModule = [
   Assert that: (FileSystem exists: ((root + "/stale.go") toPath)) equals: false
 
   io deleteRecursively path: root
+]
+
+Test goRuntimeRepresentationIsStable = [
+  source = GoRuntimeSources coreSource
+
+  Assert that: (source contains: "type Unit struct{}") equals: true
+  Assert that: (source contains: "func NewNullable[T any](value T) *T") equals: true
+  Assert that: (source contains: "type Option[T any] struct") equals: true
+  Assert that: (source contains: "HasValue bool") equals: true
+  Assert that: (source contains: "func List__toMutableList[T any](s []T) []T { return List__toList(s) }") equals: true
+  Assert that: (source contains: "func List__mut_clear[T any](s *[]T)") equals: true
+  Assert that: (source contains: "func Set__mut_add[T comparable](s map[T]struct{}") equals: true
+  Assert that: (source contains: "func Map__at[K comparable, V any](s map[K]V, k K) Option[V]") equals: true
+  Assert that: (source contains: "func Error__throwWithMessage(msg string)") equals: true
+  Assert that: (source contains: "(any, error)") equals: true
 ]
 
 Test resolverKeepsRealSourcePath = [

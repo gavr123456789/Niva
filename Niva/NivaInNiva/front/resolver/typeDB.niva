@@ -720,20 +720,15 @@ extend TyperDB [
 
   on addErrorMessage(e): ResolveErrors = [
     msg = e msg
-    pos = e tok toPosition
-    "ADDED ERROR $pos $msg", echo
     listOfErrors add: e
   ]
 
   on addErrorFromTok(tok): Token withMsg(msg): String = [
-    pos = tok toPosition
-    "\n!!!!! ADDED ERROR $pos $msg !!!!!\n", echo
     resolveError::ResolveErrors = LazyError tok: tok msg: msg
     listOfErrors add: resolveError
   ]
 
   on addFatalErrorFromTok(tok): Token withMsg(msg): String = [
-    "\n!!!!! ADDED ERROR $msg !!!!!\n", echo
     resolveError::ResolveErrors = LazyError tok: tok msg: msg
     listOfErrors add: resolveError
     TO DO: "FATAL"
@@ -1158,7 +1153,10 @@ extend TyperDB [
       | null => | lookupType
         | UnresolvedGenericT => #{}!
         | NothingT => #{}!
-        |=> TO DO: "missing method table for " + lookupType toString + " while looking up " + name + " at " + receiver token toPosition
+        |=> [
+          TO DO: "missing method table for " + lookupType toString + " while looking up " + name + " at " + receiver token toPosition
+          #{}!
+        ]
       |=> x
 
     methodMaybe = y at: name

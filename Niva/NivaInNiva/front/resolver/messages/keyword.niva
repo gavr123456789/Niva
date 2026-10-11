@@ -85,7 +85,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
               db isAssignable: realType toExpected: fieldType, ifFalse: [
                 db addErrorMessage: (ErrorWrongArgType
                                       tok: expr token
-                                      msg: "wrong arg type for $kwName expected " + fieldType toString cyan + " but got "red + realType toString cyan)
+                                      msg: "wrong arg type for " + (kwArg name name) + " expected " + fieldType toString cyan + " but got "red + realType toString cyan)
               ]
             ]
 
@@ -232,7 +232,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           kwName = kwArg name
           db addErrorMessage: (ErrorWrongArgType
                                 tok: expr token
-                                msg: "wrong arg type for $kwName expected " + argTypeFromDb toString cyan + " but got "red + realType toString cyan)
+                                msg: "wrong arg type for " + kwName name + " expected " + argTypeFromDb toString cyan + " but got "red + realType toString cyan)
         ]
       ]
 

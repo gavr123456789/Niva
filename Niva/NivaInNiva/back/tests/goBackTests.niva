@@ -124,7 +124,7 @@ Test goCustomConstructorCallUsesDeclaredFunction = [
 
 Test goBindingsReadFile = [
   bindFile = """
-    Int read: String -> String = Bind emit: "os.ReadFile($1)"
+    Int read: String -> String = Bind goPkg: "os" emit: "os.ReadFile($1)"
   """
   fileMain = """
     x = 1 read: "file.txt"
@@ -539,6 +539,21 @@ Test goImplicitLambdaArgCodegen = [
   Assert that: (go contains: "func() int") equals: false
 ]
 
+Test goLambdaCapturesMutableLocal = [
+  fileMain = """
+    mut total = 0
+    {1 2 3} forEach: [item::Int -> total <- total + item]
+    total echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func(item int) {", assertTrue
+  go contains: "total = (total + item)", assertTrue
+]
+
 Test goErrorDomainThrowCodegen = [
   fileMain = """
     errordomain MyError =
@@ -732,7 +747,7 @@ Test goTryErrorableNullableValue = [
 Test goBindPlaceholder10 = [
   bindFile = """
     Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int =
-      Bind emit: "$10 + $1"
+      Bind goPkg: "" emit: "$10 + $1"
   """
   fileMain = """
     x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
@@ -749,7 +764,7 @@ Test goBindPlaceholder10 = [
 // Point 2: single `Bind emit:` body is inlined at the call site (no wrapper func).
 Test goBindInlineEmitUnary = [
   bindFile = """
-    Int double -> Int = Bind emit: "($0 * 2)"
+    Int double -> Int = Bind goPkg: "" emit: "($0 * 2)"
   """
   fileMain = """
     x = 21 double
@@ -765,7 +780,7 @@ Test goBindInlineEmitUnary = [
 // Point 2: keyword form, $0 = this, $1 = first arg, $2 = second arg.
 Test goBindInlineEmitKeyword = [
   bindFile = """
-    Int sas: Int and: Bool -> Int = Bind emit: "kekeke($1, $0, $2)"
+    Int sas: Int and: Bool -> Int = Bind goPkg: "" emit: "kekeke($1, $0, $2)"
   """
   fileMain = """
     y = 1 sas: 2 and: true
@@ -832,7 +847,7 @@ Test goBindByNameStatic = [
 Test goBindEmitInBody = [
   bindFile = """
     Int compute -> Int = [
-      a::Int = Bind emit: "1 + 41"
+      a::Int = Bind goPkg: "" emit: "1 + 41"
       ^ a
     ]
   """
@@ -845,6 +860,52 @@ Test goBindEmitInBody = [
   go contains: "1 + 41", assertTrue
   // a multi-expr bind body is a normal Go function
   go contains: "func main__core_Int__compute", assertTrue
+]
+
+Test goSharedEmitRequiresGoPackage = [
+  bindFile = """
+    Int answer -> Int = Bind emit: "42"
+  """
+  fileMain = "x = 0 answer"
+  result = ResolverHelper resolve: #{"main" fileMain "shared.bind" bindFile}
+    entryPoint: "main" backend: "go"
+  errors = GoBackend validateIr: (result toIrModule)
+  messages = errors joinWith: "\n" transform: [it message]
+
+  Assert that: (messages contains: "Go backend requires an explicit goPkg for Bind emit templates") equals: true
+]
+
+Test goUnsupportedConstructorBindHasDiagnostic = [
+  typeRef = IrTypeRef
+    kind: IrTypeRefKind.Custom
+    typeId: "sample_Box"
+    ownerPkg: "sample"
+    args: {}
+    returnType: null
+    isMut: false
+    nullable: false
+    errors: {}
+  expr::IrExpr = IrNewExpr
+    typeRef: typeRef
+    token: Token eof
+    typeId: "sample_Box"
+    args: {}
+    constructorBind: (IrConstructorBindEmit backend: "kotlin" template: "Box()")
+  errors::mut List(GoIrError) = {}!
+
+  expr validateGoIrExpr: #() knownTypeIds: #( "sample_Box" ) goErrors: errors
+  Assert that: errors count equals: 1
+  Assert that: ((errors first message) contains: "Go backend does not support constructor binding") equals: true
+]
+
+Test goEntryPointRecoversPanics = [
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "go"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "defer func() {", assertTrue
+  go contains: "recovered := recover()", assertTrue
+  go contains: "fmt.Fprintln(os.Stderr, recovered)", assertTrue
+  go contains: "os.Exit(1)", assertTrue
 ]
 
 Test goAtomIdentifierAsStringLiteral = [
