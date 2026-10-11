@@ -8,8 +8,8 @@ extend Path [
   on name -> String =
     Bind goPkg: "path/filepath" emit: "filepath.Base($0.value)"
 
-  on parent -> Path? =
-    Bind goPkg: "path/filepath" emit: """(func() *libs_binds_io_Path { parent := filepath.Dir($0.value); if parent == "." || parent == $0.value { return nil }; return &libs_binds_io_Path{value: parent} })()"""
+  on parent -> Path =
+    Bind goPkg: "path/filepath" emit: "libs_binds_io_Path{value: filepath.Dir($0.value)}"
 
   on root -> Path? =
     Bind goPkg: "path/filepath,os" emit: """(func() *libs_binds_io_Path { if !filepath.IsAbs($0.value) { return nil }; return &libs_binds_io_Path{value: filepath.VolumeName($0.value) + string(os.PathSeparator)} })()"""

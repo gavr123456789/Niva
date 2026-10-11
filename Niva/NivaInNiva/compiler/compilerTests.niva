@@ -24,10 +24,13 @@ Test moduleCollisionNormalizationIsExplicit = [
 
   collision = files nivaModuleCollisionError
   Assert that: (collision != null) equals: true
-  collision unpack: [
-    Assert that: (it contains: "foo_bar") equals: true
-    Assert that: (it contains: "Foo-Bar.niva") equals: true
-    Assert that: (it contains: "foo_bar.niva") equals: true
+  collisionMaybe = collision
+  | collisionMaybe
+  | null => []
+  |=> [
+    Assert that: (collisionMaybe contains: "foo_bar") equals: true
+    Assert that: (collisionMaybe contains: "Foo-Bar.niva") equals: true
+    Assert that: (collisionMaybe contains: "foo_bar.niva") equals: true
   ]
 ]
 
@@ -107,6 +110,22 @@ Test buildLoaderFiltersBindingsBeforeParsing = [
   io deleteRecursively path: root
 ]
 
+Test goProjectGenerationCreatesCleanModule = [
+  io = IO_Container new
+  root = ".niva_go/go-project-tests"
+  io createDirectories path: root
+  io writeFile file: root + "/stale.go" content: "package stale"
+
+  io initializeGoProjectAt: root
+
+  Assert that: (io readFile path: root + "/go.mod") equals: (GoRuntimeSources moduleSource)
+  coreSource = io readFile path: root + "/core/core.go"
+  Assert that: (coreSource contains: "package core") equals: true
+  Assert that: (FileSystem exists: ((root + "/stale.go") toPath)) equals: false
+
+  io deleteRecursively path: root
+]
+
 Test resolverKeepsRealSourcePath = [
   realPath = "/project/model/user.niva"
   sources = {
@@ -118,7 +137,10 @@ Test resolverKeepsRealSourcePath = [
   }
 
   result = ResolverHelper resolveSources: sources entryPoint: "model.user" backend: "clj"
-  statement = result fileToStatements at: "model.user", unpackOrPANIC, first
+  statements = result fileToStatements at: "model.user"
+  statement = | statements
+    | null => TO DO: "Missing model user statements"
+    |=> statements first
 
   | statement
   | TypeDeclT => Assert that: statement token file path equals: realPath
@@ -131,7 +153,7 @@ constructor CompilerConfigFingerprint incrementalTest -> CompilerConfigFingerpri
     abiOptions: "" hotReload: false coreAbiHash: "test-core"
 
 Map(String, String) incrementalTestSnapshot(revision): Int -> WorkspaceSnapshot =
-  WorkspaceSnapshot fromSources: .toNivaSourceInputs revision: revision
+  WorkspaceSnapshot fromSources: (this toNivaSourceInputs) revision: revision
 
 Test sha256BindingIsDeterministic = [
   Assert that: (Sha256 digest: "abc") equals:
@@ -233,10 +255,19 @@ Test staleIncrementalCandidateCannotCommit = [
   newest = committed commit: firstCandidate
   afterStaleCommit = newest commit: staleCandidate
   Assert that: afterStaleCommit revision equals: newest revision
-  finalSnapshot = afterStaleCommit committedSnapshot unpackOrPANIC
+  snapshotMaybe = afterStaleCommit committedSnapshot
+  finalSnapshot = | snapshotMaybe
+    | null => TO DO: "Missing committed snapshot"
+    |=> snapshotMaybe
   Assert that: finalSnapshot revision equals: 2
-  newestMain = newest modules at: "main", unpackOrPANIC
-  finalMain = afterStaleCommit modules at: "main", unpackOrPANIC
+  newestMainMaybe = newest modules at: "main"
+  newestMain = | newestMainMaybe
+    | null => TO DO: "Missing newest main module"
+    |=> newestMainMaybe
+  finalMainMaybe = afterStaleCommit modules at: "main"
+  finalMain = | finalMainMaybe
+    | null => TO DO: "Missing final main module"
+    |=> finalMainMaybe
   Assert that: finalMain sourceHash equals: newestMain sourceHash
 ]
 
@@ -286,7 +317,10 @@ Test incrementalRemovalUpdatesBothGraphDirections = [
 
   Assert that: (candidate modules at: "service") equals: null
   Assert that: (candidate dependencies at: "service") equals: null
-  modelDependants = candidate reverseDependencies at: "model", unpackOrPANIC
+  modelDependantsMaybe = candidate reverseDependencies at: "model"
+  modelDependants = | modelDependantsMaybe
+    | null => TO DO: "Missing model dependants"
+    |=> modelDependantsMaybe
   Assert that: modelDependants values count equals: 0
 ]
 
@@ -389,7 +423,11 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
     interfaceSnapshot: goodInterface config: config requestVersion: 11 cancelled: false
   Assert that: good cancelled equals: false
   Assert that: good diagnostics count equals: 0
-  committed = empty commit: good candidate unpackOrPANIC
+  candidateMaybe = good candidate
+  goodCandidate = | candidateMaybe
+    | null => TO DO: "Missing good candidate"
+    |=> candidateMaybe
+  committed = empty commit: goodCandidate
 
   failed = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
     interfaceSnapshot: badInterface config: config requestVersion: 12 cancelled: false
@@ -427,7 +465,11 @@ Test incompatibleReloadShapeRequiresHardRestart = [
   diagnostic = changed diagnostics first
   Assert that: (diagnostic message contains: "hard restart required") equals: true
   Assert that: (diagnostic message contains: "automatic state migration is not supported") equals: true
-  Assert that: ((committed cljManifest unpackOrPANIC) canonical contains: "main/main_Person") equals: true
+  manifestMaybe = committed cljManifest
+  manifest = | manifestMaybe
+    | null => TO DO: "Missing clojure manifest"
+    |=> manifestMaybe
+  Assert that: (manifest canonical contains: "main/main_Person") equals: true
 ]
 
 Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
@@ -440,13 +482,19 @@ Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   result = session compileSnapshot: snapshot config: config requestVersion: 31 cancelled: false
   Assert that: result requestVersion equals: 31
   Assert that: result diagnostics count equals: 0
-  candidate = result candidate unpackOrPANIC
+  candidateMaybe = result candidate
+  candidate = | candidateMaybe
+    | null => TO DO: "Missing compile candidate"
+    |=> candidateMaybe
   Assert that: candidate snapshot entryPoint equals: "app.main"
   Assert that: (candidate snapshot documentVersions at: "app.main") equals: 3
 
   committed = session commitResult: result
   Assert that: committed revision equals: 1
-  committedSnapshot = committed committedSnapshot unpackOrPANIC
+  committedSnapshotMaybe = committed committedSnapshot
+  committedSnapshot = | committedSnapshotMaybe
+    | null => TO DO: "Missing committed snapshot"
+    |=> committedSnapshotMaybe
   Assert that: committedSnapshot entryPoint equals: "app.main"
 
   cancelled = committed compileSnapshot: snapshot config: config requestVersion: 32 cancelled: true
@@ -488,13 +536,25 @@ Test compileSnapshotFlagSelectsPersistentOrCleanSession = [
     requestVersion: 2 cancelled: false incremental: true
   clean = committed compileSnapshot: changedSnapshot config: config
     requestVersion: 2 cancelled: false incremental: false
-  incrementalCandidate = incremental candidate unpackOrPANIC
-  cleanCandidate = clean candidate unpackOrPANIC
+  incrementalCandidateMaybe = incremental candidate
+  incrementalCandidate = | incrementalCandidateMaybe
+    | null => TO DO: "Missing incremental candidate"
+    |=> incrementalCandidateMaybe
+  cleanCandidateMaybe = clean candidate
+  cleanCandidate = | cleanCandidateMaybe
+    | null => TO DO: "Missing clean candidate"
+    |=> cleanCandidateMaybe
 
   Assert that: incrementalCandidate bodyInvalidated equals: #( "person" )
   Assert that: cleanCandidate bodyInvalidated equals: #( "main" "person" )
-  incrementalArtifact = incremental backendArtifact unpackOrPANIC
-  cleanArtifact = clean backendArtifact unpackOrPANIC
+  incrementalArtifactMaybe = incremental backendArtifact
+  incrementalArtifact = | incrementalArtifactMaybe
+    | null => TO DO: "Missing incremental backend artifact"
+    |=> incrementalArtifactMaybe
+  cleanArtifactMaybe = clean backendArtifact
+  cleanArtifact = | cleanArtifactMaybe
+    | null => TO DO: "Missing clean backend artifact"
+    |=> cleanArtifactMaybe
   Assert that: incrementalArtifact backend equals: cleanArtifact backend
   Assert that: incrementalArtifact target equals: cleanArtifact target
   Assert that: incrementalArtifact content equals: cleanArtifact content
@@ -535,22 +595,38 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
   empty = CompilerSession empty
   initialResult = empty compileCandidate: (initialSources incrementalTestSnapshot: 1)
     interfaceSnapshot: initialInterface config: config requestVersion: 1 cancelled: false
-  initialArtifact = initialResult backendArtifact unpackOrPANIC
+  initialArtifactMaybe = initialResult backendArtifact
+  initialArtifact = | initialArtifactMaybe
+    | null => TO DO: "Missing initial backend artifact"
+    |=> initialArtifactMaybe
   Assert that: initialArtifact content equals: initialCleanOutput
 
-  committed = empty commit: initialResult candidate unpackOrPANIC
+  initialCandidateMaybe = initialResult candidate
+  initialCandidate = | initialCandidateMaybe
+    | null => TO DO: "Missing initial candidate"
+    |=> initialCandidateMaybe
+  committed = empty commit: initialCandidate
   changedClean = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
   changedCleanOutput = CljBackend fullFromIrModule: changedClean toIrModule
   changedInterface = ResolverInterfaceSnapshot
     collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
   changedResult = committed compileCandidate: (changedSources incrementalTestSnapshot: 2)
     interfaceSnapshot: changedInterface config: config requestVersion: 2 cancelled: false
-  changedCandidate = changedResult candidate unpackOrPANIC
-  changedArtifact = changedResult backendArtifact unpackOrPANIC
+  changedCandidateMaybe = changedResult candidate
+  changedCandidate = | changedCandidateMaybe
+    | null => TO DO: "Missing changed candidate"
+    |=> changedCandidateMaybe
+  changedArtifactMaybe = changedResult backendArtifact
+  changedArtifact = | changedArtifactMaybe
+    | null => TO DO: "Missing changed backend artifact"
+    |=> changedArtifactMaybe
 
   Assert that: changedCandidate bodyInvalidated equals: #( "person" )
   Assert that: changedArtifact content equals: changedCleanOutput
-  changedOutput = changedArtifact cljOutput unpackOrPANIC
+  changedOutputMaybe = changedArtifact cljOutput
+  changedOutput = | changedOutputMaybe
+    | null => TO DO: "Missing changed clojure output"
+    |=> changedOutputMaybe
   cleanOutput = CljBackend fullOutputFromIrModule: (changedClean toIrModule)
     debug: false mode: CljEmitMode.Program
   Assert that: changedOutput files equals: cleanOutput files
@@ -591,9 +667,9 @@ Test cljProjectBootstrapCreatesMissingRuntimeFiles = [
 
   io ensureCljProjectAt: root
 
-  Assert that: (io readFile path: root + "/bb.edn") equals: CLJ_PROJECT_DEPS_SOURCE
-  Assert that: (io readFile path: root + "/deps.edn") equals: CLJ_PROJECT_DEPS_SOURCE
-  Assert that: (io readFile path: root + "/niva/core.clj") equals: NIVA_CORE_SOURCE
+  Assert that: (io readFile path: root + "/bb.edn") equals: (CompilerConstants cljProjectDepsSource)
+  Assert that: (io readFile path: root + "/deps.edn") equals: (CompilerConstants cljProjectDepsSource)
+  Assert that: (io readFile path: root + "/niva/core.clj") equals: (CompilerConstants nivaCoreSource)
 
   io writeFile file: root + "/deps.edn" content: "preserved"
   io writeFile file: root + "/bb.edn" content: "also preserved"
@@ -635,9 +711,12 @@ Test cljEmptyProgramProducesLoadableEntryModule = [
 
   generated = output files at: "niva/generated/main.clj"
   Assert that: (generated != null) equals: true
-  generated unpack: [
-    Assert that: (it contains: "(ns niva.generated.main)") equals: true
-    Assert that: (it contains: "(defn __niva_entry!") equals: true
+  generatedMaybe = generated
+  | generatedMaybe
+  | null => []
+  |=> [
+    Assert that: (generatedMaybe contains: "(ns niva.generated.main)") equals: true
+    Assert that: (generatedMaybe contains: "(defn __niva_entry!") equals: true
   ]
   Assert that: (output manifest edn contains: "\"main\"") equals: true
 ]
@@ -715,21 +794,21 @@ Test watchQueueSerializesBuildsAndKeepsPendingEvents = [
 ]
 
 Test jvmHostHasReloadSafeLifecycle = [
-  Assert that: (JVM_HOST_SOURCE contains: "(reload/init") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "{:only :all}") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "{:only :changed}") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "requiring-resolve") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "__niva_entry!") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: ":entry-executed?") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "(catch Throwable _ nil)") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "150") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "org.babashka/fswatcher") equals: true
-  Assert that: (JVM_HOST_SOURCE contains: "runtime-name") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "(reload/init") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "{:only :all}") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "{:only :changed}") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "requiring-resolve") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "__niva_entry!") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: ":entry-executed?") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "(catch Throwable _ nil)") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "150") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "org.babashka/fswatcher") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "runtime-name") equals: true
 ]
 
 Test jvmHostDoesNotRequireGeneratedNamespaces = [
-  Assert that: (JVM_HOST_SOURCE contains: "(:require [niva.generated") equals: false
-  Assert that: (JVM_HOST_SOURCE contains: ":no-reload '#{niva.hot-reload.host}") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "(:require [niva.generated") equals: false
+  Assert that: ((CompilerConstants jvmHostSource) contains: ":no-reload '#{niva.hot-reload.host}") equals: true
 ]
 
 Test babashkaHostLoadsRecoversAndWatchesSources = [
@@ -806,7 +885,7 @@ Test babashkaHostLoadsRecoversAndWatchesSources = [
   io writeFile file: root + "/broken.clj" content: brokenSource
   io writeFile file: root + "/recovered.clj" content: recoveredSource
   io writeFile file: root + "/host_test.clj" content: hostTest
-  io writeFile file: root + "/niva/hot_reload/host.clj" content: JVM_HOST_SOURCE
+  io writeFile file: root + "/niva/hot_reload/host.clj" content: (CompilerConstants jvmHostSource)
   io writeFile file: root + "/deps.edn"
     content: "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
   io writeFile file: root + "/bb.edn"

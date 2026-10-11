@@ -14,69 +14,72 @@ mut Parser
 
   // message declaration or exprassion
   getReturnType = [
-    .match: TokenType.ReturnArrow, ifTrue: [
-      .parseType
+    this match: TokenType.ReturnArrow, ifTrue: [
+      this parseType
     ] ifFalse: [null]
   ]
 
   // change current position back to parse receiver
-  .stepBack
-  receiverType = .parseType
+  this stepBack
+  receiverType = this parseType
 
   // Int^ inc =
   // Int^ a::Int b::Int =
   // Int^ a: q::Int b::Int =
   // Int^ + a::Int =
-  tok2 = .step
+  tok2 = this step
   result = | tok2 kind
   | TokenType.Identifier => [
     // Int inc^ ->? = []
     kwSavePoint = current
-    kwParts = .parseKeywordDeclArgsFrom: tok2
+    kwParts = this parseKeywordDeclArgsFrom: tok2
     kwParts == null ifTrue: [
-      .restoreFrom: kwSavePoint
+      this restoreFrom: kwSavePoint
       returnType = getReturnType do
       name = tok2 lexeme
 
-      .match: TokenType.Assign, ifFalse: [
-        .restoreFrom: savePosition
-        ^ .nextExpression: .step
+      this match: TokenType.Assign, ifFalse: [
+        this restoreFrom: savePosition
+        ^ this nextExpression: this step
       ]
       // Int inc ->? = ^[]
-      isSingleExpr = .peek kind != TokenType.OpenBracket
-      body = .parseBodyOrSingleExpr
+      isSingleExpr = this peek kind != TokenType.OpenBracket
+      body = this parseBodyOrSingleExpr
 
       msgDecl = MessageDecl
+        token: tok
         receiver: receiverType
         name: name
         args: {}
         returnType: returnType
-        token: tok
         body: body
         isSingleExpr: isSingleExpr
         isConstructor: isConstructor
 
       msgDecl
     ] ifFalse: [
-      kwParts2 = kwParts unpackOrPANIC
+      kwPartsMaybe = kwParts
+      kwParts2 = | kwPartsMaybe
+        | null => TO DO: "Expected keyword declaration arguments"
+        |=> kwPartsMaybe
       returnType = getReturnType do
 
-      .match: TokenType.Assign, ifFalse: [
-        .restoreFrom: savePosition
-        ^ .nextExpression: .step
+      this match: TokenType.Assign, ifFalse: [
+        this restoreFrom: savePosition
+        ^ this nextExpression: this step
       ]
 
-      isSingleExpr = .peek kind != TokenType.OpenBracket
-      body = .parseBodyOrSingleExpr
+      isSingleExpr = this peek kind != TokenType.OpenBracket
+      body = this parseBodyOrSingleExpr
       kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
       ]
       msgDecl = MessageDecl
+        token: tok
         receiver: receiverType
         name: kwName
         args: kwParts2 args
         returnType: returnType
-        token: tok
         body: body
         isSingleExpr: isSingleExpr
         isConstructor: isConstructor
@@ -88,32 +91,35 @@ mut Parser
     // Int inc^::Int b::Int =
     // Int inc^: Int b: Int =
 
-    kwParts = .parseKeywordDeclArgsFrom: tok2
+    kwParts = this parseKeywordDeclArgsFrom: tok2
     kwParts == null ifTrue: [
-      .restoreFrom: savePosition
-      ^ .nextExpression: .step
+      this restoreFrom: savePosition
+      ^ this nextExpression: this step
     ]
-    kwParts2 = kwParts unpackOrPANIC
+    kwPartsMaybe = kwParts
+    kwParts2 = | kwPartsMaybe
+      | null => TO DO: "Expected keyword declaration arguments"
+      |=> kwPartsMaybe
 
     returnType = getReturnType do
 
-    .match: TokenType.Assign, ifFalse: [
-      .restoreFrom: savePosition
-      ^ .nextExpression: .step
+    this match: TokenType.Assign, ifFalse: [
+      this restoreFrom: savePosition
+      ^ this nextExpression: this step
     ]
     // Int a::Int b::Int ->? = ^[]
 
-    isSingleExpr = .peek kind != TokenType.OpenBracket
-    body = .parseBodyOrSingleExpr
+    isSingleExpr = this peek kind != TokenType.OpenBracket
+    body = this parseBodyOrSingleExpr
     kwName = kwParts2 nameParts joinWith: "__" transform: [
       it
     ]
     msgDecl = MessageDecl
+      token: tok
       receiver: receiverType
       name: kwName
       args: kwParts2 args
       returnType: returnType
-      token: tok
       body: body
       isSingleExpr: isSingleExpr
       isConstructor: isConstructor
@@ -124,32 +130,32 @@ mut Parser
     // Int +^ a::Int -> Int=
 
     // if its not binary declaration then parse expression
-    arg = .step
+    arg = this step
     isArgName =
       (arg kind == TokenType.IdentifierDoubleColon) ||
       (arg kind == TokenType.IdentifierColon)
     isArgName ifFalse: [
-      .restoreFrom: savePosition
-      ^.nextExpression: .step
+      this restoreFrom: savePosition
+      ^this nextExpression: this step
     ]
-    argType = .parseType
+    argType = this parseType
 
 
     returnType = getReturnType do
     name = tok2 lexeme
 
-    .matchAssert: TokenType.Assign
+    this matchAssert: TokenType.Assign
     // Int inc ->? = ^[]
 
-    isSingleExpr = .peek kind != TokenType.OpenBracket
-    body = .parseBodyOrSingleExpr
+    isSingleExpr = this peek kind != TokenType.OpenBracket
+    body = this parseBodyOrSingleExpr
 
     msgDecl = MessageDecl
+      token: tok
       receiver: receiverType
       name: name
       args: {(NameAndAstType name: arg lexeme astType: argType)}
       returnType: returnType
-      token: tok
       body: body
       isSingleExpr: isSingleExpr
       isConstructor: isConstructor
@@ -158,116 +164,138 @@ mut Parser
     msgDecl
   ]
   |=> [
-    .restoreFrom: savePosition
-    ^.nextExpression: .step
+    this restoreFrom: savePosition
+    ^this nextExpression: this step
   ]
 
   ^ result
 ]
 
 extend mut Parser [
-  on parseExtendBlock(tok): Token -> ExtendDecl = [
-    receiverType = .parseType
+  on parseConstructorGroup(tok): Token -> ExtendDecl = [
+    receiverType = this parseType
+    this matchAssert: TokenType.OpenBracket
 
-    .matchAssert: TokenType.OpenBracket
-
-    decls = List(MessageDecl) val: {}, toMut
+    decls::mut List::MessageDecl = {}!
     [
-      .peek kind == TokenType.CloseBracket ifTrue: [
-        .step
+      this peek kind == TokenType.CloseBracket ifTrue: [
+        this step
         false
       ] ifFalse: [
-        onTok = .matchAssert: TokenType.On
-        decls add: (.parseMessageDeclForReceiver: receiverType token: onTok isConstructor: false)
+        onTok = this matchAssert: TokenType.On
+        decls add: (this parseMessageDeclForReceiver: receiverType token: onTok isConstructor: true)
         true
       ]
     ] whileTrue: []
 
-    ^ ExtendDecl receiver: receiverType messages: decls toList token: tok
+    ^ ExtendDecl token: tok receiver: receiverType messages: decls toList
+  ]
+
+  on parseExtendBlock(tok): Token -> ExtendDecl = [
+    receiverType = this parseType
+
+    this matchAssert: TokenType.OpenBracket
+
+    decls::mut List::MessageDecl = {}!
+    [
+      this peek kind == TokenType.CloseBracket ifTrue: [
+        this step
+        false
+      ] ifFalse: [
+        onTok = this matchAssert: TokenType.On
+        decls add: (this parseMessageDeclForReceiver: receiverType token: onTok isConstructor: false)
+        true
+      ]
+    ] whileTrue: []
+
+    ^ ExtendDecl token: tok receiver: receiverType messages: decls toList
   ]
 
   on parseMessageDeclForReceiver(receiverType): AstType2 token: Token isConstructor: Bool -> MessageDecl = [
     getReturnType = [
-      .match: TokenType.ReturnArrow, ifTrue: [
-        .parseType
+      this match: TokenType.ReturnArrow, ifTrue: [
+        this parseType
       ] ifFalse: [null]
     ]
 
-    tok2 = .step
+    tok2 = this step
     result = | tok2 kind
     | TokenType.Identifier => [
       kwSavePoint = current
-      kwParts = .parseKeywordDeclArgsFrom: tok2
+      kwParts = this parseKeywordDeclArgsFrom: tok2
 
       | kwParts
       | null => [
-        .restoreFrom: kwSavePoint
+        this restoreFrom: kwSavePoint
         returnType = getReturnType do
         name = tok2 lexeme
 
-        .matchAssert: TokenType.Assign
-        isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr
+        this matchAssert: TokenType.Assign
+        isSingleExpr = this peek kind != TokenType.OpenBracket
+        body = this parseBodyOrSingleExpr
 
         MessageDecl
-          receiver: receiverType :name args: {} :returnType :token :body :isSingleExpr :isConstructor
+          token: token receiver: receiverType name: name args: {} returnType: returnType body: body isSingleExpr: isSingleExpr isConstructor: isConstructor
 
       ]
       |=> [
         returnType = getReturnType do
 
-        .matchAssert: TokenType.Assign
+        this matchAssert: TokenType.Assign
 
-        isSingleExpr = .peek kind != TokenType.OpenBracket
-        body = .parseBodyOrSingleExpr
+        isSingleExpr = this peek kind != TokenType.OpenBracket
+        body = this parseBodyOrSingleExpr
         kwName = kwParts nameParts joinWith: "__" transform: [
           it
         ]
 
         MessageDecl
-          receiver: receiverType name: kwName args: kwParts args :returnType :token :body :isSingleExpr :isConstructor
+          token: token receiver: receiverType name: kwName args: kwParts args returnType: returnType body: body isSingleExpr: isSingleExpr isConstructor: isConstructor
       ]
     ]
     | TokenType.IdentifierDoubleColon | TokenType.IdentifierColon => [
-      kwParts = .parseKeywordDeclArgsFrom: tok2
+      kwParts = this parseKeywordDeclArgsFrom: tok2
       kwParts == null ifTrue: [
         ^ TO DO: "keyword message declaration expected after `on`"
       ]
-      kwParts2 = kwParts unpackOrPANIC
+      kwPartsMaybe = kwParts
+      kwParts2 = | kwPartsMaybe
+        | null => TO DO: "Expected keyword declaration arguments"
+        |=> kwPartsMaybe
 
       returnType = getReturnType do
 
-      .matchAssert: TokenType.Assign
+      this matchAssert: TokenType.Assign
 
-      isSingleExpr = .peek kind != TokenType.OpenBracket
-      body = .parseBodyOrSingleExpr
+      isSingleExpr = this peek kind != TokenType.OpenBracket
+      body = this parseBodyOrSingleExpr
       kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
       ]
       MessageDecl
-          receiver: receiverType name: kwName args: kwParts2 args :returnType :token :body :isSingleExpr :isConstructor
+          token: token receiver: receiverType name: kwName args: kwParts2 args returnType: returnType body: body isSingleExpr: isSingleExpr isConstructor: isConstructor
     ]
     | TokenType.BinarySymbol => [
-      arg = .step
+      arg = this step
       isArgName =
         (arg kind == TokenType.IdentifierDoubleColon) ||
         (arg kind == TokenType.IdentifierColon)
       isArgName ifFalse: [
         ^ TO DO: "binary message declaration expected after `on`"
       ]
-      argType = .parseType
+      argType = this parseType
 
       returnType = getReturnType do
       name = tok2 lexeme
 
-      .matchAssert: TokenType.Assign
+      this matchAssert: TokenType.Assign
 
-      isSingleExpr = .peek kind != TokenType.OpenBracket
-      body = .parseBodyOrSingleExpr
+      isSingleExpr = this peek kind != TokenType.OpenBracket
+      body = this parseBodyOrSingleExpr
       args = {(NameAndAstType name: arg lexeme astType: argType)}
 
       MessageDecl
-          receiver: receiverType :name :args :returnType :token :body :isSingleExpr :isConstructor
+          token: token receiver: receiverType name: name args: args returnType: returnType body: body isSingleExpr: isSingleExpr isConstructor: isConstructor
     ]
     |=> [
       TO DO: "message declaration expected after `on`"
@@ -290,18 +318,24 @@ extend mut Parser [
     args::mut List::NameAndAstType = {}!
     nameParts::mut List(String) = {}!
 
-    firstArg = .parseKeywordDeclArgFrom: firstTok
+    firstArg = this parseKeywordDeclArgFrom: firstTok
     firstArg == null ifTrue: [^ null]
-    firstArg2 = firstArg unpackOrPANIC
+    firstArgMaybe = firstArg
+    firstArg2 = | firstArgMaybe
+      | null => TO DO: "Expected first keyword declaration argument"
+      |=> firstArgMaybe
     args add: firstArg2 arg
     nameParts add: firstArg2 namePart
 
     [
-      nextArg = .tryParseKeywordDeclArg
+      nextArg = this tryParseKeywordDeclArg
       nextArg == null ifTrue: [
         false
       ] ifFalse: [
-        nextArg2 = nextArg unpackOrPANIC
+        nextArgMaybe = nextArg
+        nextArg2 = | nextArgMaybe
+          | null => TO DO: "Expected keyword declaration argument"
+          |=> nextArgMaybe
         args add: nextArg2 arg
         nameParts add: nextArg2 namePart
         true
@@ -313,11 +347,11 @@ extend mut Parser [
 
   on tryParseKeywordDeclArg -> KeywordDeclArg? = [
     savePoint = current
-    tok = .step
-    arg = .parseKeywordDeclArgFrom: tok
+    tok = this step
+    arg = this parseKeywordDeclArgFrom: tok
     | arg
     | null => [
-      .restoreFrom: savePoint
+      this restoreFrom: savePoint
       ^ null
     ]
     |=> [^ arg]
@@ -327,9 +361,9 @@ extend mut Parser [
     ^| tok kind
     | TokenType.IdentifierDoubleColon => [
       externalName = tok lexeme
-      isTypeStart = .isTypeStartToken: .peek
+      isTypeStart = this isTypeStartToken: this peek
       isTypeStart ifTrue: [
-        argType = .parseType
+        argType = this parseType
         KeywordDeclArg
           arg: (NameAndAstType name: externalName astType: argType)
           namePart: externalName
@@ -339,19 +373,19 @@ extend mut Parser [
     ]
     | TokenType.IdentifierColon => [
       externalName = tok lexeme
-      nextTok = .peek
+      nextTok = this peek
       mut isOldRename = false
       nextTok kind == TokenType.IdentifierDoubleColon ifTrue: [
         localName = nextTok lexeme
-        firstChar = localName first
+        firstChar = localName at: 0
         isOldRename <- (firstChar isLowerCase) || (firstChar == '_')
       ]
 
       isOldRename ifTrue: [
-        localTok = .step
-        isTypeStart = .isTypeStartToken: .peek
+        localTok = this step
+        isTypeStart = this isTypeStartToken: this peek
         isTypeStart ifTrue: [
-          argType = .parseType
+          argType = this parseType
           KeywordDeclArg
             arg: (NameAndAstType name: localTok lexeme astType: argType)
             namePart: externalName
@@ -359,9 +393,9 @@ extend mut Parser [
           null
         ]
       ] ifFalse: [
-        isTypeStart = .isTypeStartToken: nextTok
+        isTypeStart = this isTypeStartToken: nextTok
         isTypeStart ifTrue: [
-          argType = .parseType
+          argType = this parseType
           KeywordDeclArg
             arg: (NameAndAstType name: externalName astType: argType)
             namePart: externalName
@@ -373,20 +407,20 @@ extend mut Parser [
     | TokenType.Identifier => [
       externalName = tok lexeme
 
-      mut ok = .match: TokenType.OpenParen
-      mut localTok = EOF_TOKEN
+      mut ok = this match: TokenType.OpenParen
+      mut localTok = Token eof
       ok ifTrue: [
-        localTok <- .peek
+        localTok <- this peek
         ok <- (localTok kind == TokenType.Identifier)
         ok ifTrue: [
-          .step
-          ok <- (.match: TokenType.CloseParen) && (.match: TokenType.Colon)
-          ok <- ok && (.isTypeStartToken: .peek)
+          this step
+          ok <- (this match: TokenType.CloseParen) && (this match: TokenType.Colon)
+          ok <- ok && (this isTypeStartToken: this peek)
         ]
       ]
 
       ok ifTrue: [
-        argType = .parseType
+        argType = this parseType
         KeywordDeclArg
           arg: (NameAndAstType name: localTok lexeme astType: argType)
           namePart: externalName

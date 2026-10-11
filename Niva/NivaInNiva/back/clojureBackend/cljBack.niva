@@ -20,7 +20,7 @@ type CljContext
   stateNames: mut Set(String)
   debug: Bool
   hotReload: Bool
-  debugEntries: mut List(CljDebugEntry)
+  debugEntries: mut Map(Int, CljDebugEntry)
   currentPackage: String
 
 type CljDebugEntry
@@ -36,7 +36,7 @@ constructor CljContext newDebug(debug): Bool -> CljContext =
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String hotReload(hotReload): Bool -> CljContext =
   CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
-    hotReload: hotReload debugEntries: {}! currentPackage: pkg
+    hotReload: hotReload debugEntries: #{}! currentPackage: pkg
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
@@ -55,13 +55,17 @@ CljContext isStateName(name): String -> Bool = [
 ]
 
 String cljDebugQuoted -> String =
-  "\"" + (.replace: "\\" with: "\\\\", replace: "\"" with: "\\\"") + "\""
+  "\"" + (this replace: "\\" with: "\\\\", replace: "\"" with: "\\\"") + "\""
 
 CljContext addDebugEntry(generatedLine): Int endLine: Int token: Token method: String -> Unit = [
   file = token file path
   (debug && (file != "")) ifTrue: [
-    debugEntries add: (CljDebugEntry :generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line :method)
+    this debugEntries at: generatedLine put: (CljDebugEntry generatedLine: generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line method: method)
   ]
+]
+
+CljContext orderedDebugEntries -> List(CljDebugEntry) = [
+  (this debugEntries values toList) sortedBy: [it generatedLine]
 ]
 
 String cljLineCount -> Int = [
@@ -78,8 +82,9 @@ CljDebugEntry toCljSourceMapEntries(bodyLineOffset): Int -> List(String) = [
   entries::mut List(String) = {}!
   mut line = generatedLine
   [line <= generatedEndLine] whileTrue: [
-    entries add: ("[\"main.clj\" " + (line + bodyLineOffset) toString + "] [" +
-      (sourceFile cljDebugQuoted) + " " + sourceLine toString + " " + (method cljDebugQuoted) + "]")
+    entry = "[\"main.clj\" " + (line + bodyLineOffset) toString + "] [" +
+      (sourceFile cljDebugQuoted) + " " + sourceLine toString + " " + (method cljDebugQuoted) + "]"
+    entries add: entry
     line <- line + 1
   ]
   ^ entries toList
@@ -96,14 +101,16 @@ CljScope copy -> CljScope = [
   ^ s
 ]
 
-CljScope isMut(name): String -> Bool = mutLocals contains: name
+CljScope isMut(name): String -> Bool = [
+  ^ this mutLocals contains: name
+]
 
 // single `(let [name value ...])` binding pair
 type CljBinding name: String value: String
 
 extend String [
   on cljSanitizeIdent -> String =
-        .replace: ".." with: "rangeTo"
+        this replace: ".." with: "rangeTo"
         ,replace: "?" with: "_QM"
 
   on cljGeneratedNamespace -> String = "niva.generated." + this
@@ -115,38 +122,40 @@ extend String [
 
 ]
 
-IrPackage cljGeneratedNamespace -> String = name cljGeneratedNamespace
+IrPackage cljGeneratedNamespace -> String = this name cljGeneratedNamespace
 
-IrPackage cljGeneratedPath -> String = name cljGeneratedPath
+IrPackage cljGeneratedPath -> String = this name cljGeneratedPath
 
 // mangled function name derived directly from IR
-IrFunction cljFuncNameFromIr -> String = .id cljFuncIdToName
+IrFunction cljFuncNameFromIr -> String = this id cljFuncIdToName
 
 // convert ir function id to clojure name
 // pkg.recv.name -> pkg__recv__name
 String cljFuncIdToName -> String =
-  .split: ".", joinWith: "__" transform: [it cljSanitizeIdent]
+  this split: ".", joinWith: "__" transform: [it cljSanitizeIdent]
 
 
 extend String [
   // `clojure.string.bind` -> `clojure/string`
-  on cljBindNamespace -> String = .replace: "/" with: "."
+  on cljBindNamespace -> String = this replace: "/" with: "."
 
   on stripCljPkgPrefix(prefix): String -> String = [
     pre = prefix + "_"
     preLen = pre count
-    ^ (.count >= preLen && ((.slice: 0..<preLen) == pre))
-        ifTrue: [.slice: preLen..< .count]
-        ifFalse: [this]
+    len = this count
+    ^ len >= preLen ifTrue: [
+      (this slice: 0..(preLen - 1)) == pre ifTrue: [this slice: preLen..(len - 1)] ifFalse: [this]
+    ] ifFalse: [this]
   ]
 
   on cljHasPrefix(prefix): String -> Bool = [
     prefixLen = prefix count
-    ^ (.count >= prefixLen) && ((.slice: 0..<prefixLen) == prefix)
+    len = this count
+    ^ len >= prefixLen ifTrue: [(this slice: 0..(prefixLen - 1)) == prefix] ifFalse: [false]
   ]
 
   on cljNormalizeTypeId -> String =
-    (.contains: "__") ifTrue: [.substringBefore: "__"] ifFalse: [this]
+    (this contains: "__") ifTrue: [this substringBefore: "__"] ifFalse: [this]
 
   on cljPadTo(width): Int -> String =
     this + (" " repeat: width - this count)
@@ -154,7 +163,7 @@ extend String [
 ]
 
 IrTypeRef coreFuncNameFromCljCall(name): String forMut(isMutable): Bool -> String = [
-  baseId = typeId cljNormalizeTypeId
+  baseId = this typeId cljNormalizeTypeId
   recvBase = baseId stripCljPkgPrefix: "core"
 
   // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
@@ -169,10 +178,10 @@ IrTypeRef coreFuncNameFromCljCall(name): String forMut(isMutable): Bool -> Strin
 
 // type mapping
 IrTypeRef isCljUnitType -> Bool =
-  (kind == IrTypeRefKind.Builtin) && (typeId cljNormalizeTypeId == "core_Unit")
+  (this kind == IrTypeRefKind.Builtin) && (this typeId cljNormalizeTypeId == "core_Unit")
 
 IrTypeRef cljTypeName -> String = [
-  baseId = typeId cljNormalizeTypeId
+  baseId = this typeId cljNormalizeTypeId
   // Error is an abstract core type the emitter replaces it for
   // Error throw \ throwWithMsg calls
   // TODO
@@ -183,23 +192,25 @@ IrTypeRef cljTypeName -> String = [
 
 IrTypeRef cljQualifiedTypeName(ctx): CljContext -> String = [
   baseName = this cljTypeName
-  owner = ownerPkg
+  owner = this ownerPkg
   canQualify = (ctx currentPackage != "") && (owner != "") &&
     (owner != "core") && (owner != ctx currentPackage)
-  canQualify ifTrue: [^ (owner cljGeneratedNamespace) + "/" + baseName]
-  ^ baseName
+  ^ canQualify ifTrue: [(owner cljGeneratedNamespace) + "/" + baseName] ifFalse: [baseName]
 ]
 
 // enum atoms use the generated enum Var instead of a plain keyword
 IrLiteralExpr cljLiteralExpr(ctx): CljContext -> String = [
-  isEnumAtom = (literal kind == IrLiteralKind.Atom) &&
-    (typeRef kind == IrTypeRefKind.Custom) &&
-    (typeRef ownerPkg != "")
-  isEnumAtom ifTrue: [
-    enumName = typeRef cljQualifiedTypeName: ctx
-    ^ enumName + "_" + (literal lexeme cljSanitizeIdent)
+  exprLiteral = this literal
+  exprType = this typeRef
+  isEnumAtom = (exprLiteral kind == IrLiteralKind.Atom) &&
+    (exprType kind == IrTypeRefKind.Custom) &&
+    (exprType ownerPkg != "")
+  ^ isEnumAtom ifTrue: [
+    enumName = exprType cljQualifiedTypeName: ctx
+    enumName + "_" + (exprLiteral lexeme cljSanitizeIdent)
+  ] ifFalse: [
+    exprLiteral toCljLiteral
   ]
-  ^ literal toCljLiteral
 ]
 
 // ---------------------------------------------------------------------------
@@ -235,20 +246,31 @@ String toCljRawStringLiteral -> String = [
   ^ "\"" + sb toString + "\""
 ]
 
-IrLiteral toCljLiteral -> String =
-  | kind
-  | IrLiteralKind.Null   => "nil"
-  | IrLiteralKind.Unit   => ":unit"
-  | IrLiteralKind.Bool   => lexeme
-  | IrLiteralKind.Int    => lexeme
-  | IrLiteralKind.Double => lexeme
-  | IrLiteralKind.Float  => lexeme endsWith: "f",
-                                  ifTrue:  [lexeme dropLast: 1]
-                                 ifFalse: [lexeme]
-  | IrLiteralKind.Char   => lexeme toCljCharLiteral
-  | IrLiteralKind.String    => lexeme
-  | IrLiteralKind.RawString => lexeme toCljRawStringLiteral
-  | IrLiteralKind.Atom   => ":" + lexeme
+IrLiteral toCljLiteral -> String = [
+    literalKind = this kind
+    literalText = this lexeme
+    (literalKind == IrLiteralKind.Null) ifTrue: ["nil"] ifFalse: [
+      (literalKind == IrLiteralKind.Unit) ifTrue: [":unit"] ifFalse: [
+        (literalKind == IrLiteralKind.Bool) ifTrue: [literalText] ifFalse: [
+          (literalKind == IrLiteralKind.Int) ifTrue: [literalText] ifFalse: [
+            (literalKind == IrLiteralKind.Double) ifTrue: [literalText] ifFalse: [
+              (literalKind == IrLiteralKind.Float) ifTrue: [
+                literalText endsWith: "f", ifTrue: [literalText dropLast: 1] ifFalse: [literalText]
+              ] ifFalse: [
+                (literalKind == IrLiteralKind.Char) ifTrue: [literalText toCljCharLiteral] ifFalse: [
+                  (literalKind == IrLiteralKind.String) ifTrue: [literalText] ifFalse: [
+                    (literalKind == IrLiteralKind.RawString) ifTrue: [literalText toCljRawStringLiteral] ifFalse: [
+                      ":" + literalText
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
 
 String toCljCharLiteral -> String = [
   content = (this drop: 1) dropLast: 1
@@ -268,4 +290,5 @@ Int cljIndent -> String = "  " repeat: this
 StringBuilder appendCljIndent(level): Int line: String -> Unit = [
   this append: (level cljIndent)
   this appendLine: line
+  ()
 ]

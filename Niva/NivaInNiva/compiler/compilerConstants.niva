@@ -1,7 +1,9 @@
-static CLJ_PROJECT_DEPS_SOURCE = "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
-static CLJ_NATIVE_DEPS_SOURCE = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+type CompilerConstants
 
-static NIVA_CORE_SOURCE = """
+constructor CompilerConstants cljProjectDepsSource -> String = "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+constructor CompilerConstants cljNativeDepsSource -> String = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+
+constructor CompilerConstants nivaCoreSource -> String = """
 (ns niva.core
   (:refer-clojure :exclude [filter first last random reduce replace])
   (:require [clojure.string :as str] [clojure.pprint :refer [pprint]])
@@ -486,6 +488,7 @@ static NIVA_CORE_SOURCE = """
 (defn List__map [s f] (mapv f s))
 (defn List__mapIndexed [s f] (mapv f (range) s))
 (defn List__filter [s predicate] (filterv predicate s))
+(defn List__sortedBy [s key-fn] (vec (sort-by key-fn s)))
 
 (defn List__at [s i]
   (when (or (neg? i) (>= i (count s)))
@@ -702,7 +705,7 @@ static NIVA_CORE_SOURCE = """
   sb)
 """ trimIndent
 
-static JVM_HOST_SOURCE = """
+constructor CompilerConstants jvmHostSource -> String = """
 (ns niva.hot-reload.host
   (:require [clj-reload.core :as reload]
             [clojure.java.io :as io]))
@@ -992,7 +995,7 @@ static JVM_HOST_SOURCE = """
       (watch! project-root on-change runtime-name))))
 """
 
-static NATIVE_BUILD_SOURCE = """
+constructor CompilerConstants nativeBuildSource -> String = """
                         (ns build (:require [clojure.tools.build.api :as b]))
 
                         (def class-dir "target/classes")

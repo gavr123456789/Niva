@@ -5,6 +5,10 @@ type GoSymbolTable
    funcNames: Map(String, String)
 packageNames: Map(String, String)
    fileNames: Map(String, String)
+ fieldNames: Map(String, Set(String))
+constructorFieldTypes: Map(String, List(IrTypeRef))
+unionTypeIds: Set(String)
+unionDefs: Map(String, IrUnionDef)
 
 type GoImportPlan
   importsByFile: Map(String, Set(String))
@@ -44,18 +48,27 @@ type GoScope
                locals: mut Set(String)
         pointerLocals: mut Set(String)
 nullablePointerLocals: mut Set(String)
+narrowedNullablePointerLocals: mut Set(String)
+ implicitFields: mut Set(String)
+implicitUnionFields: mut Set(String)
 
-constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()!
+constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
   newPointers::mut Set(String) = #()!
   newNullablePointers::mut Set(String) = #()!
+  newNarrowedNullablePointers::mut Set(String) = #()!
+  newImplicitFields::mut Set(String) = #()!
+  newImplicitUnionFields::mut Set(String) = #()!
   newLocals addAll: locals
   newPointers addAll: pointerLocals
   newNullablePointers addAll: nullablePointerLocals
+  newNarrowedNullablePointers addAll: narrowedNullablePointerLocals
+  newImplicitFields addAll: implicitFields
+  newImplicitUnionFields addAll: implicitUnionFields
 
-  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers
+  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields
 ]
 
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
@@ -66,11 +79,25 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
       | null => [TO DO: "bug: Go emitResult: missing result for non-Unit return"]
       |=> [
         emitResult token printGoLine-intoSb: sb
-        exprStr = emitResult toGoExpr: this :scope
-        line = hasErrors
-          ifTrue:  ["return " + exprStr + ", nil"]
-         ifFalse: ["return " + exprStr]
-        sb appendIndent: indent line: line
+        emitResult isGoBoolConditional ifTrue: [
+          this emitBoolConditionalResult: emitResult sb: sb indent: indent retType: retType scope: scope
+        ] ifFalse: [
+          isNothingType = (emitResult typeRef typeId goNormalizeTypeId) == "core_Nothing"
+          isNullValue = emitResult isGoNullLiteral
+          isNothing = isNothingType && (isNullValue not)
+          isNothing ifTrue: [
+            sb appendIndent: indent line: (emitResult toGoStatement: this scope: scope returnType: retType)
+            sb appendIndent: indent line: "panic(\"unreachable\")"
+          ] ifFalse: [
+            exprStr = (this needsGoNullablePointerFor: retType)
+              ifTrue: [emitResult toGoNullableInitExpr: this scope: scope targetType: retType]
+              ifFalse: [emitResult toGoExpr: this scope: scope]
+            line = hasErrors
+              ifTrue:  ["return " + exprStr + ", nil"]
+             ifFalse: ["return " + exprStr]
+            sb appendIndent: indent line: line
+          ]
+        ]
       ]
     ]
     ifTrue: [
@@ -79,33 +106,44 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
       |=> [
         emitResult token printGoLine-intoSb: sb
         sb appendIndent: indent
-               line: (emitResult toGoStatement: this :scope) ]
+               line: (emitResult toGoStatement: this scope: scope returnType: retType) ]
     ]
+]
+
+GoContext emitBlockResult(block): IrBlock sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
+  blockResult = block result
+  hasTrailingReturn = block hasTrailingReturn
+  | blockResult
+  | null => [
+      hasTrailingReturn ifFalse: [
+        this emitResult: null sb: sb indent: indent retType: retType scope: scope
+      ]
+    ]
+  |=> [this emitResult: blockResult sb: sb indent: indent retType: retType scope: scope]
 ]
 
 extend String [
   on goNormalizeTypeId -> String = [
-    hasGeneric = .contains: "__"
+    hasGeneric = this contains: "__"
     result = hasGeneric
-        ifTrue: [.substringBefore: "__"]
+        ifTrue: [this substringBefore: "__"]
        ifFalse: [this]
-    this == result ifFalse: [
-      "goNormalizeTypeId: before = $this, after = $result" // log
-    ]
     ^ result
   ]
 
   on stripPkgPrefix(prefix): String -> String = [
     pre = prefix + "_"
     preLen = pre count
-    ^ (.count >= preLen && ((.slice: 0..<preLen) == pre))
-        ifTrue:  [.slice: preLen..< .count]
-       ifFalse: [this]
+    len = this count
+    ^ len >= preLen ifTrue: [
+      (this slice: 0..(preLen - 1)) == pre ifTrue: [this slice: preLen..(len - 1)] ifFalse: [this]
+    ] ifFalse: [this]
   ]
 
   on hasPrefix(prefix): String -> Bool = [
     prefixLen = prefix count
-    ^ (.count >= prefixLen) && ((.slice: 0..<prefixLen) == prefix)
+    len = this count
+    ^ len >= prefixLen ifTrue: [(this slice: 0..(prefixLen - 1)) == prefix] ifFalse: [false]
   ]
 
   on addToGoImports(imports): mut Set(String) -> Unit = [
@@ -126,11 +164,6 @@ IrTypeRef coreFuncNameFromCall(name): String forMut(isMutable): Bool -> String =
         ifTrue: ["Any__echo"]
         ifFalse: [recvBaseSafe + "__" + normalized]
 
-  name == x ifFalse: [
-    "coreFuncNameFromCall: was: $name became $x"
-  ] ifTrue: ["coreFuncNameFromCall: no changes"
-            ]
-
   ^ x
 
 ]
@@ -140,13 +173,18 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
   inputType = input typeRef
   hasErrors = inputType errors isNotEmpty
   isNullable = inputType nullable
+  msgNameMaybe = msgName
+  isOrPanic = | msgNameMaybe
+    | null => false
+    |=> (msgNameMaybe == "orPANIC") || (msgNameMaybe == "unpackOrPANIC")
   inputHasNoValue = inputType isGoUnitType && (isNullable not)
   inputStr = input toGoExpr: ctx scope: scope
   outputType = typeRef
+  outputHasErrors = outputType errors isNotEmpty
 
   sb = StringBuilder new
   sb append: "func()"
-  sb append: (" " + (outputType toGoType: ctx))
+  sb append: (outputType goReturnTypes: ctx)
   sb appendLine: " {"
 
   valueName = "__tryValue"
@@ -155,9 +193,11 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
     inputHasNoValue
       ifTrue: [sb appendIndent: 1 line: (errName + " := " + inputStr)]
       ifFalse: [sb appendIndent: 1 line: (valueName + ", " + errName + " := " + inputStr)]
-    errorReturn = outputType isGoUnitType
-      ifTrue: ["return " + errName]
-      ifFalse: ["return " + (outputType goZeroValue: ctx) + ", " + errName]
+    errorReturn = isOrPanic ifTrue: ["panic(" + errName + ")"] ifFalse: [
+      outputType isGoUnitType
+        ifTrue: ["return " + errName]
+        ifFalse: ["return " + (outputType goZeroValue: ctx) + ", " + errName]
+    ]
     sb appendIndent: 1 line: ("if " + errName + " != nil { " + errorReturn + " }")
   ] ifFalse: [
     sb appendIndent: 1 line: (valueName + " := " + inputStr)
@@ -166,16 +206,16 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
   isNullable ifTrue: [
     sb appendIndent: 1 line: ("if " + valueName + " == nil { panic(\"try on null\") }")
     outputType isGoUnitType
-      ifTrue: [sb appendIndent: 1 line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
+      ifTrue: [sb appendIndent: 1 line: (outputHasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
       ifFalse: [
-        inputType isGoNullableReferenceValue
-          ifTrue: [sb appendIndent: 1 line: ("return " + valueName + (hasErrors ifTrue: [", nil"] ifFalse: [""]))]
-          ifFalse: [sb appendIndent: 1 line: ("return *" + valueName + (hasErrors ifTrue: [", nil"] ifFalse: [""]))]
+        (ctx isGoNullableReferenceValue: inputType)
+          ifTrue: [sb appendIndent: 1 line: ("return " + valueName + (outputHasErrors ifTrue: [", nil"] ifFalse: [""]))]
+          ifFalse: [sb appendIndent: 1 line: ("return *" + valueName + (outputHasErrors ifTrue: [", nil"] ifFalse: [""]))]
       ]
   ] ifFalse: [
     outputType isGoUnitType
-      ifTrue: [sb appendIndent: 1 line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
-      ifFalse: [sb appendIndent: 1 line: ("return " + valueName + (hasErrors ifTrue: [", nil"] ifFalse: [""]))]
+      ifTrue: [sb appendIndent: 1 line: (outputHasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
+      ifFalse: [sb appendIndent: 1 line: ("return " + valueName + (outputHasErrors ifTrue: [", nil"] ifFalse: [""]))]
   ]
 
   sb append: "}()"
@@ -186,8 +226,96 @@ GoContext goTypeNameFor(typeId): String -> String = [
   baseId = typeId goNormalizeTypeId
   existing = symbols typeNames at: baseId
   ^ | existing
-    | null => [TO DO: "Go typeId not registered in symbol table: " + baseId]
+    | null => ""
     |=> existing
+]
+
+GoContext goFieldNamesFor(typeId): String -> Set(String) = [
+  resultFields::mut Set(String) = #()!
+  normalizedTypeId = typeId goNormalizeTypeId
+  symbols fieldNames forEach: [key, names ->
+    (key == normalizedTypeId) ifTrue: [resultFields addAll: names]
+  ]
+  ^ resultFields toSet
+]
+
+GoContext isGoUnionType(typeId): String -> Bool =
+  symbols unionTypeIds contains: (typeId goNormalizeTypeId)
+
+GoContext isGoNullableReferenceValue(typeRef): IrTypeRef -> Bool =
+  (typeRef isGoNullableReferenceValue) ||
+    ((typeRef kind == IrTypeRefKind.Custom) && (this isGoUnionType: typeRef typeId))
+
+GoContext needsGoNullablePointerFor(typeRef): IrTypeRef -> Bool =
+  typeRef nullable && ((this isGoNullableReferenceValue: typeRef) not)
+
+GoContext goFieldGetterName(fieldName): String -> String =
+  "nivaField__" + (fieldName toSafeGoIdent)
+
+GoSymbolTable collectUnionBranchTypes(typeId): String seenUnions: mut Set(String) concreteTypes: mut Set(String) -> Unit = [
+  normalizedTypeId = typeId goNormalizeTypeId
+  (seenUnions contains: normalizedTypeId) ifFalse: [
+    seenUnions add: normalizedTypeId
+    unionMaybe = unionDefs at: normalizedTypeId
+    | unionMaybe
+    | null => [concreteTypes add: normalizedTypeId]
+    |=> [
+      unionMaybe branches forEach: [branch ->
+        branchTypeId = unionMaybe pkgId + "_" + branch name
+        branch isInclude
+          ifTrue: [this collectUnionBranchTypes: branchTypeId seenUnions: seenUnions concreteTypes: concreteTypes]
+          ifFalse: [concreteTypes add: (branchTypeId goNormalizeTypeId)]
+      ]
+    ]
+  ]
+]
+
+GoSymbolTable concreteUnionBranchTypeIds(typeId): String -> List(String) = [
+  seenUnions::mut Set(String) = #()!
+  concreteTypes::mut Set(String) = #()!
+  this collectUnionBranchTypes: typeId seenUnions: seenUnions concreteTypes: concreteTypes
+  ^ concreteTypes toList
+]
+
+GoSymbolTable collectContainingUnionTypeIds(typeId): String seen: mut Set(String) result: mut Set(String) -> Unit = [
+  normalizedTypeId = typeId goNormalizeTypeId
+  (seen contains: normalizedTypeId) ifFalse: [
+    seen add: normalizedTypeId
+  unionDefs forEach: [parentId, parentDef ->
+    includesType = parentDef branches any: [branch ->
+      branch isInclude && ((parentDef pkgId + "_" + branch name goNormalizeTypeId) == normalizedTypeId)
+    ]
+    includesType ifTrue: [
+      result add: parentId
+      this collectContainingUnionTypeIds: parentId seen: seen result: result
+    ]
+  ]
+  ]
+]
+
+GoSymbolTable containingUnionTypeIds(typeId): String -> List(String) = [
+  seen::mut Set(String) = #()!
+  result::mut Set(String) = #()!
+  this collectContainingUnionTypeIds: typeId seen: seen result: result
+  ^ result toList sortedBy: [it]
+]
+
+IrFunction goSymbolKey -> String = (id substringBefore: "__ctor_") + "__arity_" + (args count toString)
+
+IrCall goSymbolKey(id): String -> String = [
+  baseId = isConstructor ifTrue: [id substringBefore: "__ctor_"] ifFalse: [id]
+  baseId + "__arity_" + (paramTypes count toString)
+]
+
+IrCall toGoNullableOptionExpr(ctx): GoContext call(callExpr): String -> String = [
+  nullableGoType = typeRef toGoType: ctx
+  baseGoType = typeRef goBaseType: ctx
+  optionValue = (ctx needsGoNullablePointerFor: typeRef)
+    ifTrue: ["core.NewNullable(" + baseGoType + "(__nivaOption.Value))"]
+    ifFalse: ["__nivaOption.Value"]
+  ^ "func() " + nullableGoType + " { __nivaOption := " + callExpr +
+    "; if !__nivaOption.HasValue { return " + (typeRef goZeroValue: ctx) +
+    " }; return " + optionValue + " }()"
 ]
 
 IrFunction goFuncNameFromIr -> String = [
@@ -211,13 +339,13 @@ IrFunction goFuncNameFromIr -> String = [
 
 extend GoContext [
   on goFuncNameForFn(fn): IrFunction -> String = [
-    ^ this goFuncNameFor: fn id
+    ^ this goFuncNameFor: (fn goSymbolKey)
   ]
 
   on goFuncNameFor(funcId): String -> String = [
     existing = symbols funcNames at: funcId
     ^ | existing
-      | null => [TO DO: "Go funcId not registered: " + funcId]
+      | null => ""
       |=> existing
   ]
 
@@ -246,51 +374,192 @@ Int goIndent -> String = [
 StringBuilder appendIndent(level): Int line: String -> Unit = [
   this append: (level goIndent)
   this appendLine: line
+  ()
 ]
+
+GoContext emitLambdaBranchResult(branch): IrExpr sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
+  | branch
+  | IrLambda => [
+    branchScope = scope copy
+    branch args forEach: [arg ->
+      branchScope locals add: arg name
+      (this needsGoNullablePointerFor: arg typeRef) ifTrue: [branchScope nullablePointerLocals add: arg name]
+    ]
+    branch body blockToGoStatements: this scope: branchScope sb: sb indent: indent returnType: retType
+    branchResult = branch body result
+    bodyHasTrailingReturn = branch body hasTrailingReturn
+    | branchResult
+    | null => [
+      bodyHasTrailingReturn ifFalse: [
+        retType isGoUnitType
+          ifTrue: [sb appendIndent: indent line: "return"]
+          ifFalse: [sb appendIndent: indent line: "panic(\"missing branch result\")"]
+      ]
+    ]
+    |=> [
+      this emitResult: branchResult sb: sb indent: indent retType: retType scope: branchScope
+      (retType isGoUnitType && (bodyHasTrailingReturn not)) ifTrue: [
+        sb appendIndent: indent line: "return"
+      ]
+    ]
+  ]
+  |=> sb appendIndent: indent line: "panic(\"invalid boolean branch\")"
+]
+
+GoContext emitBoolConditionalResult(call): IrExpr sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
+  | call
+  | IrCall => [
+    args = call args
+    condition = args first toGoExpr: this scope: scope
+    msgNameMaybe = call msgName
+    msgNameLocal = | msgNameMaybe
+      | null => ""
+      |=> msgNameMaybe
+    isFalseFirst = (msgNameLocal == "ifFalse_ifTrue") || (msgNameLocal == "ifFalse__ifTrue")
+    trueBranch = isFalseFirst ifTrue: [args at: 2] ifFalse: [args at: 1]
+    falseBranch = isFalseFirst ifTrue: [args at: 1] ifFalse: [args at: 2]
+    sb appendIndent: indent line: ("if " + condition + " {")
+    this emitLambdaBranchResult: trueBranch sb: sb indent: (indent + 1) retType: retType scope: scope
+    sb appendIndent: indent line: "} else {"
+    this emitLambdaBranchResult: falseBranch sb: sb indent: (indent + 1) retType: retType scope: scope
+    sb appendIndent: indent line: "}"
+  ]
+  |=> []
+]
+
+GoContext emitBoolMatchBranch(branchCase): IrMatchCase sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope -> Unit = [
+  branchScope = scope copy
+  branchBlock = branchCase body
+  branchBlock blockToGoStatements: this scope: branchScope sb: sb indent: indent returnType: returnType
+  branchResultMaybe = branchBlock result
+  | branchResultMaybe
+  | null => []
+  |=> branchResultMaybe emitAsStmt: this scope: branchScope sb: sb indent: indent returnType: returnType
+]
+
+GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope -> Unit = [
+  mut trueCase::IrMatchCase? = null
+  mut falseCase::IrMatchCase? = null
+  matchExpr cases forEach: [branchCase ->
+    conditionStr = branchCase condition toGoExpr: this scope: scope
+    conditionStr == "true" ifTrue: [trueCase <- branchCase]
+    conditionStr == "false" ifTrue: [falseCase <- branchCase]
+  ]
+
+  subjectExpr = matchExpr subject toGoExpr: this scope: scope
+  trueCaseMaybe = trueCase
+  falseCaseMaybe = falseCase
+  elseBranchMaybe = matchExpr elseBranch
+
+  trueCaseMaybe != null ifTrue: [
+    trueBranchCase::IrMatchCase = | trueCaseMaybe
+      | null => TO DO: "Missing true case in boolean match"
+      |=> trueCaseMaybe
+    sb appendIndent: indent line: ("if " + subjectExpr + " {")
+    this emitBoolMatchBranch: trueBranchCase sb: sb indent: (indent + 1) returnType: returnType scope: scope
+    falseCaseMaybe != null ifTrue: [
+      falseBranchCase::IrMatchCase = | falseCaseMaybe
+        | null => TO DO: "Missing false case in boolean match"
+        |=> falseCaseMaybe
+      sb appendIndent: indent line: "} else {"
+      this emitBoolMatchBranch: falseBranchCase sb: sb indent: (indent + 1) returnType: returnType scope: scope
+    ] ifFalse: [
+      | elseBranchMaybe
+      | null => []
+      |=> [
+        sb appendIndent: indent line: "} else {"
+        elseScope = scope copy
+        elseBranchMaybe blockToGoStatements: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+        elseResultMaybe = elseBranchMaybe result
+        | elseResultMaybe
+        | null => []
+        |=> elseResultMaybe emitAsStmt: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+      ]
+    ]
+    sb appendIndent: indent line: "}"
+  ] ifFalse: [
+    falseCaseMaybe != null ifTrue: [
+      falseBranchCase::IrMatchCase = | falseCaseMaybe
+        | null => TO DO: "Missing false case in boolean match"
+        |=> falseCaseMaybe
+      sb appendIndent: indent line: ("if !(" + subjectExpr + ") {")
+      this emitBoolMatchBranch: falseBranchCase sb: sb indent: (indent + 1) returnType: returnType scope: scope
+      | elseBranchMaybe
+      | null => []
+      |=> [
+        sb appendIndent: indent line: "} else {"
+        elseScope = scope copy
+        elseBranchMaybe blockToGoStatements: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+        elseResultMaybe = elseBranchMaybe result
+        | elseResultMaybe
+        | null => []
+        |=> elseResultMaybe emitAsStmt: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+      ]
+      sb appendIndent: indent line: "}"
+    ]
+  ]
+]
+
+IrExpr isGoBoolConditional -> Bool =
+  | this
+  | IrCall => [
+    msgNameMaybe = msgName
+    msgNameLocal = | msgNameMaybe
+      | null => ""
+      |=> msgNameMaybe
+    ((msgNameLocal == "ifTrue__ifFalse") || (msgNameLocal == "ifFalse_ifTrue") ||
+      (msgNameLocal == "ifFalse__ifTrue")) && (args count > 2)
+  ]
+  |=> false
 
 GoImportPlan importsForFile(fileKey): String -> List(String) = [
   imports = importsByFile at: fileKey
-  ^ imports unpack: [it toList] or: {}
+  ^ | imports
+    | null => {}
+    |=> imports toList
 ]
 
 extend IrTypeRef [
 
   on isGoNullableReferenceValue -> Bool =
-    | kind
-    | IrTypeRefKind.Function => true
-    | IrTypeRefKind.Builtin => (.isGoRefLike) || ((typeId goNormalizeTypeId) == "core_Any") || ((typeId goNormalizeTypeId) == "core_Error")
-    |=> false
+    (kind == IrTypeRefKind.Function) ||
+      ((kind == IrTypeRefKind.Builtin) && ((this isGoRefLike) || ((typeId goNormalizeTypeId) == "core_Any") || ((typeId goNormalizeTypeId) == "core_Error")))
 
   // Nullable simple types should be pointers in go
   // lists, maps, functions and interfaces can use nil
   on needsGoNullablePointer -> Bool =
-    nullable && (.isGoNullableReferenceValue not)
+    nullable && (this isGoNullableReferenceValue not)
 
   on isGoUnitType -> Bool =
-    (kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_Unit")
+    typeId goNormalizeTypeId == "core_Unit"
 
   on hasGoErrors -> Bool = errors isNotEmpty
 
   on goZeroValue(ctx): GoContext -> String = [
     ^ nullable ifTrue: ["nil"] ifFalse: [
-      | kind
-      | IrTypeRefKind.Builtin => [
+      kind == IrTypeRefKind.Builtin ifTrue: [
           baseId = typeId goNormalizeTypeId
-          | baseId
-          | "core_Int" | "core_Long" | "core_Int64" | "core_Double" | "core_Float" | "core_Char" => "0"
-          | "core_String"                                           => "\"\""
-          | "core_Bool"                                             => "false"
-          | "core_Unit"                                             => "core.UnitInstance"
-          |=> "nil"
-        ]
-      | IrTypeRefKind.Custom   => (ctx goTypeNameFor: (typeId goNormalizeTypeId)) + "{}"
-      | IrTypeRefKind.Function => "nil"
+          isZeroNumber = (baseId == "core_Int") || (baseId == "core_Long") ||
+            (baseId == "core_Int64") || (baseId == "core_Double") ||
+            (baseId == "core_Float") || (baseId == "core_Char")
+          isZeroNumber ifTrue: ["0"] ifFalse: [
+            baseId == "core_String" ifTrue: ["\"\""] ifFalse: [
+              baseId == "core_Bool" ifTrue: ["false"] ifFalse: [
+                baseId == "core_Unit" ifTrue: ["core.UnitInstance"] ifFalse: ["nil"]
+              ]
+            ]
+          ]
+        ] ifFalse: [
+        kind == IrTypeRefKind.Custom
+          ifTrue: [(ctx goTypeNameFor: (typeId goNormalizeTypeId)) + "{}"]
+          ifFalse: ["nil"]
+      ]
     ]
   ]
 
   on goReturnTypes(ctx): GoContext -> String = [
     hasErr = errors isNotEmpty
-    isUnit = .isGoUnitType
+    isUnit = this isGoUnitType
     ^ hasErr
         ifTrue: [
           isUnit ifTrue: [" error"] ifFalse: [" (" + (this toGoType: ctx) + ", error)"]
@@ -302,57 +571,66 @@ extend IrTypeRef [
 
   on goBaseType(ctx): GoContext -> String = [
     baseId = typeId goNormalizeTypeId
-    ^ | kind
-      | IrTypeRefKind.Function => [
+    ^ kind == IrTypeRefKind.Function ifTrue: [
           argsStr = args joinWith: ", " transform: [it toGoParamType: ctx]
           retTypeMaybe = returnType
           retStr = | retTypeMaybe
                    | null => ""
-                   |=> retTypeMaybe toGoType: ctx
+                   |=> retTypeMaybe isGoUnitType ifTrue: [""] ifFalse: [retTypeMaybe toGoType: ctx]
           retStr == "" ifTrue: ["func(" + argsStr + ")"]
                       ifFalse: ["func(" + argsStr + ") " + retStr]
-        ]
-      | IrTypeRefKind.Builtin => [
+        ] ifFalse: [
+      (baseId == "core_Unit") ifTrue: ["struct{}"] ifFalse: [
+      kind == IrTypeRefKind.Builtin ifTrue: [
+          (baseId == "core_Long") || (baseId == "core_Int64")
+            ifTrue: ["int64"] ifFalse: [
           | baseId
           | "core_Int"     => "int"
-          | "core_Long"   | "core_Int64" => "int64"
           | "core_Double"  => "float64"
           | "core_Float"   => "float32"
           | "core_String"  => "string"
           | "core_Bool"    => "bool"
           | "core_Char"    => "rune"
           | "core_Unit"    => "struct{}"
-          | "core_Any"     => "any"
-          | "core_Nothing" => "any"
-          | "core_Null"    => "any"
+          | "core_Any"     => "interface{}"
+          | "core_Nothing" => "interface{}"
+          | "core_Null"    => "interface{}"
           | "core_Error"   => "error"
+          | "core_Compiler" => "struct{}"
+          | "core_StringBuilder" => [
+              ctx addImport: "niva_go/core"
+              "*core.StringBuilder"
+            ]
           | "core_List"    => [
-              elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["any"]
+              elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["interface{}"]
               "[]" + elem
             ]
           | "core_Set" => [
-              elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["any"]
+              elem = args isNotEmpty ifTrue: [args first toGoType: ctx] ifFalse: ["interface{}"]
               "map[" + elem + "]struct{}"
             ]
           | "core_Map" => [
-              keyType = args count > 0 ifTrue: [args at: 0, toGoType: ctx] ifFalse: ["any"]
-              valType = args count > 1 ifTrue: [args at: 1, toGoType: ctx] ifFalse: ["any"]
+              keyType = args count > 0 ifTrue: [args at: 0, toGoType: ctx] ifFalse: ["interface{}"]
+              valType = args count > 1 ifTrue: [args at: 1, toGoType: ctx] ifFalse: ["interface{}"]
               "map[" + keyType + "]" + valType
             ]
           |=> ctx goTypeNameFor: baseId
-        ]
-      | IrTypeRefKind.Custom => [
-          baseId isGeneric ifTrue: [^ baseId toSafeGoIdent]
+          ]
+        ] ifFalse: [
+          baseId isGeneric ifTrue: [baseId toSafeGoIdent] ifFalse: [
           name = ctx goTypeNameFor: baseId
           argsStr = args isNotEmpty
             ifTrue: ["[" + (args joinWith: ", " transform: [it toGoType: ctx]) + "]"]
            ifFalse: [""]
           name + argsStr
+          ]
         ]
+      ]
+      ]
   ]
 
   on toGoType(ctx): GoContext -> String = [
-    base = .goBaseType: ctx
+    base = this goBaseType: ctx
     ^ nullable
         ifTrue: [
           // already reference-like types can be nil without pointer
@@ -360,74 +638,89 @@ extend IrTypeRef [
           isIfaceStr = base == "interface{}"
           isIface = isAny || isIfaceStr
 
-          isRefLike = (.isGoRefLike) || isIface
+          isRefLike = (this isGoRefLike) || isIface || ((kind == IrTypeRefKind.Custom) && (ctx isGoUnionType: typeId))
           isRefLike ifTrue: [base] ifFalse: ["*" + base]
         ]
         ifFalse: [base]
   ]
 
   on toGoParamType(ctx): GoContext -> String =
-    .isGoPointerParam,
-      ifTrue: [ nullable ifTrue:  [.toGoType: ctx]
-                         ifFalse: ["*" + (.goBaseType: ctx)] ]
-      ifFalse: [.toGoType: ctx]
+    this isGoPointerParam,
+      ifTrue: [
+        (nullable && (typeId goNormalizeTypeId != "core_List"))
+          ifTrue: [this toGoType: ctx]
+          ifFalse: ["*" + (this goBaseType: ctx)]
+      ]
+      ifFalse: [this toGoType: ctx]
 
 ]
 
-IrLiteral toGoLiteral -> String =
-  | kind
-  | IrLiteralKind.Null   => "nil"
-  | IrLiteralKind.Unit   => "core.UnitInstance"
-  | IrLiteralKind.Bool   => lexeme
-  | IrLiteralKind.Int    => lexeme
-  | IrLiteralKind.Double => lexeme
-  | IrLiteralKind.Float  => lexeme endsWith: "f",
-                                  ifTrue:  [lexeme dropLast: 1]
-                                 ifFalse: [lexeme]
-  | IrLiteralKind.Char   => lexeme
-  | IrLiteralKind.String    => lexeme
-  // backtick literals for raw strings
-  | IrLiteralKind.RawString => "`" + ((lexeme drop: 3) dropLast: 3) + "`"
-  | IrLiteralKind.Atom   => "\"" + lexeme + "\""
+String goEscapeString -> String = [
+  escapedSlashes = this replace: "\\" with: "\\\\"
+  escapedQuotes = escapedSlashes replace: "\"" with: "\\\""
+  escapedNewlines = escapedQuotes replace: "\n" with: "\\n"
+  escapedReturns = escapedNewlines replace: "\r" with: "\\r"
+  escapedTabs = escapedReturns replace: "\t" with: "\\t"
+  ^ escapedTabs
+]
 
-IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = [
-  r = receiverType
-  | r
-  | null => [^ null]
-  |=> r typeId == "core_Bind"
-        ifFalse: [^ null]
-
-  msgNameLocalMaybe = msgName
-  | msgNameLocalMaybe
-  | null => [^ null]
-  |=> [
-    msgNameLocal = msgNameLocalMaybe
-    ^ | msgNameLocal
-      | "emit" => [
-          templateExpr = args first
-          templateExpr irStringLiteralValue unpackOrValue: (templateExpr toGoExpr: ctx scope: scope)
+IrLiteral toGoLiteral -> String = [
+  kind == IrLiteralKind.Null ifTrue: ["nil"] ifFalse: [
+    kind == IrLiteralKind.Unit ifTrue: ["core.UnitInstance"] ifFalse: [
+      kind == IrLiteralKind.Bool ifTrue: [lexeme] ifFalse: [
+        kind == IrLiteralKind.Int ifTrue: [lexeme] ifFalse: [
+          kind == IrLiteralKind.Double ifTrue: [lexeme] ifFalse: [
+            kind == IrLiteralKind.Float ifTrue: [
+              lexeme endsWith: "f", ifTrue: [lexeme dropLast: 1] ifFalse: [lexeme]
+            ] ifFalse: [
+              kind == IrLiteralKind.Char ifTrue: [lexeme] ifFalse: [
+                kind == IrLiteralKind.String ifTrue: [lexeme] ifFalse: [
+                  kind == IrLiteralKind.RawString ifTrue: [
+                    rawContent = (lexeme drop: 3) dropLast: 3
+                    "\"" + (rawContent goEscapeString) + "\""
+                  ] ifFalse: ["\"" + lexeme + "\""]
+                ]
+              ]
+            ]
+          ]
         ]
-      |=> null
+      ]
+    ]
   ]
 ]
+
+IrCall tryGoBindExpr(ctx): GoContext scope: GoScope -> String? = null
 
 // collect all IrVarRef names from an IR block (for match alias usage check)
 IrBlock collectIrRefNames -> mut Set(String) = [
   refs::mut Set(String) = #()!
   stmts forEach: [it collectIrStmtRefs: refs]
-  result unpack: [it collectIrExprRefs: refs]
+  resultMaybe = result
+  | resultMaybe
+  | null => []
+  |=> resultMaybe collectIrExprRefs: refs
   ^ refs
 ]
 
 IrStmt collectIrStmtRefs(refs): mut Set(String) -> Unit = [
   | this
-  | IrLet      => [ value unpack: [it collectIrExprRefs: refs] ]
+  | IrLet      => [
+      valueMaybe = value
+      | valueMaybe
+      | null => []
+      |=> valueMaybe collectIrExprRefs: refs
+    ]
   | IrSetLocal => [ value collectIrExprRefs: refs ]
   | IrSetField => [ receiver collectIrExprRefs: refs
                     value collectIrExprRefs: refs ]
   | IrDestructure => [ value collectIrExprRefs: refs ]
   | IrExprStmt    => [ expr collectIrExprRefs: refs ]
-  | IrReturn      => [ expr unpack: [it collectIrExprRefs: refs] ]
+  | IrReturn      => [
+      exprMaybe = expr
+      | exprMaybe
+      | null => []
+      |=> exprMaybe collectIrExprRefs: refs
+    ]
   | IrWhile       => [ cond collectIrExprRefs: refs
                        body collectIrExprRefs: refs ]
   | IrThrow       => [ errExpr collectIrExprRefs: refs ]
@@ -440,7 +733,10 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
   | IrThisRef     => []
   | IrFieldGet    => receiver collectIrExprRefs: refs
   | IrCall        => [
-    callee unpack: [it collectIrExprRefs: refs]
+    calleeMaybe = callee
+    | calleeMaybe
+    | null => []
+    |=> calleeMaybe collectIrExprRefs: refs
     args forEach: [it collectIrExprRefs: refs]
   ]
   | IrLambda    => body collectIrRefNames forEach: [refs add: it]
@@ -452,7 +748,10 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
       c additionalConditions forEach: [it collectIrExprRefs: refs]
       c body collectIrRefNames forEach: [refs add: it]
     ]
-    elseBranch unpack: [it collectIrRefNames forEach: [refs add: it]]
+    elseBranchMaybe = elseBranch
+    | elseBranchMaybe
+    | null => []
+    |=> elseBranchMaybe collectIrRefNames forEach: [refs add: it]
   ]
   | IrNewExpr           => args forEach: [it collectIrExprRefs: refs]
   | IrCollectionLiteral => items forEach: [it collectIrExprRefs: refs]
@@ -465,28 +764,80 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
 
 
 extend IrExpr [
+  on goLocalVarName -> String? =
+    | this
+    | IrVarRef => name
+    |=> null
+
+  on isGoNullLiteral -> Bool =
+    | this
+    | IrLiteralExpr => literal kind == IrLiteralKind.Null
+    |=> false
+
   on toGoNullableInitExpr(ctx): GoContext scope: GoScope targetType: IrTypeRef -> String = [
     valueStr = this toGoExpr: ctx scope: scope
     isNull = | this
       | IrLiteralExpr => literal kind == IrLiteralKind.Null
       |=> false
 
-    (typeRef nullable || isNull) ifTrue: [^ valueStr]
-    // add new(expr) for simple types(feature of go 1.27)
-    "new(" + (targetType goBaseType: ctx) + "(" + valueStr + "))"
+    result = (typeRef nullable || isNull) ifTrue: [valueStr] ifFalse: [
+        ctx addImport: "niva_go/core"
+        targetGoType = targetType goBaseType: ctx
+        "core.NewNullable(" + targetGoType + "(" + valueStr + "))"
+      ]
+    ^ result
+  ]
+
+  on toGoLocalAssignExpr(ctx): GoContext scope: GoScope targetIsNullable: Bool -> String = [
+    valueStr = this toGoExpr: ctx scope: scope
+    isNull = | this
+      | IrLiteralExpr => literal kind == IrLiteralKind.Null
+      |=> false
+    sourceIsNullablePointer = ctx needsGoNullablePointerFor: typeRef
+    result = targetIsNullable ifTrue: [
+        sourceIsNullablePointer || isNull
+          ifTrue: [valueStr]
+          ifFalse: [
+            ctx addImport: "niva_go/core"
+            sourceGoType = typeRef goBaseType: ctx
+            "core.NewNullable(" + sourceGoType + "(" + valueStr + "))"
+          ]
+      ]
+      ifFalse: [
+        (sourceIsNullablePointer && (isNull not)) ifTrue: ["*" + valueStr] ifFalse: [valueStr]
+      ]
+    ^ result
   ]
 
   on toGoArgExpr(ctx): GoContext scope: GoScope paramType: IrTypeRef -> String = [
-    exprStr = this toGoExpr: ctx scope: scope
-    // nullable should have *
-    isNullablePointerRef = | this
-      | IrVarRef => scope nullablePointerLocals contains: name
-      |=> this typeRef nullable && (this typeRef isGoNullableReferenceValue not)
-    isNullablePointerRef && (paramType nullable not) ifTrue: [
-      ^ "*" + exprStr
-    ]
-
-    paramType needsGoAddressAtCall ifFalse: [^ exprStr]
+    exprStr = | this
+      | IrLambda => this toGoLambdaExpr: ctx scope: scope expectedType: paramType
+      |=> this toGoExpr: ctx scope: scope
+    sourceNullablePointer = ctx needsGoNullablePointerFor: typeRef
+    targetNullablePointer = ctx needsGoNullablePointerFor: paramType
+    isNull = this isGoNullLiteral
+    sourceIsNullablePointerRef = | this
+      | IrVarRef => (scope nullablePointerLocals contains: name) &&
+        (scope narrowedNullablePointerLocals contains: name, not)
+      |=> sourceNullablePointer
+    isAddressable = | this
+      | IrVarRef => true
+      | IrThisRef => true
+      |=> false
+    valueExpr = sourceIsNullablePointerRef && (paramType nullable not)
+      ifTrue: ["*" + exprStr]
+      ifFalse: [
+        (targetNullablePointer && (sourceNullablePointer not) && (isNull not))
+          ifTrue: [
+            isAddressable
+              ifTrue: ["&" + exprStr]
+              ifFalse: [
+                targetGoType = paramType goBaseType: ctx
+                "func() *" + targetGoType + " { __nivaArg := " + exprStr + "; return &__nivaArg }()"
+              ]
+          ]
+          ifFalse: [exprStr]
+      ]
 
     alreadyPointer =
       | this
@@ -494,7 +845,56 @@ extend IrExpr [
       | IrThisRef => scope pointerLocals contains: "this"
       |=> false
 
-    ^ alreadyPointer ifTrue: [exprStr] ifFalse: ["&" + exprStr]
+    paramType needsGoAddressAtCall,
+      ifTrue: [alreadyPointer ifTrue: [valueExpr] ifFalse: ["&" + valueExpr]]
+      ifFalse: [valueExpr]
+  ]
+
+  on toGoLambdaExpr(ctx): GoContext scope: GoScope expectedType: IrTypeRef -> String = [
+    | this
+    | IrLambda => [
+    argsStr = args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoParamType: ctx)]
+    lambdaType = expectedType kind == IrTypeRefKind.Function ifTrue: [expectedType] ifFalse: [typeRef]
+    retTypeMaybe = lambdaType returnType
+    retType = | retTypeMaybe
+      | null => typeRef
+      |=> retTypeMaybe
+    retStr = retType isGoUnitType ifTrue: [""] ifFalse: [" " + (retType toGoType: ctx)]
+    sb = StringBuilder new
+    sb append: "func("
+    sb append: argsStr
+    sb append: ")"
+    sb append: retStr
+    sb appendLine: " {"
+
+    innerScope = scope copy
+    args forEach: [arg ->
+      innerScope locals add: arg name
+      (ctx needsGoNullablePointerFor: arg typeRef) ifTrue: [innerScope nullablePointerLocals add: arg name]
+    ]
+    body blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: retType
+    bodyResult = body result
+    bodyHasTrailingReturn = body hasTrailingReturn
+    retType isGoUnitType
+      ifTrue: [
+        ctx emitResult: bodyResult sb: sb indent: 1 retType: retType scope: innerScope
+        retType errors isNotEmpty ifTrue: [
+          bodyHasTrailingReturn ifFalse: [sb appendIndent: 1 line: "return nil"]
+        ]
+      ]
+      ifFalse: [
+        bodyResult == null
+          ifTrue: [
+            bodyHasTrailingReturn ifFalse: [
+              ctx emitResult: null sb: sb indent: 1 retType: retType scope: innerScope
+            ]
+          ]
+          ifFalse: [ctx emitResult: bodyResult sb: sb indent: 1 retType: retType scope: innerScope]
+      ]
+    sb append: "}"
+    sb toString
+    ]
+    |=> this toGoExpr: ctx scope: scope
   ]
 
   on toGoExpr(ctx): GoContext scope: GoScope -> String =
@@ -506,51 +906,93 @@ extend IrExpr [
           ifTrue: [(ctx goTypeNameFor: typeRef typeId) + "_" + (literal lexeme toSafeGoIdent)]
           ifFalse: [literal toGoLiteral]
     ]
-    | IrVarRef      => name toSafeGoIdent
+    | IrVarRef      => [
+        goName = name toSafeGoIdent
+        isLocal = scope locals contains: name
+        isImplicitField = (scope implicitFields contains: name) && (isLocal not)
+        isNarrowed = (scope nullablePointerLocals contains: name) &&
+          (scope narrowedNullablePointerLocals contains: name)
+        isImplicitUnionField = scope implicitUnionFields contains: name
+        isImplicitField ifTrue: [
+          isImplicitUnionField
+            ifTrue: ["this." + (ctx goFieldGetterName: name) + "()"]
+            ifFalse: ["this." + goName]
+        ] ifFalse: [
+          isNarrowed ifTrue: ["*" + goName] ifFalse: [goName]
+        ]
+      ]
     | IrThisRef  => "this"
-    | IrFieldGet => [
-        recv = receiver toGoExpr: ctx scope: scope
-        recv + "." + (field toSafeGoIdent)
+  | IrFieldGet => [
+    recv = receiver toGoExpr: ctx scope: scope
+    isUnion = ctx isGoUnionType: receiver typeRef typeId
+    isUnion
+      ifTrue: ["(" + recv + ")." + (ctx goFieldGetterName: field) + "()"]
+      ifFalse: ["(" + recv + ")." + (field toSafeGoIdent)]
       ]
     | IrTypeRefExpr => ref toGoType: ctx
     | IrOpBin       => [
         l = left toGoExpr: ctx scope: scope
         r = right toGoExpr: ctx scope: scope
         "(" + l + " " + op + " " + r + ")"
-      ]
+    ]
     | IrCall => [
-        isTry = msgName unpack: [it == "try"] or: false
-        isTry ifTrue: [^ this toGoTryExpr: ctx scope: scope]
+        msgNameMaybe = msgName
+    isTry = | msgNameMaybe
+      | null => false
+      |=> (msgNameMaybe == "try") || (msgNameMaybe == "orPANIC") || (msgNameMaybe == "unpackOrPANIC")
+        ^ isTry ifTrue: [this toGoTryExpr: ctx scope: scope] ifFalse: [
 
         // new bind design: inlineable bind plan attached during IR generation
-        bind unpack: [bp ->
-          | bp
+        bindMaybe = bind
+        bindOutput = | bindMaybe
+          | null => ""
+          |=> [
+            | bindMaybe
           | IrBindByName => [
-              ctx addImport: bp goPkg
+              ctx addImport: bindMaybe goPkg
               byNameArgs = args mapIndexed: [i, it ->
                 paramType = paramTypes at: i
                 it toGoArgExpr: ctx scope: scope paramType: paramType
               ], goCallArgs
-              goName = bp isGoNameExplicit
-                ifTrue: [bp goName]
-                ifFalse: [bp goName bindCapitalizeFirst]
-              ^ (bp goPkg goPkgQualifier) + "." + goName + "(" + byNameArgs + ")"
+              goName = bindMaybe isGoNameExplicit
+                ifTrue: [bindMaybe goName]
+                ifFalse: [bindMaybe goName bindCapitalizeFirst]
+              (bindMaybe goPkg goPkgQualifier) + "." + goName + "(" + byNameArgs + ")"
             ]
           | IrBindEmit => [
               // emit templates import their declared package
-              bp goPkg unpack: [importPaths ->
-                (importPaths split: ",") forEach: [ctx addImport: it]
-              ]
+              importPathsMaybe = bindMaybe goPkg
+              | importPathsMaybe
+              | null => []
+              |=> (importPathsMaybe split: ",") forEach: [ctx addImport: it]
               // $0 = receiver/this, $1 = first keyword arg, ...
-              emitArgVals = args map: [it toGoExpr: ctx scope: scope]
-              ^ bp template bindApply0: emitArgVals
+              emitArgVals = args mapIndexed: [i, it ->
+                paramType = paramTypes at: i
+                it toGoArgExpr: ctx scope: scope paramType: paramType
+              ]
+              bindMaybe template bindApply0: emitArgVals
             ]
+          |=> ""
         ]
+        bindMaybe != null ifTrue: [bindOutput] ifFalse: [
 
         bindExpr = this tryGoBindExpr: ctx scope: scope
-        bindExpr != null ifTrue: [^ bindExpr unpackOrPANIC]
-        argsStr = args mapIndexed: [i, it ->
-          paramType = paramTypes at: i
+        bindExprMaybe = bindExpr
+        bindExprValue = | bindExprMaybe
+          | null => ""
+          |=> bindExprMaybe
+        bindExprMaybe != null ifTrue: [bindExprValue] ifFalse: [
+        receiverTypeMaybe = receiverType
+        isErrorReceiver = | receiverTypeMaybe
+          | null => false
+          |=> receiverTypeMaybe typeId goNormalizeTypeId == "core_Error"
+        isStaticCoreReceiver = isErrorReceiver || (| receiverTypeMaybe
+          | null => false
+          |=> receiverTypeMaybe typeId goNormalizeTypeId == "core_Compiler")
+        callArgs = isStaticCoreReceiver ifTrue: [args drop: 1] ifFalse: [args]
+        argsStr = callArgs mapIndexed: [i, it ->
+          paramIndex = isStaticCoreReceiver ifTrue: [i + 1] ifFalse: [i]
+          paramType = paramTypes at: paramIndex
           it toGoArgExpr: ctx scope: scope paramType: paramType
         ], goCallArgs
         funcIdLocal = funcId
@@ -558,60 +1000,101 @@ extend IrExpr [
         | null => [
             calleeLocal = callee
             | calleeLocal
-            | null => TO DO: "IrCall without funcId must have callee"
+            | null => "panic(\"IrCall without funcId must have callee\")"
             |=> [
               calleeExpr = calleeLocal
-              "(" + (calleeExpr toGoExpr: ctx scope: scope) + ")(" + argsStr + ")"
+              callExpr = "(" + (calleeExpr toGoExpr: ctx scope: scope) + ")(" + argsStr + ")"
+              (typeRef isGoUnitType && typeRef errors isEmpty)
+                ifTrue: ["func() struct{} { " + callExpr + "; return struct{}{} }()"]
+                ifFalse: [callExpr]
             ]
           ]
         |=> [
             // if its from core => generate core.Type__funcname, if not then Pkg__
-            declPkgLocal = declPkg unpackOrPANIC
+            declPkgMaybe = declPkg
+            declPkgLocal = | declPkgMaybe
+              | null => ""
+              |=> declPkgMaybe
             declPkgLocal == "core"
               ifTrue: [
                 ctx addImport: "niva_go/core"
-                msgNameLocal = msgName unpackOrPANIC
-                recvTypeLocal = receiverType unpackOrPANIC
+                msgNameMaybe = msgName
+                msgNameLocal = | msgNameMaybe
+                  | null => ""
+                  |=> msgNameMaybe
+                recvTypeMaybe = receiverType
+                recvTypeLocal = | recvTypeMaybe
+                  | null => typeRef
+                  |=> recvTypeMaybe
                 mutReceiver = paramTypes isNotEmpty && (paramTypes first isMut)
-                coreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal forMut: mutReceiver
-                "core." + coreFn + "(" + argsStr + ")"
+                baseCoreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal forMut: mutReceiver
+                isUnitBranch = (recvTypeLocal typeId goNormalizeTypeId == "core_Bool") &&
+                  (typeRef isGoUnitType) &&
+                  ((msgNameLocal == "ifTrue__ifFalse") || (msgNameLocal == "ifFalse_ifTrue") ||
+                    (msgNameLocal == "ifFalse__ifTrue"))
+                coreFn = isUnitBranch ifTrue: [baseCoreFn + "Unit"] ifFalse: [baseCoreFn]
+                isMutListCall = coreFn hasPrefix: "List__mut_"
+                coreArgs = isMutListCall
+                  ifTrue: [
+                    args mapIndexed: [i, it ->
+                      paramType = paramTypes at: i
+                      isListReceiver = i == 0
+                      isListReceiver ifTrue: [
+                        argStr = it toGoExpr: ctx scope: scope
+                        alreadyPointer = | it
+                          | IrVarRef => scope pointerLocals contains: it name
+                          | IrThisRef => scope pointerLocals contains: "this"
+                          |=> false
+                        alreadyPointer ifTrue: [argStr] ifFalse: ["&" + argStr]
+                      ] ifFalse: [it toGoArgExpr: ctx scope: scope paramType: paramType]
+                    ], goCallArgs
+                  ]
+                  ifFalse: [argsStr]
+                coreCall = "core." + coreFn + "(" + coreArgs + ")"
+                receiverBaseId = recvTypeLocal typeId goNormalizeTypeId
+                isListNullableCall = (receiverBaseId == "core_List") &&
+                  ((msgNameLocal == "find") || (msgNameLocal == "firstOrNull") || (msgNameLocal == "lastOrNull"))
+                isMapNullableCall = (receiverBaseId == "core_Map") && (msgNameLocal == "at")
+                (isListNullableCall || isMapNullableCall)
+                  ifTrue: [this toGoNullableOptionExpr: ctx call: coreCall]
+                  ifFalse: [coreCall]
               ]
               ifFalse: [
-                fn = ctx goFuncNameFor: funcIdLocal
+                callKey = this goSymbolKey: funcIdLocal
+                fn = ctx goFuncNameFor: callKey
                 fn + "(" + argsStr + ")"
               ]
           ]
+        ]
+        ]
+        ]
       ]
-    | IrLambda => [
-        argsStr = args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoParamType: ctx)]
-        retTypeMaybe = typeRef returnType
-        retType = | retTypeMaybe
-                  | null => typeRef
-                  |=> retTypeMaybe
-        retStr = retType isGoUnitType ifTrue: [""] ifFalse: [" " + (retType toGoType: ctx)]
-        sb = StringBuilder new
-        sb append: "func("
-        sb append: argsStr
-        sb append: ")"
-        sb append: retStr
-        sb appendLine: " {"
-
-        innerScope = scope copy
-        args forEach: [innerScope locals add: it name]
-        body blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: retType
-        ctx emitResult: (body result) sb: sb indent: 1 retType: retType scope: innerScope
-        sb append: "}"
-        sb toString
-      ]
+    | IrLambda => this toGoLambdaExpr: ctx scope: scope expectedType: typeRef
     | IrBlockExpr => block blockToGoExpr: ctx scope: scope
     | IrMatchExpr => this matchToGoExpr: ctx scope: scope
     | IrNewExpr   => [
+        (typeId goNormalizeTypeId) == "core_StringBuilder" ifTrue: [
+          ctx addImport: "niva_go/core"
+          "core.NewStringBuilder()"
+        ] ifFalse: [
         // adding [int] to tests_Box[int]{42}
-        name = | typeRef kind
-               | IrTypeRefKind.Custom => typeRef toGoType: ctx
-               |=> ctx goTypeNameFor: (typeId goNormalizeTypeId)
-        argsStr = args joinWith: ", " transform: [it toGoExpr: ctx scope: scope]
+        name = (typeRef kind == IrTypeRefKind.Custom)
+          ifTrue: [typeRef toGoType: ctx]
+          ifFalse: [ctx goTypeNameFor: (typeId goNormalizeTypeId)]
+        fieldTypesMaybe = ctx symbols constructorFieldTypes at: (typeId goNormalizeTypeId)
+        argsStr = | fieldTypesMaybe
+          | null => args joinWith: ", " transform: [it toGoExpr: ctx scope: scope]
+          |=> (args mapIndexed: [i, arg ->
+            fieldType = fieldTypesMaybe at: i
+            argExpr = arg toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (ctx needsGoNullablePointerFor: fieldType)
+            isPointerArg = | arg
+              | IrVarRef => scope pointerLocals contains: arg name
+              | IrThisRef => scope pointerLocals contains: "this"
+              |=> false
+            (fieldType isMut && isPointerArg) ifTrue: ["*" + argExpr] ifFalse: [argExpr]
+          ]) joinWith: ", "
         argsStr == "" ifTrue: [name + "{}"] ifFalse: [name + "{" + argsStr + "}"]
+        ]
       ]
     | IrCollectionLiteral => this collectionToGoExpr: ctx scope: scope
 
@@ -622,107 +1105,184 @@ extend IrExpr [
     | IrMatchExpr => true
     |=> false
 
-  on emitGoPropagatingCall(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef bindTo: String? -> String? = [
+  on emitGoPropagatingCall(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef bindTo: String -> String? = [
     callStr = this toGoExpr: ctx scope: scope
     errName = "__err" uniqueName: scope locals
     retIsUnit = typeRef isGoUnitType
     errReturn = returnType isGoUnitType ifTrue: ["return " + errName] ifFalse: ["return " + (returnType goZeroValue: ctx) + ", " + errName]
     boundName = bindTo
+    mut resultName::String? = null
 
-    | boundName
-    | null => [
+    boundName == "" ifTrue: [
       retIsUnit
-        ifTrue: [sb appendIndent: indent line: (errName + " := " + callStr)]
+        ifTrue: [
+          sb appendIndent: indent line: (errName + " := " + callStr)
+          ()
+        ]
         ifFalse: [
           tmpName = "__callResult" uniqueName: scope locals
           sb appendIndent: indent line: (tmpName + ", " + errName + " := " + callStr)
           sb appendIndent: indent line: ("if " + errName + " != nil { " + errReturn + " }")
-          ^ tmpName
+          resultName <- tmpName
+          ()
         ]
-    ]
-    |=> [
+    ] ifFalse: [
       retIsUnit
         ifTrue: [
           sb appendIndent: indent line: ("var " + boundName + " " + (typeRef toGoType: ctx) + " = " + (typeRef goZeroValue: ctx))
           sb appendIndent: indent line: (errName + " := " + callStr)
+          resultName <- boundName
+          ()
         ]
-        ifFalse: [sb appendIndent: indent line: (boundName + ", " + errName + " := " + callStr)]
+        ifFalse: [
+          sb appendIndent: indent line: (boundName + ", " + errName + " := " + callStr)
+          resultName <- boundName
+          ()
+        ]
     ]
 
     sb appendIndent: indent line: ("if " + errName + " != nil { " + errReturn + " }")
-    ^ boundName
+    ^ resultName
   ]
 
   on emitReturn(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
     hasErrors = returnType errors isNotEmpty
-    | this | IrCall => [
-      propagatingErrVar unpack: [
-        resultName = this emitGoPropagatingCall: ctx :scope :sb :indent :returnType bindTo: null
-        resultName unpack: [
-          line = hasErrors
-            ifTrue: ["return " + it + ", nil"]
-           ifFalse: ["return " + it]
+    doPropagate = | this
+      | IrCall => propagatingErrVar != null
+      |=> false
+    doPropagate ifTrue: [
+      resultName = this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: ""
+      resultNameMaybe = resultName
+      | resultNameMaybe
+      | null => [
+        line = hasErrors ifTrue: ["return nil"] ifFalse: ["return"]
+        sb appendIndent: indent line: line
+      ]
+      |=> [
+        line = hasErrors
+          ifTrue: ["return " + resultNameMaybe + ", nil"]
+         ifFalse: ["return " + resultNameMaybe]
+        sb appendIndent: indent line: line
+      ]
+    ] ifFalse: [
+      isNothingType = (typeRef typeId goNormalizeTypeId) == "core_Nothing"
+      isNullValue = this isGoNullLiteral
+      isNothing = isNothingType && (isNullValue not)
+      isNothing ifTrue: [
+        sb appendIndent: indent line: (this toGoStatement: ctx scope: scope returnType: returnType)
+        sb appendIndent: indent line: "panic(\"unreachable\")"
+      ] ifFalse: [
+        returnType isGoUnitType ifTrue: [
+          sb appendIndent: indent line: (this toGoStatement: ctx scope: scope returnType: returnType)
+          sb appendIndent: indent line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])
+        ] ifFalse: [
+          exprStr = (ctx needsGoNullablePointerFor: returnType)
+            ifTrue: [this toGoNullableInitExpr: ctx scope: scope targetType: returnType]
+            ifFalse: [this toGoExpr: ctx scope: scope]
+          line = hasErrors ifTrue: ["return " + exprStr + ", nil"] ifFalse: ["return " + exprStr]
           sb appendIndent: indent line: line
         ]
-        ^ Unit
       ]
-    ] |=> []
-
-    exprStr = this toGoExpr: ctx scope: scope
-    line =
-      hasErrors
-        ifTrue: [
-          returnType isGoUnitType
-            ifTrue: ["return nil"]
-           ifFalse: ["return " + exprStr + ", nil"]
-        ]
-        ifFalse: ["return " + exprStr]
-    sb appendIndent: indent line: line
+    ]
   ]
 
   on emitAsStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
-    | this | IrCall => [
-      propagatingErrVar unpack: [
-        this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: null
-        ^ Unit
+    doPropagate = | this
+      | IrCall => propagatingErrVar != null
+      |=> false
+    doPropagate ifTrue: [
+      this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: ""
+      ()
+  ] ifFalse: [
+      | this
+      | IrMatchExpr => [
+        matchKind = kind
+        matchKind == IrMatchKind.ByBool ifTrue: [
+          ctx emitBoolMatchStatement: this sb: sb indent: indent returnType: returnType scope: scope
+        ] ifFalse: [
+          stmtStr = this toGoStatement: ctx scope: scope returnType: returnType
+          sb appendIndent: indent line: stmtStr
+        ]
       ]
-    ] |=> []
-    stmtStr = this toGoStatement: ctx scope: scope
-    sb appendIndent: indent line: stmtStr
+      |=> [
+        stmtStr = this toGoStatement: ctx scope: scope returnType: returnType
+        sb appendIndent: indent line: stmtStr
+      ]
+    ]
   ]
 
-  on toGoStatement(ctx): GoContext scope: GoScope -> String = [
-    exprStr = this toGoExpr: ctx scope: scope
-    isCallLike = this isGoCallLike
-    ^ isCallLike ifTrue: [exprStr] ifFalse: ["_ = " + exprStr]
+  on toGoStatement(ctx): GoContext scope: GoScope returnType: IrTypeRef -> String = [
+    | this
+    | IrCall => [
+      msgNameMaybe = msgName
+      msgNameLocal = | msgNameMaybe
+        | null => ""
+        |=> msgNameMaybe
+      receiverTypeMaybe = receiverType
+      receiverTypeId = | receiverTypeMaybe
+        | null => ""
+        |=> receiverTypeMaybe typeId goNormalizeTypeId
+      isBoolBranch = (receiverTypeId == "core_Bool") &&
+        ((msgNameLocal == "ifTrue") || (msgNameLocal == "ifFalse"))
+      isBoolBranch && (args count > 1) ifTrue: [
+        branch = args at: 1
+        | branch
+        | IrLambda => [
+          condition = args first toGoExpr: ctx scope: scope
+          branchCondition = msgNameLocal == "ifFalse"
+            ifTrue: ["!(" + condition + ")"]
+            ifFalse: [condition]
+          innerScope = scope copy
+          branch args forEach: [arg ->
+            innerScope locals add: arg name
+            (ctx needsGoNullablePointerFor: arg typeRef) ifTrue: [innerScope nullablePointerLocals add: arg name]
+          ]
+          sb = StringBuilder new
+          sb appendLine: ("if " + branchCondition + " {")
+          branch body blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: returnType
+          bodyResult = branch body result
+          | bodyResult
+          | null => []
+          |=> bodyResult emitAsStmt: ctx scope: innerScope sb: sb indent: 1 returnType: returnType
+          sb appendLine: "}"
+          sb toString
+        ]
+        |=> this toGoExpr: ctx scope: scope
+      ] ifFalse: [this toGoExpr: ctx scope: scope]
+    ]
+    |=> [
+      exprStr = this toGoExpr: ctx scope: scope
+      isCallLike = this isGoCallLike
+      isCallLike ifTrue: [exprStr] ifFalse: ["_ = " + exprStr]
+    ]
   ]
 ]
 
 IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String = [
-  elemType = typeRef args isNotEmpty ifTrue: [(typeRef args first) toGoType: ctx] ifFalse: ["any"]
-  ^ | this kind
-  | IrCollectionKind.List => [
+  elemType = typeRef args isNotEmpty ifTrue: [(typeRef args first) toGoType: ctx] ifFalse: ["interface{}"]
+  ^ kind == IrCollectionKind.List ifTrue: [
       elems = items joinWith: ", " transform: [it toGoExpr: ctx scope: scope]
       "[]" + elemType + "{" + elems + "}"
-    ]
-  | IrCollectionKind.Set => [
+    ] ifFalse: [
+    kind == IrCollectionKind.Set ifTrue: [
       pairs = items joinWith: ", " transform: [(it toGoExpr: ctx scope: scope) + ": struct{}{}"]
       "map[" + elemType + "]struct{}{ " + pairs + " }"
-    ]
-  | IrCollectionKind.Map => [
+    ] ifFalse: [
       elems = items
-      elems count % 2 != 0 ifTrue: [TO DO: "Map should contain even number of elements"]
-      pairs = elems asSequence
-                chunked: 2, joinTransform: [
-                  key = it at: 0
-                  value = it at: 1
-                  keyStr = key toGoExpr: ctx scope: scope
-                  valueStr = value toGoExpr: ctx scope: scope
-                  keyStr + ": " + valueStr
-                ]
-      keyType = typeRef args count > 0 ifTrue: [(typeRef args at: 0) toGoType: ctx] ifFalse: ["any"]
-      valType = typeRef args count > 1 ifTrue: [(typeRef args at: 1) toGoType: ctx] ifFalse: ["any"]
+      pairParts::mut List(String) = {}!
+      elems forEachIndexed: [i, key ->
+        i % 2 == 0 ifTrue: [
+          value = elems at: (i + 1)
+          keyStr = key toGoExpr: ctx scope: scope
+          valueStr = value toGoExpr: ctx scope: scope
+          pairParts add: (keyStr + ": " + valueStr)
+        ]
+      ]
+      pairs = pairParts joinWith: ", "
+      keyType = typeRef args count > 0 ifTrue: [(typeRef args at: 0) toGoType: ctx] ifFalse: ["interface{}"]
+      valType = typeRef args count > 1 ifTrue: [(typeRef args at: 1) toGoType: ctx] ifFalse: ["interface{}"]
       "map[" + keyType + "]" + valType + "{" + pairs + "}"
+    ]
     ]
 ]
 
@@ -739,17 +1299,24 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   subjectName = "__matchSubject"
   subjectExpr = subject toGoExpr: ctx scope: innerScope
   kind != IrMatchKind.ByError ifTrue: [
-    kind == IrMatchKind.ByType
-      ifTrue: [sb appendIndent: 1 line: ("var " + subjectName + " any = " + subjectExpr)]
+      kind == IrMatchKind.ByType
+      ifTrue: [sb appendIndent: 1 line: ("var " + subjectName + " interface{} = " + subjectExpr)]
      ifFalse: [sb appendIndent: 1 line: ("" + subjectName + " := " + subjectExpr)]
   ]
   elseBranchLocal = elseBranch
   hasElse = | elseBranchLocal
             | null => false
             |=> true
+  hasNullCase = cases any: [c -> c condition isGoNullLiteral]
+  subjectForName = subject
+  subjectLocalNameMaybe = subjectForName goLocalVarName
+  subjectLocalName = | subjectLocalNameMaybe
+    | null => ""
+    |=> subjectLocalNameMaybe
 
-  | kind
-  | IrMatchKind.ByError => [
+  isByError = kind == IrMatchKind.ByError
+  isByType = kind == IrMatchKind.ByType
+  isByError ifTrue: [
       valueName = "__matchValue"
       errName = "__matchErr"
       subjectIsUnit
@@ -763,22 +1330,28 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
       sb appendIndent: 1 line: ("if " + errName + " != nil {")
       sb appendIndent: 2 line: ("switch " + errName + ".(type) {")
       cases forEach: [c ->
-        typeStr = c assertedTypeRef unpack: [it toGoType: ctx] or: (c condition toGoExpr: ctx scope: innerScope)
+        assertedTypeMaybe = c assertedTypeRef
+        typeStr = | assertedTypeMaybe
+          | null => c condition toGoExpr: ctx scope: innerScope
+          |=> assertedTypeMaybe toGoType: ctx
         sb appendIndent: 2 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
-        aliasStr = typeAlias unpackOrValue: "it"
+        typeAliasMaybe = typeAlias
+        aliasStr = | typeAliasMaybe
+          | null => "it"
+          |=> typeAliasMaybe
         caseScope locals add: aliasStr
         sb appendIndent: 3 line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
         c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 3 returnType: retType
         retType isGoUnitType
           ifTrue: [
-            ctx emitResult: (c body result) sb: sb indent: 3 retType: retType scope: caseScope
+            ctx emitBlockResult: (c body) sb: sb indent: 3 retType: retType scope: caseScope
             retErrors isNotEmpty
               ifTrue: [sb appendIndent: 3 line: "return nil"]
              ifFalse: [sb appendIndent: 3 line: "return"]
           ]
           ifFalse: [
-            ctx emitResult: (c body result) sb: sb indent: 3 retType: retType scope: caseScope
+            ctx emitBlockResult: (c body) sb: sb indent: 3 retType: retType scope: caseScope
           ]
       ]
       sb appendIndent: 2 line: "default:"
@@ -813,7 +1386,10 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
       |=> [
         elseBlock = elseBranchLocal
         elseScope = innerScope copy
-        aliasStr = typeAlias unpackOrValue: "it"
+        typeAliasMaybe = typeAlias
+        aliasStr = | typeAliasMaybe
+          | null => "it"
+          |=> typeAliasMaybe
         elseScope locals add: aliasStr
         subjectIsUnit ifFalse: [
           sb appendIndent: 1 line: (aliasStr + " := " + valueName)
@@ -821,38 +1397,47 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
         elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 1 returnType: retType
         retType isGoUnitType
           ifTrue: [
-            ctx emitResult: (elseBlock result) sb: sb indent: 1 retType: retType scope: elseScope
+            ctx emitBlockResult: elseBlock sb: sb indent: 1 retType: retType scope: elseScope
             retErrors isNotEmpty
               ifTrue: [sb appendIndent: 1 line: "return nil"]
              ifFalse: [sb appendIndent: 1 line: "return"]
           ]
           ifFalse: [
-            ctx emitResult: (elseBlock result) sb: sb indent: 1 retType: retType scope: elseScope
+            ctx emitBlockResult: elseBlock sb: sb indent: 1 retType: retType scope: elseScope
           ]
       ]
-    ]
-  | IrMatchKind.ByType => [
+    ] ifFalse: [
+    isByType ifTrue: [
       sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
       cases forEach: [c ->
-        typeStr = c assertedTypeRef unpack: [it toGoType: ctx] or: (c condition toGoExpr: ctx scope: innerScope)
+        assertedTypeMaybe = c assertedTypeRef
+        typeStr = | assertedTypeMaybe
+          | null => c condition toGoExpr: ctx scope: innerScope
+          |=> assertedTypeMaybe toGoType: ctx
         sb appendIndent: 1 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
-        typeAlias unpack: [aliasName ->
+        aliasNameMaybe = typeAlias
+        | aliasNameMaybe
+        | null => []
+        |=> [
           caseRefNames = c body collectIrRefNames
-          sb appendIndent: 2 line: (aliasName + " := " + subjectName + ".(" + typeStr + ")")
-          (caseRefNames contains: aliasName) ifFalse: [
-            sb appendIndent: 2 line: ("_ = " + aliasName)
+          sb appendIndent: 2 line: (aliasNameMaybe + " := " + subjectName + ".(" + typeStr + ")")
+          (caseRefNames contains: aliasNameMaybe) ifFalse: [
+            sb appendIndent: 2 line: ("_ = " + aliasNameMaybe)
           ]
-          caseScope locals add: aliasName
+          caseScope locals add: aliasNameMaybe
+          caseScope nullablePointerLocals remove: aliasNameMaybe
+          caseScope narrowedNullablePointerLocals remove: aliasNameMaybe
+          ()
         ]
         c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
         retType isGoUnitType
           ifTrue: [
-            ctx emitResult: (c body result) sb: sb indent: 2 retType: retType scope: caseScope
+            ctx emitBlockResult: (c body) sb: sb indent: 2 retType: retType scope: caseScope
             sb appendIndent: 2 line: "return"
           ]
           ifFalse: [
-            ctx emitResult: (c body result) sb: sb indent: 2 retType: retType scope: caseScope
+            ctx emitBlockResult: (c body) sb: sb indent: 2 retType: retType scope: caseScope
           ]
       ]
       | elseBranchLocal
@@ -867,39 +1452,45 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
         elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 2 returnType: retType
         retType isGoUnitType
           ifTrue: [
-            ctx emitResult: (elseBlock result) sb: sb indent: 2 retType: retType scope: elseScope
+            ctx emitBlockResult: elseBlock sb: sb indent: 2 retType: retType scope: elseScope
             sb appendIndent: 2 line: "return"
           ]
           ifFalse: [
-            ctx emitResult: (elseBlock result) sb: sb indent: 2 retType: retType scope: elseScope
+            ctx emitBlockResult: elseBlock sb: sb indent: 2 retType: retType scope: elseScope
           ]
       ]
       sb appendIndent: 1 line: "}"
-    ]
-  |=> [
+    ] ifFalse: [
       // ByValue or ByBool -> if/else chain
       casesCount = cases count
       cases forEachIndexed: [i, c ->
         isFirst = i == 0
         isLast = i == (casesCount - 1)
         cond = c condition toGoExpr: ctx scope: innerScope
-        guardStr = c additionalConditions isNotEmpty
-          ifTrue: [" && " + (c additionalConditions joinWith: " && " transform: [it toGoExpr: ctx scope: innerScope])]
-         ifFalse: [""]
-        fullCond = "(" + subjectName + " == " + cond + ")" + guardStr
+        additionalConditions = c additionalConditions
+        fullCond = additionalConditions isNotEmpty
+          ifTrue: [
+            additionalConditionsStr = additionalConditions joinWith: " || " transform: [condition ->
+              "(" + subjectName + " == " + (condition toGoExpr: ctx scope: innerScope) + ")"
+            ]
+            "((" + subjectName + " == " + cond + ") || " + additionalConditionsStr + ")"
+          ]
+          ifFalse: ["(" + subjectName + " == " + cond + ")"]
         kw = isFirst ifTrue: ["if "] ifFalse: ["} else if "]
         sb appendIndent: 1 line: (kw + fullCond + " {")
         caseScope = innerScope copy
         c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
         retType isGoUnitType
           ifTrue: [
-            ctx emitResult: (c body result) sb: sb indent: 2 retType: retType scope: caseScope
+            ctx emitBlockResult: (c body) sb: sb indent: 2 retType: retType scope: caseScope
             sb appendIndent: 2 line: "return"
           ]
           ifFalse: [
-            ctx emitResult: (c body result) sb: sb indent: 2 retType: retType scope: caseScope
+            ctx emitBlockResult: (c body) sb: sb indent: 2 retType: retType scope: caseScope
           ]
         isLast && (hasElse not) ifTrue: [
+          sb appendIndent: 1 line: "} else {"
+          sb appendIndent: 2 line: "panic(\"unmatched value\")"
           sb appendIndent: 1 line: "}"
         ]
       ]
@@ -909,20 +1500,24 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
         elseBlock = elseBranchLocal
         sb appendIndent: 1 line: "} else {"
         elseScope = innerScope copy
+        ((subjectLocalName != "") && hasNullCase) ifTrue: [
+          elseScope narrowedNullablePointerLocals add: subjectLocalName
+        ]
         elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 2 returnType: retType
         retType isGoUnitType
           ifTrue: [
-            ctx emitResult: (elseBlock result) sb: sb indent: 2 retType: retType scope: elseScope
+            ctx emitBlockResult: elseBlock sb: sb indent: 2 retType: retType scope: elseScope
             sb appendIndent: 2 line: "return"
           ]
           ifFalse: [
-            ctx emitResult: (elseBlock result) sb: sb indent: 2 retType: retType scope: elseScope
+            ctx emitBlockResult: elseBlock sb: sb indent: 2 retType: retType scope: elseScope
           ]
         sb appendIndent: 1 line: "}"
       ]
     ]
+    ]
 
-  sb appendLine: "}()"
+  sb append: "}()"
   ^ sb toString
 ]
 
@@ -932,7 +1527,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
   | IrLet => [
       goName = name toSafeGoIdent
       scope locals add: name
-      typeRef needsGoNullablePointer ifTrue: [scope nullablePointerLocals add: name]
+      (ctx needsGoNullablePointerFor: typeRef) ifTrue: [scope nullablePointerLocals add: name]
       valueLocal = value
       typeStr = typeRef toGoType: ctx
       | valueLocal
@@ -943,12 +1538,10 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
         doProp
           ifTrue: [
             valueExpr emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
-            Unit
+            ()
           ]
           ifFalse: [
-            valueStr = typeRef needsGoNullablePointer
-              ifTrue: [valueExpr toGoNullableInitExpr: ctx scope: scope targetType: typeRef]
-             ifFalse: [valueExpr toGoExpr: ctx scope: scope]
+            valueStr = valueExpr toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (scope nullablePointerLocals contains: name)
             sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
           ]
       ]
@@ -958,7 +1551,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
     ]
   | IrSetLocal => [
       goName = name toSafeGoIdent
-      valueStr = value toGoExpr: ctx scope: scope
+      valueStr = value toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (scope nullablePointerLocals contains: name)
       sb appendIndent: indent line: (goName + " = " + valueStr)
   ]
   | IrSetField => [
@@ -968,7 +1561,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
   ]
   | IrDestructure => [
       tmpName = "__destructTmp" uniqueName: scope locals
-      valueStr = value toGoExpr: ctx :scope
+      valueStr = value toGoExpr: ctx scope: scope
       sb appendIndent: indent line: (tmpName + " := " + valueStr)
       bindings forEach: [b ->
         goName = b name toSafeGoIdent
@@ -997,16 +1590,54 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       ]
   ]
   | IrWhile => [
-      condExpr = cond toGoExpr: ctx scope: scope
-      bodyExpr = body toGoExpr: ctx scope: scope
-
-      // whileTrue: is typically used as `[cond] whileTrue: [body]`, which arrives as IrLambda
-      // for both parts, so we must invoke lambdas to preserve semantics.
-      condStr = cond isIrLambda ifTrue: ["(" + condExpr + ")()"] ifFalse: [condExpr]
-      bodyStr = body isIrLambda ifTrue: ["(" + bodyExpr + ")()"] ifFalse: [bodyExpr]
+      condLocal = cond
+      bodyLocal = body
       sb appendIndent: indent line: "for {"
-      sb appendIndent: (indent + 1) line: ("if !(" + condStr + ") { break }")
-      sb appendIndent: (indent + 1) line: bodyStr
+
+      | condLocal
+      | IrLambda => [
+        condScope = scope copy
+        condLocal args forEach: [arg ->
+          condScope locals add: arg name
+          (ctx needsGoNullablePointerFor: arg typeRef) ifTrue: [condScope nullablePointerLocals add: arg name]
+        ]
+        sb appendIndent: (indent + 1) line: "{"
+        condBody = condLocal body
+        condBody blockToGoStatements: ctx scope: condScope sb: sb indent: (indent + 2) returnType: returnType
+        condResultMaybe = condBody result
+        | condResultMaybe
+        | null => [sb appendIndent: (indent + 2) line: "if !(false) { break }"]
+        |=> [
+          condResult = condResultMaybe toGoExpr: ctx scope: condScope
+          sb appendIndent: (indent + 2) line: ("if !(" + condResult + ") { break }")
+        ]
+        sb appendIndent: (indent + 1) line: "}"
+      ]
+      |=> [
+        condExpr = condLocal toGoExpr: ctx scope: scope
+        sb appendIndent: (indent + 1) line: ("if !(" + condExpr + ") { break }")
+      ]
+
+      | bodyLocal
+      | IrLambda => [
+        bodyScope = scope copy
+        bodyLocal args forEach: [arg ->
+          bodyScope locals add: arg name
+          (ctx needsGoNullablePointerFor: arg typeRef) ifTrue: [bodyScope nullablePointerLocals add: arg name]
+        ]
+        sb appendIndent: (indent + 1) line: "{"
+        bodyBlock = bodyLocal body
+        bodyBlock blockToGoStatements: ctx scope: bodyScope sb: sb indent: (indent + 2) returnType: returnType
+        bodyResultMaybe = bodyBlock result
+        | bodyResultMaybe
+        | null => []
+        |=> bodyResultMaybe emitAsStmt: ctx scope: bodyScope sb: sb indent: (indent + 2) returnType: returnType
+        sb appendIndent: (indent + 1) line: "}"
+      ]
+      |=> [
+        bodyExpr = bodyLocal toGoExpr: ctx scope: scope
+        sb appendIndent: (indent + 1) line: bodyExpr
+      ]
       sb appendIndent: indent line: "}"
   ]
   | IrThrow => [
@@ -1027,7 +1658,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
 extend IrBlock [
   on blockToGoExpr(ctx): GoContext scope: GoScope -> String = [
     retType = resultType
-    retStr = retType isGoUnitType ifTrue: [""] ifFalse: [" " + (retType toGoType: ctx)]
+    retStr = " " + (retType toGoType: ctx)
     sb = StringBuilder new
     sb append: "func()"
     sb append: retStr
@@ -1036,8 +1667,11 @@ extend IrBlock [
     innerScope = scope copy
     this blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: retType
     ctx emitResult: result sb: sb indent: 1 retType: retType scope: innerScope
+    retType isGoUnitType ifTrue: [
+      sb appendIndent: 1 line: ("return " + (retType toGoType: ctx) + "{}")
+    ]
 
-    sb appendLine: "}()"
+    sb append: "}()"
     ^ sb toString
   ]
 
@@ -1047,21 +1681,22 @@ extend IrBlock [
   ]
 
   on hasTrailingReturn -> Bool = [
-    stmts isEmpty ifTrue: [^ false]
-    lastStmt = stmts last
-    ^ | lastStmt
+    ^ stmts isEmpty ifTrue: [false] ifFalse: [
+      lastStmt = stmts last
+      | lastStmt
       | IrReturn | IrThrow => true
       |=> false
+    ]
   ]
 ]
 
 List(String) goTypeParams -> String =
-  .isEmpty  ifTrue: [""]
-           ifFalse: [ "[" + (.joinWith: ", " transform: [it toSafeGoIdent + " any"]) + "]" ]
+  this isEmpty  ifTrue: [""]
+           ifFalse: [ "[" + (this joinWith: ", " transform: [it toSafeGoIdent + " any"]) + "]" ]
 
 List(String) goTypeArgs -> String =
-  .isEmpty  ifTrue: [""]
-           ifFalse: [ "[" + (.joinWith: ", " transform: [it toSafeGoIdent]) + "]" ]
+  this isEmpty  ifTrue: [""]
+           ifFalse: [ "[" + (this joinWith: ", " transform: [it toSafeGoIdent]) + "]" ]
 
 IrTypeRef collectGoTypeParamsInto(names): mut List(String) seen: mut Set(String) -> Unit = [
   baseId = typeId goNormalizeTypeId
@@ -1071,19 +1706,21 @@ IrTypeRef collectGoTypeParamsInto(names): mut List(String) seen: mut Set(String)
       names add: baseId
     ]
   ]
-  args forEach: [it collectGoTypeParamsInto: names :seen]
-  returnType unpack: [it collectGoTypeParamsInto: names :seen]
-  errors forEach: [it collectGoTypeParamsInto: names :seen]
+  args forEach: [it collectGoTypeParamsInto: names seen: seen]
+  returnTypeMaybe = returnType
+  | returnTypeMaybe
+  | null => []
+  |=> returnTypeMaybe collectGoTypeParamsInto: names seen: seen
+  errors forEach: [it collectGoTypeParamsInto: names seen: seen]
 ]
 
 List(IrField) goTypeParamsFromFields -> List(String) = [
   names::mut List(String) = {}!
   seen::mut Set(String) = #()!
-  .forEach: [field -> field typeRef collectGoTypeParamsInto: names :seen]
+  this forEach: [field -> field typeRef collectGoTypeParamsInto: names seen: seen]
   ^ names toList
 ]
 
 List(String) goCallArgs -> String = [
-  .isEmpty ifTrue: [^ ""]
-  ^ .joinWith: ", "
+  ^ this isEmpty ifTrue: [""] ifFalse: [this joinWith: ", "]
 ]

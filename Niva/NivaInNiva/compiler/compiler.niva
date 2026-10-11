@@ -15,12 +15,20 @@ String nivaModuleIdFromRelativePath -> String = [
 ]
 
 String nivaModuleCollisionKey -> String =
-  .lowercase, replace: "-" with: "_"
+  this lowercase, replace: "-" with: "_"
 
 String isHiddenPath -> Bool = [
   segments = this replace: "\\" with: "/", split: "/"
   directories = segments dropLast: 1
   directories any: [it startsWith: "."]
+]
+
+String isTestSource -> Bool = [
+  normalized = (this replace: "\\" with: "/") lowercase
+  fileName = normalized substringAfterLast: "/"
+  inTestsDirectory = normalized contains: "/tests/"
+  namedTest = (fileName endsWith: "test.niva") || (fileName endsWith: "tests.niva")
+  inTestsDirectory || namedTest
 ]
 
 NivaSourceFile nivaModuleId -> String =
@@ -49,6 +57,7 @@ String isLegacyBindingFile -> Bool = [
 
 List(NivaSourceFile) nivaModuleCollisionError -> String? = [
   seen::mut Map(String, String) = #{}!
+  mut collisionError::String? = null
   this sortedBy: [it relativePath], forEach: [source ->
     moduleId = source nivaModuleId
     collisionKey = moduleId nivaModuleCollisionKey
@@ -57,24 +66,26 @@ List(NivaSourceFile) nivaModuleCollisionError -> String? = [
     | null => [seen at: collisionKey put: source relativePath]
     |=> [
       existingPath != source relativePath ifTrue: [
-        ^ "Niva module id collision: `" + existingPath + "` and `" +
+        collisionError <- "Niva module id collision: `" + existingPath + "` and `" +
           source relativePath + "` both normalize to `" + collisionKey + "`"
       ]
     ]
   ]
-  null
+  ^ collisionError
 ]
 
 constructor NivaBuildSystem [
     on findAllFilesFrom(path): String? withIO(io): IO_Container backend(backend): String -> List(NivaSourceInput) = [
         // path is to main.niva, need to get its paret to start search
-        p = path unpack: [str -> io getParent path: str]
-                 or: io currentDir
+        p = | path
+            | null => io currentDir
+            |=> io getParent path: path
 
         walkedFiles = io walkDir path: p,
             filter: [
               (it relativePath endsWith: ".niva") &&
-                ((it relativePath isHiddenPath) not)
+                ((it relativePath isHiddenPath) not) &&
+                ((it relativePath isTestSource) not)
             ],
             sortedBy: [it relativePath]
 
@@ -82,12 +93,18 @@ constructor NivaBuildSystem [
           (source relativePath isLegacyBindingFile) ifTrue: [
             ("Skipping unmarked binding file " + source relativePath +
               "; rename it to .go.bind.niva or .kotlin.bind.niva") echo
+            ()
           ]
         ]
 
         files = walkedFiles filter: [it relativePath nivaSourceForBackend: backend]
 
-        files nivaModuleCollisionError unpack: [TO DO: it]
+        collisionError = files nivaModuleCollisionError
+        | collisionError
+        | null => []
+        |=> [TO DO: collisionError
+          ()
+        ]
 
         sources::mut List(NivaSourceInput) = {}!
         files forEach: [source ->
@@ -110,14 +127,22 @@ type NivaCompiler
 IO_Container ensureCljProjectAt(root): String -> Unit = [
   this createDirectories path: (root + "/niva")
   (FileSystem exists: ((root + "/bb.edn") toPath)) ifFalse: [
-    this writeFile file: root + "/bb.edn" content: CLJ_PROJECT_DEPS_SOURCE
+    this writeFile file: root + "/bb.edn" content: (CompilerConstants cljProjectDepsSource)
   ]
   (FileSystem exists: ((root + "/deps.edn") toPath)) ifFalse: [
-    this writeFile file: root + "/deps.edn" content: CLJ_PROJECT_DEPS_SOURCE
+    this writeFile file: root + "/deps.edn" content: (CompilerConstants cljProjectDepsSource)
   ]
   (FileSystem exists: ((root + "/niva/core.clj") toPath)) ifFalse: [
-    this writeFile file: root + "/niva/core.clj" content: NIVA_CORE_SOURCE
+    this writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
   ]
+  ()
+]
+
+IO_Container initializeGoProjectAt(root): String -> Unit = [
+  this deleteRecursively path: root
+  this createDirectories path: root + "/core"
+  this writeFile file: root + "/go.mod" content: (GoRuntimeSources moduleSource)
+  this writeFile file: root + "/core/core.go" content: (GoRuntimeSources coreSource)
   ()
 ]
 
@@ -127,7 +152,7 @@ type WatchChangeBatch
 constructor WatchChangeBatch empty -> WatchChangeBatch = WatchChangeBatch paths: #()!
 
 WatchChangeBatch add(path): String -> WatchChangeBatch = [
-  updated = paths toMutableSet
+  updated::mut Set(String) = paths toMutableSet
   updated add: path
   WatchChangeBatch paths: updated
 ]
@@ -189,10 +214,10 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
   hasPublishedDeps = FileSystem exists: (publishedDeps toPath)
   hasPublishedBbDeps = FileSystem exists: (publishedBbDeps toPath)
   hasPublishedDeps ifFalse: [
-    io writeFile file: stagingDeps content: CLJ_PROJECT_DEPS_SOURCE
+    io writeFile file: stagingDeps content: (CompilerConstants cljProjectDepsSource)
   ]
   hasPublishedBbDeps ifFalse: [
-    io writeFile file: stagingBbDeps content: CLJ_PROJECT_DEPS_SOURCE
+    io writeFile file: stagingBbDeps content: (CompilerConstants cljProjectDepsSource)
   ]
 
   // publish only fully written staging content
@@ -217,7 +242,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
     FileSystem deleteRecursively: legacyGenerated toPath
   ]
   FileSystem createDirectories: (io getParent path: hostPath) toPath
-  io writeFile file: hostPath content: JVM_HOST_SOURCE
+  io writeFile file: hostPath content: (CompilerConstants jvmHostSource)
   FileSystem deleteRecursively: stagingRoot toPath
 
   CljGenerationResult generationId: generationId published: true
@@ -225,7 +250,10 @@ CljOutput publishTo(root): String withIO(io): IO_Container -> CljGenerationResul
 ]
 
 constructor NivaCompiler [
-    on runArgs: List(String) withIO: IO_Container = NivaCompiler :runArgs :withIO measureTime: false
+    on runArgs: List(String) withIO: IO_Container = [
+      NivaCompiler runArgs: runArgs withIO: withIO measureTime: false
+      ()
+    ]
     on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [ // enable time
         t1 = System currentTimeMillis
 
@@ -248,28 +276,34 @@ constructor NivaCompiler [
         nativeBuild ifTrue: [
           ((option != CompilerOption.Build) || (backend != CompilerBackend.Clj)) ifTrue: [
             TO DO: "--native is only supported for Clojure builds"
+            ()
           ]
-          repl ifTrue: [TO DO: "--native cannot be combined with --repl"]
+          repl ifTrue: [TO DO: "--native cannot be combined with --repl"
+            ()
+          ]
           target == CompilerTarget.Bb ifTrue: [
             TO DO: "--native requires --target jvm"
+            ()
           ]
         ]
 
         option == CompilerOption.Watch ifTrue: [
           backend != CompilerBackend.Clj ifTrue: [
             TO DO: "watch is only supported for the Clojure backend"
+            ()
           ]
         ]
 
 
         realJSPath = io currentDir + "/.niva_js"
         realIrPath = io currentDir + "/.niva_ir"
-        realGoPath = io currentDir + "/.niva_go"
+        realGoPath = io currentDir + "/.niva_go/build"
         realCljPath = io currentDir + "/.niva_clj"
 
         generateJsFromResolver = [res::ResolverHelper ->
             FileSystem createDirectories: (realJSPath toPath)
             TO DO: "JS backend temporarily disabled"
+            ()
             //fileToJSCOntent = TypeScript fullFromResolver: res
 
             //fileToJSCOntent forEach: [file, jsContent ->
@@ -287,11 +321,20 @@ constructor NivaCompiler [
         ]
 
         generateGoFromResolver = [res::ResolverHelper ->
-            FileSystem createDirectories: (realGoPath toPath)
-            irModule = res toIrModule
+            irModule = res toIrModuleForGo
             goContent = GoBackend fullFromIrModule: irModule
+            io initializeGoProjectAt: realGoPath
             destanation = realGoPath + "/main.go"
             io writeFile file: destanation content: goContent
+        ]
+
+        buildGoProject = [
+          buildResult = io runProgramFromPath path: realGoPath
+            args: {"go" "build" "-o" "niva_go" "."}
+          buildResult != 0 ifTrue: [
+            TO DO: "Go build failed"
+            ()
+          ]
         ]
 
         generateCljFromResolver = [res: ResolverHelper ->
@@ -312,38 +355,49 @@ constructor NivaCompiler [
             ]
         ]
 
-        backendStr =
-          | backend
-          | CompilerBackend.Go => "go"
-          | CompilerBackend.Js => "js"
-          | CompilerBackend.Clj => "clj"
-          | CompilerBackend.Lsp => TO DO: "no lsp binary"
+        backendStr = backend == CompilerBackend.Go ifTrue: ["go"] ifFalse: [
+          backend == CompilerBackend.Js ifTrue: ["js"] ifFalse: [
+          backend == CompilerBackend.Clj ifTrue: ["clj"] ifFalse: [
+              TO DO: "no lsp binary"
+              "lsp"
+            ]
+          ]
+        ]
 
         // for `info package.Type`, we always start from main
         // path arg in info mode is PKG.TYPE
         rootFile = option == CompilerOption.Info
           ifTrue: ["main.niva"]
-          ifFalse: [path unpackOrValue: "main.niva"]
+          ifFalse: [
+            pathMaybe = path
+            | pathMaybe
+            | null => "main.niva"
+            |=> pathMaybe
+          ]
         rootPath = rootFile toPath
         entryPoint = rootPath name substringBeforeLast: "."
         //t2 = measureTimeFrom from: t1 text: "arg-parsed"
 
         runOrBuild = [
 
-          sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io backend: backendStr
+          sources = NivaBuildSystem findAllFilesFrom: path withIO: io backend: backendStr
           //t3 = measureTimeFrom from: t2 text: "collect-files"
 
           resolver = ResolverHelper resolveSources: sources entryPoint: entryPoint backend: backendStr
           resolver db listOfErrors isNotEmpty ifTrue: [
             resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
             TO DO: "Resolver errors: " + resolver_errors
+            ()
           ]
 
           resolver
         ]
 
         runWatch = [
-          rootFile = path unpackOrValue: "main.niva"
+          watchPathMaybe = path
+          rootFile = | watchPathMaybe
+            | null => "main.niva"
+            |=> watchPathMaybe
           projectRoot = io getParent path: rootFile
           rootPath = rootFile toPath
           entryPoint = rootPath name substringBeforeLast: "."
@@ -358,7 +412,7 @@ constructor NivaCompiler [
           compileAndPublish = [
             mut publishedOk = false
             requestVersion <- requestVersion + 1
-            sources = NivaBuildSystem findAllFilesFrom: rootFile withIO: io backend: "clj"
+            sources = NivaBuildSystem findAllFilesFrom: watchPathMaybe withIO: io backend: "clj"
             snapshot = WorkspaceSnapshot fromSources: sources revision: requestVersion
               entryPoint: entryPoint documentVersions: #{}
             result = session compileSnapshot: snapshot config: config
@@ -366,10 +420,29 @@ constructor NivaCompiler [
             result commitReady ifFalse: [
               result diagnostics forEach: [diagnostic ->
                 (diagnostic path + ": " + diagnostic message) echo
+                ()
               ]
             ] ifTrue: [
-              artifact = result backendArtifact unpackOrPANIC
-              cljOutput = artifact cljOutput unpackOrPANIC
+              artifactMaybe = result backendArtifact
+              artifact = | artifactMaybe
+                | null => [
+                  TO DO: "Clj build completed without a backend artifact"
+                  CompilerBackendArtifact
+                    backend: "clj" target: watchRuntime content: "" cljOutput: null
+                ]
+                |=> artifactMaybe
+              cljOutputMaybe = artifact cljOutput
+              cljOutput = | cljOutputMaybe
+                | null => [
+                  TO DO: "Clj backend artifact has no output"
+                  CljOutput
+                    files: #{}!
+                    entryNamespace: ""
+                    manifest: (CljManifest
+                      version: 0 entryNamespace: "" modules: {} stateVars: {} typeShapes: {})
+                    target: CljTarget.Jvm
+                ]
+                |=> cljOutputMaybe
               entryNamespace <- cljOutput entryNamespace
               published = result publishCljOutput: realCljPath withIO: io
               published published ifTrue: [
@@ -392,43 +465,42 @@ constructor NivaCompiler [
           ()
         ]
 
-        | option
-        | CompilerOption.Watch => [runWatch do]
-        | CompilerOption.Run | CompilerOption.Build => [
+        option == CompilerOption.Watch ifTrue: [
+          runWatch do
+          ()
+        ]
+        ((option == CompilerOption.Run) || (option == CompilerOption.Build)) ifTrue: [
             t3 = System currentTimeMillis
 
             resolver = runOrBuild do
             //t4 = measureTimeFrom from: t3 text: "resolve"
 
-            | backend
-            | CompilerBackend.Go => [
+            backend == CompilerBackend.Go ifTrue: [
                 generateGoFromResolver res: resolver
                 t5 = measureTimeFrom from: t1 text: "full niva until go generated"
 
                 option == CompilerOption.Run ifTrue: [
-                  pathToEntryPoint = realGoPath //+ "/main.go"
-                  //run-code = io runProgramFromPath path: pathToEntryPoint args: {"ixgo" "run" "."}
+                  buildGoProject do
                   t6 = measureTimeFrom from: t5 text: "go build"
-
-                  //run-code == 0 ifTrue: [io runProgram args: {"./.niva_go/niva_go"}]
-                  io runProgram args: {"ixgo" "run" pathToEntryPoint}
+                  binaryPath = realGoPath + "/niva_go"
+                  runResult = io runProgram args: {binaryPath}
                   t7 = measureTimeFrom from: t6 text: "run binary"
-
-                ]
-
-                //t6 = System currentTimeMillis
-                //t-full-run-go = t6 - t5
-                //t-full-run-go debug
-              ]
-            | CompilerBackend.Js => [
+                  System exitWith: runResult
+                ] ifFalse: [option == CompilerOption.Build ifTrue: [
+                  buildGoProject do
+                  ()
+                ]]
+                ()
+            ] ifFalse: [backend == CompilerBackend.Js ifTrue: [
                 generateJsFromResolver res: resolver
                 option == CompilerOption.Run ifTrue: [
                   // run with bun
                   pathToEntryPoint = realJSPath + "/" + entryPoint + ".js"
                   io runProgram args: {"bun" pathToEntryPoint}
+                  ()
                 ]
-              ]
-            | CompilerBackend.Clj => [
+                ()
+            ] ifFalse: [backend == CompilerBackend.Clj ifTrue: [
                 t5 = measureTimeFrom from: t1 text: "full niva until IR"
                 generateCljFromResolver res: resolver
                 option == CompilerOption.Run ifTrue: [
@@ -437,8 +509,10 @@ constructor NivaCompiler [
                   runtime == CompilerRuntime.Jvm ifTrue: [
                     io runProgramFromPath path: realCljPath
                       args: {"clojure" "-M" "-m" "main"}
+                    ()
                   ] ifFalse: [
                     io runProgram args: {"bb" "-cp" (generatedPath + ":" + realCljPath) "-m" "main" }
+                    ()
                   ]
 
                   t7 = measureTimeFrom from: t6 text: "run binary"
@@ -450,6 +524,7 @@ constructor NivaCompiler [
                       nativeImageVersionResult = io runProgram args: {"sh" "-c" "native-image --version"}
                       nativeImageVersionResult != 0 ifTrue: [
                         TO DO: "native-image is not installed or unavailable in PATH"
+                        ()
                       ]
                     ]
 
@@ -458,12 +533,15 @@ constructor NivaCompiler [
                       // native-image needs JVM bytecode, while `bb uberjar` contains
                       // Babashka-loadable Clojure sources only. Use Babashka to invoke
                       // a small tools.build AOT build for the native-image input JAR.
-                      nativeBuildScript = NATIVE_BUILD_SOURCE
+                      nativeBuildScript = CompilerConstants nativeBuildSource
                       io writeFile file: realCljPath + "/build.clj" content: nativeBuildScript
 
-                      nativeDeps = CLJ_NATIVE_DEPS_SOURCE
+                      nativeDeps = CompilerConstants cljNativeDepsSource
                       jarBuildResult = io runProgramFromPath path: realCljPath args: {"bb" "clojure" "-Sdeps" nativeDeps "-T:build" "native-jar"}
-                      jarBuildResult != 0 ifTrue: [TO DO: "Babashka failed to build the JVM main.jar"]
+                      jarBuildResult != 0 ifTrue: [
+                        TO DO: "Babashka failed to build the JVM main.jar"
+                        ()
+                      ]
 
                       nativeBuildResult = io runProgram args: {
                         "native-image"
@@ -471,27 +549,34 @@ constructor NivaCompiler [
                         "-H:IncludeResources=.*\\.(clj|cljc|edn)$"
                         "-jar" "main.jar" "main"
                       }
-                      nativeBuildResult != 0 ifTrue: [TO DO: "native-image failed to build main"]
+                      nativeBuildResult != 0 ifTrue: [
+                        TO DO: "native-image failed to build main"
+                        ()
+                      ]
                     ] ifFalse: [
                       buildResult = io runProgram args: {"bb" "-cp" realCljPath "uberjar" "main.jar" "-m" "main"}
-                      buildResult != 0 ifTrue: [TO DO: "Babashka failed to build main.jar"]
+                      buildResult != 0 ifTrue: [
+                        TO DO: "Babashka failed to build main.jar"
+                        ()
+                      ]
                     ]
                   ]
                 ]
-              ]
-            | CompilerBackend.Lsp => []
+                ()
+            ] ifFalse: [()]]]
+            ()
         ]
-        | CompilerOption.Ir => [
+        option == CompilerOption.Ir ifTrue: [
             resolver = runOrBuild do
             generateIrFromResolver res: resolver
+            ()
         ]
-        | CompilerOption.Help => []
-        | CompilerOption.Daemon => []
-        | CompilerOption.RunTests => []
-        | CompilerOption.Info => [
+        option == CompilerOption.Info ifTrue: [
             resolver = runOrBuild do
-            info = path unpack: [resolver db structureInfoFor: it]
-                        or: resolver db structureInfo
+            pathMaybe = path
+            info = | pathMaybe
+              | null => resolver db structureInfo
+              |=> resolver db structureInfoFor: pathMaybe
             info echo
             ()
         ]

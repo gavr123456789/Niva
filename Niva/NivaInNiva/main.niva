@@ -2,17 +2,14 @@ type Program
   io: IO_Container
 
 
-type FilePath = String
-type FileContent = String
-
 type NivaSourceFile
   path: String
   relativePath: String
 
 type IO_Container
-  readFile:   [FilePath -> String]
-  writeFile:  [FilePath, FileContent -> Unit]
-  walkDir:    [FilePath -> List(NivaSourceFile)]
+  readFile:   [String -> String]
+  writeFile:  [String, String -> Unit]
+  walkDir:    [String -> List(NivaSourceFile)]
   getParent:  [String -> String]
   createDirectories: [String -> Unit]
   deleteRecursively: [String -> Unit]
@@ -22,17 +19,17 @@ type IO_Container
 
 
 constructor IO_Container new -> IO_Container = [
-  readFile::[FilePath -> String] = [path::String ->
+  readFile::[String -> String] = [path::String ->
     FileSystem read: (path toPath)
   ]
 
-  writeFile = [path: String, fileContent: FileContent ->
+  writeFile = [path: String, fileContent: String ->
     FileSystem write: path toPath
                content: fileContent
     ()
   ]
 
-  walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
+  walkDir::[String -> List(NivaSourceFile)] = [path: String ->
     pathValue = path toPath
     root = pathValue normalized
     // Okio keeps `.` as a path segment after normalization. Recursive entries
@@ -53,8 +50,7 @@ constructor IO_Container new -> IO_Container = [
 
   getParent = [path: String ->
     pathValue = path toPath
-    parent = pathValue parent
-    parent unpackOrPANIC toString
+    pathValue parent toString
   ]
 
   createDirectories = [path: String ->
@@ -75,9 +71,9 @@ constructor IO_Container new -> IO_Container = [
     ProcessRunner run: args dir: path
   ]
 
-  ^ IO_Container :readFile :writeFile :walkDir :getParent
-    :createDirectories :deleteRecursively
-    currentDir: "." :runProgram :runProgramFromPath
+  ^ IO_Container readFile: readFile writeFile: writeFile walkDir: walkDir getParent: getParent
+    createDirectories: createDirectories deleteRecursively: deleteRecursively
+    currentDir: System currentDir runProgram: runProgram runProgramFromPath: runProgramFromPath
 ]
 
 

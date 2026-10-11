@@ -22,6 +22,18 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
   )
 
   mapP addMethod: (
+    NivaMethod unary: "toMap"
+        receiverType: mapType
+             returnT: mapType
+  )
+
+  mapP addMethod: (
+    NivaMethod unary: "toMutableMap"
+        receiverType: mapType
+             returnT: mapType
+  )
+
+  mapP addMethod: (
     NivaMethod unary: "clear"
         receiverType: mapType
              returnT: unit
@@ -29,6 +41,12 @@ constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
   )
 
   keysType = SetT t: keyType
+  valuesType = ListT t: valueType
+  mapP addMethod: (
+    NivaMethod unary: "values"
+        receiverType: mapType
+             returnT: valuesType
+  )
   mapP addMethod: (
     NivaMethod unary: "keys"
         receiverType: mapType

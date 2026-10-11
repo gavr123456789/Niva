@@ -4,7 +4,7 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
   | IrVarRef      => []
   | IrLiteralExpr => []
   | IrThisRef     => []
-  | IrFieldGet    => [receiver validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  | IrFieldGet    => [receiver validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
   | IrCall        => [
       // inlined bind calls (emit / by-name) don't resolve a funcId, they are
       // substituted directly by the backend, so skip funcId validation for them
@@ -17,39 +17,52 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
             ]
           ]
         |=> [
-            isCore = declPkg unpack: [it == "core"] or: false
-            (isCore not) && (knownFuncIds contains: fid, not) ifTrue: [
-              goErrors add: (GoIrError message: ("unknown Go IR func id: " + fid))
+            declPkgMaybe = declPkg
+            isCore = | declPkgMaybe
+              | null => false
+              |=> declPkgMaybe == "core"
+            validationId = fid
+            (isCore not) && (knownFuncIds contains: validationId, not) ifTrue: [
+              goErrors add: (GoIrError message: ("unknown Go IR func id: " + validationId))
             ]
           ]
       ]
-      callee unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
-      args forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+      calleeMaybe = callee
+      | calleeMaybe
+      | null => []
+      |=> calleeMaybe validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
+      args forEach: [it validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
       paramTypes forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
-      receiverType unpack: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+      receiverTypeMaybe = receiverType
+      | receiverTypeMaybe
+      | null => []
+      |=> receiverTypeMaybe validateGoTypeRefs: knownTypeIds goErrors: goErrors
     ]
-  | IrLambda    => [body validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors]
-  | IrBlockExpr => [block validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors]
+  | IrLambda    => [body validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
+  | IrBlockExpr => [block validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
   | IrMatchExpr => [
-      subject validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      subject validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
       cases forEach: [c ->
-        c condition validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
-        c additionalConditions forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
-        c body validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors
+        c condition validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
+        c additionalConditions forEach: [it validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
+        c body validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
       ]
-      elseBranch unpack: [it validateGoIrBlock: knownFuncIds :knownTypeIds :goErrors]
+      elseBranchMaybe = elseBranch
+      | elseBranchMaybe
+      | null => []
+      |=> elseBranchMaybe validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
     ]
   | IrNewExpr => [
       baseId = typeId goNormalizeTypeId
       (baseId isGeneric not) && ((baseId hasPrefix: "core_") not) && (knownTypeIds contains: baseId, not) ifTrue: [
         goErrors add: (GoIrError message: ("unknown Go IR constructor type id: " + baseId))
       ]
-      args forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+      args forEach: [it validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
     ]
-  | IrCollectionLiteral => [items forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]]
+  | IrCollectionLiteral => [items forEach: [it validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]]
   | IrOpBin             => [
-      left validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
-      right validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      left validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
+      right validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
     ]
   | IrTypeRefExpr => [ref validateGoTypeRefs: knownTypeIds goErrors: goErrors]
 
@@ -68,36 +81,50 @@ IrTypeRef validateGoTypeRefs(knownTypeIds): Set(String) goErrors: mut List(GoIrE
   ]
 
   args forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
-  returnType unpack: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
+  returnTypeMaybe = returnType
+  | returnTypeMaybe
+  | null => []
+  |=> returnTypeMaybe validateGoTypeRefs: knownTypeIds goErrors: goErrors
   errors forEach: [it validateGoTypeRefs: knownTypeIds goErrors: goErrors]
 ]
 
 IrBlock validateGoIrBlock(knownFuncIds): Set(String) knownTypeIds: Set(String) goErrors: mut List(GoIrError) -> Unit = [
   resultType validateGoTypeRefs: knownTypeIds goErrors: goErrors
-  stmts forEach: [it validateGoIrStmt: knownFuncIds :knownTypeIds :goErrors]
-  result unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  stmts forEach: [it validateGoIrStmt: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
+  resultMaybe = result
+  | resultMaybe
+  | null => []
+  |=> resultMaybe validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
 ]
 
 IrStmt validateGoIrStmt(knownFuncIds): Set(String) knownTypeIds: Set(String) goErrors: mut List(GoIrError) -> Unit = [
   | this
   | IrLet => [
       typeRef validateGoTypeRefs: knownTypeIds goErrors: goErrors
-      value unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+      valueMaybe = value
+      | valueMaybe
+      | null => []
+      |=> valueMaybe validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
     ]
-  | IrSetLocal => [value validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  | IrSetLocal => [value validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
   | IrSetField => [
-      receiver validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
-      value validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      receiver validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
+      value validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
     ]
   | IrDestructure => [
       bindings forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: goErrors]
-      value validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      value validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
     ]
-  | IrExprStmt => [expr validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
-  | IrReturn   => [expr unpack: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]]
+  | IrExprStmt => [expr validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
+  | IrReturn   => [
+      exprMaybe = expr
+      | exprMaybe
+      | null => []
+      |=> exprMaybe validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
+    ]
   | IrWhile    => [
-      cond validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
-      body validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
+      cond validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
+      body validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors
     ]
-  | IrThrow    => [errExpr validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
+  | IrThrow    => [errExpr validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
 ]

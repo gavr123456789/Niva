@@ -58,10 +58,9 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     """ trimIndent
 
   command = args isEmpty ifTrue: ["run"] ifFalse: [args first]
-  command == "--help" ifTrue: [
-    help echo
-    ^ ArgsParsed help
-  ]
+  commandIsHelp = command == "--help"
+  commandIsHelp ifTrue: [help echo
+    ()]
 
   option = | command
     | "run" => CompilerOption.Run
@@ -71,10 +70,9 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     | "info" => CompilerOption.Info
     |=> CompilerOption.Help
 
-  option == CompilerOption.Help ifTrue: [
-    "$command arg is unknown" echo
-    ^ ArgsParsed help
-  ]
+  unknownCommand = (option == CompilerOption.Help) && (commandIsHelp not)
+  unknownCommand ifTrue: ["$command arg is unknown" echo
+    ()]
 
   mut verbose = false
   mut debug = false
@@ -88,32 +86,31 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut invalid = false
   mut explicitHelp = false
 
-  path::String? = args count > 1 ifTrue: [
+  mut path::String? = null
+  args count > 1 ifTrue: [
     second = args at: 1
-    second startsWith: "--", ifTrue: [null] ifFalse: [second]
-  ] ifFalse: [null]
+    (second startsWith: "--") ifFalse: [path <- second]
+    ()
+  ]
   optionStart = path == null ifTrue: [1] ifFalse: [2]
 
   readSeparatedValue = [index: Int ->
     nextIndex = index + 1
 
+    mut value::String? = null
     nextIndex < args count ifTrue: [
       candidate = args at: nextIndex
-      candidate startsWith: "--", ifTrue: [
-        invalid <- true
-        null
-      ] ifFalse: [
-        candidate
-      ]
-    ] ifFalse: [
-      invalid <- true
-      null
+      isOption = candidate startsWith: "--"
+      isOption ifTrue: [invalid <- true]
+      isOption ifFalse: [value <- candidate]
     ]
+    (nextIndex < args count) ifFalse: [invalid <- true]
+    value
   ]
 
   args forEachIndexed: [i, arg ->
     i >= optionStart ifTrue: [
-      previous = i > optionStart ifTrue: [args at: i - 1] ifFalse: [null]
+      previous = i > optionStart ifTrue: [args at: i - 1] ifFalse: [""]
       isSeparatedValue = ((previous == "--runtime") || (previous == "--target")) &&
         ((arg startsWith: "--") not)
       isSeparatedValue ifFalse: [
@@ -125,67 +122,72 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | "--incremental" => incremental <- true
         | "--help" => explicitHelp <- true
         | "--runtime" => [
-          value = readSeparatedValue do: i
-          value unpack: [raw ->
-            parsed = raw compilerRuntimeFromCli
-            parsed == null ifTrue: [invalid <- true] ifFalse: [
-              parsed unpack: [runtime <- it]
-            ]
+          value = readSeparatedValue index: i
+          | value
+          | null => []
+          |=> [
+            parsed = value compilerRuntimeFromCli
+            | parsed
+            | null => [invalid <- true]
+            |=> [runtime <- parsed]
           ]
         ]
         | "--target" => [
-          value = readSeparatedValue do: i
-          value unpack: [raw ->
-            parsed = raw compilerTargetFromCli
-            parsed == null ifTrue: [invalid <- true] ifFalse: [
-              parsed unpack: [target <- it]
-            ]
+          value = readSeparatedValue index: i
+          | value
+          | null => []
+          |=> [
+            parsed = value compilerTargetFromCli
+            | parsed
+            | null => [invalid <- true]
+            |=> [target <- parsed]
           ]
         ]
         |=> [
+          mut handled = false
           arg startsWith: "--backend=", ifTrue: [
+            handled <- true
             backendValue = arg substringAfter: "="
             | backendValue
             | "go" => backend <- CompilerBackend.Go
             | "js" => backend <- CompilerBackend.Js
-            | "clj" | "clojure" => backend <- CompilerBackend.Clj
+            | "clj" => backend <- CompilerBackend.Clj
+            | "clojure" => backend <- CompilerBackend.Clj
             | "lsp" => backend <- CompilerBackend.Lsp
             |=> invalid <- true
-          ] ifFalse: [
-            arg startsWith: "--repl-line=",
-              ifTrue: [replLine <- (arg substringAfter: "=") toInt]
-              ifFalse: [
-                arg startsWith: "--runtime=",
-                  ifTrue: [
-                    value = arg substringAfter: "="
-                    parsed = value compilerRuntimeFromCli
-                    parsed == null ifTrue: [invalid <- true] ifFalse: [
-                      parsed unpack: [runtime <- it]
-                    ]
-                  ]
-                  ifFalse: [
-                    arg startsWith: "--target=",
-                      ifTrue: [
-                        value = arg substringAfter: "="
-                        parsed = value compilerTargetFromCli
-                        parsed == null ifTrue: [invalid <- true] ifFalse: [
-                          parsed unpack: [target <- it]
-                        ]
-                      ]
-                      ifFalse: [invalid <- true]
-                  ]
-              ]
           ]
+          arg startsWith: "--repl-line=", ifTrue: [
+            handled <- true
+            replLine <- (arg substringAfter: "=") toInt
+          ]
+          arg startsWith: "--runtime=", ifTrue: [
+            handled <- true
+            value = arg substringAfter: "="
+            parsed = value compilerRuntimeFromCli
+            | parsed
+            | null => [invalid <- true]
+            |=> [runtime <- parsed]
+          ]
+          arg startsWith: "--target=", ifTrue: [
+            handled <- true
+            value = arg substringAfter: "="
+            parsed = value compilerTargetFromCli
+            | parsed
+            | null => [invalid <- true]
+            |=> [target <- parsed]
+          ]
+          handled ifFalse: [invalid <- true]
         ]
       ]
     ]
   ]
 
-  explicitHelp ifTrue: [help echo; ^ ArgsParsed help]
-  | true
-  | invalid => ArgsParsed help
-  |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl
-    replLine: replLine nativeBuild: nativeBuild incremental: incremental
+  explicitHelp ifTrue: [help echo
+    ()]
+  shouldReturnHelp = invalid || explicitHelp || commandIsHelp || (option == CompilerOption.Help)
+  | shouldReturnHelp
+  | true => ArgsParsed help
+  |=> ArgsParsed path: path option: option backend: backend runtime: runtime target: target verbose: verbose debug: debug repl: repl replLine: replLine nativeBuild: nativeBuild incremental: incremental
 ]
 
 enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | Help

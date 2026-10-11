@@ -41,6 +41,31 @@ NivaType sameDeclaredTypeAs(nivaType): TypeT -> Bool = | this
   ]
   |=> false
 
+NivaType sameTypeAsSameKind(nivaType): NivaType -> Bool = [
+  this name != nivaType name ifTrue: [^ false]
+  thisArgs = this typeArgsForComparison
+  otherArgs = nivaType typeArgsForComparison
+  thisArgs count != otherArgs count ifTrue: [^ false]
+  mut allSame = true
+  thisArgs forEachIndexed: [i, thisArg ->
+    otherArg = otherArgs at: i
+    thisArg sameTypeAs: otherArg, ifFalse: [allSame <- false]
+  ]
+  allSame
+]
+
+NivaType isAssignableToSameKind(nivaType): NivaType db: TyperDB -> Bool = [
+  this name != nivaType name ifTrue: [^ false]
+  thisArgs = this typeArgsForComparison
+  expectedArgs = nivaType typeArgsForComparison
+  thisArgs count != expectedArgs count ifTrue: [^ false]
+  mut allAssignable = true
+  thisArgs forEachIndexed: [i, thisArg ->
+    expectedArg = expectedArgs at: i
+    thisArg isAssignableTo: expectedArg db: db, ifFalse: [allAssignable <- false]
+  ]
+  allAssignable
+]
 
 NivaType sameTypeAs(nivaType): NivaType -> Bool = [
   ^ nivaType needsDeepTypeCompare ifTrue: [
@@ -52,7 +77,7 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
         fields count != nivaType fields count
           ifTrue: [^ false]
 
-        fieldsMatch <- true
+        mut fieldsMatch = true
         fields forEachIndexed: [i, f1 ->
           f2 = nivaType fields at: i
           f1 typeT sameTypeAs: f2 typeT, ifFalse: [
@@ -64,49 +89,41 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
       ]
       |=> false
     ]
-    | ListT =>  | this
-                | ListT => this t sameTypeAs: nivaType t
-                |=> false
-
-    | SetT => | this
-              | SetT => this t sameTypeAs: nivaType t
-              |=> false
-
-    | MapT => | this
-              | MapT => (.k sameTypeAs: nivaType k) &&
-                        (.v sameTypeAs: nivaType v)
-              |=> false
-
+    | ListT => this sameTypeAsSameKind: nivaType
+    | SetT => this sameTypeAsSameKind: nivaType
+    | MapT => this sameTypeAsSameKind: nivaType
     | NullableT => | this
-                   | NullableT => .v sameTypeAs: nivaType v
+                   | NullableT => this sameTypeAsSameKind: nivaType
                    | NothingT => true
                    |=> false
     |=> false
   ] ifFalse: [
-    .sameSimpleTypeAs: nivaType
+    this sameSimpleTypeAs: nivaType
   ]
 ]
 
 /// sameTypeAs: NothingT and AnyT on the right match every type
 NivaType sameTypeStrictAs(nivaType): NivaType -> Bool =
-  (.sameTypeAs: nivaType) && (nivaType sameTypeAs: this)
+  (this sameTypeAs: nivaType) && (nivaType sameTypeAs: this)
 
 
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
-  this isNothingType ifTrue: [^ true]
+  (this name == "Nothing") ifTrue: [^ true]
   ^ nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
     | TypeT =>  | this
                 | TypeT => [
-                  | .sameDeclaredTypeAs: nivaType
+                  | this sameDeclaredTypeAs: nivaType
                   | true => true
-                  | false => (db isUnionBranch: this ofRoot: nivaType) ||
-                              [
-                                parent = db findUnionParent: this
-                                | parent
-                                | null => false
-                                |=> parent isAssignableTo: nivaType :db
-                              ] do
+                  | false => [
+                    isUnionBranch = db isUnionBranch: this ofRoot: nivaType
+                    isUnionBranch ifTrue: [true] ifFalse: [
+                      parentMaybe = db findUnionParent: this
+                      | parentMaybe
+                      | null => false
+                      |=> parentMaybe isAssignableTo: nivaType db: db
+                    ]
+                  ]
 
                 ]
                 |=> false
@@ -116,42 +133,30 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
                     fields count != nivaType fields count
                       ifTrue: [^ false]
 
-                    fieldsMatch <- true
+                    mut fieldsMatch = true
                     fields forEachIndexed: [i, f1 ->
                       f2 = nivaType fields at: i
-                      f1 typeT isAssignableTo: f2 typeT :db,
+                      f1 typeT isAssignableTo: f2 typeT db: db,
                         ifFalse: [fieldsMatch <- false]
                     ]
 
                     // ktlike Unit coercion: any return type is acceptable when Unit is expected
                     returnTypeMatch = | nivaType returnType
                                       | UnitT => true
-                                      |=> returnType isAssignableTo: nivaType returnType :db
+                                      |=> returnType isAssignableTo: nivaType returnType db: db
 
                     fieldsMatch && returnTypeMatch
                   ]
                   |=> false
 
-    | ListT => | this
-               | ListT => this t isAssignableTo: nivaType t :db
-               |=> false
+    | ListT => this isAssignableToSameKind: nivaType db: db
+    | SetT => this isAssignableToSameKind: nivaType db: db
+    | MapT => this isAssignableToSameKind: nivaType db: db
 
-    | SetT => | this
-              | SetT =>  this t isAssignableTo: nivaType t :db
-              |=> false
-
-    | MapT => | this
-              | MapT => (this k isAssignableTo: nivaType k :db) &&
-                        (this v isAssignableTo: nivaType v :db)
-              |=> false
-
-    | NullableT =>  | this
-                    | NullableT => [
-                                    | this v isNothingType
-                                    | true => true
-                                    |=> this v isAssignableTo: nivaType v :db]
-                    | NothingT => true
-                    |=> .isAssignableTo: nivaType v :db
+    | NullableT => | this
+                   | NullableT => this isAssignableToSameKind: nivaType db: db
+                   | NothingT => true
+    |=> this isAssignableTo: (nivaType typeArgsForComparison first) db: db
 
     |=> false
   ] ifFalse: [

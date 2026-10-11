@@ -24,19 +24,21 @@ Test goTaggedUnionShapes = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "type main_Point struct {", assertTrue
-  go contains: "type main_Shape interface { ismain_Shape() }", assertTrue
+  go contains: "type main_Shape interface {\n    ismain_Shape()\n}", assertTrue
   go contains: "type main_Rectangle struct {", assertTrue
   go contains: "type main_Circle struct {", assertTrue
   go contains: "func (main_Rectangle) ismain_Shape() {}", assertTrue
   go contains: "func (main_Circle) ismain_Shape() {}", assertTrue
+  go contains: "func (this main_Rectangle) nivaField__width() int { return this.width }", assertTrue
+  go contains: "func (this main_Rectangle) nivaField__height() int { return this.height }", assertTrue
   go contains: "func main__Shape__area", assertTrue
   go contains: "switch __matchSubject.(type) {", assertTrue
   go contains: "case main_Rectangle:", assertTrue
   go contains: "this := __matchSubject.(main_Rectangle)", assertTrue
-  go contains: "return (this.width * this.height)", assertTrue
+  go contains: "return ((this).nivaField__width() * (this).nivaField__height())", assertTrue
   go contains: "case main_Circle:", assertTrue
   go contains: "this := __matchSubject.(main_Circle)", assertTrue
-  go contains: "return ((this.radius * this.radius) * 3)", assertTrue
+  go contains: "return (((this).nivaField__radius() * (this).nivaField__radius()) * 3)", assertTrue
   go contains: "default:", assertTrue
   go contains: "panic(\"invalid type assertion\")", assertTrue
 ]
@@ -54,7 +56,25 @@ Test goShadowCopyCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "main_Person{p.name, 25}", assertTrue
+  go contains: "main_Person{(p).name, 25}", assertTrue
+]
+
+Test goNestedUnionIncludesParentInterfaces = [
+  fileMain = """
+    union LiteralExpr =
+    | Integer value: Int
+
+    union Expr =
+    | ^LiteralExpr
+
+    union Statement =
+    | ^Expr
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "type main_LiteralExpr interface {\n    ismain_LiteralExpr()\n    ismain_Expr()\n    ismain_Statement()\n}", assertTrue
 ]
 
 Test goMutReceiverUsesPointer = [
@@ -85,6 +105,23 @@ Test goMutReceiverUsesPointer = [
   go contains: "main__core_Int__person(1, &p)", assertTrue
 ]
 
+Test goCustomConstructorCallUsesDeclaredFunction = [
+  fileMain = """
+    type Named
+      value: String
+
+    constructor Named from: String -> Named = Named value: from
+
+    named = Named from: "Ada"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func main__Named__from", assertTrue
+  go contains: "main__Named__from(\"Ada\")", assertTrue
+]
+
 Test goBindingsReadFile = [
   bindFile = """
     Int read: String -> String = Bind emit: "os.ReadFile($1)"
@@ -112,6 +149,20 @@ Test goCoreAnyMethodOwnerCodegen = [
 
   go contains: "core.Any__echo(1)", assertTrue
   Assert that: (go contains: "core.Int__echo(1)") equals: false
+]
+
+Test goCompilerProtocolCallsAreStatic = [
+  fileMain = """
+    Compiler getName: 1
+    Compiler getPlace
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.Compiler__getName(1)", assertTrue
+  go contains: "core.Compiler__getPlace()", assertTrue
+  Assert that: (go contains: "struct{}") equals: false
 ]
 
 Test goEntryLastExprDoesNotReturn = [
@@ -171,7 +222,7 @@ Test goGenericUnionBranchTypeParams = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "type main_Result interface { ismain_Result() }", assertTrue
+  go contains: "type main_Result interface {\n    ismain_Result()\n}", assertTrue
   go contains: "type main_Ok[T any] struct {", assertTrue
   go contains: "t T", assertTrue
   go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
@@ -192,7 +243,7 @@ Test goExplicitGenericUnionBranchTypeParams = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "type main_Result[T any] interface { ismain_Result() }", assertTrue
+  go contains: "type main_Result[T any] interface {\n    ismain_Result()\n}", assertTrue
   go contains: "type main_Ok[T any] struct {", assertTrue
   go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
   go contains: "var x main_Ok[int] = main_Ok[int]{42}", assertTrue
@@ -214,7 +265,7 @@ Test goTypeMatchConcreteSubjectUsesInterfaceTmp = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "var __matchSubject any = x", assertTrue
+  go contains: "var __matchSubject interface{} = x", assertTrue
   go contains: "case main_Ok[int]:", assertTrue
   go contains: "x := __matchSubject.(main_Ok[int])", assertTrue
   go contains: "case main_Baad[int]:", assertTrue
@@ -259,6 +310,24 @@ Test goEnumCodegen = [
   go contains: "var x main_Color = main_Color_Red", assertTrue
 ]
 
+Test goEnumMatchUsesValueConditions = [
+  fileMain = """
+    enum Color = Red | Green
+    x = Color.Red
+
+    | x
+    | Color.Red => [1]
+    | Color.Green => [2]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if (__matchSubject == main_Color_Red) {", assertTrue
+  go contains: "} else if (__matchSubject == main_Color_Green) {", assertTrue
+  Assert that: (go contains: "switch __matchSubject.(type) {") equals: false
+]
+
 Test goNullableTypeCodegen = [
   fileMain = """
     type Person
@@ -295,11 +364,11 @@ Test goNullableValueInitializerCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "var nullableValue *int = new(int(42))", assertTrue
+  go contains: "var nullableValue *int = core.NewNullable(int(42))", assertTrue
   go contains: "var nullableNull *int = nil", assertTrue
-  go contains: "var nullableText *string = new(string(\"text\"))", assertTrue
-  go contains: "var nullableComputed *int = new(int((1 + 2)))", assertTrue
-  go contains: "var nullablePerson *main_Person = new(main_Person(main_Person{\"Ada\"}))", assertTrue
+  go contains: "var nullableText *string = core.NewNullable(string(\"text\"))", assertTrue
+  go contains: "var nullableComputed *int = core.NewNullable(int((1 + 2)))", assertTrue
+  go contains: "var nullablePerson *main_Person = core.NewNullable(main_Person(main_Person{\"Ada\"}))", assertTrue
   go contains: "var nullableAgain *int = nullableValue", assertTrue
   go contains: "core.Int__inc(*nullableValue)", assertTrue
 ]
@@ -307,12 +376,12 @@ Test goNullableValueInitializerCodegen = [
 Test goNullableInt64UsesNonNullableTarget = [
   valueType = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int64" ownerPkg: "core" args: {} returnType: null isMut: false nullable: false errors: {}
   nullableType = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int64" ownerPkg: "core" args: {} returnType: null isMut: false nullable: true errors: {}
-  value = IrLiteralExpr literal: (IrLiteral kind: IrLiteralKind.Int lexeme: "42") typeRef: valueType token: FAKE_TOKEN
-  symbols = GoSymbolTable typeNames: #{}! funcNames: #{}! packageNames: #{}! fileNames: #{}!
+  value = IrLiteralExpr literal: (IrLiteral kind: IrLiteralKind.Int lexeme: "42") typeRef: valueType token: (Token fake)
+  symbols = GoSymbolTable typeNames: #{}! funcNames: #{}! packageNames: #{}! fileNames: #{}! fieldNames: #{}! constructorFieldTypes: #{}! unionTypeIds: #()! unionDefs: #{}!
   ctx = GoContext forSymbols: symbols
   go = value toGoNullableInitExpr: ctx scope: (GoScope new) targetType: nullableType
 
-  Assert that: go equals: "new(int64(42))"
+  Assert that: go equals: "core.NewNullable(int64(42))"
 ]
 
 Test goWhileTrueCodegen = [
@@ -325,9 +394,32 @@ Test goWhileTrueCodegen = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "for {", assertTrue
-  go contains: "if !(", assertTrue
-  go contains: ") { break }", assertTrue
-  go contains: ")()", assertTrue
+  go contains: "if !((c > 0)) { break }", assertTrue
+  go contains: "c = (c - 1)", assertTrue
+  Assert that: (go contains: ")()") equals: false
+]
+
+Test goWhileAndIfTrueReturnFromEnclosingMethod = [
+  fileMain = """
+    Int findAtTwo -> Int = [
+      mut i = 0
+      [i < 3] whileTrue: [
+        i <- i + 1
+        (i == 2) ifTrue: [^ i]
+      ]
+      ^ 0
+    ]
+
+    0 findAtTwo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if (i == 2) {", assertTrue
+  go contains: "return i", assertTrue
+  go contains: "return 0", assertTrue
+  Assert that: (go contains: "func() int") equals: false
 ]
 
 Test goDestructureCodegen = [
@@ -417,10 +509,10 @@ Test goMatchVariableSubjectNarrowsAlias = [
 
   go contains: "case main_Rectangle:", assertTrue
   go contains: "shape := __matchSubject.(main_Rectangle)", assertTrue
-  go contains: "return (shape.width * shape.height)", assertTrue
+  go contains: "return ((shape).width * (shape).height)", assertTrue
   go contains: "case main_Circle:", assertTrue
   go contains: "shape := __matchSubject.(main_Circle)", assertTrue
-  go contains: "return shape.radius", assertTrue
+  go contains: "return (shape).radius", assertTrue
 ]
 
 Test goLambdaArgCodegen = [
@@ -462,7 +554,7 @@ Test goErrorDomainThrowCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "type main_MyError interface { error; ismain_MyError() }", assertTrue
+  go contains: "type main_MyError interface {\n    error\n    ismain_MyError()\n}", assertTrue
   go contains: "func (main_Error1) Error() string { return \"Error1\" }", assertTrue
   go contains: "func main__core_Unit__foo(this struct{}) (int, error) {", assertTrue
   go contains: "return 0, main_Error2{404}", assertTrue
@@ -558,6 +650,32 @@ Test goTryPanicsOnNull = [
 
   go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
   go contains: "return *__tryValue", assertTrue
+]
+
+Test goOrPanicReturnsValueAndPanicsOnErrorOrNull = [
+  fileMain = """
+    errordomain MyError =
+    | Error1 text: String
+
+    Unit foo -> Int!{Error1} = [
+      (Error1 text: "bad") throw
+      ^ 42
+    ]
+
+    errorValue = () foo orPANIC
+    maybe::Int? = 42
+    nullableValue = maybe orPANIC
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "if __tryErr != nil { panic(__tryErr) }", assertTrue
+  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  go contains: "return __tryValue", assertTrue
+  go contains: "return *__tryValue", assertTrue
+  Assert that: (go contains: "func() (int, error) {") equals: false
 ]
 
 Test goTryNullableReferenceValues = [

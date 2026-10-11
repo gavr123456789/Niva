@@ -1,31 +1,31 @@
 // helper constructors
 constructor NivaMethod unary(name): String receiverType: NivaType returnT: NivaType =
-  NivaMethod name: name :receiverType args: {} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+  NivaMethod name: name receiverType: receiverType args: {} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 constructor NivaMethod unary(name): String receiverType: NivaType returnT: NivaType forMut: Bool =
-  NivaMethod name: name :receiverType args: {} returnType: returnT :forMut protocolName: "common" pkgName: "core"
+  NivaMethod name: name receiverType: receiverType args: {} returnType: returnT forMut: forMut protocolName: "common" pkgName: "core"
 
 constructor NivaMethod binary(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
-  NivaMethod name: name :receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+  NivaMethod name: name receiverType: receiverType args: {(TypeTField binary: argT)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 constructor NivaMethod singleArgKw(name): String receiverType: NivaType argT: NivaType returnT: NivaType  =
-  NivaMethod name: name :receiverType args: {(TypeTField name: name typeT: argT isMut: false)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
+  NivaMethod name: name receiverType: receiverType args: {(TypeTField name: name typeT: argT isMut: false)} returnType: returnT forMut: false protocolName: "common" pkgName: "core"
 
 constructor NivaMethod singleArgKw(name): String receiverType: NivaType argT: NivaType returnT: NivaType forMut: Bool =
-  NivaMethod name: name :receiverType args: {(TypeTField name: name typeT: argT isMut: false)} returnType: returnT :forMut protocolName: "common" pkgName: "core"
+  NivaMethod name: name receiverType: receiverType args: {(TypeTField name: name typeT: argT isMut: false)} returnType: returnT forMut: forMut protocolName: "common" pkgName: "core"
 
-constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: NivaType  =
+constructor NivaMethod manyArgKw: List(TypeTField) receiverType: NivaType returnT: NivaType  =
    NivaMethod name: (manyArgKw joinWith: "__" transform: [it name])
-                  :receiverType
+                  receiverType: receiverType
               args: manyArgKw
         returnType: returnT
             forMut: false
       protocolName: "common"
           pkgName: "core"
 
-constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: NivaType forMut: Bool =
+constructor NivaMethod manyArgKw: List(TypeTField) receiverType: NivaType returnT: NivaType forMut: Bool =
    NivaMethod name: (manyArgKw joinWith: "__" transform: [it name])
-                  :receiverType
+                  receiverType: receiverType
               args: manyArgKw
         returnType: returnT
             forMut: forMut
@@ -35,7 +35,7 @@ constructor NivaMethod manyArgKw: {TypeTField} receiverType: NivaType returnT: N
 constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType =
                                                      NivaMethod
     defaultConstructorWithName: name
-            :receiverType
+            receiverType: receiverType
         args: {(TypeTField name: name typeT: argT isMut: false)}
   returnType: receiverType
         decl: null
@@ -45,9 +45,9 @@ protocolName: "constructors"
 constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT: NivaType returnType: NivaType =
   NivaMethod
     defaultConstructorWithName: name
-                              :receiverType
+                              receiverType: receiverType
                           args: {(TypeTField name: name typeT: argT isMut: false)}
-                              :returnType
+                              returnType: returnType
                           decl: null
                   protocolName: "constructors"
                        pkgName: "core"
@@ -55,9 +55,9 @@ constructor NivaMethod singleArgCtorKw(name): String receiverType: NivaType argT
 constructor NivaMethod twoArgCtorKw(name1): String name2: String receiverType: NivaType argT1: NivaType argT2: NivaType returnType: NivaType =
   NivaMethod
     defaultConstructorWithName: name1 + "__" + name2
-        :receiverType
+        receiverType: receiverType
     args: {(TypeTField name: name1 typeT: argT1 isMut: false), (TypeTField name: name2 typeT: argT2 isMut: false)}
-            :returnType
+            returnType: returnType
         decl: null
 protocolName: "constructors"
      pkgName: "core"
@@ -65,9 +65,9 @@ protocolName: "constructors"
 constructor NivaMethod threeArgCtorKw(name1): String name2: String name3: String receiverType: NivaType argT1: NivaType argT2: NivaType argT3: NivaType returnType: NivaType =
   NivaMethod
     defaultConstructorWithName: name1 + "__" + name2 + "__" + name3
-            :receiverType
+            receiverType: receiverType
         args: {(TypeTField name: name1 typeT: argT1 isMut: false), (TypeTField name: name2 typeT: argT2 isMut: false), (TypeTField name: name3 typeT: argT3 isMut: false)}
-            :returnType
+            returnType: returnType
         decl: null
 protocolName: "constructors"
      pkgName: "core"

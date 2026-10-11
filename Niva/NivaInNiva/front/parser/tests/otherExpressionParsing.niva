@@ -9,7 +9,10 @@ Test expressionWithDots -> Unit = [
   ident = statements at: 0
   | ident
   | Identifier => [
-    path = ident path unpackOrPANIC
+    pathMaybe = ident path
+    path = | pathMaybe
+      | null => TO DO: "Missing identifier path"
+      |=> pathMaybe
     Assert that: path count equals: 3
   ]
   |=> []

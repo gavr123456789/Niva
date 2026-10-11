@@ -1,29 +1,29 @@
 extend mut Parser [
   on parseTypeErrors -> AstTypeErrors? = [
     | true
-    | (.match: TokenType.Bang) not => null
+    | (this match: TokenType.Bang) not => null
     |=> [
-      .match: TokenType.OpenBrace, ifTrue: [
+      this match: TokenType.OpenBrace, ifTrue: [
         names::mut List(String) = {}!
         [
-          tok = .peek
+          tok = this peek
           tok kind == TokenType.CloseBrace ifTrue: [
             false
           ] ifFalse: [
-            nameTok = .matchAssertAnyIdent: "error name expected"
+            nameTok = this matchAssertAnyIdent: "error name expected"
             names add: nameTok lexeme
-            .match: TokenType.Comma
+            this match: TokenType.Comma
             true
           ]
         ] whileTrue: []
 
         names isEmpty ifTrue: [TO DO: "error list cannot be empty"]
-        .matchAssert: TokenType.CloseBrace
+        this matchAssert: TokenType.CloseBrace
         AstTypeErrors kind: AstTypeErrorsKind.List names: names toList
       ] ifFalse: [
-        tok = .peek
+        tok = this peek
         tok isIdentifier ifTrue: [
-          nameTok = .step
+          nameTok = this step
           AstTypeErrors kind: AstTypeErrorsKind.Single names: {(nameTok lexeme)}!
         ] ifFalse: [
           AstTypeErrors kind: AstTypeErrorsKind.Any names: {}
@@ -38,39 +38,39 @@ extend mut Parser [
   /// Int!{Err1, Err2}
   /// Int!
   /// Int!Err1
-  on parseGenericType -> AstType = [
+  on parseGenericType -> AstType2 = [
 
-    isMut = .match: TokenType.Mut
-    pos = .peek toPosition
-    identifier = .matchAssertAnyIdent: "in type declaration identifier expected, but got " + .peek toString + "\n" + pos
+    isMut = this match: TokenType.Mut
+    pos = this peek toPosition
+    identifier = this matchAssertAnyIdent: "in type declaration identifier expected, but got " + this peek toString + "\n" + pos
     isNullable = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
 
 
-    genericParams::mut List::AstType = {}!
+    genericParams::mut List(AstType2) = {}!
     isListLike = identifier kind == TokenType.IdentifierDoubleColon
-    isListLike ifTrue: [genericParams add: .parseGenericType]
+    isListLike ifTrue: [genericParams add: this parseGenericType]
 
-    isMapLike = isListLike not && (.match: TokenType.OpenParen)
+    isMapLike = isListLike not && (this match: TokenType.OpenParen)
     isMapLike ifTrue: [
       [
-        genericParams add: .parseGenericType
-        .match: TokenType.Comma
+        genericParams add: this parseGenericType
+        this match: TokenType.Comma
       ] whileTrue: []
-      .matchAssert: TokenType.CloseParen
+      this matchAssert: TokenType.CloseParen
     ]
 
     AstType
+        tok: identifier
         name: name
         isNullable: isNullable
         genericParams: genericParams toList
-        tok: identifier
         isMut: isMut
-        errors: .parseTypeErrors
+        errors: this parseTypeErrors
   ]
 
   on parseType -> AstType2 = [
-    itLambda = .match: TokenType.OpenBracket
+    itLambda = this match: TokenType.OpenBracket
 
     itLambda
         ifTrue: [
@@ -79,17 +79,17 @@ extend mut Parser [
 
           args::mut List(AstType2) = {}!
 
-          [ argType = .parseGenericType
+          [ argType = this parseGenericType
             args add: argType
-            .match: TokenType.Comma
+            this match: TokenType.Comma
           ] whileTrue: []
 
-          .matchAssert: TokenType.ReturnArrow
-          returnType = .parseType
-          lastBracketTok = .matchAssert: TokenType.CloseBracket
-          AstLambdaType args: args toList returnType: returnType tok: lastBracketTok name: "[$args -> ]"
+          this matchAssert: TokenType.ReturnArrow
+          returnType = this parseType
+          lastBracketTok = this matchAssert: TokenType.CloseBracket
+          AstLambdaType tok: lastBracketTok name: "[$args -> ]" args: args toList returnType: returnType
         ]
-        ifFalse: [.parseGenericType]
+        ifFalse: [this parseGenericType]
 
   ]
 ]

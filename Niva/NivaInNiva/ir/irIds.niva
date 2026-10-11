@@ -1,10 +1,18 @@
-NivaMethod toIrFunctionId -> String             = receiverType toIrFunctionId: name declPkg: pkgName
-NivaType toIrFunctionId(name): String -> String = .toIrFunctionId: name declPkg: pkgName
-NivaType toIrTypeId -> String                   = .toMangledName
+NivaMethod toIrFunctionId -> String = [
+  base = receiverType toIrFunctionId: name declPkg: pkgName
+  isConstructor =
+    (kind == MessageSendKind.DefaultConstructor) ||
+    (kind == MessageSendKind.CustomConstructor)
+  ^ isConstructor
+      ifTrue: [base + "__ctor_" + (args count toString)]
+      ifFalse: [base]
+]
+NivaType toIrFunctionId(name): String -> String = this toIrFunctionId: name declPkg: pkgName
+NivaType toIrTypeId -> String                   = this toMangledName
 
 NivaType toIrFunctionId(name): String declPkg: String -> String = [
-  receiverId = .toMangledName
-  recvPkg = .pkgName
+  receiverId = this toMangledName
+  recvPkg = this pkgName
   ^ declPkg == recvPkg
       ifTrue: [receiverId + "." + name]
       ifFalse: [declPkg + "." + receiverId + "." + name]

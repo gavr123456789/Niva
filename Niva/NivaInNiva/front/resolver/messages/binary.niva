@@ -13,9 +13,9 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
 
   args forEach: [ binary ->
     kw = KeywordMsg
-      args: {binary}
       receiver: lastReceiverExpr
       token: token
+      args: {binary}
       kind: MessageSendKind.Call
 
     kwResolved = kw resolveKeywordFromDb2: db withContext: c receiverTyped: lastReceiverTypedExpr nameOverride: binary name name expectedType: null
@@ -29,10 +29,14 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
   ]
 
   //
+  dbMsgMaybe = lastDbMsg
+  dbMsg = | dbMsgMaybe
+    | null => TO DO: "Binary message did not resolve to a method"
+    |=> dbMsgMaybe
   ^ BinaryMsgT
-    args: typedArgs toList
     receiver: receiverTypedExpr
     token: token
     typeInfo: lastTypeInfo
-    dbMsg: lastDbMsg unpackOrPANIC // this is +, its impossible to do 1 pkg.+ 2
+    dbMsg: dbMsg
+    args: typedArgs toList
 ]

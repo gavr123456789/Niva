@@ -12,8 +12,7 @@ String escape =
   replace: "\"" with: "\\\"",
   replace: "\n" with: "\\n",
   replace: "\r" with: "\\r",
-  replace: "\t" with: "\\t",
-  replace: "\'" with: "\\'"
+  replace: "\t" with: "\\t"
 
 String unescape -> String = [
   sb = StringBuilder new

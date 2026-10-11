@@ -39,7 +39,11 @@ Test varDeclarationWithAstType  = [
   vardecl = statements at: 0
   | vardecl
   | VarDeclaration => [
-    Assert that: vardecl astType unpackOrPANIC name equals: "Int"
+    astTypeMaybe = vardecl astType
+    astType = | astTypeMaybe
+      | null => TO DO: "Missing variable type"
+      |=> astTypeMaybe
+    Assert that: astType name equals: "Int"
     Assert that: vardecl name equals: "x"
   ]
   |=> [TO DO: "VarDeclaration expected"]
@@ -77,7 +81,10 @@ Test parseNumber = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  intExprMaybe = parser literalExprFrom: tokens first
+  intExpr = | intExprMaybe
+    | null => TO DO: "Missing integer expression"
+    |=> intExprMaybe
   | intExpr
   | IntExpr =>
     Assert
@@ -94,7 +101,10 @@ Test parseNumberWithUnderscore = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  intExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  intExprMaybe = parser literalExprFrom: tokens first
+  intExpr = | intExprMaybe
+    | null => TO DO: "Missing integer expression"
+    |=> intExprMaybe
   | intExpr
   | IntExpr =>
     Assert
@@ -107,7 +117,10 @@ Test parseString = [
   tokens = Lexer get-tokens: """ "sas" """
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  stringExpr = parser literalExprFrom: tokens first, unpackOrPANIC
+  stringExprMaybe = parser literalExprFrom: tokens first
+  stringExpr = | stringExprMaybe
+    | null => TO DO: "Missing string expression"
+    |=> stringExprMaybe
   | stringExpr
   | StringExpr =>
     Assert
@@ -179,7 +192,10 @@ Test parseAstTypeErrorAny = [
   astType = parser parseType
 
   | astType | AstType => [
-    errors = astType errors unpackOrPANIC
+    errorsMaybe = astType errors
+    errors = | errorsMaybe
+      | null => TO DO: "Missing type errors"
+      |=> errorsMaybe
     Assert that: errors kind equals: AstTypeErrorsKind.Any
     Assert that: errors names count equals: 0
   ] |=> [TO DO: "It should be AstType, but it " + astType toString]
@@ -196,7 +212,10 @@ Test parseAstTypeErrorSingle = [
   astType = parser parseType
 
   | astType | AstType => [
-    errors = astType errors unpackOrPANIC
+    errorsMaybe = astType errors
+    errors = | errorsMaybe
+      | null => TO DO: "Missing type errors"
+      |=> errorsMaybe
     Assert that: errors kind equals: AstTypeErrorsKind.Single
     Assert that: errors names count equals: 1
     Assert that: errors names first equals: "OutOfMemory"
@@ -214,7 +233,10 @@ Test parseAstTypeErrorList = [
   astType = parser parseType
 
   | astType | AstType => [
-    errors = astType errors unpackOrPANIC
+    errorsMaybe = astType errors
+    errors = | errorsMaybe
+      | null => TO DO: "Missing type errors"
+      |=> errorsMaybe
     Assert that: errors kind equals: AstTypeErrorsKind.List
     Assert that: errors names count equals: 3
     Assert that: (errors names at: 0) equals: "Error1"
@@ -256,7 +278,7 @@ Test parseExtendMessageDeclarations = [
 
 Test parseNullableReceiverMessageDeclarations = [
   input = """
-    T? unpackOrPanic -> T = [this]
+    T? ensure -> T = [this]
     Int? orZero: default::Int -> Int = [42]
   """
 
@@ -265,7 +287,7 @@ Test parseNullableReceiverMessageDeclarations = [
   unary = statements at: 0
   | unary
   | MessageDecl => [
-    Assert that: unary name equals: "unpackOrPanic"
+    Assert that: unary name equals: "ensure"
     receiver = unary receiver
     | receiver
     | AstType => [

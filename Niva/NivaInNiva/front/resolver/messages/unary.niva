@@ -1,18 +1,18 @@
 
 UnaryMsg resolveUnaryFromDb2(db): TyperDB withContext(c): Context -> UnaryMsgT = [
   kw = KeywordMsg
-    args: {}
     receiver: receiver
     token: token
+    args: {}
     kind: kind
 
   kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: selector name expectedType: null
 
   ^ UnaryMsgT
-    selector: selector
-    kind: kwResolved kind
     receiver: kwResolved receiver
     token: token
     typeInfo: kwResolved typeInfo
     dbMsg: kwResolved dbMsg
+    selector: selector
+    kind: kwResolved kind
 ]

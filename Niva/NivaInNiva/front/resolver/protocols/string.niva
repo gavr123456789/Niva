@@ -1,13 +1,17 @@
 constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
-  {int str bool char unit list} = dtc
+  {int str bool char unit list intRange double} = dtc
 
   strProto = NivaProtocol common
   // unary
   strProto addMethod: (NivaMethod unary: "toInt" receiverType: str returnT: int)
+  strProto addMethod: (NivaMethod unary: "toDouble" receiverType: str returnT: double)
+  strProto addMethod: (NivaMethod unary: "first" receiverType: str returnT: char)
   strProto addMethod: (NivaMethod unary: "count" receiverType: str returnT: int)
   strProto addMethod: (NivaMethod unary: "reversed" receiverType: str returnT: str)
   strProto addMethod: (NivaMethod unary: "lowercase" receiverType: str returnT: str)
+  strProto addMethod: (NivaMethod unary: "trimIndent" receiverType: str returnT: str)
   strProto addMethod: (NivaMethod unary: "isEmpty" receiverType: str returnT: bool)
+  strProto addMethod: (NivaMethod unary: "isNotEmpty" receiverType: str returnT: bool)
   // binary
   strProto addMethod: (NivaMethod binary: "+" receiverType: str argT: str returnT: str)
 
@@ -15,8 +19,16 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
   strProto addMethod: (NivaMethod binary: "!=" receiverType: str argT: str returnT: bool)
 
   // keyword
-  strProto addMethod: (NivaMethod singleArgKw: "at" receiverType: str argT: int returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "at" receiverType: str argT: int returnT: char )
+  strProto addMethod: (NivaMethod singleArgKw: "slice" receiverType: str argT: intRange returnT: str)
   strProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: str argT: str returnT: bool )
+  strProto addMethod: (NivaMethod singleArgKw: "repeat" receiverType: str argT: int returnT: str)
+  strProto addMethod: (NivaMethod singleArgKw: "startsWith" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod singleArgKw: "endsWith" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod singleArgKw: "substringAfter" receiverType: str argT: str returnT: str)
+  strProto addMethod: (NivaMethod singleArgKw: "substringBefore" receiverType: str argT: str returnT: str)
+  strProto addMethod: (NivaMethod singleArgKw: "substringAfterLast" receiverType: str argT: str returnT: str)
+  strProto addMethod: (NivaMethod singleArgKw: "substringBeforeLast" receiverType: str argT: str returnT: str)
   strProto addMethod: (NivaMethod singleArgKw: "drop" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "dropLast" receiverType: str argT: int returnT: str )
   strProto addMethod: (NivaMethod singleArgKw: "split" receiverType: str argT: str returnT: (ListT t: str) )

@@ -4,8 +4,12 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP = NivaProtocol common
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: int)
   collP addMethod: (NivaMethod unary: "shuffled" receiverType: collectionType returnT: collectionType)
-  collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: collectionType)
-  collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: collectionType)
+  collP addMethod: (NivaMethod unary: "toList" receiverType: collectionType returnT: (ListT t: itemType))
+  collP addMethod: (NivaMethod unary: "toMutableList" receiverType: collectionType returnT: (ListT t: itemType))
+  collP addMethod: (NivaMethod unary: "toSet" receiverType: collectionType returnT: (SetT t: itemType))
+  collP addMethod: (NivaMethod unary: "toMutableSet" receiverType: collectionType returnT: (SetT t: itemType))
+  collP addMethod: (NivaMethod unary: "first" receiverType: collectionType returnT: itemType)
+  collP addMethod: (NivaMethod unary: "last" receiverType: collectionType  returnT: itemType)
   collP addMethod: (NivaMethod unary: "isEmpty" receiverType: collectionType returnT: bool)
   collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: bool)
   collP addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
@@ -66,6 +70,44 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   | collectionType
   | ListT => [
+      indexArg = TypeTField name: "i" typeT: int isMut: false
+      mapIndexedBlock = FuntionT
+                        fields: {indexArg itArg}!
+                          name: "mapIndexed"
+                   genericArgs: {}!
+                       pkgName: "core"
+                    returnType: mapReturnGeneric
+      collP addMethod: (NivaMethod singleArgKw: "mapIndexed"
+                              receiverType: collectionType
+                                      argT: mapIndexedBlock
+                                   returnT: collWithDiffferentGeneric)
+
+      anyBlock = FuntionT
+                 fields: {itArg}!
+                   name: "any"
+            genericArgs: {}!
+                pkgName: "core"
+             returnType: bool
+      collP addMethod: (NivaMethod singleArgKw: "any"
+                              receiverType: collectionType
+                                      argT: anyBlock
+                                   returnT: bool)
+      collP addMethod: (NivaMethod singleArgKw: "find"
+                              receiverType: collectionType
+                                      argT: filterBlock
+                                   returnT: itemType toNullable)
+
+      sortedByBlock = FuntionT
+                    fields: { itArg }!
+                      name: "sortedBy"
+               genericArgs: {}!
+                   pkgName: "core"
+                returnType: g
+      collP addMethod: (NivaMethod singleArgKw: "sortedBy"
+                              receiverType: collectionType
+                                      argT: sortedByBlock
+                                   returnT: collectionType)
+
       accArg = TypeTField name: "acc" typeT: t isMut: false
       injectBlock = FuntionT
                     fields: { accArg itArg }!

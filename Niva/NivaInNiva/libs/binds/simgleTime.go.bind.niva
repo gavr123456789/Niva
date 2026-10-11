@@ -5,3 +5,9 @@ constructor System currentTimeMillis -> Long =
 
 constructor System nanoTime -> Long =
   Bind goPkg: "time" emit: "time.Now().UnixNano()"
+
+constructor System currentDir -> String =
+  Bind goPkg: "os" emit: """(func() string { dir, err := os.Getwd(); if err != nil { panic(err) }; return dir })()"""
+
+constructor System exitWith::Int -> Unit =
+  Bind goPkg: "os" emit: """(func() core.Unit { os.Exit($0); return core.UnitInstance })()"""
