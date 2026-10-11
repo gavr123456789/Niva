@@ -50,25 +50,28 @@ class NivaBuildIntegrationTest {
     }
 
     @Test
-    fun `kotlin source loader filters foreign bindings before parsing`() {
+    fun `kotlin source loader uses manifest providers before parsing`() {
         val tempDir = Files.createTempDirectory("niva-bindings-").toFile()
         try {
             File(tempDir, "main.niva").writeText("")
             File(tempDir, "shared.niva").writeText("")
             File(tempDir, "folder.go.bind").mkdir()
-            File(tempDir, "folder.go.bind/common.niva").writeText("")
-            File(tempDir, "clock.kotlin.bind.niva").writeText(
-                "Bind package: \"example\" content: [ type Clock ]"
-            )
-            File(tempDir, "io.go.bind.niva").writeText("package main\nfunc (")
+            File(tempDir, "folder.go.bind/common.niva").writeText("type Common value: String")
+            File(tempDir, "providers").mkdir()
+            val kotlinProvider = File(tempDir, "providers/clock.niva")
+            kotlinProvider.writeText("Bind package: \"example\" content: [ type Clock ]")
+            File(tempDir, "providers/io.niva").writeText("package main\nfunc (")
             File(tempDir, "old.bind.niva").writeText("not valid Niva {{{")
             File(tempDir, ".hidden").mkdir()
-            File(tempDir, ".hidden/secret.go.bind.niva").writeText("package main\nfunc (")
+            File(tempDir, ".hidden/secret.niva").writeText("not valid Niva {{{")
+            File(tempDir, "niva.bindings").writeText(
+                "kotlin|clock.binding|providers/clock.niva\ngo|io.binding|providers/io.niva\n"
+            )
 
             val selected = listFilesDownUntilNivaIsFoundRecursively(tempDir, "niva")
             val selectedNames = selected.map { it.relativeTo(tempDir).invariantSeparatorsPath }.toSet()
             assertEquals(
-                setOf("main.niva", "shared.niva", "folder.go.bind/common.niva", "clock.kotlin.bind.niva"),
+                setOf("main.niva", "shared.niva", "folder.go.bind/common.niva", "providers/clock.niva"),
                 selectedNames
             )
             assertEquals(selected.map { it.path }.sorted(), selected.map { it.path })
@@ -81,8 +84,8 @@ class NivaBuildIntegrationTest {
             )
             assertEquals(3, parsed.third.size)
             assertEquals(3, parsed.second.size)
-            assertEquals(setOf("clock.bind", "shared", "common"), parsed.second.map { it.first }.toSet())
-            assertEquals("clock.bind", nivaSourceModuleId(File(tempDir, "clock.kotlin.bind.niva")))
+            assertEquals(setOf("clock.binding", "shared", "common"), parsed.second.map { it.first }.toSet())
+            assertEquals("clock.binding", nivaSourceModuleId(kotlinProvider))
             assertEquals("stackTrace", nivaSourceModuleId(File(tempDir, "stackTrace.kotlin.bind.niva")))
             assertEquals("compiler", nivaSourceModuleId(File(tempDir, "compiler.kotlin.bind.niva")))
         } finally {

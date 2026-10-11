@@ -51,8 +51,9 @@ nullablePointerLocals: mut Set(String)
 narrowedNullablePointerLocals: mut Set(String)
  implicitFields: mut Set(String)
 implicitUnionFields: mut Set(String)
+unitReturnValue: Bool
 
-constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()!
+constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()! unitReturnValue: false
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
@@ -61,6 +62,7 @@ GoScope copy -> GoScope = [
   newNarrowedNullablePointers::mut Set(String) = #()!
   newImplicitFields::mut Set(String) = #()!
   newImplicitUnionFields::mut Set(String) = #()!
+  newUnitReturnValue = unitReturnValue
   newLocals addAll: locals
   newPointers addAll: pointerLocals
   newNullablePointers addAll: nullablePointerLocals
@@ -68,46 +70,76 @@ GoScope copy -> GoScope = [
   newImplicitFields addAll: implicitFields
   newImplicitUnionFields addAll: implicitUnionFields
 
-  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields
+  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields unitReturnValue: newUnitReturnValue
 ]
 
+GoScope copyWithUnitReturnValue(value): Bool -> GoScope = [
+  copied = this copy
+  GoScope locals: copied locals pointerLocals: copied pointerLocals nullablePointerLocals: copied nullablePointerLocals narrowedNullablePointerLocals: copied narrowedNullablePointerLocals implicitFields: copied implicitFields implicitUnionFields: copied implicitUnionFields unitReturnValue: value
+]
+
+IrExpr goBlockMaybe -> IrBlock? =
+  | this
+  | IrBlockExpr => block
+  |=> null
+
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
-  hasErrors = retType errors isNotEmpty
-  retType isGoUnitType
-    ifFalse: [
-      | emitResult
-      | null => [TO DO: "bug: Go emitResult: missing result for non-Unit return"]
-      |=> [
-        emitResult token printGoLine-intoSb: sb
-        emitResult isGoBoolConditional ifTrue: [
-          this emitBoolConditionalResult: emitResult sb: sb indent: indent retType: retType scope: scope
-        ] ifFalse: [
-          isNothingType = (emitResult typeRef typeId goNormalizeTypeId) == "core_Nothing"
-          isNullValue = emitResult isGoNullLiteral
-          isNothing = isNothingType && (isNullValue not)
-          isNothing ifTrue: [
-            sb appendIndent: indent line: (emitResult toGoStatement: this scope: scope returnType: retType)
-            sb appendIndent: indent line: "panic(\"unreachable\")"
+  blockMaybe = | emitResult
+    | null => null
+    |=> emitResult goBlockMaybe
+  | blockMaybe
+  | null => [
+    hasErrors = retType errors isNotEmpty
+    retType isGoUnitType
+      ifFalse: [
+        | emitResult
+        | null => [TO DO: "bug: Go emitResult: missing result for non-Unit return"]
+        |=> [
+          emitResult token printGoLine-intoSb: sb
+          emitResult isGoBoolConditional ifTrue: [
+            this emitBoolConditionalResult: emitResult sb: sb indent: indent retType: retType scope: scope
           ] ifFalse: [
-            exprStr = (this needsGoNullablePointerFor: retType)
-              ifTrue: [emitResult toGoNullableInitExpr: this scope: scope targetType: retType]
-              ifFalse: [emitResult toGoExpr: this scope: scope]
-            line = hasErrors
-              ifTrue:  ["return " + exprStr + ", nil"]
-             ifFalse: ["return " + exprStr]
-            sb appendIndent: indent line: line
+            isNothingType = (emitResult typeRef typeId goNormalizeTypeId) == "core_Nothing"
+            isNullValue = emitResult isGoNullLiteral
+            isNothing = isNothingType && (isNullValue not)
+            isNothing ifTrue: [
+              sb appendIndent: indent line: (emitResult toGoStatement: this scope: scope returnType: retType)
+              sb appendIndent: indent line: "panic(\"unreachable\")"
+            ] ifFalse: [
+              exprStr = (this needsGoNullablePointerFor: retType)
+                ifTrue: [emitResult toGoNullableInitExpr: this scope: scope targetType: retType]
+                ifFalse: [emitResult toGoExpr: this scope: scope]
+              line = hasErrors
+                ifTrue:  ["return " + exprStr + ", nil"]
+               ifFalse: ["return " + exprStr]
+              sb appendIndent: indent line: line
+            ]
           ]
         ]
       ]
+      ifTrue: [
+        | emitResult
+        | null => []
+        |=> [
+          emitResult token printGoLine-intoSb: sb
+          sb appendIndent: indent
+                 line: (emitResult toGoStatement: this scope: scope returnType: retType) ]
+      ]
+  ]
+  |=> [
+    blockScope = scope copyWithUnitReturnValue: false
+    sb appendIndent: indent line: "{"
+    blockMaybe blockToGoStatements: this scope: blockScope sb: sb indent: (indent + 1) returnType: retType
+    blockResultMaybe = blockMaybe result
+    | blockResultMaybe
+    | null => [
+      blockMaybe hasTrailingReturn ifFalse: [
+        this emitResult: null sb: sb indent: (indent + 1) retType: retType scope: blockScope
+      ]
     ]
-    ifTrue: [
-      | emitResult
-      | null => []
-      |=> [
-        emitResult token printGoLine-intoSb: sb
-        sb appendIndent: indent
-               line: (emitResult toGoStatement: this scope: scope returnType: retType) ]
-    ]
+    |=> [this emitResult: blockResultMaybe sb: sb indent: (indent + 1) retType: retType scope: blockScope]
+    sb appendIndent: indent line: "}"
+  ]
 ]
 
 GoContext emitBlockResult(block): IrBlock sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
@@ -940,7 +972,7 @@ extend IrExpr [
     isTry = | msgNameMaybe
       | null => false
       |=> (msgNameMaybe == "try") || (msgNameMaybe == "orPANIC") || (msgNameMaybe == "unpackOrPANIC")
-        ^ isTry ifTrue: [this toGoTryExpr: ctx scope: scope] ifFalse: [
+        isTry ifTrue: [this toGoTryExpr: ctx scope: scope] ifFalse: [
 
         // new bind design: inlineable bind plan attached during IR generation
         bindMaybe = bind
@@ -1174,7 +1206,10 @@ extend IrExpr [
       ] ifFalse: [
         returnType isGoUnitType ifTrue: [
           sb appendIndent: indent line: (this toGoStatement: ctx scope: scope returnType: returnType)
-          sb appendIndent: indent line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])
+          returnLine = hasErrors ifTrue: ["return nil"] ifFalse: [
+            scope unitReturnValue ifTrue: ["return struct{}{}"] ifFalse: ["return"]
+          ]
+          sb appendIndent: indent line: returnLine
         ] ifFalse: [
           exprStr = (ctx needsGoNullablePointerFor: returnType)
             ifTrue: [this toGoNullableInitExpr: ctx scope: scope targetType: returnType]
@@ -1203,6 +1238,16 @@ extend IrExpr [
           stmtStr = this toGoStatement: ctx scope: scope returnType: returnType
           sb appendIndent: indent line: stmtStr
         ]
+      ]
+      | IrBlockExpr => [
+        blockScope = scope copyWithUnitReturnValue: false
+        sb appendIndent: indent line: "{"
+        block blockToGoStatements: ctx scope: blockScope sb: sb indent: (indent + 1) returnType: returnType
+        blockResultMaybe = block result
+        | blockResultMaybe
+        | null => []
+        |=> blockResultMaybe emitAsStmt: ctx scope: blockScope sb: sb indent: (indent + 1) returnType: returnType
+        sb appendIndent: indent line: "}"
       ]
       |=> [
         stmtStr = this toGoStatement: ctx scope: scope returnType: returnType
@@ -1582,7 +1627,11 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       | null => [
         hasErrors
           ifTrue: [sb appendIndent: indent line: "return nil"]
-         ifFalse: [sb appendIndent: indent line: "return"]
+         ifFalse: [
+           scope unitReturnValue
+             ifTrue: [sb appendIndent: indent line: "return struct{}{}"]
+             ifFalse: [sb appendIndent: indent line: "return"]
+         ]
       ]
       |=> [
         exprVal = exprLocal
@@ -1664,11 +1713,14 @@ extend IrBlock [
     sb append: retStr
     sb appendLine: " {"
 
-    innerScope = scope copy
+    innerScope = scope copyWithUnitReturnValue: true
     this blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: retType
-    ctx emitResult: result sb: sb indent: 1 retType: retType scope: innerScope
-    retType isGoUnitType ifTrue: [
-      sb appendIndent: 1 line: ("return " + (retType toGoType: ctx) + "{}")
+    hasTrailingReturn = this hasTrailingReturn
+    hasTrailingReturn ifFalse: [
+      ctx emitResult: result sb: sb indent: 1 retType: retType scope: innerScope
+      retType isGoUnitType ifTrue: [
+        sb appendIndent: 1 line: ("return " + (retType toGoType: ctx) + "{}")
+      ]
     ]
 
     sb append: "}()"

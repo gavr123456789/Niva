@@ -140,7 +140,7 @@ union IrStmt token: Token =
 union IrBind =
 | IrBindByName goPkg: String goName: String isStatic: Bool isGoNameExplicit: Bool
 // goPkg is the package from the `.bind` file and is auto-imported at the call site
-| IrBindEmit template: String goPkg: String?
+| IrBindEmit template: String goPkg: String? isGoSpecific: Bool
 
 // Backend-specific constructor emit for external types.
 union IrConstructorBind =

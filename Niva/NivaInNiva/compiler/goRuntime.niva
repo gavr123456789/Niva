@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"unicode/utf16"
 )
 
+// unit is empty and nullable values use pointers
 type Unit struct{}
 
 var UnitInstance = Unit{}
@@ -29,7 +29,15 @@ type StringBuilder struct {
 
 func NewStringBuilder() *StringBuilder { return &StringBuilder{} }
 func StringBuilder__count(s *StringBuilder) int {
-	return len(utf16.Encode([]rune(s.value)))
+	count := 0
+	for _, value := range s.value {
+		if value > 0xFFFF {
+			count += 2
+		} else {
+			count++
+		}
+	}
+	return count
 }
 func StringBuilder__clear(s *StringBuilder) *StringBuilder {
 	s.value = ""
@@ -53,6 +61,7 @@ func Compiler__getPlace() string { return "go runtime" }
 type IntRange struct{ Start, EndInclusive int }
 type CharRange struct{ Start, EndInclusive rune }
 
+// option stores a value and whether it is present
 type Option[T any] struct {
 	Value    T
 	HasValue bool
@@ -215,6 +224,9 @@ func Any__toString(v any, indents ...int) string {
 
 	case reflect.Bool:
 		return strconv.FormatBool(v.(bool))
+
+	case reflect.Int32:
+		return string(rune(val.Int()))
 
 	default:
 		return fmt.Sprintf("%v", v)
@@ -493,6 +505,7 @@ func WhileTrue(c func() bool, b func()) {
 	}
 }
 
+// lists use slices and sets and maps use go maps
 func List__count[T any](s []T) int { return len(s) }
 func List__first[T any](s []T) T {
 	if len(s) == 0 {
@@ -768,6 +781,7 @@ func List__viewFromTo[T any](s []T, f, t int) []T {
 	return []T{}
 }
 
+// mutable list calls receive a pointer to the slice
 func List__mut_clear[T any](s *[]T)    { *s = (*s)[:0] }
 func List__mut_add[T any](s *[]T, i T) { *s = append(*s, i) }
 func List__mut_at__add[T any](s *[]T, i int, it T) {

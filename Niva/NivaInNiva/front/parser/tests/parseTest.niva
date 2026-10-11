@@ -28,7 +28,17 @@ constructor TestParse expression::String -> Expr = [
 
   ^ | expr
     | Expr => expr
-    |=> [TO DO: "It should be Expr, but it " + expr toString]
+      |=> [TO DO: "It should be Expr, but it " + expr toString]
+]
+
+Test parserPeekAtOutOfBoundsReturnsEof = [
+  tokens = Lexer get-tokens: "1"
+  parser::mut Parser = Parser tokens: tokens current: 0 statements: {}!
+
+  beforeStart = parser peekAt: -1
+  afterEnd = parser peekAt: tokens count
+  Assert that: beforeStart kind equals: TokenType.EndOfFile
+  Assert that: afterEnd kind equals: TokenType.EndOfFile
 ]
 
 Test varDeclarationWithAstType  = [

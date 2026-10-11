@@ -396,6 +396,7 @@ fun getAst(source: String, file: File): List<Statement> {
 }
 
 fun nivaSourceModuleId(file: File): String {
+    nivaBindingProviderFor(file)?.let { return it.moduleId }
     val kotlinBindingSuffix = ".kotlin.bind.niva"
     return if (file.name == "stackTrace.kotlin.bind.niva" || file.name == "compiler.kotlin.bind.niva") {
         file.name.removeSuffix(kotlinBindingSuffix)

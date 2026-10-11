@@ -18,6 +18,38 @@ import kotlin.text.contains
 import kotlin.text.lowercase
 import kotlin.time.TimeSource.Monotonic.markNow
 
+data class NivaBindingProvider(val backend: String, val moduleId: String, val relativePath: String)
+
+fun readNivaBindingProviders(projectRoot: File): List<NivaBindingProvider> {
+    val manifest = File(projectRoot, "niva.bindings")
+    if (!manifest.isFile) return emptyList()
+    return manifest.readLines().mapIndexedNotNull { index, rawLine ->
+        val line = rawLine.trim()
+        if (line.isEmpty()) return@mapIndexedNotNull null
+        val fields = line.split('|', limit = 3).map(String::trim)
+        require(fields.size == 3 && fields.all { it.isNotEmpty() }) {
+            "${manifest.path}:${index + 1}: expected backend|module id|relative path"
+        }
+        NivaBindingProvider(fields[0], fields[1], fields[2].replace('\\', '/'))
+    }
+}
+
+fun nivaBindingProviderFor(file: File, backend: String = "kotlin"): NivaBindingProvider? {
+    val absoluteFile = file.absoluteFile
+    var projectRoot = absoluteFile.parentFile
+    while (projectRoot != null) {
+        val manifest = File(projectRoot, "niva.bindings")
+        if (manifest.isFile) {
+            val relativePath = absoluteFile.relativeTo(projectRoot.absoluteFile).invariantSeparatorsPath
+            return readNivaBindingProviders(projectRoot).firstOrNull {
+                it.backend == backend && it.relativePath == relativePath
+            }
+        }
+        projectRoot = projectRoot.parentFile
+    }
+    return null
+}
+
 object GlobalVariables {
 
     var emitSourceComments = true
@@ -301,8 +333,18 @@ class CompilerRunner(
             Option.BUILD -> "niva.assembly"
             Option.TEST -> "niva.test"
         }
-        val defaultArgs = "--ticker false -s"
-        runFinalCommand("./mill","cmd.exe /c mill.bat",defaultArgs, cmd, dotNivaInsideProj, option == Option.TEST)
+        val command = when (getOSType()) {
+            CurrentOS.WINDOWS -> listOf("cmd.exe", "/c", "mill.bat", "--ticker", "false", "-s", cmd)
+            CurrentOS.LINUX, CurrentOS.MAC -> listOf("./mill", "--ticker", "false", "-s", cmd)
+        }
+        val process = ProcessBuilder(command)
+            .directory(dotNivaInsideProj)
+            .inheritIO()
+            .start()
+        val exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw Exception("Mill command failed with exit code $exitCode")
+        }
         // 4 inline repl
 //        inlineReplIfExists()
 
@@ -310,8 +352,11 @@ class CompilerRunner(
         if (option == Option.BUILD) {
             val binName = outputRename ?: "main.jar"
             val destination = dotNivaInsideProj.parentFile.resolve(binName)
-            val pathToJar = dotNivaInsideProj
-                .resolve("out/niva/assembly.dest/out.jar")
+            val pathToJar = listOf(
+                dotNivaInsideProj.resolve("out/niva/assembly.dest/out.jar"),
+                dotNivaInsideProj.resolve("out/niva/resolvedIvyAssembly.dest/out.jar"),
+            ).firstOrNull { it.isFile }
+                ?: throw Exception("Mill assembly output was not found in ${dotNivaInsideProj.resolve("out/niva")}")
             pathToJar.copyTo(destination, true)
             println("jar created in $destination")
         }
@@ -483,28 +528,46 @@ class VerbosePrinter(val isVerboseOn: Boolean) {
 
 fun listFilesDownUntilNivaIsFoundRecursively(directory: File, ext: String): MutableList<File> {
     val fileList = mutableListOf<File>()
-    val filesAndDirs = directory.listFiles() ?: return mutableListOf()
+    val projectRoot = directory
+    val manifest = File(projectRoot, "niva.bindings")
+    val hasManifest = manifest.isFile
+    val providersByPath = readNivaBindingProviders(projectRoot).associateBy { it.relativePath }
 
-    for (file in filesAndDirs) {
-        if (!file.name.startsWith("_") && !file.name.startsWith(".")) {
-            if (file.isFile && file.extension == ext) {
-                val name = file.name
-                val isKotlinBinding = name.endsWith(".kotlin.bind.niva")
-                val isGoBinding = name.endsWith(".go.bind.niva")
-                val isUnmarkedBinding = name.endsWith(".bind.niva") &&
-                    !isKotlinBinding && !isGoBinding
-
-                if (ext != "niva" || (!isGoBinding && !isUnmarkedBinding)) {
-                    fileList.add(file)
-                } else if (isUnmarkedBinding) {
-                    println("Skipping unmarked binding file ${file.path}; rename it to .kotlin.bind.niva or .go.bind.niva")
+    fun collect(currentDirectory: File) {
+        val filesAndDirs = currentDirectory.listFiles() ?: return
+        for (file in filesAndDirs) {
+            if (!file.name.startsWith("_") && !file.name.startsWith(".")) {
+                if (file.isFile && file.extension == ext) {
+                    if (ext != "niva") {
+                        fileList.add(file)
+                    } else if (!hasManifest) {
+                        val isKotlinBinding = file.name.endsWith(".kotlin.bind.niva")
+                        val isGoBinding = file.name.endsWith(".go.bind.niva")
+                        val isUnmarkedBinding = file.name.endsWith(".bind.niva") &&
+                            !isKotlinBinding && !isGoBinding
+                        if (!isGoBinding && !isUnmarkedBinding) fileList.add(file)
+                        if (isUnmarkedBinding) {
+                            println("Skipping unmarked binding file ${file.path}")
+                        }
+                    } else {
+                        val relativePath = file.relativeTo(projectRoot).invariantSeparatorsPath
+                        val provider = providersByPath[relativePath]
+                        if (provider != null) {
+                            if (provider.backend == "kotlin") fileList.add(file)
+                        } else if (!file.name.endsWith(".bind.niva")) {
+                            fileList.add(file)
+                        } else {
+                            println("Skipping binding without a provider in niva.bindings: ${file.path}")
+                        }
+                    }
+                } else if (file.isDirectory) {
+                    collect(file)
                 }
-            } else if (file.isDirectory) {
-                fileList.addAll(listFilesDownUntilNivaIsFoundRecursively(file, ext))
             }
         }
     }
 
+    collect(directory)
     return fileList.sortedBy { it.absolutePath.replace(File.separatorChar, '/') }.toMutableList()
 }
 

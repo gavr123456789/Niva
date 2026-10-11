@@ -84,10 +84,10 @@ extend mut Lexer [
 
 
 
-    l = ch toString
+    l = this ch toString
 
-
-    tok = | ch
+    mut hasAdvancedToNext = false
+    tok = | this ch
     | '\u0000' => [
       ^this createToken: TokenType.EndOfFile lexeme: l]
     | '=' => [
@@ -124,6 +124,7 @@ extend mut Lexer [
     ]
 
     | '"' => [
+      hasAdvancedToNext <- true
       result = this parseStringLike: '"'
       kind = (result startsWith: "\"\"\"")
         ifTrue: [TokenType.RawString]
@@ -131,6 +132,7 @@ extend mut Lexer [
       ^ this createToken: kind lexeme: result
     ]
     | '\'' => [
+      hasAdvancedToNext <- true
       result = this parseStringLike: '\''
       ^ this createToken: TokenType.Char lexeme: result
     ]
@@ -171,11 +173,12 @@ extend mut Lexer [
     | '}' => this createToken: TokenType.CloseBrace  lexeme: l
     | '#' => [
       this step
-      | ch
+      | this ch
       | '{' => this createToken: TokenType.OpenBraceHash lexeme: "#{"
       | '(' => this createToken: TokenType.OpenParenHash lexeme: "#("
       |=> [
-        (ch isLetter || (ch == '_')) ifTrue: [
+        (this ch isLetter || (this ch == '_')) ifTrue: [
+          hasAdvancedToNext <- true
           lit = this readIdentifier
           ^ this createToken: TokenType.AtomIdentifier lexeme: "#" + lit
         ]
@@ -185,9 +188,11 @@ extend mut Lexer [
 
 
     | '-' => ^ this peekChar isDigit ifTrue: [
+      hasAdvancedToNext <- true
       this step // skip minus
       this numberTokenWithPrefix: "-"
     ] ifFalse: [
+      hasAdvancedToNext <- true
       this stepMatch: '>',
         ifTrue:  [this createToken: TokenType.ReturnArrow lexeme: "->"]
         ifFalse: [this createToken: TokenType.BinarySymbol lexeme: "-"]
@@ -233,23 +238,24 @@ extend mut Lexer [
     | '^' =>     this createToken: TokenType.Return  lexeme: l
 
     |=> [
-      ch isLetter || (ch == '_') ifTrue: [
-        pos == readPos ifTrue: [
-          pos <- pos dec
+      this ch isLetter || (this ch == '_') ifTrue: [
+        this pos == this readPos ifTrue: [
+          pos <- this pos dec
         ]
+        hasAdvancedToNext <- true
         lit = this readIdentifier
         tt = Token lookupKeyword: lit
 
-        ch isDigit ifTrue: [
+        this ch isDigit ifTrue: [
           litDigit = this parseNumber
           ^ this createToken: TokenType.Identifier lexeme: lit + litDigit
         ]
 
 
-        ^| ch
+        ^| this ch
         | ':' => [
           this step
-          | ch
+          | this ch
           | ':' => [
             this step
             this createToken: TokenType.IdentifierDoubleColon lexeme: lit
@@ -264,14 +270,15 @@ extend mut Lexer [
           this createToken: tt lexeme: lit
         ]
       ]
-      ch isDigit ifTrue: [
+      this ch isDigit ifTrue: [
+        hasAdvancedToNext <- true
         ^ this numberTokenWithPrefix: ""
       ]
 
       this createToken: TokenType.Invalid lexeme: l
     ]
 
-    this step
+    hasAdvancedToNext ifFalse: [this step]
     ^ tok
   ]
 
@@ -287,11 +294,11 @@ extend mut Lexer [
   ]
   /// skip symbols until line end
   on skipCurrentLine = [
-    [(ch != '\n') && (ch != '\u0000')] whileTrue: [
+    [(this ch != '\n') && (this ch != '\u0000')] whileTrue: [
       this step
     ]
     this match: '\n', ifTrue: [
-      line <- line inc
+      line <- this line inc
       posOnLine <- 0
     ]
   ]
@@ -310,8 +317,8 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
     this match: '"'
     this match: '"'
     this match: '"'
-    [(ch != '\u0000') && (found == false)] whileTrue: [
-      ((ch == '"') && (this peekChar == '"') && (this peekSecondChar == '"')) ifTrue: [
+    [(this ch != '\u0000') && (found == false)] whileTrue: [
+      ((this ch == '"') && (this peekChar == '"') && (this peekSecondChar == '"')) ifTrue: [
         found <- true
       ] ifFalse: [
         this step
@@ -323,11 +330,11 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
     this match: '"'
     this match: '"'
     this match: '"'
-    input slice: localPos..(pos - 1)
+    input slice: localPos..(this pos - 1)
   ] ifFalse: [
     this match: delimiter
-    [(ch != delimiter) || escaped] whileTrue: [
-      ch == '\u0000' ifTrue: [
+    [(this ch != delimiter) || escaped] whileTrue: [
+      this ch == '\u0000' ifTrue: [
         TO DO: "unterminated string literal"
       ]
 
@@ -335,7 +342,7 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
         escaped <- false
         this step
       ] ifFalse: [
-        ch == '\\' ifTrue: [
+        this ch == '\\' ifTrue: [
           escaped <- true
           this step
         ] ifFalse: [
@@ -345,14 +352,14 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
     ]
 
     this match: delimiter
-    input slice: localPos..(pos - 1)
+    input slice: localPos..(this pos - 1)
   ]
 ]
 
 mut Lexer readIdentifier -> String = [
   localPos = pos
 
-  [ch isLetter || ch isDigit || (ch == '_') || (ch == '-')] whileTrue: [
+  [this ch isLetter || this ch isDigit || (this ch == '_') || (this ch == '-')] whileTrue: [
     this step
   ]
 
@@ -360,27 +367,27 @@ mut Lexer readIdentifier -> String = [
   // really terminates the identifier. Uppercase names are types, where `!`
   // is the existing error-type separator (`Int!Error`, `Int!{Error}`).
   firstChar = input at: localPos
-  nextChar = readPos >= input count ifTrue: ['\u0000'] ifFalse: [this peekChar]
+  nextChar = this readPos >= input count ifTrue: ['\u0000'] ifFalse: [this peekChar]
   nextIsIdentifierChar = nextChar isLetter || nextChar isDigit ||
     (nextChar == '_') || (nextChar == '-')
-  isBangSuffix = (ch == '!') &&
+  isBangSuffix = (this ch == '!') &&
     (firstChar isLowerCase || (firstChar == '_')) &&
     (nextChar != '=') && nextIsIdentifierChar not && (nextChar != '{')
   isBangSuffix ifTrue: [
     this step
   ]
 
-  result = input slice: localPos..(pos - 1) //readPos dec
+  result = input slice: localPos..(this pos - 1) //readPos dec
   ^result
 ]
 
 mut Lexer parseNumber -> String = [
   localPos = pos
-  [ch isDigit || ((ch == '_') && (this peekChar isDigit))] whileTrue: [
+  [this ch isDigit || ((this ch == '_') && (this peekChar isDigit))] whileTrue: [
     this step
   ]
 
-  result = input slice: localPos..(pos - 1) // readPos dec
+  result = input slice: localPos..(this pos - 1) // readPos dec
   ^result
 ]
 
@@ -388,12 +395,12 @@ mut Lexer numberTokenWithPrefix(prefix): String -> Token = [
   intPart = this parseNumber
   mut full = prefix + intPart
 
-  ch == '.' ifTrue: [
+  this ch == '.' ifTrue: [
     this peekChar isDigit ifTrue: [
       this step // consume '.'
       frac = this parseNumber
       full <- full + "." + frac
-      | ch
+      | this ch
       | 'f' => [
         this step
         ^ this createToken: TokenType.Float lexeme: full + "f"
@@ -406,10 +413,10 @@ mut Lexer numberTokenWithPrefix(prefix): String -> Token = [
 ]
 
 mut Lexer skipWhiteSpaces = [
-  [(ch == ' ') || (ch == '\t') || (ch == '\n') || (ch == '\r')] whileTrue: [
+  [(this ch == ' ') || (this ch == '\t') || (this ch == '\n') || (this ch == '\r')] whileTrue: [
 
-    ch == '\n' ifTrue: [
-      line <- line inc
+    this ch == '\n' ifTrue: [
+      line <- this line inc
       posOnLine <- 0
     ]
     this step
@@ -422,8 +429,8 @@ mut Lexer skipComments = [
   [
     this skipWhiteSpaces
 
-    savePoint = readPos
-    |ch
+    savePoint = this readPos
+    | this ch
     | '/' => [
       this peekChar == '/',
         ifTrue: [
