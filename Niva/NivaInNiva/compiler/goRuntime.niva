@@ -216,6 +216,9 @@ func Any__toString(v any, indents ...int) string {
 	case reflect.Bool:
 		return strconv.FormatBool(v.(bool))
 
+	case reflect.Int32:
+		return string(rune(val.Int()))
+
 	default:
 		return fmt.Sprintf("%v", v)
 	}

@@ -72,6 +72,23 @@ extend String [
   ]
 ]
 
+extend Expr [
+  on bindCallArgs -> List(NameAndExpr) = [
+    | this
+    | KeywordMsg => [
+      recv = receiver
+      | recv
+      | Identifier => recv name == "Bind" ifTrue: [args] ifFalse: [{}]
+      | KeywordMsg => [
+        nestedArgs = recv bindCallArgs
+        nestedArgs + args
+      ]
+      |=> {}
+    ]
+    |=> {}
+  ]
+]
+
 extend MessageDecl [
   // message name is stored joined by "__"; take the first keyword part
   on bindFirstKey -> String = (name split: "__") first
@@ -100,30 +117,27 @@ extend MessageDecl [
     |=> [
       | firstExpr
       | KeywordMsg => [
-        recv = firstExpr receiver
-        recvIsBind = | recv | Identifier => recv name == "Bind" |=> false
-        recvIsBind ifTrue: [
-          emitArg = firstExpr args find: [it name toString == "emit"]
-          hasSupportedArgs = (firstExpr args count == 1) ||
-            ((firstExpr args count == 2) &&
-              (firstExpr args any: [it name toString == "goPkg"]))
-          hasSupportedArgs ifTrue: [
-            emitArgMaybe = emitArg
-            | emitArgMaybe
-            | null => null
-            |=> [
-              emitValue = emitArgMaybe expr
-              | emitValue
-              | StringExpr => [
-                tok = emitValue token
-                tok kind == TokenType.RawString
-                  ifTrue: [tok lexeme unquoteRawLiteral]
-                  ifFalse: [tok lexeme unquoteLiteral]
-              ]
-              |=> null
+        callArgs = firstExpr bindCallArgs
+        callArgs isEmpty ifTrue: [^ null]
+          emitArg = callArgs find: [it name name == "emit"]
+          hasSupportedArgs = (callArgs count == 1) ||
+            ((callArgs count == 2) &&
+              (callArgs any: [it name name == "goPkg"]))
+          hasSupportedArgs ifFalse: [^ null]
+          emitArgMaybe = emitArg
+          | emitArgMaybe
+          | null => null
+          |=> [
+            emitValue = emitArgMaybe expr
+            | emitValue
+            | StringExpr => [
+              tok = emitValue token
+              tok kind == TokenType.RawString
+                ifTrue: [tok lexeme unquoteRawLiteral]
+                ifFalse: [tok lexeme unquoteLiteral]
             ]
-          ] ifFalse: [null]
-        ] ifFalse: [null]
+            |=> null
+          ]
       ]
       |=> null
     ]
@@ -135,11 +149,10 @@ extend MessageDecl [
     firstExpr = exprs first
     | firstExpr
     | KeywordMsg => [
-      recv = firstExpr receiver
-      recvIsBind = | recv | Identifier => recv name == "Bind" |=> false
-      recvIsBind ifFalse: [^ null]
+      callArgs = firstExpr bindCallArgs
+      callArgs isEmpty ifTrue: [^ null]
       nameLocal = name
-      arg = firstExpr args find: [it name toString == nameLocal]
+      arg = callArgs find: [it name name == nameLocal]
       argMaybe = arg
       | argMaybe
       | null => null
@@ -204,13 +217,26 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
       receiverTypeLocal = receiverType
       mut ownerMethod::NivaMethod? = null
 
-      getMethodFromType = [t::NivaType ->
-        methodsMaybe = db typeToMethodNameToMethod at: t
-        | methodsMaybe
+      getConstructorFromType = [t::NivaType ->
+        constructorsMaybe = db constructorsTypeToMethodNameToMethod at: (t toMangledName)
+        | constructorsMaybe
         | null => null
         |=> [
+          constructors::mut Map(String, NivaMethod) = constructorsMaybe
+          constructors at: nameLocal
+        ]
+      ]
+
+      getMethodFromType = [t::NivaType ->
+        methodsMaybe = db typeToMethodNameToMethod at: (t toMangledName)
+        | methodsMaybe
+        | null => getConstructorFromType t: t
+        |=> [
             methods::mut Map(String, NivaMethod) = methodsMaybe
-            methods at: nameLocal
+            methodMaybe = methods at: nameLocal
+            | methodMaybe
+            | null => getConstructorFromType t: t
+            |=> methodMaybe
           ]
       ]
 
@@ -249,7 +275,7 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
       ]
 
       ownerMethod == null ifTrue: [
-        {any} = db dtc
+        any = db dtc any
         ownerMethod <- (getMethodFromType t: any)
       ]
 
@@ -339,9 +365,21 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
         ]
     ]
     | ExprInBracketsT => value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
-    | VarDeclarationT
-    | AssignT
-    | DestructingAssignT
+    | VarDeclarationT => [
+      stmt = this toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      block = IrBlock stmts: {stmt} result: null resultType: exprType
+      IrBlockExpr typeRef: exprType token: exprToken block: block
+    ]
+    | AssignT => [
+      stmt = this toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      block = IrBlock stmts: {stmt} result: null resultType: exprType
+      IrBlockExpr typeRef: exprType token: exprToken block: block
+    ]
+    | DestructingAssignT => [
+      stmt = this toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      block = IrBlock stmts: {stmt} result: null resultType: exprType
+      IrBlockExpr typeRef: exprType token: exprToken block: block
+    ]
     | ReturnStatementT => [
       stmt = this toIrStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
       block = IrBlock stmts: {stmt} result: null resultType: exprType
@@ -349,10 +387,11 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
     ]
     | CollectionLiteralT => [
       items = elements v map: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
-      kind = | this
-        | ListLiteralT => IrCollectionKind.List
-        | SetLiteralT => IrCollectionKind.Set
-        | MapLiteralT => IrCollectionKind.Map
+      kind = | exprToken kind
+        | TokenType.OpenBrace => IrCollectionKind.List
+        | TokenType.OpenParenHash => IrCollectionKind.Set
+        | TokenType.OpenBraceHash => IrCollectionKind.Map
+        |=> TO DO: "Unexpected collection literal token"
       IrCollectionLiteral typeRef: exprType token: exprToken kind: kind items: items
     ]
     | MessageSendT => this toIrExprFromMsg: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
@@ -735,7 +774,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
               // fix custom binary methods
               // binary methods for core types can belong to the current package
               // so use the receiver type while MessageDeclT keeps the declaration package
-              methodsMaybe = db typeToMethodNameToMethod at: currentType
+              methodsMaybe = db typeToMethodNameToMethod at: (currentType toMangledName)
               methodPkg = | methodsMaybe
                 | null => currentPkg
                 |=> [
@@ -902,8 +941,8 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
   // lookup mut receiver requirement
   mut requiresMutReceiver = false
   methodsMaybe = isConstructor
-    ifTrue: [db constructorsTypeToMethodNameToMethod at: receiverType]
-    ifFalse: [db typeToMethodNameToMethod at: receiverType]
+    ifTrue: [db constructorsTypeToMethodNameToMethod at: (receiverType toMangledName)]
+    ifFalse: [db typeToMethodNameToMethod at: (receiverType toMangledName)]
 
   | methodsMaybe
   | null => []
@@ -1270,46 +1309,34 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   types forEach: [t ->
     listMaybe = typesByPkg at: t pkgId
     list::mut List::IrTypeDef = | listMaybe
-      | null => [
-        newList::mut List::IrTypeDef = {}!
-        typesByPkg at: t pkgId put: newList
-        newList
-      ]
+      | null => {}!
       |=> listMaybe
     list add: t
+    typesByPkg at: t pkgId put: list
   ]
   unions forEach: [u ->
     listMaybe = unionsByPkg at: u pkgId
     list::mut List::IrUnionDef = | listMaybe
-      | null => [
-        newList::mut List::IrUnionDef = {}!
-        unionsByPkg at: u pkgId put: newList
-        newList
-      ]
+      | null => {}!
       |=> listMaybe
     list add: u
+    unionsByPkg at: u pkgId put: list
   ]
   enums forEach: [e ->
     listMaybe = enumsByPkg at: e pkgId
     list::mut List::IrEnumDef = | listMaybe
-      | null => [
-        newList::mut List::IrEnumDef = {}!
-        enumsByPkg at: e pkgId put: newList
-        newList
-      ]
+      | null => {}!
       |=> listMaybe
     list add: e
+    enumsByPkg at: e pkgId put: list
   ]
   functionsWithInst forEach: [f ->
     listMaybe = functionsByPkg at: f pkgId
     list::mut List::IrFunction = | listMaybe
-      | null => [
-        newList::mut List::IrFunction = {}!
-        functionsByPkg at: f pkgId put: newList
-        newList
-      ]
+      | null => {}!
       |=> listMaybe
     list add: f
+    functionsByPkg at: f pkgId put: list
   ]
 
   packagesIr::mut List::IrPackage = {}!

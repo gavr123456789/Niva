@@ -46,8 +46,8 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         shadowLetterToType::mut Map(String, NivaType) = #{}!
 
         typedShadowArgs = args map: [kwArg ->
-          {name expr} = kwArg
-          field = receiverType findField: name name
+          expr = kwArg expr
+          field = receiverType findField: (kwArg name name)
           fieldMaybe = field
           fieldType = | fieldMaybe
             | null => Unknown new
@@ -83,14 +83,13 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             ]
             ifFalse: [
               db isAssignable: realType toExpected: fieldType, ifFalse: [
-                kwName = kwArg name
                 db addErrorMessage: (ErrorWrongArgType
                                       tok: expr token
                                       msg: "wrong arg type for $kwName expected " + fieldType toString cyan + " but got "red + realType toString cyan)
               ]
             ]
 
-          NameAndExprT name: name expr: typedExpr
+          NameAndExprT name: (kwArg name) expr: typedExpr
         ]
 
         resolvedReceiverType =
@@ -142,10 +141,28 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   shadowCopyMaybe = shadowCopy
   ^ | shadowCopyMaybe
     | null => [
-  mut kwMsgDB = db
-    findMsgFromReceiver: receiverTypedExpr
-    byName: msgName
-    currentPkg: c currentPkg
+  constructorTableMaybe = db constructorsTypeToMethodNameToMethod at: (receiverType toMangledName)
+  constructorMaybe = | constructorTableMaybe
+    | null => null
+    |=> [
+      constructorTable::mut Map(String, NivaMethod) = constructorTableMaybe
+      constructorTable at: msgName
+    ]
+  typedConstructorMaybe = | constructorMaybe
+    | null => null
+    |=> [
+      constructorMethod = constructorMaybe
+      | constructorMethod returnType
+      | Unknown => null
+      |=> constructorMethod
+    ]
+  mut kwMsgDB = isTypeReceiver ifTrue: [
+    | typedConstructorMaybe
+    | null => db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg
+    |=> typedConstructorMaybe
+  ] ifFalse: [
+    db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg
+  ]
 
   // unary and keyword can share the same name, so if current not match, there might be generic kinda overloading
   kwMsgDB args count != args count ifTrue: [
@@ -156,8 +173,9 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   ]
 
 
-  Assert that: kwMsgDB args count equals: args count
-         andSay: (receiverTyped token toPosition + " " + kwMsgDB toString + " has different amount of arguments ")
+  kwMsgDB args count != args count ifTrue: [
+    TO DO: "keyword " + msgName + " at " + receiverTyped token toPosition + " on " + receiverType toString + " expects " + kwMsgDB args count toString + " arguments but got " + args count toString
+  ]
 
 
 
@@ -173,7 +191,8 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   |=> kwMsgDB returnType collectGenericMappingsFrom: expectedReturnTypeMaybe into: letterToType db: db
 
   typedArgs = args mapIndexed: [ i, kwArg ->
-    {name expr} = kwArg
+    name = kwArg name
+    expr = kwArg expr
     argTypeFromDb = kwMsgDB args at: i, typeT
     expectedArgType =
       ((letterToType count > 0) && argTypeFromDb isContainsUnresolvedGenerics)
@@ -202,7 +221,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         expectedResolved isContainsUnresolvedGenerics ifFalse: [
           db isAssignable: realType toExpected: expectedResolved, ifFalse: [
             db addErrorMessage: (ErrorWrongArgType
-                                  tok: expr token
+                                      tok: expr token
                                   msg: "Expected " + expectedResolved toString + " but got " + realType toString)
           ]
         ]
@@ -217,7 +236,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         ]
       ]
 
-    NameAndExprT name: name expr: typedExpr
+          NameAndExprT name: name expr: typedExpr
   ]
 
   (letterToType count > 0) ifTrue: [

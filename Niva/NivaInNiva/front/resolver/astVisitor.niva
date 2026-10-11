@@ -548,7 +548,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
   shouldInferSingleExprReturnType ifTrue: [
     receiverType = receiver toNivaTypefromDB: db inPkg: null
-    methodsMaybe = db typeToMethodNameToMethod at: receiverType
+    methodsMaybe = db typeToMethodNameToMethod at: (receiverType toMangledName)
     | methodsMaybe
     | null => []
     |=> [

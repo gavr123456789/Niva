@@ -1,14 +1,13 @@
 /// `x debug` will print "x = 42"
-T debug -> T = [
-  receiver = Compiler getName: 0
-  codePlace = Compiler getPlace
+String debug -> String = [
+  codePlace = "COMPILE TIME REFLECTION TODO"
 
-  codePlace cyan + " $receiver = $this", echo
+  codePlace cyan + " COMPILE TIME REFLECTION TODO = $this", echo
   ^ this
 ]
 
 T log -> T = [
-  codePlace = Compiler getPlace
+  codePlace = "COMPILE TIME REFLECTION TODO"
   codePlace red + " " + (this toString), echo
   ^ this
 ]

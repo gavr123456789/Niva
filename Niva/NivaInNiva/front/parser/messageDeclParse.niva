@@ -31,7 +31,7 @@ mut Parser
   result = | tok2 kind
   | TokenType.Identifier => [
     // Int inc^ ->? = []
-    kwSavePoint = current
+    kwSavePoint = this current
     kwParts = this parseKeywordDeclArgsFrom: tok2
     kwParts == null ifTrue: [
       this restoreFrom: kwSavePoint
@@ -221,7 +221,7 @@ extend mut Parser [
     tok2 = this step
     result = | tok2 kind
     | TokenType.Identifier => [
-      kwSavePoint = current
+      kwSavePoint = this current
       kwParts = this parseKeywordDeclArgsFrom: tok2
 
       | kwParts

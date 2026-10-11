@@ -51,8 +51,9 @@ nullablePointerLocals: mut Set(String)
 narrowedNullablePointerLocals: mut Set(String)
  implicitFields: mut Set(String)
 implicitUnionFields: mut Set(String)
+unitReturnValue: mut Bool
 
-constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()!
+constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()! unitReturnValue: false
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
@@ -61,6 +62,7 @@ GoScope copy -> GoScope = [
   newNarrowedNullablePointers::mut Set(String) = #()!
   newImplicitFields::mut Set(String) = #()!
   newImplicitUnionFields::mut Set(String) = #()!
+  newUnitReturnValue = unitReturnValue
   newLocals addAll: locals
   newPointers addAll: pointerLocals
   newNullablePointers addAll: nullablePointerLocals
@@ -68,7 +70,12 @@ GoScope copy -> GoScope = [
   newImplicitFields addAll: implicitFields
   newImplicitUnionFields addAll: implicitUnionFields
 
-  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields
+  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields unitReturnValue: newUnitReturnValue
+]
+
+GoScope copyWithUnitReturnValue(value): Bool -> GoScope = [
+  copied = this copy
+  GoScope locals: copied locals pointerLocals: copied pointerLocals nullablePointerLocals: copied nullablePointerLocals narrowedNullablePointerLocals: copied narrowedNullablePointerLocals implicitFields: copied implicitFields implicitUnionFields: copied implicitUnionFields unitReturnValue: value
 ]
 
 GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef scope: GoScope -> Unit = [
@@ -1174,7 +1181,10 @@ extend IrExpr [
       ] ifFalse: [
         returnType isGoUnitType ifTrue: [
           sb appendIndent: indent line: (this toGoStatement: ctx scope: scope returnType: returnType)
-          sb appendIndent: indent line: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])
+          returnLine = hasErrors ifTrue: ["return nil"] ifFalse: [
+            scope unitReturnValue ifTrue: ["return struct{}{}"] ifFalse: ["return"]
+          ]
+          sb appendIndent: indent line: returnLine
         ] ifFalse: [
           exprStr = (ctx needsGoNullablePointerFor: returnType)
             ifTrue: [this toGoNullableInitExpr: ctx scope: scope targetType: returnType]
@@ -1582,7 +1592,11 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       | null => [
         hasErrors
           ifTrue: [sb appendIndent: indent line: "return nil"]
-         ifFalse: [sb appendIndent: indent line: "return"]
+         ifFalse: [
+           scope unitReturnValue
+             ifTrue: [sb appendIndent: indent line: "return struct{}{}"]
+             ifFalse: [sb appendIndent: indent line: "return"]
+         ]
       ]
       |=> [
         exprVal = exprLocal
@@ -1664,11 +1678,14 @@ extend IrBlock [
     sb append: retStr
     sb appendLine: " {"
 
-    innerScope = scope copy
+    innerScope = scope copyWithUnitReturnValue: true
     this blockToGoStatements: ctx scope: innerScope sb: sb indent: 1 returnType: retType
-    ctx emitResult: result sb: sb indent: 1 retType: retType scope: innerScope
-    retType isGoUnitType ifTrue: [
-      sb appendIndent: 1 line: ("return " + (retType toGoType: ctx) + "{}")
+    hasTrailingReturn = this hasTrailingReturn
+    hasTrailingReturn ifFalse: [
+      ctx emitResult: result sb: sb indent: 1 retType: retType scope: innerScope
+      retType isGoUnitType ifTrue: [
+        sb appendIndent: 1 line: ("return " + (retType toGoType: ctx) + "{}")
+      ]
     ]
 
     sb append: "}()"

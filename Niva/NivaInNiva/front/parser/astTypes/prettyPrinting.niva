@@ -6,10 +6,12 @@ TypedExpr2 prettyPrintWithIndent(indent): String isLast::Bool -> String = [
 
     | this
     | LiteralExprT => [
-        childIndent + "└── Contents: " + token lexeme, echo
+        (childIndent + "└── Contents: " + token lexeme) echo
+        ""
     ]
     | IdentifierT => [
-        childIndent + "└── Contents: " + this toString, echo
+        (childIndent + "└── Contents: " + this toString) echo
+        ""
     ]
     | ExprInBracketsT => [
         this value prettyPrintWithIndent: childIndent isLast: true

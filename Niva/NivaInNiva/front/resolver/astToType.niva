@@ -108,7 +108,7 @@ AstType2 toErrorsFromDb(db): TyperDB inPkg: String? -> List(NivaType) = | this
     | astErrors
     | null => {} // empty list
     |=> [
-      {kind} = astErrors
+      kind = astErrors kind
       | kind
       | AstTypeErrorsKind.Any    => {}
       | AstTypeErrorsKind.Single => [
