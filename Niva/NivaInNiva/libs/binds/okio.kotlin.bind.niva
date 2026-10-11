@@ -11,8 +11,8 @@ Bind package: "okio" imports: {"okio.Path.Companion.toPath as toOkioPath" "io.*"
   Path segments -> List(String)
   @emit: "java.nio.file.Paths.get($0.value).fileName.toString()"
   Path name -> String
-  @emit: "java.nio.file.Paths.get($0.value).parent?.toString()?.let { Path(value = it) }"
-  Path parent -> Path?
+  @emit: """Path(value = java.nio.file.Paths.get($0.value).let { it.parent?.toString() ?: if (it.isAbsolute) it.toString() else "." })"""
+  Path parent -> Path
   @emit: "Path(value = java.nio.file.Paths.get($0.value).resolve($1).toString())"
   Path / x: String -> Path
   @emit: "okio.FileSystem.SYSTEM.read($1.value.toOkioPath()) { readUtf8() }"

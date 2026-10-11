@@ -99,7 +99,11 @@ Test errorEffectsDeclared = [
 
   Assert that: db listOfErrors count equals: 0
 
-  msgDecl = result fileToStatements at: "main", unpackOrPANIC, at: 0
+  statementsMaybe = result fileToStatements at: "main"
+  statements = | statementsMaybe
+    | null => TO DO: "Missing main statements"
+    |=> statementsMaybe
+  msgDecl = statements at: 0
   | msgDecl
   | MessageDeclT => [
     Assert that: msgDecl returnType listOfErrors count equals: 1
@@ -122,7 +126,11 @@ Test errorEffectsInferFromBang = [
 
   Assert that: db listOfErrors count equals: 0
 
-  msgDecl = result fileToStatements at: "main", unpackOrPANIC, at: 0
+  statementsMaybe = result fileToStatements at: "main"
+  statements = | statementsMaybe
+    | null => TO DO: "Missing main statements"
+    |=> statementsMaybe
+  msgDecl = statements at: 0
   | msgDecl
   | MessageDeclT => [
     Assert that: msgDecl returnType listOfErrors count equals: 1
@@ -185,7 +193,11 @@ Test tryRethrowsIntoEnclosingFunctionAndUnwrapsVariable = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
 
-  sus = result fileToStatements at: "main", unpackOrPANIC, at: 1
+  statementsMaybe = result fileToStatements at: "main"
+  statements = | statementsMaybe
+    | null => TO DO: "Missing main statements"
+    |=> statementsMaybe
+  sus = statements at: 1
   | sus
   | MessageDeclT => [
     Assert that: sus body listOfErrors count equals: 1
@@ -406,7 +418,10 @@ Test ifTrueIfFalseEmptyListInfer = [
 
   Assert that: db listOfErrors count equals: 0
 
-  typedStmts = result fileToStatements at: "main", unpackOrPANIC
+  typedStmtsMaybe = result fileToStatements at: "main"
+  typedStmts = | typedStmtsMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedStmtsMaybe
   msgDecl = typedStmts at: 0
   | msgDecl
   | MessageDeclT => [
@@ -921,7 +936,10 @@ Test wrongArgTypeError = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
 
   Assert that: db listOfErrors count equals: 3
 ]
@@ -942,7 +960,10 @@ Test scopeVariables = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
 ]
 
 Test destructAssignDefinesVars = [
@@ -996,7 +1017,10 @@ Test constructorCall = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
   msgDecl = typedAst at: 1
 
   | msgDecl
@@ -1029,7 +1053,10 @@ Test constructorOnCoreType = [
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
   msgDecl = typedAst at: 1
 
   | msgDecl
@@ -1065,7 +1092,10 @@ Test getter = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
   msgDecl = typedAst at: 1
   | msgDecl
   | MessageDeclT => [
@@ -1106,15 +1136,29 @@ Test resolveAFewDeclarations = [
   MsgDeclVisitor new processBodyes: msgDecls db: db
 
   typesWereRegistered = [
-    mainPkg = db packages at: "main", unpackOrPANIC
-    mainPkg types at: "Person", unpackOrPANIC
-    mainPkg types at: "Wallet", unpackOrPANIC
+    mainPkgMaybe = db packages at: "main"
+    mainPkg = | mainPkgMaybe
+      | null => TO DO: "Missing main package"
+      |=> mainPkgMaybe
+    personTypeMaybe = mainPkg types at: "Person"
+    personType = | personTypeMaybe
+      | null => TO DO: "Missing Person type"
+      |=> personTypeMaybe
+    walletTypeMaybe = mainPkg types at: "Wallet"
+    walletType = | walletTypeMaybe
+      | null => TO DO: "Missing Wallet type"
+      |=> walletTypeMaybe
   ] do
 
-  msgList = msgDecls at: "main", unpackOrPANIC
+  msgListMaybe = msgDecls at: "main"
+  msgList = | msgListMaybe
+    | null => TO DO: "Missing main message list"
+    |=> msgListMaybe
   makeSas = msgList at: 0
-  typedBodyMaybe = db typedBodiesCache at: makeSas
-  typedBody = typedBodyMaybe unpackOrPANIC
+  typedBodyMaybe = db typedBodiesCache at: (makeSas messageDeclKey)
+  typedBody = | typedBodyMaybe
+    | null => TO DO: "Missing typed body"
+    |=> typedBodyMaybe
   checkExpressionsTypes = [
     Assert
       that: typedBody v count
@@ -1276,7 +1320,10 @@ Test shadowCopyKind = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
 
   Assert that: db listOfErrors count equals: 0
 
@@ -1323,7 +1370,10 @@ Test immutableNestedCopyUpdateLowersToShadowCopies = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   db = result db
-  typedAst = result fileToStatements at: "main", unpackOrPANIC
+  typedAstMaybe = result fileToStatements at: "main"
+  typedAst = | typedAstMaybe
+    | null => TO DO: "Missing main statements"
+    |=> typedAstMaybe
 
   Assert that: db listOfErrors count equals: 0
   updatedDecl = typedAst last

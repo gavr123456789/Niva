@@ -2,7 +2,7 @@ type JsonParser
     input: String
     pos: Int
 
-JsonParser peek -> Char = input at: pos
+mut JsonParser peek -> Char = input at: pos
 mut JsonParser advance = pos <- pos inc
 
 mut JsonParser skipWhitespace = [
@@ -20,30 +20,30 @@ mut JsonParser parseLiteral -> String = [
     start = pos
     [ (pos < input count) && (" ,]}" contains: (input at: pos, toString), not) ]
         whileTrue: [ pos <- pos inc ]
-    ^ input substringFrom: start to: pos
+    ^ input slice: start..(pos - 1)
 ]
 
 mut JsonParser parseValue -> JsonValue = [
-    .skipWhitespace
-    c = .peek
+    this skipWhitespace
+    c = this peek
 
     res = | c
-    | '{' => .parseObject
-    | '[' => .parseArray
-    | '"' => JString value: .parseString
+    | '{' => this parseObject
+    | '[' => this parseArray
+    | '"' => JString value: this parseString
     | 't' => [
-        .parseLiteral
+        this parseLiteral
         JBool value: true
     ]
     | 'f' => [
-        .parseLiteral
+        this parseLiteral
         JBool value: false
     ]
     | 'n' => [
-        .parseLiteral
+        this parseLiteral
         JNull new
     ]
-    |=> JNumber value: .parseLiteral toDouble
+    |=> JNumber value: this parseLiteral toDouble
 
     this skipWhitespace
     ^ res
@@ -69,30 +69,30 @@ mut JsonParser parseString -> String = [
 ]
 
 mut JsonParser parseArray -> JArray = [
-    .consume: '['
+    this consume: '['
     list::mut List(JsonValue) = {}
-    [ .peek != ']' ] whileTrue: [
-        list add: .parseValue
-        .skipWhitespace
-        .peek == ',' ifTrue: [ .consume: ',' ]
+    [ this peek != ']' ] whileTrue: [
+        list add: this parseValue
+        this skipWhitespace
+        this peek == ',' ifTrue: [ this consume: ',' ]
     ]
-    .consume: ']'
+    this consume: ']'
     ^ JArray list: list
 ]
 
 mut JsonParser parseObject -> JObject = [
-    .consume: '{'
+    this consume: '{'
     map::mut Map(String, JsonValue) = #{}
-    [ .peek != '}' ] whileTrue: [
-        .skipWhitespace
-        key = .parseString
-        .skipWhitespace
-        .consume: ':'
-        map at: key put: .parseValue
-        .skipWhitespace
-        .peek == ',' ifTrue: [ .consume: ',' ]
+    [ this peek != '}' ] whileTrue: [
+        this skipWhitespace
+        key = this parseString
+        this skipWhitespace
+        this consume: ':'
+        map at: key put: this parseValue
+        this skipWhitespace
+        this peek == ',' ifTrue: [ this consume: ',' ]
     ]
-    .consume: '}'
+    this consume: '}'
     ^ JObject map: map
 ]
 

@@ -13,10 +13,10 @@ JsonValue atKey::String -> JsonValue = [
 JsonValue atIndex::Int -> JsonValue = [
   | this
   | JArray => [
-      value = list atOrNull: atIndex
-      | value
-      | null => Error throwWithMessage: "no such index `$atIndex`, length = " + list count toString, orPANIC
-      |=> [ ^ value ]
+      atIndex >= 0 ifTrue: [
+        atIndex < list count ifTrue: [^ list at: atIndex]
+      ]
+      Error throwWithMessage: "no such index `$atIndex`, length = " + list count toString, orPANIC
   ]
   |=> Error throwWithMessage: "thats not an array, thats $this", orPANIC
 ]
@@ -30,7 +30,7 @@ JsonValue last -> JsonValue = this unsafeToArray list last
 
 
 
-JsonValue ifNotNull: [ JsonValue -> ] -> Unit = | this
+JsonValue ifNotNull: [ JsonValue -> Unit ] -> Unit = | this
   | JNull => []
   |=> [
     ifNotNull value: this

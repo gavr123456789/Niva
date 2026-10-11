@@ -9,6 +9,6 @@ T debug -> T = [
 
 T log -> T = [
   codePlace = Compiler getPlace
-  codePlace red + " " + this, echo
+  codePlace red + " " + (this toString), echo
   ^ this
 ]

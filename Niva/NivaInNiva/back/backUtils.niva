@@ -17,18 +17,64 @@ String operatorToString -> String =
   |=> this
 
 extend NivaType [
-  on isCoreTypeNamed(name): String -> Bool = [
-    base = .unwrapNullable
-    ^ (base name == name) && (base pkgName == "core")
+  on isCoreTypeNamed(typeName): String -> Bool = [
+    nivaType = this unwrapNullable
+    ^ | nivaType
+      | TypeT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | UnitT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | IntegerT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | FloatT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | DoubleT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | BoolT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | CharT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | StringT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | AnyT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | NothingT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | ListT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | SetT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | MapT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | UnresolvedGenericT => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      | Unknown => [
+        (nivaType name == typeName) && (nivaType pkgName == "core")
+      ]
+      |=> false
   ]
-  on isNumericType -> Bool = [
-    ^ (.isCoreTypeNamed: "Int") ||
-      (.isCoreTypeNamed: "Long") ||
-      (.isCoreTypeNamed: "Double") ||
-      (.isCoreTypeNamed: "Float")
-  ]
-  on isStringType -> Bool = .isCoreTypeNamed: "String"
-  on isBoolType -> Bool = .isCoreTypeNamed: "Bool"
+  on isNumericType -> Bool =
+    | this unwrapNullable
+    | IntegerT => true
+    | FloatT => true
+    | DoubleT => true
+    |=> false
+  on isStringType -> Bool = this isCoreTypeNamed: "String"
+  on isBoolType -> Bool = this isCoreTypeNamed: "Bool"
   on isNullableType -> Bool = | this | NullableT => true |=> false
   on isNothingType -> Bool = | this | NothingT => true |=> false
 ]
@@ -45,21 +91,34 @@ extend String [
       this
     ]
   ]
-  on unquoteRawLiteral -> String =
-    | this count > 6
-    | true => .drop: 3, dropLast: 3
-    | false => this
+  on unquoteRawLiteral -> String = [
+    ^ this count > 6
+      ifTrue: [this drop: 3, dropLast: 3]
+      ifFalse: [this]
+  ]
 
   on escapedTemplateLiteralChunkAt(i): Int -> NumAndStr = [
     bs = '\\' toString
     dollar = '$' toString
     brace = '{' toString
     c = this at: i
-    ^ | true
-      | c == '\\' => [ NumAndStr str: "\\\\" num: 1 ]
-      | c == '`'  => [ NumAndStr str: "\\`"  num: 1 ]
-      | c == '$' && (i + 1 < .count) && ((.at: i + 1) == '{') => [ NumAndStr str: bs + dollar + brace num: 2 ]
-      |=> NumAndStr str: c toString num: 1
+    len = this count
+      nextIsBrace = (i + 1 < len) ifTrue: [
+        (this at: (i + 1)) == '{'
+      ] ifFalse: [false]
+    hasTemplateBrace = ((c == '$') && nextIsBrace)
+    result = c == '\\'
+      ifTrue: [NumAndStr str: "\\\\" num: 1]
+      ifFalse: [
+        c == '`'
+          ifTrue: [NumAndStr str: "\\`" num: 1]
+          ifFalse: [
+            hasTemplateBrace
+              ifTrue: [NumAndStr str: bs + dollar + brace num: 2]
+              ifFalse: [NumAndStr str: c toString num: 1]
+          ]
+      ]
+    ^ result
   ]
   on escapeForTemplateLiteral -> String = [
     sb = StringBuilder new
@@ -82,27 +141,36 @@ extend String [
     sb = StringBuilder new
     len = template count
     mut i = 0
-    [i < len] whileTrue: [
-      ch = template at: i
-      ch == '$' ifTrue: [
-        (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
+      [i < len] whileTrue: [
+        ch = template at: i
+      isDollar = ch == '$'
+      isDollar ifTrue: [
+        hasArgument = ((i + 1) < len) && ((template at: (i + 1)) isDigit)
+        hasArgument ifTrue: [
           mut digitStr = ""
           mut j = i + 1
-          [j < len && ((template at: j) isDigit)] whileTrue: [
+          [((j < len) && ((template at: j) isDigit))] whileTrue: [
             digitStr <- digitStr + ((template at: j) toString)
             j <- j + 1
           ]
           idx = digitStr toInt
-          isValid = (idx >= 0) && (idx < (argsValues count))
-          isValid
-            ifTrue: [sb append: (argsValues at: idx)]
-            ifFalse: [sb append: "$" + digitStr]
+          isValid = ((idx >= 0) && (idx < (argsValues count)))
+          isValid ifTrue: [
+            sb append: (argsValues at: idx)
+            ()
+          ]
+          isValid ifFalse: [
+            sb append: "$" + digitStr
+            ()
+          ]
           i <- j
-        ] ifFalse: [
+        ]
+        hasArgument ifFalse: [
           sb append: "$"
           i <- i + 1
         ]
-      ] ifFalse: [
+      ]
+      isDollar ifFalse: [
         sb append: (ch toString)
         i <- i + 1
       ]
@@ -111,7 +179,3 @@ extend String [
   ]
 
 ]
-
-String
-
-String

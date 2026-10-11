@@ -34,6 +34,10 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
           (TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)}
   boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
 
+  reversedArgs = {(TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)
+                  (TypeTField name: "ifTrue"  typeT: no-args-to-t isMut: false)}
+  boolProto addMethod: (NivaMethod manyArgKw: reversedArgs receiverType: bool returnT: t)
+
 
   ^boolProto methods
 ]

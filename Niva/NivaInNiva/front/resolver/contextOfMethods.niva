@@ -10,7 +10,7 @@ type Context
 
 constructor Context [
   /// no parents no vars(yet)
-  on rootWithPkg(currentPkg): NivaPkg = Context parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
+  on rootWithPkg(currentPkg): NivaPkg = Context parent: null vars: #{}! currentPkg: currentPkg currentBlockRefNames: #()!
   on fromParent::Context =
     Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg currentBlockRefNames: #()!
 ]
@@ -39,20 +39,31 @@ extend Context [
 
   on allKnownVars -> String = [
     compute = [c::Context ->
-      c vars map: [k, v -> "$k: $v"], joinWith: ", "
+      pairs::mut List(String) = {}!
+      c vars forEach: [k, v -> pairs add: "$k: $v"]
+      pairs joinWith: ", "
     ]
 
-    result::{String}! = {(compute c: this)}!
+    result = {(compute c: this)}!
 
     mut p = parent
     [p != null] whileTrue: [
-      nonNullP = p unpackOrPANIC
+      parentMaybe = p
+      nonNullP = | parentMaybe
+        | null => TO DO: "Context parent disappeared during traversal"
+        |=> parentMaybe
       newLine = compute c: nonNullP
       result add: newLine
       p <- nonNullP parent
     ]
+    reversed::mut List(String) = {}!
+    mut i = result count - 1
+    [i >= 0] whileTrue: [
+      reversed add: (result at: i)
+      i <- i - 1
+    ]
     mut level = -1
-    ^result reversed joinWith: "\n" transform: [
+    ^reversed joinWith: "\n" transform: [
       level <- level inc
       levelStr = "  " repeat: level
       levelStr + it

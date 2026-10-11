@@ -1,64 +1,65 @@
 extend mut Parser [
   /// `name: String`
   on typeFields -> List::TypeField = [
-    .peek kind == TokenType.IdentifierColon ifFalse: [^ {}]
     result::mut List::TypeField = {}!
 
-    [
-      tok = .peek
-      tok kind == TokenType.IdentifierColon ifTrue: [
-        .step // skip
+    this peek kind == TokenType.IdentifierColon ifTrue: [
+      [
+        tok = this peek
+        tok kind == TokenType.IdentifierColon ifTrue: [
+          this step // skip
 
-        astType = .parseType
-        type_field = TypeField name: (tok lexeme) astType: astType
-        result add: (type_field)
-        .peek kind == TokenType.IdentifierColon
-      ] ifFalse: [
-        false
-      ]
-    ] whileTrue: []
+          astType = this parseType
+          type_field = TypeField name: (tok lexeme) astType: astType
+          result add: (type_field)
+          this peek kind == TokenType.IdentifierColon
+        ] ifFalse: [
+          false
+        ]
+      ] whileTrue: []
+    ]
 
-    ^ result toList
+    result toList
   ]
 
   on declarationGenericParams -> List(String) = [
-    .match: TokenType.OpenParen, ifFalse: [^ {}]
-
     params::mut List(String) = {}!
-    [
-      tok = .matchAssertAnyIdent: "generic param name expected"
-      params add: tok lexeme
-      .match: TokenType.Comma
-    ] whileTrue: []
+    this match: TokenType.OpenParen, ifTrue: [
+      [
+        tok = this matchAssertAnyIdent: "generic param name expected"
+        params add: tok lexeme
+        this match: TokenType.Comma
+      ] whileTrue: []
 
-    .matchAssert: TokenType.CloseParen
-    ^ params toList
+      this matchAssert: TokenType.CloseParen
+    ]
+    params toList
   ]
 
   /// type ^name (field1: astType)*
   on typeDeclaration(tok): Token -> TypeDecl = [
-    nameTok = .step
+    nameTok = this step
 
     res = TypeDecl
-      name: nameTok lexeme
-      genericParams: (.declarationGenericParams)
-      fields: (.typeFields)
       token: tok
+      name: nameTok lexeme
+      genericParams: (this declarationGenericParams)
+      fields: (this typeFields)
     ^ res
   ]
 
   /// enum Color = Red | Green | Blue
   on enumDeclaration(tok): Token -> EnumDecl = [
-    nameTok = .step
-    .matchAssert: TokenType.Assign
+    nameTok = this step
+    this matchAssert: TokenType.Assign
 
     values::mut List(String) = {}!
-    firstValue = .matchAssertAnyIdent: "name of the enum value expected"
+    firstValue = this matchAssertAnyIdent: "name of the enum value expected"
     values add: firstValue lexeme
 
     [
-      .match: TokenType.If, ifTrue: [
-        valueTok = .matchAssertAnyIdent: "name of the enum value expected"
+      this match: TokenType.If, ifTrue: [
+        valueTok = this matchAssertAnyIdent: "name of the enum value expected"
         values add: valueTok lexeme
         true
       ] ifFalse: [
@@ -66,7 +67,7 @@ extend mut Parser [
       ]
     ] whileTrue: []
 
-    ^ EnumDecl name: nameTok lexeme values: values toList token: tok
+    ^ EnumDecl token: tok name: nameTok lexeme values: values toList
   ]
 
   /// union name = (| (field1: astType)*)*
@@ -74,31 +75,31 @@ extend mut Parser [
   /// union Car genericField = Foo field1: Int | Bar field2: Int
   /// union Vehicle = ^Car | Plane
   on unionTypeDeclaration(tok): Token -> UnionDecl = [
-    name = .step lexeme
-    genericParams = .declarationGenericParams
-    commonUnionFields = .typeFields
+    name = this step lexeme
+    genericParams = this declarationGenericParams
+    commonUnionFields = this typeFields
 
-    .matchAssert: TokenType.Assign
-    .matchString: "|" // first optional pipe
+    this matchAssert: TokenType.Assign
+    this matchString: "|" // first optional pipe
 
     branches:: mut List::UnionBranch = {}
     [
       mut isInclude = false
-      .peek kind == TokenType.Return ifTrue: [
-        .step // consume ^
+      this peek kind == TokenType.Return ifTrue: [
+        this step // consume ^
         isInclude <- true
       ]
 
-      .peek kind == TokenType.Identifier ifTrue: [
-        nameTok = .step
-        fields = .typeFields
+      this peek kind == TokenType.Identifier ifTrue: [
+        nameTok = this step
+        fields = this typeFields
         branch = UnionBranch
           name: nameTok lexeme
           fields: fields
           isInclude: isInclude
           token: nameTok
         branches add: branch
-        .match: TokenType.If
+        this match: TokenType.If
       ] ifFalse: [
         false
       ]
@@ -106,7 +107,7 @@ extend mut Parser [
 
 
 
-    res = UnionDecl name: name genericParams: genericParams commonUnionFields: commonUnionFields branches: branches token: tok
+    res = UnionDecl token: tok name: name genericParams: genericParams commonUnionFields: commonUnionFields branches: branches
 
 
     ^ res

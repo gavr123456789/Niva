@@ -1,1 +1,7 @@
-String isGeneric -> Bool = .count == 1 && .first isUpperCase
+String isGeneric -> Bool = [
+  charCount = this count
+  isSingleChar = charCount == 1
+  firstChar = this first
+  startsUpper = firstChar isUpperCase
+  isSingleChar ifTrue: [startsUpper] ifFalse: [false]
+]

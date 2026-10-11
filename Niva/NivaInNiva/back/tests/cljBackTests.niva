@@ -22,8 +22,14 @@ Test cljPackageOutputUsesStableNamespacesAndPaths = [
 
   Assert that: output files count equals: 2
   Assert that: output entryNamespace equals: "niva.generated.main"
-  model = output files at: "niva/generated/model.clj", unpackOrPANIC
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  modelMaybe = output files at: "niva/generated/model.clj"
+  model = | modelMaybe
+    | null => TO DO: "Missing generated model"
+    |=> modelMaybe
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = | mainMaybe
+    | null => TO DO: "Missing generated main"
+    |=> mainMaybe
   model contains: "(ns niva.generated.model)", assertTrue
   Assert that: (model contains: ":gen-class") equals: false
   main contains: "(ns niva.generated.main (:gen-class) (:require [niva.generated.model]))", assertTrue
@@ -49,7 +55,10 @@ Test cljBabashkaTargetRunsGeneratedProgram = [
     destination = root + "/generated/" + relativePath
     io writeFile file: destination content: content
   ]
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = | mainMaybe
+    | null => TO DO: "Missing generated main"
+    |=> mainMaybe
   io writeFile file: root + "/main.clj" content: output legacyMainShim
   io writeFile file: root + "/deps.edn" content: "{:paths [\"generated\" \".\"]}\n"
 
@@ -113,9 +122,9 @@ Test cljManifestDetectsChangedUnionBranches = [
 
 Test cljManifestDetectsChangedEnumValues = [
   oldEnum = IrEnumDef
-    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green"} token: FAKE_TOKEN
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green"} token: (Token fake)
   newEnum = IrEnumDef
-    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green" "Blue"} token: FAKE_TOKEN
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green" "Blue"} token: (Token fake)
   oldManifest = CljManifest
     version: 1 entryNamespace: "niva.generated.main" modules: {}
     stateVars: {}
@@ -140,7 +149,10 @@ Test cljPackageOutputQualifiesUnionBranches = [
   result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = | mainMaybe
+    | null => TO DO: "Missing generated main"
+    |=> mainMaybe
 
   main contains: "niva.generated.model/->model_Circle", assertTrue
   main contains: "niva.generated.model/model_Circle", assertTrue
@@ -159,7 +171,7 @@ Test cljPackageOutputQualifiesEnumAtom = [
   atom = IrLiteralExpr
     literal: (IrLiteral kind: IrLiteralKind.Atom lexeme: "red")
     typeRef: enumRef
-    token: FAKE_TOKEN
+    token: (Token fake)
   ctx = CljContext newDebug: false imports: #() pkg: "main"
   clj = atom toCljExpr: ctx scope: CljScope new
 
@@ -175,8 +187,14 @@ Test cljPackageOutputQualifiesErrorBranches = [
   Assert that: result db listOfErrors count equals: 0
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  model = output files at: "niva/generated/model.clj", unpackOrPANIC
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  modelMaybe = output files at: "niva/generated/model.clj"
+  model = | modelMaybe
+    | null => TO DO: "Missing generated model"
+    |=> modelMaybe
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = | mainMaybe
+    | null => TO DO: "Missing generated main"
+    |=> mainMaybe
 
   model contains: "(->model_Missing 404)", assertTrue
   main contains: "niva.generated.model/model_Missing", assertTrue
@@ -192,8 +210,14 @@ Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
   Assert that: result db listOfErrors count equals: 0
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  model = output files at: "niva/generated/model.clj", unpackOrPANIC
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  modelMaybe = output files at: "niva/generated/model.clj"
+  model = | modelMaybe
+    | null => TO DO: "Missing generated model"
+    |=> modelMaybe
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = | mainMaybe
+    | null => TO DO: "Missing generated main"
+    |=> mainMaybe
 
   model contains: "(:require [clojure.string]", assertTrue
   model contains: "(clojure.string/upper-case this)", assertTrue

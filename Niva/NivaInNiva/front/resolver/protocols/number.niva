@@ -1,5 +1,5 @@
 constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
-  {str bool unit char intRange double} = dtc
+  {str bool unit char intRange double long} = dtc
 
   intProtocol = NivaProtocol name: "arithmetic"
 
@@ -25,6 +25,7 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
   intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)
 
   num name == "Int" ifTrue: [ // not for float or double
+    intProtocol addMethod: (NivaMethod unary: "toLong" receiverType: num returnT: long)
     intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
   ]
 
