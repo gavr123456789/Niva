@@ -454,8 +454,10 @@ constructor NivaCompiler [
           //t3 = measureTimeFrom from: t2 text: "collect-files"
 
           resolver = ResolverHelper resolveSources: sources entryPoint: entryPoint backend: backendStr
-          resolver db listOfErrors isNotEmpty ifTrue: [
-            resolver_errors = resolver db listOfErrors joinWith: "\n" transform: [ it toConsoleMsg ]
+          resolverErrors = (resolver db listOfErrors) + (resolver db nonInlineReturnErrors values toList)
+          allResolverErrors = resolverErrors
+          allResolverErrors isNotEmpty ifTrue: [
+            resolver_errors = allResolverErrors joinWith: "\n" transform: [ it toConsoleMsg ]
             TO DO: "Resolver errors: " + resolver_errors
             System exitWith: 1
             ()

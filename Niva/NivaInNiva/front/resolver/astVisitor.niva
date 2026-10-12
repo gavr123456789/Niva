@@ -224,6 +224,7 @@ TypeDeclVisitor
               decl: null
               protocolName: "getters"
               pkgName: "core" // this is getter
+              isInline: false
 
             db addNewMethod: getter forType: resolvedType inProtocol: "getters"
 
@@ -350,6 +351,7 @@ TypeDeclVisitor
           decl: msg
           protocolName: "common"
           pkgName: pkg
+          isInline: false
 
         db registerMethodDeclaration: receiverType name: msg name token: msg token
         db addNewMethod: method forType: receiverType inProtocol: null
@@ -383,7 +385,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
   | typeStub
   | null => [
     resolveError::ResolveErrors = ErrorNoSuchType tok: st token msg: "type $name not found"
-    db listOfErrors add: resolveError
+    db addErrorMessage: resolveError
 
     ^ null
   ]
@@ -466,7 +468,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     |=> returnTypeMaybe toNivaTypefromDB: db inPkg: null
 
   createContextWithThisAndArgs = [
-    c = Context rootWithPkg: pkg
+    c = Context rootWithPkg: pkg returnType: expectedReturnType
     receiverType = receiver toNivaTypefromDB: db inPkg: null
     receiverType name == "Nothing" ifTrue: [
       TO DO: "You cant declare methods for Nothing type"
@@ -507,7 +509,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   // resolve body
   c = createContextWithThisAndArgs do
 
-  typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType
+  typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType includeNonLocalReturns: true
 
   finalTypedBody =
     isSingleExpr ifTrue: [

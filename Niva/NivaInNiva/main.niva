@@ -81,7 +81,7 @@ constructor IO_Container new -> IO_Container = [
 compilerTry = [
   path = Compiler cliArgs
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
-]
+] do
 
 compilerTry2 = [
   cliArgs = Compiler cliArgs
@@ -91,4 +91,4 @@ compilerTry2 = [
     // show cli help
     ifFalse: [cliArgs]
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
-] do
+]

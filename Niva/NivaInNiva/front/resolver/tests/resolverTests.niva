@@ -789,6 +789,63 @@ Test listMapFilterForEachChain = [
   |=> [TO DO: "KeywordMsgT expected"]
 ]
 
+Test inlineForEachAllowsNonLocalReturn = [
+  fileMain = """
+    Unit find -> Int = [
+      {1 2 3} forEach: [item::Int -> ^ item]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test nestedInlineBranchAllowsNonLocalReturn = [
+  fileMain = """
+    Unit find -> Int = [
+      {1 2 3} forEach: [item::Int ->
+        item == 2 ifTrue: [^ item]
+      ]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test nonInlineMapRejectsNonLocalReturn = [
+  fileMain = """
+    Unit find -> Int = [
+      {1 2 3} map: [item::Int -> ^ item]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+  Assert that: errors count equals: 1
+  errors first msg contains: "non-local return requires an inline function", assertTrue
+]
+
+Test nestedInlineReturnInsideNonInlineMapIsRejected = [
+  fileMain = """
+    Unit find -> Int = [
+      {1 2 3} map: [item::Int ->
+        item == 2 ifTrue: [^ item]
+        item
+      ]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+  Assert that: errors count equals: 1
+  errors first msg contains: "non-local return requires an inline function", assertTrue
+]
+
     Test resolveUnaryBinaryKeywordMessages = [
   fileMain = """
     type Counter value: Int

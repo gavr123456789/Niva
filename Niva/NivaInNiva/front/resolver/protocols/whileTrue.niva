@@ -17,7 +17,7 @@ constructor NivaProtocol whileTrueFromDefaultTypes(dtc): DefaultTypesContainer  
              pkgName: "core"
           returnType: unit
 
-  blockProto addMethod: (NivaMethod singleArgKw: "whileTrue" receiverType: condBlock argT: bodyBlock returnT: unit)
+  blockProto addMethod: ((NivaMethod singleArgKw: "whileTrue" receiverType: condBlock argT: bodyBlock returnT: unit) markedInline)
 
   ^ blockProto methods
 ]

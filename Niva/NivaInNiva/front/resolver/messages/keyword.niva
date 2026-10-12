@@ -4,8 +4,28 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context  -> Keywor
 ]
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
-  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
+  msgName = | nameOverride
+    | null => this getNameFromArgs
+    |=> nameOverride
+  receiverTypedExpr = this resolveReceiverForInlineMethod: db withContext: c methodName: msgName
   ^ this resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride expectedType: expectedType
+]
+
+KeywordMsg resolveReceiverForInlineMethod(db): TyperDB withContext(c): Context methodName: String -> TypedExpr2 = [
+  receiverExpr = receiver
+  | receiverExpr
+  | CodeBlock => [
+    ((methodName == "whileTrue") || (methodName == "whileTrue:")) ifTrue: [
+      condType = FuntionT
+        fields: {}!
+        name: "whileTrueCond"
+        genericArgs: {}!
+        pkgName: "core"
+        returnType: db dtc bool
+      receiverExpr resolveWithExpectedType: db withContext: c expectedType: condType allowNonLocalReturn: true
+    ] ifFalse: [receiverExpr toTypedExprFromDb2: db withContext: c]
+  ]
+  |=> receiverExpr toTypedExprFromDb2: db withContext: c
 ]
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
@@ -61,7 +81,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             | expr
             | CodeBlock => [
               | expectedArgType
-              | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType
+              | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType allowNonLocalReturn: false
               |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
             ]
             |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
@@ -122,6 +142,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           decl: null
           protocolName: "shadowCopy"
           pkgName: receiverType pkgName
+          isInline: false
 
         shadowCopy <- KeywordMsgT
           receiver: receiverTypedExpr
@@ -202,7 +223,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
       | expr
       | CodeBlock => [
         | expectedArgType
-        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType
+        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType allowNonLocalReturn: kwMsgDB isInline
         |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
       ]
       |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType

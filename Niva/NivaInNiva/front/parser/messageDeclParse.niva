@@ -28,7 +28,7 @@ mut Parser
   // Int^ a: q::Int b::Int =
   // Int^ + a::Int =
   tok2 = this step
-  result = | tok2 kind
+  result::Statement = | tok2 kind
   | TokenType.Identifier => [
     // Int inc^ ->? = []
     kwSavePoint = this current

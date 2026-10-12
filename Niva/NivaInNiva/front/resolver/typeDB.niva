@@ -1,5 +1,6 @@
 type TyperDB
-  listOfErrors: mut List::ResolveErrors // across all packages?
+  listOfErrors: mut List::ResolveErrors
+  nonInlineReturnErrors: mut Map(String, ResolveErrors)
 
   packages: mut Map(String, NivaPkg)
 
@@ -51,9 +52,27 @@ constructor TyperDB new -> TyperDB = [
   sbNivaType::NivaType = sb
   corePkg types at: "StringBuilder" put: sbNivaType
 
-  {char int long float double str bool bind compiler error unit nothing any t list map set intRange charRange} = dtc
+  char = dtc char
+  intType = dtc int
+  long = dtc long
+  float = dtc float
+  double = dtc double
+  str = dtc str
+  bool = dtc bool
+  bind = dtc bind
+  compiler = dtc compiler
+  error = dtc error
+  unit = dtc unit
+  nothing = dtc nothing
+  any = dtc any
+  t = dtc t
+  list = dtc list
+  map = dtc map
+  set = dtc set
+  intRange = dtc intRange
+  charRange = dtc charRange
   charNivaType::NivaType = char
-  intNivaType::NivaType = int
+  intNivaType::NivaType = intType
   longNivaType::NivaType = long
   floatNivaType::NivaType = float
   doubleNivaType::NivaType = double
@@ -85,7 +104,7 @@ constructor TyperDB new -> TyperDB = [
   bindConstructors = NivaProtocol bindFromDefaultTypes: dtc
   compilerConstructors = NivaProtocol compilerFromDefaultTypes: dtc
   errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: error
-  intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: int
+  intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: intType
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
   stringBuilderProtocol = NivaProtocol stringBuilderFromDefaultTypes: dtc sb: sb
 
@@ -154,8 +173,10 @@ constructor TyperDB new -> TyperDB = [
     |=> []
   ]
 
+  initialErrors::mut List::ResolveErrors = {}!
   db = TyperDB
-    listOfErrors: {}!
+    listOfErrors: initialErrors
+    nonInlineReturnErrors: #{}!
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
     typesWithSameNames: typesWithSameNames
@@ -661,6 +682,7 @@ extend TyperDB [
             decl: specialized decl
             protocolName: specialized protocolName
             pkgName: specialized pkgName
+            isInline: specialized isInline
           matches add: specializedWithActualReceiver
 
           | forType
@@ -719,8 +741,12 @@ extend TyperDB [
   ]
 
   on addErrorMessage(e): ResolveErrors = [
-    msg = e msg
     listOfErrors add: e
+  ]
+
+  on addNonInlineReturnError(tok): Token error(e): ResolveErrors = [
+    existing = listOfErrors find: [it tok toPosition == tok toPosition]
+    existing == null ifTrue: [nonInlineReturnErrors at: tok toPosition put: e]
   ]
 
   on addErrorFromTok(tok): Token withMsg(msg): String = [
@@ -1082,6 +1108,7 @@ extend TyperDB [
       decl: null
       protocolName: "intrinsic"
       pkgName: "core"
+      isInline: false
   ]
 
   on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2  -> NivaMethod? = [
@@ -1244,6 +1271,7 @@ extend TyperDB [
             decl: null
             protocolName: "getters"
             pkgName: receiverType pkgName
+            isInline: false
         ]
       ]
       |=> null
@@ -1289,7 +1317,7 @@ extend TyperDB [
             |=> whileTrueMethodMaybe
           bodyArgType = whileTrueMethod args first typeT
 
-          NivaMethod singleArgKw: "whileTrue" receiverType: receiverType argT: bodyArgType returnT: unit
+          (NivaMethod singleArgKw: "whileTrue" receiverType: receiverType argT: bodyArgType returnT: unit) markedInline
         ] ifFalse: [
           name == "do" ifTrue: [
             NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
@@ -1740,7 +1768,7 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
   bindTypes = bindMeta bindTypeIds toMutableSet
 
   ^ TyperDB
-    listOfErrors: errorsMutable packages: packagesMutable
+    listOfErrors: errorsMutable nonInlineReturnErrors: #{}! packages: packagesMutable
     internalTypesCache: internalTypes typesWithSameNames: copyStringTypeSets
     typeDeclarationTokens: typeTokens methodDeclarationTokens: methodTokens
     unionRootToBranches: copyUnionBranches branchIdToParentId: parents
