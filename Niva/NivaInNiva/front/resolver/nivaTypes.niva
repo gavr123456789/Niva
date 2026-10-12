@@ -417,6 +417,7 @@ type NivaMethod
   decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
   protocolName: String
   pkgName: String
+  isInline: Bool
 
 extend NivaMethod [
   on infoSignature -> String = [
@@ -497,13 +498,19 @@ extend NivaMethod [
         decl: decl
         protocolName: protocolName
         pkgName: pkgName
+        isInline: isInline
   ]
 
   on copyWithDifferentReturnType(rt): NivaType =
-    NivaMethod name: name  receiverType: receiverType args: args returnType: rt returnErrors: returnErrors forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName
+    NivaMethod name: name receiverType: receiverType args: args returnType: rt returnErrors: returnErrors forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: isInline
 
   on copyWithDifferentReturnErrors(errors): List::NivaType =
-    NivaMethod name: name receiverType: receiverType args: args returnType: returnType returnErrors: errors forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName
+    NivaMethod name: name receiverType: receiverType args: args returnType: returnType returnErrors: errors forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: isInline
+
+  on markedInline -> NivaMethod = NivaMethod
+    name: name receiverType: receiverType args: args returnType: returnType
+    returnErrors: returnErrors forMut: forMut possibleErrors: possibleErrors
+    kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: true
 
   /// sort args and checks them with fields, so any arg order should work probably
   on isConstructorForReceiver(receiver): TypeT -> Bool = [
@@ -545,6 +552,7 @@ constructor NivaMethod [
     decl: null
     protocolName: protocolName
     pkgName: pkgName
+    isInline: false
 
   on defaultConstructorWithName(name): String receiverType: NivaType args: List(TypeTField) returnType: NivaType decl: MessageDecl? protocolName::String pkgName::String -> NivaMethod = NivaMethod
     name: name
@@ -558,6 +566,7 @@ constructor NivaMethod [
     decl: decl
     protocolName: protocolName
     pkgName: pkgName
+    isInline: false
 
 ]
 

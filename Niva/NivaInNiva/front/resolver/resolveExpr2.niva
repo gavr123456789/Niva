@@ -85,6 +85,10 @@ extend Body [
   /// resolve body inside expressions
   /// expected type comes from surrounding expression
   on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
+    this resolveBody2: db withContext: upperContext expectedType: expectedType includeNonLocalReturns: false
+  ]
+
+  on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? includeNonLocalReturns: Bool -> TypedBody = [
 
     c = Context fromParent: upperContext
 
@@ -117,10 +121,15 @@ extend Body [
 
 
     returnTypes::mut List(NivaType) = {}!
-    listOfTypedExpr2 forEach: [expr ->
-      | expr
-      | ReturnStatementT => returnTypes add: expr typeInfo t
-      |=> []
+    includeNonLocalReturns ifTrue: [
+      listOfTypedExpr2 forEach: [expr ->
+        | expr
+        | ReturnStatementT => [
+          returnTypes add: expr typeInfo t
+          ()
+        ]
+        |=> expr collectNonLocalReturnTypesInto: returnTypes
+      ]
     ]
 
     bodyErrors::mut List(NivaType) = {}!
@@ -346,7 +355,11 @@ extend TyperDB [
 ]
 
 CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Context expectedType: FuntionT -> CodeBlockT = [
-  c = Context fromParent: upperContext
+  ^ this resolveWithExpectedType: db withContext: upperContext expectedType: expectedType allowNonLocalReturn: false
+]
+
+CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Context expectedType: FuntionT allowNonLocalReturn: Bool -> CodeBlockT = [
+  c = Context fromParent: upperContext allowsNonLocalReturn: allowNonLocalReturn
 
   expectedFields = expectedType fields
 
@@ -439,7 +452,9 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
 
   expectedReturnType = expectedType returnType
   typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType
-  returnType = typedBody t
+  returnType = (c allowsNonLocalReturn && typedBody containsNonLocalReturn)
+    ifTrue: [expectedReturnType]
+    ifFalse: [typedBody t]
 
   name = args isNotEmpty
     ifTrue: [args joinWith: "__" transform: [it astType name]]
@@ -531,6 +546,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                   decl: null
                   protocolName: "getters"
                   pkgName: thisTypeT pkgName
+                  isInline: false
 
                 UnaryMsgT
                   receiver: thisIdent
@@ -900,13 +916,43 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   ]
   | ReturnStatement =>[
     valueMaybe = value
+    expectedReturnTypeMaybe = c allowsNonLocalReturn
+      ifTrue: [c currentReturnType]
+      ifFalse: [expectedType]
     valueT = | valueMaybe
       | null => null
-      |=> valueMaybe toTypedExprFromDb2: db withContext: c expectedType: expectedType
+      |=> valueMaybe toTypedExprFromDb2: db withContext: c expectedType: expectedReturnTypeMaybe
+    (c hasNonInlineLambdaBoundary && (c allowsNonLocalReturn not)) ifTrue: [
+      nonInlineReturnError::ResolveErrors = LazyError tok: token msg: "non-local return requires an inline function"
+      db addErrorMessage: nonInlineReturnError
+      db addNonInlineReturnError: token error: nonInlineReturnError
+    ]
+    c allowsNonLocalReturn ifTrue: [
+      outerReturnTypeMaybe = c currentReturnType
+      | outerReturnTypeMaybe
+      | null => []
+      |=> [
+        returnValueType = | valueT
+          | null => db dtc unit
+          |=> valueT typeInfo t
+        db isAssignable: returnValueType toExpected: outerReturnTypeMaybe, ifFalse: [
+          db addErrorMessage: (ErrorWrongArgType
+            tok: token
+            msg: "non-local return expects " + outerReturnTypeMaybe toString + " but got " + returnValueType toString)
+        ]
+      ]
+    ]
     returnInfo =
-      | valueT
-      | null => db dtc unit toTypeInfoDefault
-      |=> valueT typeInfo
+      c allowsNonLocalReturn ifTrue: [
+        expectedReturnTypeMaybe = expectedType
+        | expectedReturnTypeMaybe
+        | null => db dtc unit toTypeInfoDefault
+        |=> expectedReturnTypeMaybe toTypeInfoDefault
+      ] ifFalse: [
+        | valueT
+        | null => db dtc unit toTypeInfoDefault
+        |=> valueT typeInfo
+      ]
 
     ReturnStatementT token: token
                      typeInfo: returnInfo
@@ -914,7 +960,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   ]
 
   | CodeBlock => [
-    c = Context fromParent: c
+    c = Context fromParent: c allowsNonLocalReturn: false
 
     typeTFields::List(TypeTField) = args isNotEmpty
       ifTrue: [

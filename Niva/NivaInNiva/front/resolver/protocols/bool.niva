@@ -27,16 +27,16 @@ constructor NivaProtocol boolFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
   boolProto addMethod: (NivaMethod binary: "&&" receiverType: bool argT: bool returnT: bool)
 
   // keyword
-  boolProto addMethod: (NivaMethod singleArgKw: "ifTrue"  receiverType: bool argT: noArgsFunc returnT: unit )
-  boolProto addMethod: (NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgsFunc returnT: unit )
+  boolProto addMethod: ((NivaMethod singleArgKw: "ifTrue" receiverType: bool argT: noArgsFunc returnT: unit) markedInline)
+  boolProto addMethod: ((NivaMethod singleArgKw: "ifFalse" receiverType: bool argT: noArgsFunc returnT: unit) markedInline)
 
   args = {(TypeTField name: "ifTrue"  typeT: no-args-to-t isMut: false)
           (TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)}
-  boolProto addMethod: (NivaMethod manyArgKw: args receiverType: bool returnT: t )
+  boolProto addMethod: ((NivaMethod manyArgKw: args receiverType: bool returnT: t) markedInline)
 
   reversedArgs = {(TypeTField name: "ifFalse" typeT: no-args-to-t isMut: false)
                   (TypeTField name: "ifTrue"  typeT: no-args-to-t isMut: false)}
-  boolProto addMethod: (NivaMethod manyArgKw: reversedArgs receiverType: bool returnT: t)
+  boolProto addMethod: ((NivaMethod manyArgKw: reversedArgs receiverType: bool returnT: t) markedInline)
 
 
   ^boolProto methods

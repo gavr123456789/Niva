@@ -515,7 +515,7 @@ Test goMatchVariableSubjectNarrowsAlias = [
   go contains: "return (shape).radius", assertTrue
 ]
 
-Test goLambdaArgCodegen = [
+Test goInlineForEachCodegen = [
   fileMain = """
     {1 2 3} forEach: [item::Int -> item echo]
   """
@@ -523,7 +523,40 @@ Test goLambdaArgCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "func(item int)", assertTrue
+  go contains: "for {", assertTrue
+  go contains: "var item int =", assertTrue
+  Assert that: (go contains: "func(item int)") equals: false
+]
+
+Test goSingleBranchBooleanHasNoOpFallback = [
+  fileMain = """
+    false ifTrue: [1 echo]
+    true ifFalse: [2 echo]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "} else {", assertTrue
+]
+
+Test goInlineForEachNonLocalReturnCodegen = [
+  fileMain = """
+    Unit find -> Int = [
+      {1 2 3} forEach: [item::Int ->
+        item == 2 ifTrue: [^ item]
+      ]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "for {", assertTrue
+  go contains: "return item", assertTrue
+  Assert that: (go contains: "func(item int)") equals: false
 ]
 
 Test goImplicitLambdaArgCodegen = [
@@ -539,7 +572,7 @@ Test goImplicitLambdaArgCodegen = [
   Assert that: (go contains: "func() int") equals: false
 ]
 
-Test goLambdaCapturesMutableLocal = [
+Test goInlineForEachCapturesMutableLocal = [
   fileMain = """
     mut total = 0
     {1 2 3} forEach: [item::Int -> total <- total + item]
@@ -550,7 +583,9 @@ Test goLambdaCapturesMutableLocal = [
   Assert that: result db listOfErrors count equals: 0
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "func(item int) {", assertTrue
+  go contains: "for {", assertTrue
+  go contains: "var item int =", assertTrue
+  Assert that: (go contains: "func(item int) {") equals: false
   go contains: "total = (total + item)", assertTrue
 ]
 

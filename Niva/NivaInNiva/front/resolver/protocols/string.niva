@@ -40,7 +40,7 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
            genericArgs: {}!
                pkgName: "core"
             returnType: unit
-  strProto addMethod: (NivaMethod singleArgKw: "forEach" receiverType: str argT: foreachBlock returnT: unit)
+  strProto addMethod: ((NivaMethod singleArgKw: "forEach" receiverType: str argT: foreachBlock returnT: unit) markedInline)
 
   filterBlock = FuntionT
                 fields: { itArg }!

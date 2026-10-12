@@ -154,7 +154,7 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
     | MapT => this isAssignableToSameKind: nivaType db: db
 
     | NullableT => | this
-                   | NullableT => this isAssignableToSameKind: nivaType db: db
+                   | NullableT => this v isAssignableTo: nivaType v db: db
                    | NothingT => true
     |=> this isAssignableTo: (nivaType typeArgsForComparison first) db: db
 

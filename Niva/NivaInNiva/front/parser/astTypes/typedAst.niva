@@ -62,6 +62,117 @@ type TypedBody
   t: NivaType
   listOfErrors: List::NivaType
 
+TypedBody containsNonLocalReturn -> Bool = [
+  v any: [it containsNonLocalReturn]
+]
+
+TypedExpr2 containsNonLocalReturn -> Bool = [
+  | this
+  | ReturnStatementT => true
+  | CodeBlockT => false
+  | ExprInBracketsT => value containsNonLocalReturn
+  | VarDeclarationT => value containsNonLocalReturn
+  | AssignT => value containsNonLocalReturn
+  | DestructingAssignT => value containsNonLocalReturn
+  | CollectionLiteralT => elements containsNonLocalReturn
+  | MatchT => [
+    mut found = subject containsNonLocalReturn
+    branches forEach: [branch ->
+      found ifFalse: [
+        found <- branch condition containsNonLocalReturn
+        found ifFalse: [found <- branch additionalConditions containsNonLocalReturn]
+        found ifFalse: [found <- branch body containsNonLocalReturn]
+      ]
+    ]
+    elseBranchMaybe = elseBranch
+    found ifFalse: [
+      | elseBranchMaybe
+      | null => []
+      |=> found <- elseBranchMaybe containsNonLocalReturn
+    ]
+    found
+  ]
+  | MessageSendT => [
+    mut found = receiver containsNonLocalReturn
+    inlineCall = dbMsg isInline
+    visitArgument = [argExpr::TypedExpr2 ->
+      found ifFalse: [
+        | argExpr
+        | CodeBlockT => inlineCall ifTrue: [found <- argExpr body containsNonLocalReturn]
+        |=> found <- argExpr containsNonLocalReturn
+      ]
+    ]
+    visitArgument argExpr: receiver
+    | this
+    | BinaryMsgT => args forEach: [arg -> visitArgument argExpr: arg expr]
+    | KeywordMsgT => args forEach: [arg -> visitArgument argExpr: arg expr]
+    |=> []
+    found
+  ]
+  |=> false
+]
+
+TypedBody collectNonLocalReturnTypesInto(returns): mut List(NivaType) -> Unit = [
+  v forEach: [expr ->
+    | expr
+    | ReturnStatementT => [
+      valueMaybe = expr value
+      | valueMaybe
+      | null => [
+        returns add: (expr typeInfo t)
+        ()
+      ]
+      |=> [
+        returns add: (valueMaybe typeInfo t)
+        valueMaybe collectNonLocalReturnTypesInto: returns
+      ]
+    ]
+    |=> expr collectNonLocalReturnTypesInto: returns
+  ]
+]
+
+TypedExpr2 collectNonLocalReturnTypesInto(returns): mut List(NivaType) -> Unit = [
+  | this
+  | ReturnStatementT => [
+    valueMaybe = value
+    | valueMaybe
+    | null => []
+    |=> valueMaybe collectNonLocalReturnTypesInto: returns
+  ]
+  | CodeBlockT => []
+  | ExprInBracketsT => value collectNonLocalReturnTypesInto: returns
+  | VarDeclarationT => value collectNonLocalReturnTypesInto: returns
+  | AssignT => value collectNonLocalReturnTypesInto: returns
+  | DestructingAssignT => value collectNonLocalReturnTypesInto: returns
+  | CollectionLiteralT => elements collectNonLocalReturnTypesInto: returns
+  | MatchT => [
+    subject collectNonLocalReturnTypesInto: returns
+    branches forEach: [branch ->
+      branch condition collectNonLocalReturnTypesInto: returns
+      branch additionalConditions collectNonLocalReturnTypesInto: returns
+      branch body collectNonLocalReturnTypesInto: returns
+    ]
+    elseBranchMaybe = elseBranch
+    | elseBranchMaybe
+    | null => []
+    |=> elseBranchMaybe collectNonLocalReturnTypesInto: returns
+  ]
+  | MessageSendT => [
+    inlineCall = dbMsg isInline
+    visitArgument = [argExpr::TypedExpr2 ->
+      | argExpr
+      | CodeBlockT => inlineCall ifTrue: [argExpr body collectNonLocalReturnTypesInto: returns]
+      |=> argExpr collectNonLocalReturnTypesInto: returns
+    ]
+    visitArgument argExpr: receiver
+    | this
+    | BinaryMsgT => args forEach: [arg -> visitArgument argExpr: arg expr]
+    | KeywordMsgT => args forEach: [arg -> visitArgument argExpr: arg expr]
+    |=> []
+  ]
+  |=> []
+]
+
 type NameAndTypeInfo name: String typeInfo: TypeInfo
 
 type TypeFieldT name: String typeInfo: TypeInfo

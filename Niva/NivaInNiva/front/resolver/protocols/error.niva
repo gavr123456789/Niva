@@ -11,9 +11,10 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
         forMut: false
 possibleErrors: {}
           kind: MessageSendKind.Call
-          decl: null
+  decl: null
   protocolName: "common"
-    pkgName: "core")
+    pkgName: "core"
+  isInline: false)
   errProto addMethod: (NivaMethod
           name: "throwWithMsg"
   receiverType: errorType
@@ -23,9 +24,10 @@ possibleErrors: {}
         forMut: false
 possibleErrors: {}
           kind: MessageSendKind.Call
-          decl: null
+  decl: null
   protocolName: "common"
-    pkgName: "core")
+    pkgName: "core"
+  isInline: false)
   errProto addMethod: (NivaMethod
           name: "throwWithMessage"
   receiverType: errorType
@@ -35,9 +37,10 @@ possibleErrors: {}
         forMut: false
 possibleErrors: {}
           kind: MessageSendKind.Call
-          decl: null
+  decl: null
   protocolName: "common"
-    pkgName: "core")
+    pkgName: "core"
+  isInline: false)
 
   ^ errProto methods
 ]
