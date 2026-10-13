@@ -451,7 +451,10 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
     ]
 
   expectedReturnType = expectedType returnType
-  typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType
+  bodyExpectedType = expectedReturnType isContainsUnresolvedGenerics
+    ifTrue: [null]
+    ifFalse: [expectedReturnType]
+  typedBody = body resolveBody2: db withContext: c expectedType: bodyExpectedType
   returnType = (c allowsNonLocalReturn && typedBody containsNonLocalReturn)
     ifTrue: [expectedReturnType]
     ifFalse: [typedBody t]

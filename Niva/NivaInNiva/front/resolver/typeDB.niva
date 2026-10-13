@@ -15,7 +15,7 @@ type TyperDB
   typesById: mut Map(String, TypeT)
   dtc: DefaultTypesContainer
   typeToMethodNameToMethod: mut Map(String, mut Map(String, NivaMethod)) // methodDB
-  genericReceiverMethods: mut List::GenericReceiverMethodTemplate
+  genericReceiverMethods: mut Map(String, GenericReceiverMethodTemplate)
   nullableMethods: mut Map(String, mut Map(String, NivaMethod))
   constructorsTypeToMethodNameToMethod: mut Map(String, mut Map(String, NivaMethod)) // constructorsDB, since we can have constructo and message with the same names
   instantiatedCache: mut Map(String, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
@@ -187,7 +187,7 @@ constructor TyperDB new -> TyperDB = [
     typesById: typesById
     dtc: dtc
     typeToMethodNameToMethod: typeToMethodNameToMethod
-    genericReceiverMethods: {}!
+    genericReceiverMethods: #{}!
     nullableMethods: #{}!
     constructorsTypeToMethodNameToMethod: constructorsCache
     instantiatedCache: #{}!
@@ -577,15 +577,12 @@ extend TyperDB [
   ]
 
   on registerGenericReceiverMethod(m): NivaMethod forType: NivaType = [
-    duplicate = genericReceiverMethods find: [candidate ->
-      (candidate pkgName == m pkgName) &&
-      (candidate receiverPattern sameTypeStrictAs: forType) &&
-      (candidate method name == m name)
-    ]
+    key = m pkgName + "__" + forType toMangledName + "__" + m name
+    duplicate = genericReceiverMethods at: key
     duplicate != null ifTrue: [
       TO DO: "Generic receiver method $m name already exists for $forType in package $m pkgName"
     ]
-    genericReceiverMethods add: (GenericReceiverMethodTemplate
+    genericReceiverMethods at: key put: (GenericReceiverMethodTemplate
       receiverPattern: forType
       method: m
       pkgName: m pkgName)
@@ -621,7 +618,7 @@ extend TyperDB [
 
   on findGenericReceiverMethod(name): String forType::NivaType -> NivaMethod? = [
     matches::mut List::NivaMethod = {}!
-    genericReceiverMethods forEach: [candidate ->
+    genericReceiverMethods values forEach: [candidate ->
       candidate method name == name ifTrue: [
         mapping = this matchGenericReceiver: candidate receiverPattern actual: forType
         mappingMaybe = mapping
@@ -1648,7 +1645,7 @@ type ResolverLookupEnvironment
   typesById: Map(String, TypeT)
   dtc: DefaultTypesContainer
   typeToMethodNameToMethod: Map(String, Map(String, NivaMethod))
-  genericReceiverMethods: List(GenericReceiverMethodTemplate)
+  genericReceiverMethods: Map(String, GenericReceiverMethodTemplate)
   nullableMethods: Map(String, Map(String, NivaMethod))
   constructorsTypeToMethodNameToMethod: Map(String, Map(String, NivaMethod))
   instantiatedCache: Map(String, Map(String, NivaMethod))
@@ -1700,7 +1697,7 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
     typesById: typesById toMap
     dtc: dtc
     typeToMethodNameToMethod: methods toMap
-    genericReceiverMethods: genericReceiverMethods toList
+    genericReceiverMethods: genericReceiverMethods toMap
     nullableMethods: nullable toMap
     constructorsTypeToMethodNameToMethod: constructors toMap
     instantiatedCache: instantiations toMap
@@ -1759,7 +1756,7 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
   canonical = canonicalCollectionInstances toMutableMap
   declMethods = declToMethod toMutableMap
   localGenerics = localGenericScope toMutableMap
-  genericTemplates = genericReceiverMethods toMutableList
+  genericTemplates = genericReceiverMethods toMutableMap
 
   bindFiles = bindMeta bindFiles toMutableSet
   bindFileToPkg = bindMeta bindFileToPkg toMutableMap

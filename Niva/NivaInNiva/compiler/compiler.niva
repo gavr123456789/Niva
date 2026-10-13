@@ -34,26 +34,17 @@ String isTestSource -> Bool = [
 NivaSourceFile nivaModuleId -> String =
   relativePath nivaModuleIdFromRelativePath
 
+String nivaFileName -> String =
+  (this replace: "\\" with: "/") substringAfterLast: "/"
+
 String nivaCommonSource -> Bool = [
-  normalized = this replace: "\\" with: "/"
-  fileName = normalized substringAfterLast: "/"
+  fileName = this nivaFileName
   isBinding = (fileName endsWith: ".bind.niva")
   (fileName endsWith: ".niva") && (isBinding not)
 ]
 
-String isBindingFile -> Bool = [
-  normalized = this replace: "\\" with: "/"
-  fileName = normalized substringAfterLast: "/"
-  fileName endsWith: ".bind.niva"
-]
-
-String isLegacyBindingFile -> Bool = [
-  normalized = this replace: "\\" with: "/"
-  fileName = normalized substringAfterLast: "/"
-  isGoBinding = fileName endsWith: ".go.bind.niva"
-  isKotlinBinding = fileName endsWith: ".kotlin.bind.niva"
-  (fileName endsWith: ".bind.niva") && (isGoBinding not) && (isKotlinBinding not)
-]
+String isBindingFile -> Bool =
+  (this nivaFileName) endsWith: ".bind.niva"
 
 List(NivaSourceFile) nivaModuleCollisionError -> String? = [
   seen::mut Map(String, String) = #{}!
