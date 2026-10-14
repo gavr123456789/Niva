@@ -19,53 +19,8 @@ String operatorToString -> String =
 extend NivaType [
   on isCoreTypeNamed(typeName): String -> Bool = [
     nivaType = this unwrapNullable
-    ^ | nivaType
-      | TypeT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | UnitT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | IntegerT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | FloatT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | DoubleT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | BoolT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | CharT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | StringT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | AnyT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | NothingT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | ListT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | SetT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | MapT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | UnresolvedGenericT => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      | Unknown => [
-        (nivaType name == typeName) && (nivaType pkgName == "core")
-      ]
-      |=> false
+    isCore = (nivaType name == typeName) && (nivaType pkgName == "core")
+    ^ isCore
   ]
   on isNumericType -> Bool =
     | this unwrapNullable
@@ -83,6 +38,15 @@ extend NivaType [
 type NumAndStr str: String num: Int
 
 extend String [
+  on stripPkgPrefix(prefix): String -> String = [
+    pre = prefix + "_"
+    preLen = pre count
+    len = this count
+    ^ len >= preLen ifTrue: [
+      (this slice: 0..(preLen - 1)) == pre ifTrue: [this slice: preLen..(len - 1)] ifFalse: [this]
+    ] ifFalse: [this]
+  ]
+
   on unquoteLiteral -> String = [
     len = this count
     ^ len >= 2 ifTrue: [
@@ -120,21 +84,6 @@ extend String [
       ]
     ^ result
   ]
-  on escapeForTemplateLiteral -> String = [
-    sb = StringBuilder new
-    mut i = 0
-    len = this count
-
-    [i < len] whileTrue: [
-      chunk = this escapedTemplateLiteralChunkAt: i
-
-      sb append: chunk str
-      i <- i + chunk num
-    ]
-
-    ^ sb toString
-  ]
-
   // `$0` is the receiver/this, `$1` is the first argument, and so on.
   on bindApply0(argsValues): List(String) -> String = [
     template = this

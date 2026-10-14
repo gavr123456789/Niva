@@ -67,7 +67,7 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
     ]
   | IrNewExpr => [
       baseId = typeId goNormalizeTypeId
-      (baseId isGeneric not) && ((baseId hasPrefix: "core_") not) && (knownTypeIds contains: baseId, not) ifTrue: [
+      (baseId isGeneric not) && ((baseId startsWith: "core_") not) && (knownTypeIds contains: baseId, not) ifTrue: [
         goErrors add: (GoIrError message: ("unknown Go IR constructor type id: " + baseId))
       ]
       constructorBindMaybe = constructorBind
@@ -101,7 +101,7 @@ IrTypeRef validateGoTypeRefs(knownTypeIds): Set(String) goErrors: mut List(GoIrE
   shouldCheck =
     (kind == IrTypeRefKind.Custom) &&
     (baseId isGeneric not) &&
-    (baseId hasPrefix: "core_", not) &&
+    (baseId startsWith: "core_", not) &&
     ((baseId contains: "/") not)
 
   shouldCheck && (knownTypeIds contains: baseId, not) ifTrue: [

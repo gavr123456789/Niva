@@ -56,7 +56,6 @@ extend NivaType [
 
 extend TypeInfo [
   on toIrTypeRef -> IrTypeRef = t toIrTypeRefWithMutErrors: isMut errorsList: listOfErrors
-  on toIrTypeRefNoErrors -> IrTypeRef = t toIrTypeRefWithMutErrors: isMut errorsList: {}
 ]
 
 // new Bind design https://github.com/gavr123456789/Niva/issues/418#issuecomment-4822453495
@@ -690,10 +689,9 @@ MessageSendT toIrInlineIteration(db): TyperDB currentPkg: String typeFieldsById:
     |=> false
   (supportedReceiver && ((isIndexed && ((| receiverType | ListT => true |=> false) not)) not)) ifFalse: [^ null]
 
-  callbackExpr = | this
-    | KeywordMsgT => (args first expr) toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  callbackMaybe = | this
+    | KeywordMsgT => args first expr
     |=> null
-  callbackMaybe = callbackExpr
   mut inlineExpr::IrExpr? = null
   | callbackMaybe
   | IrLambda => [
@@ -1408,18 +1406,13 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   rawEntryBlock stmts forEach: [stmt ->
     | stmt
     | IrLet => [
-        stmt isMut
-          ifTrue: [stateDefs add: (IrStateDef
+        typedStmt::IrStmt = stmt
+        stmt isMut ifTrue: [stateDefs add: (IrStateDef
             name: stmt name
             typeRef: stmt typeRef
             initializer: stmt value
-            token: stmt token)
-            typedStmt::IrStmt = stmt
-            executableEntryStmts add: typedStmt]
-          ifFalse: [
-            typedStmt::IrStmt = stmt
-            executableEntryStmts add: typedStmt
-          ]
+            token: stmt token)]
+      executableEntryStmts add: typedStmt
       ]
     |=> [executableEntryStmts add: stmt]
   ]

@@ -139,21 +139,6 @@ extend String [
   // `clojure.string.bind` -> `clojure/string`
   on cljBindNamespace -> String = this replace: "/" with: "."
 
-  on stripCljPkgPrefix(prefix): String -> String = [
-    pre = prefix + "_"
-    preLen = pre count
-    len = this count
-    ^ len >= preLen ifTrue: [
-      (this slice: 0..(preLen - 1)) == pre ifTrue: [this slice: preLen..(len - 1)] ifFalse: [this]
-    ] ifFalse: [this]
-  ]
-
-  on cljHasPrefix(prefix): String -> Bool = [
-    prefixLen = prefix count
-    len = this count
-    ^ len >= prefixLen ifTrue: [(this slice: 0..(prefixLen - 1)) == prefix] ifFalse: [false]
-  ]
-
   on cljNormalizeTypeId -> String =
     (this contains: "__") ifTrue: [this substringBefore: "__"] ifFalse: [this]
 
@@ -164,7 +149,7 @@ extend String [
 
 IrTypeRef coreFuncNameFromCljCall(name): String forMut(isMutable): Bool -> String = [
   baseId = this typeId cljNormalizeTypeId
-  recvBase = baseId stripCljPkgPrefix: "core"
+  recvBase = baseId stripPkgPrefix: "core"
 
   // generics monomorphizes in nin, but Any__echo has a single impl, not Int__echo Person__echo for every type
   // this should be solved by lazily generating ?__echo methods for everything or something elce

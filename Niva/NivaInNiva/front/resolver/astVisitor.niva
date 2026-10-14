@@ -443,6 +443,7 @@ MsgDeclVisitor processBodyes(pkg2Msg): Map(String, List(MessageDecl)) db::TyperD
 ]
 
 MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(String, NivaType) -> TypedBody = [
+  receiverType = receiver toNivaTypefromDB: db inPkg: null
   cachedBodyMaybe = db typedBodiesCache at: (this messageDeclKey)
   ^ | cachedBodyMaybe
     | null => [
@@ -469,7 +470,6 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
   createContextWithThisAndArgs = [
     c = Context rootWithPkg: pkg returnType: expectedReturnType
-    receiverType = receiver toNivaTypefromDB: db inPkg: null
     receiverType name == "Nothing" ifTrue: [
       TO DO: "You cant declare methods for Nothing type"
     ]
@@ -549,20 +549,18 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
                   ifFalse: [isSingleExpr && noDeclaredReturnType && finalTypedBody v isNotEmpty]
 
   shouldInferSingleExprReturnType ifTrue: [
-    receiverType = receiver toNivaTypefromDB: db inPkg: null
     methodsMaybe = db typeToMethodNameToMethod at: (receiverType toMangledName)
     | methodsMaybe
     | null => []
     |=> [
-      methods::mut Map(String, NivaMethod) = methodsMaybe
-      existingMethod = methods at: name
-      | existingMethod
+      existingMethodMaybe = methodsMaybe at: name
+      | existingMethodMaybe
       | null => []
       |=> [
-        | existingMethod returnType
+        | existingMethodMaybe returnType
         | Unknown => [
           inferredRt = finalTypedBody t
-          updatedMethod = existingMethod copyWithDifferentReturnType: inferredRt
+          updatedMethod = existingMethodMaybe copyWithDifferentReturnType: inferredRt
           db replaceMethod: updatedMethod inType: receiverType
         ]
         |=> []
@@ -588,9 +586,6 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
   // check that last expr type == return type declared
   // so skipping
-  declaredReturnType = | returnTypeMaybe
-    | null => null
-    |=> returnTypeMaybe toNivaTypefromDB: db inPkg: null
   // empty declaration in a .bind.niva file is implemented by the target runtime, so its synthetic Unit body must not be checked as the function's declared return type.
   isBindDeclaration = db isBindMessageDecl: this
   isExternalBind = isBindDeclaration && (isSingleExpr not) && (body unTypedBody isEmpty)
@@ -606,7 +601,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   ]
 
   (hasAnyReturnErrors not) && (isExternalBind not), ifTrue: [
-    declaredReturnTypeMaybe = declaredReturnType
+    declaredReturnTypeMaybe = expectedReturnType
     | declaredReturnTypeMaybe
     | null => []
     |=> [
