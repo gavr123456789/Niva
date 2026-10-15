@@ -689,19 +689,26 @@ MessageSendT toIrInlineIteration(db): TyperDB currentPkg: String typeFieldsById:
     |=> false
   (supportedReceiver && ((isIndexed && ((| receiverType | ListT => true |=> false) not)) not)) ifFalse: [^ null]
 
-  callbackMaybe = | this
+  // the callback arrives as a typed code block so it becomes an ir lambda first
+  blockMaybe = | this
     | KeywordMsgT => args first expr
     |=> null
   mut inlineExpr::IrExpr? = null
-  | callbackMaybe
-  | IrLambda => [
-    callbackArgs = callbackMaybe args
-    expectedArgCount = isIndexed ifTrue: [2] ifFalse: [1]
-    callbackArgs count == expectedArgCount ifTrue: [
-      inlineExpr <- this toIrInlineIterationWithLambda: callbackMaybe db: db
-        currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+  | blockMaybe
+  | CodeBlockT => [
+    irLambda = blockMaybe toIrLambdaExpr: db currentPkg: currentPkg
+      typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+    | irLambda
+    | IrLambda => [
+      callbackArgs = irLambda args
+      expectedArgCount = isIndexed ifTrue: [2] ifFalse: [1]
+      callbackArgs count == expectedArgCount ifTrue: [
+        inlineExpr <- this toIrInlineIterationWithLambda: irLambda db: db
+          currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
+      ]
+      ()
     ]
-    ()
+    |=> []
   ]
   |=> []
   inlineExpr

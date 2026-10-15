@@ -519,6 +519,23 @@ Test cljWhileTrueUnwrapsLambdas = [
   clj contains: "(reset! c (- @c 1))", assertTrue
 ]
 
+// an inline loop reads its condition as a plain form so extra parens would call it
+Test cljInlineForEachCodegen = [
+  fileMain = """
+    mut total = 0
+    {1 2 3} forEach: [item::Int -> total <- total + item]
+    total echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(while (< @__niva_inline_index", assertTrue
+  clj contains: "(reset! total (+ @total item))", assertTrue
+  Assert that: (clj contains: "List__forEach") equals: false
+  Assert that: (clj contains: "(while ((") equals: false
+]
+
 Test cljCoreCallGoesToCoreNs = [
   fileMain = """
     1 echo
@@ -812,6 +829,25 @@ Test cljBindEmitInBody = [
 
   clj contains: "(+ 1 41)", assertTrue
   clj contains: "(defn main__core_Int__compute", assertTrue
+]
+
+// a call without arguments is not a bind emit so its empty args stay unread
+Test cljCallWithoutArgs = [
+  fileMain = """
+    type Input
+      name: String
+
+    static Input sas = 42 echo
+
+    Input sas
+
+    1 echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(main_Input__sas__ctor_0)", assertTrue
 ]
 
 Test cljDestructure = [

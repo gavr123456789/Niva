@@ -23,10 +23,10 @@ constructor Assert that: Any? equals: Any? andSay: String -> Unit = [
 /// If thats false - ends the program with message
 Bool assert(msg): String = [
   x = "COMPILE TIME REFLECTION TODO"
-  this == false ifTrue: [Error throwWithMessage: x + "\n" + msg, orPANIC]
+  this == false ifTrue: [Error throwWithMessage: "assert failed: " + x + "\n" + msg, orPANIC]
 ]
 
 Bool assertTrue = [
   x = "COMPILE TIME REFLECTION TODO"
-  this == false ifTrue: [Error throwWithMessage: x, orPANIC]
+  this == false ifTrue: [Error throwWithMessage: "assert failed: " + x, orPANIC]
 ]
