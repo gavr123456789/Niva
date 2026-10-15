@@ -814,6 +814,25 @@ Test cljBindEmitInBody = [
   clj contains: "(defn main__core_Int__compute", assertTrue
 ]
 
+// a call without arguments is not a bind emit so its empty args stay unread
+Test cljCallWithoutArgs = [
+  fileMain = """
+    type Input
+      name: String
+
+    static Input sas = 42 echo
+
+    Input sas
+
+    1 echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(main_Input__sas__ctor_0)", assertTrue
+]
+
 Test cljDestructure = [
   fileMain = """
     type Person

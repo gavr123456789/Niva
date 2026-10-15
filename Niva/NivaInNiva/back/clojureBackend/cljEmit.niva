@@ -142,14 +142,16 @@ IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String = [
   msgNameLocal = | msgNameLocalMaybe
     | null => ""
     |=> msgNameLocalMaybe
-  templateExpr = this args first
-  templateMaybe = templateExpr irStringLiteralValue
-  templateOutput = | templateMaybe
-    | null => templateExpr toCljExpr: ctx scope: scope
-    |=> templateMaybe
-  (receiverTypeId == "core_Bind") && (msgNameLocal == "emit")
-    ifTrue: [templateOutput]
-    ifFalse: [""]
+  // calls with no args are never bind emits so their args stay unread
+  isBindEmitCall = (receiverTypeId == "core_Bind") &&
+    (msgNameLocal == "emit") && (this args isNotEmpty)
+  isBindEmitCall ifTrue: [
+    templateExpr = this args first
+    templateMaybe = templateExpr irStringLiteralValue
+    | templateMaybe
+      | null => templateExpr toCljExpr: ctx scope: scope
+      |=> templateMaybe
+  ] ifFalse: [""]
 ]
 
 IrCall cljArgValues(ctx): CljContext scope: CljScope -> List(String) = [
