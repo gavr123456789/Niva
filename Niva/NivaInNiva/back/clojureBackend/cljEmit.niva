@@ -662,9 +662,10 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
       ]
     | IrReturn => CljBinding name: "_" value: ""
     | IrWhile => [
+        // the plain condition is already one form so extra parens would call it
         condStr = cond isIrLambda
           ifTrue:  [cond cljUnwrapLambdaBody: ctx scope: scope]
-          ifFalse: ["(" + (cond toCljExpr: ctx scope: scope) + ")"]
+          ifFalse: [cond toCljExpr: ctx scope: scope]
         bodyStr = body isIrLambda
           ifTrue:  [body cljUnwrapLambdaBody: ctx scope: scope]
           ifFalse: [body toCljExpr: ctx scope: scope]
