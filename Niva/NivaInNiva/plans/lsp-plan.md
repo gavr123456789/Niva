@@ -1,5 +1,10 @@
 # План реализации LSP для Niva (Self-hosted Go Backend, Snapshot-based MVP)
 
+> **Устарел (2026-10-15):** актуальный план находится в
+> [plans/lsp-go-bindings-plan.md](lsp-go-bindings-plan.md). Он учитывает завершённый
+> Go self-hosting, текущий синтаксис биндингов (`Bind goPkg`), манифест
+> `niva.bindings` и обязательный kotlin-двойник для провайдеров.
+
 > **Блокер на текущий момент (2026-10-10):** LSP требует завершённого Go
 > self-hosting pipeline. Go codegen и выбор backend уже присутствуют, но CLI пока
 > пишет только `.niva_go/main.go`, запускает `ixgo`, а Go runtime и bindings для
