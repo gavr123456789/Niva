@@ -132,10 +132,7 @@ extend Body [
       ]
     ]
 
-    bodyErrors::mut List(NivaType) = {}!
-    listOfTypedExpr2 forEach: [expr ->
-      expr typeInfo listOfErrors forEach: [bodyErrors add: it]
-    ]
+    bodyErrors = listOfTypedExpr2 collectBodyErrors
 
     bodyType =
       returnTypes isNotEmpty
@@ -166,16 +163,19 @@ extend Body [
       elem toTypedExprFromDb2: db withContext: c expectedType: expectedForElem
     ]
 
-    bodyErrors::mut List(NivaType) = {}!
-    typedElems forEach: [expr ->
-      expr typeInfo listOfErrors forEach: [bodyErrors add: it]
-    ]
+    bodyErrors = typedElems collectBodyErrors
 
     TypedBody
         v: typedElems
         t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
         listOfErrors: (bodyErrors normalizeErrorList)
   ]
+]
+
+List(TypedExpr2) collectBodyErrors -> List(NivaType) = [
+  errors::mut List(NivaType) = {}!
+  this forEach: [expr -> expr typeInfo listOfErrors forEach: [errors add: it]]
+  ^ errors toList
 ]
 
 List(NivaType) normalizeErrorList -> List(NivaType) = [

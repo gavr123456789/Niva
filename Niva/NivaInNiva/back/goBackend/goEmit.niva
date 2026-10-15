@@ -269,7 +269,7 @@ constructor GoBackend [
       pkg unions forEach: [
         knownTypeIds add: (it id goNormalizeTypeId)
         it goBranchTypeIds forEach: [branchTypeId ->
-          branchTypeId hasPrefix: (it pkgId + "_"), ifFalse: [
+          branchTypeId startsWith: (it pkgId + "_"), ifFalse: [
             errors add: (GoIrError message: ("union branch id is outside package: " + branchTypeId))
           ]
           knownTypeIds add: (branchTypeId goNormalizeTypeId)

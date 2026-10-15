@@ -33,7 +33,7 @@ IrStmt collectGoImportsInto(imports): mut Set(String) -> Unit = [
     ]
   | IrThrow       => [
       throwErrExpr = errExpr
-      | throwErrExpr | IrTypeRefExpr => ["fmt" addToGoImports: imports] |=> []
+      | throwErrExpr | IrTypeRefExpr => [imports add: "fmt"] |=> []
       throwErrExpr collectGoImportsInto: imports
     ]
 ]
@@ -42,7 +42,7 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
   | this
   | IrLiteralExpr => [
       literal kind == IrLiteralKind.Unit ifTrue: [
-        "niva_go/core" addToGoImports: imports
+        imports add: "niva_go/core"
       ]
     ]
   | IrVarRef   => []
@@ -53,7 +53,7 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
       isCore = | declPkgMaybe
         | null => false
         |=> declPkgMaybe == "core"
-      isCore ifTrue: ["niva_go/core" addToGoImports: imports]
+      isCore ifTrue: [imports add: "niva_go/core"]
       calleeMaybe = callee
       | calleeMaybe
       | null => []

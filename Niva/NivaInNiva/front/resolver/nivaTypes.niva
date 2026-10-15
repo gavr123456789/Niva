@@ -512,13 +512,6 @@ extend NivaMethod [
     returnErrors: returnErrors forMut: forMut possibleErrors: possibleErrors
     kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: true
 
-  /// sort args and checks them with fields, so any arg order should work probably
-  on isConstructorForReceiver(receiver): TypeT -> Bool = [
-    {fields} = receiver
-    argsSorted = args map: [it name], sortedBy: [it], joinWith: ", "
-    fieldsSorted = fields map: [it name], sortedBy: [it], joinWith: ", "
-    ^ argsSorted == fieldsSorted
-  ]
   on toString -> String = [
     isMut = forMut ifTrue: ["mut"] ifFalse: [""]
     possibleErrorsStr = (possibleErrors joinWith: ", " transform: [it name])

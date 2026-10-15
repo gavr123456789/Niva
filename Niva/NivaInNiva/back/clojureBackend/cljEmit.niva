@@ -66,10 +66,6 @@ extend IrExpr [
       ]
     | IrCollectionLiteral => this collectionToCljExpr: ctx scope: scope
 
-  on isCljCallLike -> Bool =
-    | this
-    | IrCall | IrBlockExpr | IrMatchExpr => true
-    |=> false
 ]
 
 IrTypeRef isCljCollectionType -> Bool =
