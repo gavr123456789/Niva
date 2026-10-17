@@ -1040,33 +1040,33 @@ constructor CljBackend [
     header appendLine: ""
 
     ctx debug ifTrue: [
-      header appendLine: "(declare __niva_source_map)"
-      header appendLine: "(defn- __niva_sci_stacktrace [e]"
-      header appendLine: "  (try"
-      header appendLine: "    (when-let [f (requiring-resolve 'sci.core/stacktrace)]"
-      header appendLine: "      (seq (f e)))"
-      header appendLine: "    (catch Throwable _ nil)))"
-      header appendLine: "(defn- __niva_debug_print [e]"
-      header appendLine: "  (let [actual-error (or (.getCause e) e)]"
-      header appendLine: "    (println (str \"---\\nException: \" (.getMessage actual-error) \"\\n---\" )))"
-      header appendLine: "  (if-let [frames (__niva_sci_stacktrace e)]"
-      header appendLine: "    (loop [frames frames last-info nil]"
-      header appendLine: "      (when frames"
-      header appendLine: "        (let [frame (first frames)"
-      header appendLine: "              file (some-> (:file frame) java.io.File. .getName)"
-      header appendLine: "              line (:line frame)"
-      header appendLine: "              info (when (and file line) (get __niva_source_map [file line]))]"
-      header appendLine: "          (when (and info (not= info last-info))"
-      header appendLine: "            (println (str \"Method: \" (nth info 2) \" File: \" (nth info 0) \":\" (nth info 1))))"
-      header appendLine: "          (recur (next frames) (if info info last-info)))))"
-      header appendLine: "    (loop [frames (seq (.getStackTrace e)) last-info nil]"
-      header appendLine: "      (when frames"
-      header appendLine: "        (let [frame (first frames)"
-      header appendLine: "              info (get __niva_source_map [(.getFileName frame) (.getLineNumber frame)])]"
-      header appendLine: "          (when (and info (not= info last-info))"
-      header appendLine: "            (println (str \"Method: \" (nth info 2) \" File: \" (nth info 0) \":\" (nth info 1))))"
-      header appendLine: "          (recur (next frames) (if info info last-info))))))"
-      header appendLine: "  (System/exit 1))"
+      header appendLine: """(declare __niva_source_map)
+(defn- __niva_sci_stacktrace [e]
+  (try
+    (when-let [f (requiring-resolve 'sci.core/stacktrace)]
+      (seq (f e)))
+    (catch Throwable _ nil)))
+(defn- __niva_debug_print [e]
+  (let [actual-error (or (.getCause e) e)]
+    (println (str "---\nException: " (.getMessage actual-error) "\n---" )))
+  (if-let [frames (__niva_sci_stacktrace e)]
+    (loop [frames frames last-info nil]
+      (when frames
+        (let [frame (first frames)
+              file (some-> (:file frame) java.io.File. .getName)
+              line (:line frame)
+              info (when (and file line) (get __niva_source_map [file line]))]
+          (when (and info (not= info last-info))
+            (println (str "Method: " (nth info 2) " File: " (nth info 0) ":" (nth info 1))))
+          (recur (next frames) (if info info last-info)))))
+    (loop [frames (seq (.getStackTrace e)) last-info nil]
+      (when frames
+        (let [frame (first frames)
+              info (get __niva_source_map [(.getFileName frame) (.getLineNumber frame)])]
+          (when (and info (not= info last-info))
+            (println (str "Method: " (nth info 2) " File: " (nth info 0) ":" (nth info 1))))
+          (recur (next frames) (if info info last-info))))))
+  (System/exit 1))"""
       bodyLineOffset = (header toString) cljLineCount + 1
       entriesList::mut List(String) = {}!
       ctx orderedDebugEntries forEach: [
