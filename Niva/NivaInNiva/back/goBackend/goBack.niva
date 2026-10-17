@@ -214,11 +214,9 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
     inputHasNoValue
       ifTrue: [sb appendIndent: 1 line: (errName + " := " + inputStr)]
       ifFalse: [sb appendIndent: 1 line: (valueName + ", " + errName + " := " + inputStr)]
-    errorReturn = isOrPanic ifTrue: ["panic(" + errName + ")"] ifFalse: [
-      outputType isGoUnitType
-        ifTrue: ["return " + errName]
-        ifFalse: ["return " + (outputType goZeroValue: ctx) + ", " + errName]
-    ]
+    errorReturn = isOrPanic
+      ifTrue: ["panic(" + errName + ")"]
+      ifFalse: [outputType goReturnError: errName ctx: ctx]
     sb appendIndent: 1 line: ("if " + errName + " != nil { " + errorReturn + " }")
   ] ifFalse: [
     sb appendIndent: 1 line: (valueName + " := " + inputStr)
@@ -226,18 +224,11 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
 
   isNullable ifTrue: [
     sb appendIndent: 1 line: ("if " + valueName + " == nil { panic(\"try on null\") }")
-    outputType isGoUnitType
-      ifTrue: [sb appendIndent: 1 line: (outputHasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
-      ifFalse: [
-        (ctx isGoNullableReferenceValue: inputType)
-          ifTrue: [sb appendIndent: 1 line: ("return " + valueName + (outputHasErrors ifTrue: [", nil"] ifFalse: [""]))]
-          ifFalse: [sb appendIndent: 1 line: ("return *" + valueName + (outputHasErrors ifTrue: [", nil"] ifFalse: [""]))]
-      ]
-  ] ifFalse: [
-    outputType isGoUnitType
-      ifTrue: [sb appendIndent: 1 line: (outputHasErrors ifTrue: ["return nil"] ifFalse: ["return"])]
-      ifFalse: [sb appendIndent: 1 line: ("return " + valueName + (outputHasErrors ifTrue: [", nil"] ifFalse: [""]))]
   ]
+  deref = isNullable ifTrue: [
+      (ctx isGoNullableReferenceValue: inputType) ifTrue: [""] ifFalse: ["*"]
+    ] ifFalse: [""]
+  sb appendIndent: 1 line: (outputType goReturnResult: (deref + valueName) withError: outputHasErrors)
 
   sb append: "}()"
   ^ sb toString
@@ -578,6 +569,30 @@ extend IrTypeRef [
           ifFalse: ["nil"]
       ]
     ]
+  ]
+
+  // go return when we propagate the error itself
+  on goReturnError(errName): String ctx: GoContext -> String = [
+    ^ this isGoUnitType
+      ifTrue: ["return " + errName]
+      ifFalse: ["return " + (this goZeroValue: ctx) + ", " + errName]
+  ]
+
+  // go return when no result value is available and we fall back to the zero value
+  on goReturnZero(ctx): GoContext err(errName): String withError(hasError): Bool -> String = [
+    ^ this isGoUnitType
+      ifTrue: [hasError ifTrue: ["return " + errName] ifFalse: ["return"]]
+      ifFalse: [
+        zero = this goZeroValue: ctx
+        hasError ifTrue: ["return " + zero + ", " + errName] ifFalse: ["return " + zero]
+      ]
+  ]
+
+  // go return when the result value is ready
+  on goReturnResult(value): String withError(hasError): Bool -> String = [
+    ^ this isGoUnitType
+      ifTrue: [hasError ifTrue: ["return nil"] ifFalse: ["return"]]
+      ifFalse: [hasError ifTrue: ["return " + value + ", nil"] ifFalse: ["return " + value]]
   ]
 
   on goReturnTypes(ctx): GoContext -> String = [
@@ -1117,7 +1132,7 @@ extend IrExpr [
     callStr = this toGoExpr: ctx scope: scope
     errName = "__err" uniqueName: scope locals
     retIsUnit = typeRef isGoUnitType
-    errReturn = returnType isGoUnitType ifTrue: ["return " + errName] ifFalse: ["return " + (returnType goZeroValue: ctx) + ", " + errName]
+    errReturn = returnType goReturnError: errName ctx: ctx
     boundName = bindTo
     mut resultName::String? = null
 
@@ -1161,14 +1176,10 @@ extend IrExpr [
       resultNameMaybe = resultName
       | resultNameMaybe
       | null => [
-        line = hasErrors ifTrue: ["return nil"] ifFalse: ["return"]
-        sb appendIndent: indent line: line
+        sb appendIndent: indent line: (returnType goReturnResult: "nil" withError: hasErrors)
       ]
       |=> [
-        line = hasErrors
-          ifTrue: ["return " + resultNameMaybe + ", nil"]
-         ifFalse: ["return " + resultNameMaybe]
-        sb appendIndent: indent line: line
+        sb appendIndent: indent line: (returnType goReturnResult: resultNameMaybe withError: hasErrors)
       ]
     ] ifFalse: [
       isNothingType = (typeRef typeId goNormalizeTypeId) == "core_Nothing"
@@ -1188,7 +1199,7 @@ extend IrExpr [
           exprStr = (ctx needsGoNullablePointerFor: returnType)
             ifTrue: [this toGoNullableInitExpr: ctx scope: scope targetType: returnType]
             ifFalse: [this toGoExpr: ctx scope: scope]
-          line = hasErrors ifTrue: ["return " + exprStr + ", nil"] ifFalse: ["return " + exprStr]
+          line = returnType goReturnResult: exprStr withError: hasErrors
           sb appendIndent: indent line: line
         ]
       ]
@@ -1297,183 +1308,187 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
     ]
 ]
 
+// niva match becomes an anonymous go function so every branch can return
 IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
-  retType = typeRef
-  retErrors = typeRef errors
-  retStr = retType goReturnTypes: ctx
   sb = StringBuilder new
   sb append: "func()"
-  sb append: retStr
+  sb append: (typeRef goReturnTypes: ctx)
   sb appendLine: " {"
 
   innerScope = scope copy
-  subjectName = "__matchSubject"
   subjectExpr = subject toGoExpr: ctx scope: innerScope
-  kind != IrMatchKind.ByError ifTrue: [
-      kind == IrMatchKind.ByType
-      ifTrue: [sb appendIndent: 1 line: ("var " + subjectName + " interface{} = " + subjectExpr)]
-     ifFalse: [sb appendIndent: 1 line: ("" + subjectName + " := " + subjectExpr)]
+
+  kind == IrMatchKind.ByError ifTrue: [
+    this goMatchErrorInto: sb ctx: ctx scope: innerScope subjectCode: subjectExpr
+  ] ifFalse: [
+    // other match kinds read the subject into a local first
+    subjectName = "__matchSubject"
+    subjectDecl = kind == IrMatchKind.ByType
+      ifTrue: ["var " + subjectName + " interface{} = " + subjectExpr]
+      ifFalse: [subjectName + " := " + subjectExpr]
+    sb appendIndent: 1 line: subjectDecl
+    kind == IrMatchKind.ByType ifTrue: [
+      this goMatchTypeInto: sb ctx: ctx scope: innerScope
+    ] ifFalse: [
+      this goMatchValueInto: sb ctx: ctx scope: innerScope
+    ]
   ]
+
+  sb append: "}()"
+  ^ sb toString
+]
+
+// match on a call that can fail since go returns the value and the error apart
+IrMatchExpr goMatchErrorInto(sb): StringBuilder ctx: GoContext scope: GoScope subjectCode: String -> Unit = [
+  retType = typeRef
+  hasErrors = (typeRef errors) isNotEmpty
+  valueName = "__matchValue"
+  errName = "__matchErr"
+
+  subjectIsUnit
+    ifTrue: [sb appendIndent: 1 line: (errName + " := " + subjectCode)]
+    ifFalse: [sb appendIndent: 1 line: (valueName + ", " + errName + " := " + subjectCode)]
+
+  sb appendIndent: 1 line: ("if " + errName + " != nil {")
+  sb appendIndent: 2 line: ("switch " + errName + ".(type) {")
+  cases forEach: [c ->
+    typeStr = c goCaseTypeStr: ctx scope: scope
+    sb appendIndent: 2 line: ("case " + typeStr + ":")
+    caseScope = scope copy
+    aliasStr = this goMatchAliasOrIt
+    caseScope locals add: aliasStr
+    sb appendIndent: 3 line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
+    c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 3 returnType: retType
+    ctx emitBlockResultAndReturn: (c body) sb: sb indent: 3 retType: retType scope: caseScope
+      returnStmt: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])
+  ]
+  sb appendIndent: 2 line: "default:"
+  sb appendIndent: 3 line: (retType goReturnZero: ctx err: errName withError: hasErrors)
+  sb appendIndent: 2 line: "}"
+  sb appendIndent: 1 line: "}"
+
+  elseBranchLocal = elseBranch
+  | elseBranchLocal
+  | null => [
+    retType isGoUnitType ifTrue: [
+      sb appendIndent: 1 line: (retType goReturnResult: "nil" withError: hasErrors)
+    ] ifFalse: [
+      // a unit subject has no value to return so use the zero value of the match type
+      subjectIsUnit ifTrue: [
+        sb appendIndent: 1 line: ("return " + (retType goZeroValue: ctx))
+      ] ifFalse: [
+        sb appendIndent: 1 line: (retType goReturnResult: valueName withError: hasErrors)
+      ]
+    ]
+  ]
+  |=> [
+    elseBlock = elseBranchLocal
+    elseScope = scope copy
+    aliasStr = this goMatchAliasOrIt
+    elseScope locals add: aliasStr
+    subjectIsUnit ifFalse: [
+      sb appendIndent: 1 line: (aliasStr + " := " + valueName)
+    ]
+    elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 1 returnType: retType
+    ctx emitBlockResultAndReturn: elseBlock sb: sb indent: 1 retType: retType scope: elseScope
+      returnStmt: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])
+  ]
+]
+
+// match by type becomes a go type switch over the boxed subject
+IrMatchExpr goMatchTypeInto(sb): StringBuilder ctx: GoContext scope: GoScope -> Unit = [
+  retType = typeRef
+  subjectName = "__matchSubject"
+  sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
+  cases forEach: [c ->
+    typeStr = c goCaseTypeStr: ctx scope: scope
+    sb appendIndent: 1 line: ("case " + typeStr + ":")
+    caseScope = scope copy
+    aliasNameMaybe = typeAlias
+    | aliasNameMaybe
+    | null => []
+    |=> [
+      caseRefNames = c body collectIrRefNames
+      sb appendIndent: 2 line: (aliasNameMaybe + " := " + subjectName + ".(" + typeStr + ")")
+      (caseRefNames contains: aliasNameMaybe) ifFalse: [
+        sb appendIndent: 2 line: ("_ = " + aliasNameMaybe)
+      ]
+      caseScope locals add: aliasNameMaybe
+      caseScope nullablePointerLocals remove: aliasNameMaybe
+      caseScope narrowedNullablePointerLocals remove: aliasNameMaybe
+      ()
+    ]
+    c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
+    ctx emitBlockResultAndReturn: (c body) sb: sb indent: 2 retType: retType scope: caseScope returnStmt: "return"
+  ]
+  elseBranchLocal = elseBranch
+  | elseBranchLocal
+  | null => [
+    sb appendIndent: 1 line: "default:"
+    sb appendIndent: 2 line: "panic(\"invalid type assertion\")"
+  ]
+  |=> [
+    elseBlock = elseBranchLocal
+    sb appendIndent: 1 line: "default:"
+    elseScope = scope copy
+    elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 2 returnType: retType
+    ctx emitBlockResultAndReturn: elseBlock sb: sb indent: 2 retType: retType scope: elseScope returnStmt: "return"
+  ]
+  sb appendIndent: 1 line: "}"
+]
+
+// match by value or by bool becomes a go if else chain over the subject
+IrMatchExpr goMatchValueInto(sb): StringBuilder ctx: GoContext scope: GoScope -> Unit = [
+  retType = typeRef
+  subjectName = "__matchSubject"
   elseBranchLocal = elseBranch
   hasElse = | elseBranchLocal
             | null => false
             |=> true
   hasNullCase = cases any: [c -> c condition isGoNullLiteral]
-  subjectForName = subject
-  subjectLocalNameMaybe = subjectForName goLocalVarName
+  subjectLocalNameMaybe = subject goLocalVarName
   subjectLocalName = | subjectLocalNameMaybe
     | null => ""
     |=> subjectLocalNameMaybe
 
-  isByError = kind == IrMatchKind.ByError
-  isByType = kind == IrMatchKind.ByType
-  isByError ifTrue: [
-      valueName = "__matchValue"
-      errName = "__matchErr"
-      subjectIsUnit
-        ifTrue: [
-          sb appendIndent: 1 line: (errName + " := " + subjectExpr)
+  casesCount = cases count
+  cases forEachIndexed: [i, c ->
+    isFirst = i == 0
+    isLast = i == (casesCount - 1)
+    cond = c condition toGoExpr: ctx scope: scope
+    additionalConditions = c additionalConditions
+    fullCond = additionalConditions isNotEmpty
+      ifTrue: [
+        additionalConditionsStr = additionalConditions joinWith: " || " transform: [condition ->
+          "(" + subjectName + " == " + (condition toGoExpr: ctx scope: scope) + ")"
         ]
-        ifFalse: [
-          sb appendIndent: 1 line: (valueName + ", " + errName + " := " + subjectExpr)
-        ]
-
-      sb appendIndent: 1 line: ("if " + errName + " != nil {")
-      sb appendIndent: 2 line: ("switch " + errName + ".(type) {")
-      cases forEach: [c ->
-        typeStr = c goCaseTypeStr: ctx scope: innerScope
-        sb appendIndent: 2 line: ("case " + typeStr + ":")
-        caseScope = innerScope copy
-        aliasStr = this goMatchAliasOrIt
-        caseScope locals add: aliasStr
-        sb appendIndent: 3 line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
-        c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 3 returnType: retType
-        ctx emitBlockResultAndReturn: (c body) sb: sb indent: 3 retType: retType scope: caseScope
-          returnStmt: (retErrors isNotEmpty ifTrue: ["return nil"] ifFalse: ["return"])
+        "((" + subjectName + " == " + cond + ") || " + additionalConditionsStr + ")"
       ]
-      sb appendIndent: 2 line: "default:"
-      retType isGoUnitType
-        ifTrue: [sb appendIndent: 3 line: (retErrors isEmpty ifTrue: ["return"] ifFalse: ["return " + errName])]
-        ifFalse: [
-          retErrors isEmpty
-            ifTrue: [sb appendIndent: 3 line: ("return " + (retType goZeroValue: ctx))]
-            ifFalse: [sb appendIndent: 3 line: ("return " + (retType goZeroValue: ctx) + ", " + errName)]
-        ]
-      sb appendIndent: 2 line: "}"
+      ifFalse: ["(" + subjectName + " == " + cond + ")"]
+    kw = isFirst ifTrue: ["if "] ifFalse: ["} else if "]
+    sb appendIndent: 1 line: (kw + fullCond + " {")
+    caseScope = scope copy
+    c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
+    ctx emitBlockResultAndReturn: (c body) sb: sb indent: 2 retType: retType scope: caseScope returnStmt: "return"
+    isLast && (hasElse not) ifTrue: [
+      sb appendIndent: 1 line: "} else {"
+      sb appendIndent: 2 line: "panic(\"unmatched value\")"
       sb appendIndent: 1 line: "}"
-
-      | elseBranchLocal
-      | null => [
-        retType isGoUnitType
-          ifTrue: [
-            retErrors isNotEmpty
-              ifTrue: [sb appendIndent: 1 line: "return nil"]
-             ifFalse: [sb appendIndent: 1 line: "return"]
-          ]
-          ifFalse: [
-            subjectIsUnit
-              ifTrue: [sb appendIndent: 1 line: ("return " + (retType goZeroValue: ctx))]
-             ifFalse: [
-                retErrors isNotEmpty
-                  ifTrue: [sb appendIndent: 1 line: ("return " + valueName + ", nil")]
-                 ifFalse: [sb appendIndent: 1 line: ("return " + valueName)]
-              ]
-          ]
-      ]
-      |=> [
-        elseBlock = elseBranchLocal
-        elseScope = innerScope copy
-        aliasStr = this goMatchAliasOrIt
-        elseScope locals add: aliasStr
-        subjectIsUnit ifFalse: [
-          sb appendIndent: 1 line: (aliasStr + " := " + valueName)
-        ]
-        elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 1 returnType: retType
-        ctx emitBlockResultAndReturn: elseBlock sb: sb indent: 1 retType: retType scope: elseScope
-          returnStmt: (retErrors isNotEmpty ifTrue: ["return nil"] ifFalse: ["return"])
-      ]
-    ] ifFalse: [
-    isByType ifTrue: [
-      sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
-      cases forEach: [c ->
-        typeStr = c goCaseTypeStr: ctx scope: innerScope
-        sb appendIndent: 1 line: ("case " + typeStr + ":")
-        caseScope = innerScope copy
-        aliasNameMaybe = typeAlias
-        | aliasNameMaybe
-        | null => []
-        |=> [
-          caseRefNames = c body collectIrRefNames
-          sb appendIndent: 2 line: (aliasNameMaybe + " := " + subjectName + ".(" + typeStr + ")")
-          (caseRefNames contains: aliasNameMaybe) ifFalse: [
-            sb appendIndent: 2 line: ("_ = " + aliasNameMaybe)
-          ]
-          caseScope locals add: aliasNameMaybe
-          caseScope nullablePointerLocals remove: aliasNameMaybe
-          caseScope narrowedNullablePointerLocals remove: aliasNameMaybe
-          ()
-        ]
-        c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
-        ctx emitBlockResultAndReturn: (c body) sb: sb indent: 2 retType: retType scope: caseScope returnStmt: "return"
-      ]
-      | elseBranchLocal
-      | null => [
-        sb appendIndent: 1 line: "default:"
-        sb appendIndent: 2 line: "panic(\"invalid type assertion\")"
-      ]
-      |=> [
-        elseBlock = elseBranchLocal
-        sb appendIndent: 1 line: "default:"
-        elseScope = innerScope copy
-        elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 2 returnType: retType
-        ctx emitBlockResultAndReturn: elseBlock sb: sb indent: 2 retType: retType scope: elseScope returnStmt: "return"
-      ]
-      sb appendIndent: 1 line: "}"
-    ] ifFalse: [
-      // ByValue or ByBool -> if/else chain
-      casesCount = cases count
-      cases forEachIndexed: [i, c ->
-        isFirst = i == 0
-        isLast = i == (casesCount - 1)
-        cond = c condition toGoExpr: ctx scope: innerScope
-        additionalConditions = c additionalConditions
-        fullCond = additionalConditions isNotEmpty
-          ifTrue: [
-            additionalConditionsStr = additionalConditions joinWith: " || " transform: [condition ->
-              "(" + subjectName + " == " + (condition toGoExpr: ctx scope: innerScope) + ")"
-            ]
-            "((" + subjectName + " == " + cond + ") || " + additionalConditionsStr + ")"
-          ]
-          ifFalse: ["(" + subjectName + " == " + cond + ")"]
-        kw = isFirst ifTrue: ["if "] ifFalse: ["} else if "]
-        sb appendIndent: 1 line: (kw + fullCond + " {")
-        caseScope = innerScope copy
-        c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
-        ctx emitBlockResultAndReturn: (c body) sb: sb indent: 2 retType: retType scope: caseScope returnStmt: "return"
-        isLast && (hasElse not) ifTrue: [
-          sb appendIndent: 1 line: "} else {"
-          sb appendIndent: 2 line: "panic(\"unmatched value\")"
-          sb appendIndent: 1 line: "}"
-        ]
-      ]
-      | elseBranchLocal
-      | null => []
-      |=> [
-        elseBlock = elseBranchLocal
-        sb appendIndent: 1 line: "} else {"
-        elseScope = innerScope copy
-        ((subjectLocalName != "") && hasNullCase) ifTrue: [
-          elseScope narrowedNullablePointerLocals add: subjectLocalName
-        ]
-        elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 2 returnType: retType
-        ctx emitBlockResultAndReturn: elseBlock sb: sb indent: 2 retType: retType scope: elseScope returnStmt: "return"
-        sb appendIndent: 1 line: "}"
-      ]
     ]
+  ]
+  | elseBranchLocal
+  | null => []
+  |=> [
+    elseBlock = elseBranchLocal
+    sb appendIndent: 1 line: "} else {"
+    elseScope = scope copy
+    ((subjectLocalName != "") && hasNullCase) ifTrue: [
+      elseScope narrowedNullablePointerLocals add: subjectLocalName
     ]
-
-  sb append: "}()"
-  ^ sb toString
+    elseBlock blockToGoStatements: ctx scope: elseScope sb: sb indent: 2 returnType: retType
+    ctx emitBlockResultAndReturn: elseBlock sb: sb indent: 2 retType: retType scope: elseScope returnStmt: "return"
+    sb appendIndent: 1 line: "}"
+  ]
 ]
 
 IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
