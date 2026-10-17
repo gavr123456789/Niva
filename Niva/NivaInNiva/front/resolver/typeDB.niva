@@ -52,44 +52,14 @@ constructor TyperDB new -> TyperDB = [
   sbNivaType::NivaType = sb
   corePkg types at: "StringBuilder" put: sbNivaType
 
-  char = dtc char
-  intType = dtc int
-  long = dtc long
-  float = dtc float
-  double = dtc double
-  str = dtc str
-  bool = dtc bool
-  bind = dtc bind
-  compiler = dtc compiler
-  error = dtc error
-  unit = dtc unit
-  any = dtc any
-  list = dtc list
-  map = dtc map
-  set = dtc set
-  intRange = dtc intRange
-  charRange = dtc charRange
-  charNivaType::NivaType = char
-  intNivaType::NivaType = intType
-  longNivaType::NivaType = long
-  floatNivaType::NivaType = float
-  doubleNivaType::NivaType = double
-  strNivaType::NivaType = str
-  boolNivaType::NivaType = bool
-  bindNivaType::NivaType = bind
-  compilerNivaType::NivaType = compiler
-  errorNivaType::NivaType = error
-  unitNivaType::NivaType = unit
-  anyNivaType::NivaType = any
-  listNivaType::NivaType = list
-  mapNivaType::NivaType = map
-  setNivaType::NivaType = set
-  intRangeNivaType::NivaType = intRange
-  charRangeNivaType::NivaType = charRange
+  {charT = char, intT = int, longT = long, floatT = float, doubleT = double,
+  strT = str, boolT = bool, bindT = bind, compilerT = compiler, errorT = error,
+  unitT = unit, anyT = any, listT = list, mapT = map, setT = set,
+  intRangeT = intRange, charRangeT = charRange} = dtc
 
-  listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: list itemType: (UnresolvedGenericT name: "T")
-  mapProtocol     = NivaProtocol mapFromDefaultTypes: dtc mapType: map keyType: map k valueType: map v
-  setProtocol     = NivaProtocol setFromDefaultTypes: dtc setType: set itemType: (UnresolvedGenericT name: "T")
+  listProtocol    = NivaProtocol collectionFromDefaultTypes: dtc collectionType: listT itemType: (UnresolvedGenericT name: "T")
+  mapProtocol     = NivaProtocol mapFromDefaultTypes: dtc mapType: mapT keyType: mapT k valueType: mapT v
+  setProtocol     = NivaProtocol setFromDefaultTypes: dtc setType: setT itemType: (UnresolvedGenericT name: "T")
   intProtocol     = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc int
   longProtocol    = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc long
   doubleProtocol  = NivaProtocol numArithmeticsFromDefaultTypes: dtc num: dtc double
@@ -99,29 +69,29 @@ constructor TyperDB new -> TyperDB = [
   anyProtocol     = NivaProtocol anyFromDefaultTypes: dtc
   bindConstructors = NivaProtocol bindFromDefaultTypes: dtc
   compilerConstructors = NivaProtocol compilerFromDefaultTypes: dtc
-  errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: error
-  intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRange itemType: intType
-  charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRange itemType: char
+  errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: errorT
+  intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRangeT itemType: intT
+  charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRangeT itemType: charT
   stringBuilderProtocol = NivaProtocol stringBuilderFromDefaultTypes: dtc sb: sb
 
   emptyFloatMethods::mut Map(String, NivaMethod) = #{}!
   emptyUnitMethods::mut Map(String, NivaMethod) = #{}!
   typeToMethodNameToMethod::mut Map(String, mut Map(String, NivaMethod)) = #{}!
-  typeToMethodNameToMethod at: (charNivaType toMangledName) put: charProtocol
-  typeToMethodNameToMethod at: (intNivaType toMangledName) put: intProtocol
-  typeToMethodNameToMethod at: (longNivaType toMangledName) put: longProtocol
-  typeToMethodNameToMethod at: (doubleNivaType toMangledName) put: doubleProtocol
-  typeToMethodNameToMethod at: (floatNivaType toMangledName) put: emptyFloatMethods
-  typeToMethodNameToMethod at: (strNivaType toMangledName) put: strProtocol
-  typeToMethodNameToMethod at: (boolNivaType toMangledName) put: boolProtocol
-  typeToMethodNameToMethod at: (unitNivaType toMangledName) put: emptyUnitMethods
-  typeToMethodNameToMethod at: (anyNivaType toMangledName) put: anyProtocol
-  typeToMethodNameToMethod at: (errorNivaType toMangledName) put: errorProtocol
-  typeToMethodNameToMethod at: (listNivaType toMangledName) put: listProtocol
-  typeToMethodNameToMethod at: (mapNivaType toMangledName) put: mapProtocol
-  typeToMethodNameToMethod at: (setNivaType toMangledName) put: setProtocol
-  typeToMethodNameToMethod at: (intRangeNivaType toMangledName) put: intRangeProtocol
-  typeToMethodNameToMethod at: (charRangeNivaType toMangledName) put: charRangeProtocol
+  typeToMethodNameToMethod at: (charT toMangledName) put: charProtocol
+  typeToMethodNameToMethod at: (intT toMangledName) put: intProtocol
+  typeToMethodNameToMethod at: (longT toMangledName) put: longProtocol
+  typeToMethodNameToMethod at: (doubleT toMangledName) put: doubleProtocol
+  typeToMethodNameToMethod at: (floatT toMangledName) put: emptyFloatMethods
+  typeToMethodNameToMethod at: (strT toMangledName) put: strProtocol
+  typeToMethodNameToMethod at: (boolT toMangledName) put: boolProtocol
+  typeToMethodNameToMethod at: (unitT toMangledName) put: emptyUnitMethods
+  typeToMethodNameToMethod at: (anyT toMangledName) put: anyProtocol
+  typeToMethodNameToMethod at: (errorT toMangledName) put: errorProtocol
+  typeToMethodNameToMethod at: (listT toMangledName) put: listProtocol
+  typeToMethodNameToMethod at: (mapT toMangledName) put: mapProtocol
+  typeToMethodNameToMethod at: (setT toMangledName) put: setProtocol
+  typeToMethodNameToMethod at: (intRangeT toMangledName) put: intRangeProtocol
+  typeToMethodNameToMethod at: (charRangeT toMangledName) put: charRangeProtocol
   typeToMethodNameToMethod at: (sbNivaType toMangledName) put: stringBuilderProtocol
 
   sbConstructors::mut Map(String, NivaMethod) = #{}!
@@ -139,21 +109,21 @@ constructor TyperDB new -> TyperDB = [
   emptyMapConstructors::mut Map(String, NivaMethod) = #{}!
   emptySetConstructors::mut Map(String, NivaMethod) = #{}!
   constructorsCache::mut Map(String, mut Map(String, NivaMethod)) = #{}!
-  constructorsCache at: (charNivaType toMangledName) put: emptyCharConstructors
-  constructorsCache at: (intNivaType toMangledName) put: emptyIntConstructors
-  constructorsCache at: (longNivaType toMangledName) put: longProtocol
-  constructorsCache at: (floatNivaType toMangledName) put: emptyFloatConstructors
-  constructorsCache at: (doubleNivaType toMangledName) put: emptyDoubleConstructors
-  constructorsCache at: (strNivaType toMangledName) put: emptyStringConstructors
-  constructorsCache at: (boolNivaType toMangledName) put: emptyBoolConstructors
-  constructorsCache at: (bindNivaType toMangledName) put: bindConstructors
-  constructorsCache at: (compilerNivaType toMangledName) put: compilerConstructors
-  constructorsCache at: (unitNivaType toMangledName) put: emptyUnitConstructors
-  constructorsCache at: (anyNivaType toMangledName) put: emptyAnyConstructors
-  constructorsCache at: (errorNivaType toMangledName) put: errorProtocol
-  constructorsCache at: (listNivaType toMangledName) put: emptyListConstructors
-  constructorsCache at: (mapNivaType toMangledName) put: emptyMapConstructors
-  constructorsCache at: (setNivaType toMangledName) put: emptySetConstructors
+  constructorsCache at: (charT toMangledName) put: emptyCharConstructors
+  constructorsCache at: (intT toMangledName) put: emptyIntConstructors
+  constructorsCache at: (longT toMangledName) put: longProtocol
+  constructorsCache at: (floatT toMangledName) put: emptyFloatConstructors
+  constructorsCache at: (doubleT toMangledName) put: emptyDoubleConstructors
+  constructorsCache at: (strT toMangledName) put: emptyStringConstructors
+  constructorsCache at: (boolT toMangledName) put: emptyBoolConstructors
+  constructorsCache at: (bindT toMangledName) put: bindConstructors
+  constructorsCache at: (compilerT toMangledName) put: compilerConstructors
+  constructorsCache at: (unitT toMangledName) put: emptyUnitConstructors
+  constructorsCache at: (anyT toMangledName) put: emptyAnyConstructors
+  constructorsCache at: (errorT toMangledName) put: errorProtocol
+  constructorsCache at: (listT toMangledName) put: emptyListConstructors
+  constructorsCache at: (mapT toMangledName) put: emptyMapConstructors
+  constructorsCache at: (setT toMangledName) put: emptySetConstructors
   constructorsCache at: (sbNivaType toMangledName) put: sbConstructors
 
   typesWithSameNames::mut Map(String, mut List::NivaType) = #{}!
