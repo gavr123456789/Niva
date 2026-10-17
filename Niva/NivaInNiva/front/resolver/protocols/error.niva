@@ -1,46 +1,26 @@
+// helper to build a throwing method shared by all error domain protocols
+constructor NivaMethod errorThrowMethod(name): String errorType: NivaType nothing: NivaType str: NivaType hasArg: Bool =
+  NivaMethod
+    name: name
+    receiverType: errorType
+    args: (hasArg ifTrue: [{(TypeTField name: name typeT: str isMut: false)}] ifFalse: [{}])
+    returnType: nothing
+    returnErrors: {errorType}
+    forMut: false
+    possibleErrors: {}
+    kind: MessageSendKind.Call
+    decl: null
+    protocolName: "common"
+    pkgName: "core"
+    isInline: false
+
 constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer errorType::NivaType -> mut Map(String, NivaMethod) = [
   {str nothing} = dtc
 
   errProto = NivaProtocol common
-  errProto addMethod: (NivaMethod
-          name: "throw"
-  receiverType: errorType
-          args: {}
-    returnType: nothing
-  returnErrors: {errorType}
-        forMut: false
-possibleErrors: {}
-          kind: MessageSendKind.Call
-  decl: null
-  protocolName: "common"
-    pkgName: "core"
-  isInline: false)
-  errProto addMethod: (NivaMethod
-          name: "throwWithMsg"
-  receiverType: errorType
-          args: {(TypeTField name: "throwWithMsg" typeT: str isMut: false)}
-    returnType: nothing
-  returnErrors: {errorType}
-        forMut: false
-possibleErrors: {}
-          kind: MessageSendKind.Call
-  decl: null
-  protocolName: "common"
-    pkgName: "core"
-  isInline: false)
-  errProto addMethod: (NivaMethod
-          name: "throwWithMessage"
-  receiverType: errorType
-          args: {(TypeTField name: "throwWithMessage" typeT: str isMut: false)}
-    returnType: nothing
-  returnErrors: {errorType}
-        forMut: false
-possibleErrors: {}
-          kind: MessageSendKind.Call
-  decl: null
-  protocolName: "common"
-    pkgName: "core"
-  isInline: false)
+  errProto addMethod: (NivaMethod errorThrowMethod: "throw" errorType: errorType nothing: nothing str: str hasArg: false)
+  errProto addMethod: (NivaMethod errorThrowMethod: "throwWithMsg" errorType: errorType nothing: nothing str: str hasArg: true)
+  errProto addMethod: (NivaMethod errorThrowMethod: "throwWithMessage" errorType: errorType nothing: nothing str: str hasArg: true)
 
   ^ errProto methods
 ]

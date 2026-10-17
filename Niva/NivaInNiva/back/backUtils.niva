@@ -1,21 +1,3 @@
-String operatorToString -> String =
-  | this
-  | "+" => "plus"
-  | "-" => "minus"
-  | "*" => "times"
-  | "/" => "div"
-  | "%" => "rem"
-  | ".." => "rangeTo"
-  | "==" => "equals"
-  | "!=" => "notEquals"
-  | ">" => "gt"
-  | "<" => "lt"
-  | ">=" => "gte"
-  | "<=" => "lte"
-  | "||" => "or"
-  | "&&" => "and"
-  |=> this
-
 extend NivaType [
   on isCoreTypeNamed(typeName): String -> Bool = [
     nivaType = this unwrapNullable
@@ -34,8 +16,6 @@ extend NivaType [
   on isNothingType -> Bool = | this | NothingT => true |=> false
 ]
 
-
-type NumAndStr str: String num: Int
 
 extend String [
   on stripPkgPrefix(prefix): String -> String = [
@@ -61,29 +41,6 @@ extend String [
       ifFalse: [this]
   ]
 
-  on escapedTemplateLiteralChunkAt(i): Int -> NumAndStr = [
-    bs = '\\' toString
-    dollar = '$' toString
-    brace = '{' toString
-    c = this at: i
-    len = this count
-      nextIsBrace = (i + 1 < len) ifTrue: [
-        (this at: (i + 1)) == '{'
-      ] ifFalse: [false]
-    hasTemplateBrace = ((c == '$') && nextIsBrace)
-    result = c == '\\'
-      ifTrue: [NumAndStr str: "\\\\" num: 1]
-      ifFalse: [
-        c == '`'
-          ifTrue: [NumAndStr str: "\\`" num: 1]
-          ifFalse: [
-            hasTemplateBrace
-              ifTrue: [NumAndStr str: bs + dollar + brace num: 2]
-              ifFalse: [NumAndStr str: c toString num: 1]
-          ]
-      ]
-    ^ result
-  ]
   // `$0` is the receiver/this, `$1` is the first argument, and so on.
   on bindApply0(argsValues): List(String) -> String = [
     template = this

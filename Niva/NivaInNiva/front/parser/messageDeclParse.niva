@@ -29,11 +29,17 @@ mut Parser
   // Int^ + a::Int =
   tok2 = this step
   result::Statement = | tok2 kind
-  | TokenType.Identifier => [
+  | TokenType.Identifier|TokenType.IdentifierDoubleColon|TokenType.IdentifierColon => [
     // Int inc^ ->? = []
+    // Int inc^::Int b::Int =
     kwSavePoint = this current
     kwParts = this parseKeywordDeclArgsFrom: tok2
+    kwPartsMaybe = kwParts
     kwParts == null ifTrue: [
+      tok2 kind == TokenType.Identifier ifFalse: [
+        this restoreFrom: savePosition
+        ^ this nextExpression: this step
+      ]
       this restoreFrom: kwSavePoint
       returnType = getReturnType do
       name = tok2 lexeme
@@ -58,7 +64,6 @@ mut Parser
 
       msgDecl
     ] ifFalse: [
-      kwPartsMaybe = kwParts
       kwParts2 = | kwPartsMaybe
         | null => TO DO: "Expected keyword declaration arguments"
         |=> kwPartsMaybe
@@ -86,45 +91,6 @@ mut Parser
 
       msgDecl
     ]
-  ]
-  | TokenType.IdentifierDoubleColon|TokenType.IdentifierColon => [
-    // Int inc^::Int b::Int =
-    // Int inc^: Int b: Int =
-
-    kwParts = this parseKeywordDeclArgsFrom: tok2
-    kwParts == null ifTrue: [
-      this restoreFrom: savePosition
-      ^ this nextExpression: this step
-    ]
-    kwPartsMaybe = kwParts
-    kwParts2 = | kwPartsMaybe
-      | null => TO DO: "Expected keyword declaration arguments"
-      |=> kwPartsMaybe
-
-    returnType = getReturnType do
-
-    this match: TokenType.Assign, ifFalse: [
-      this restoreFrom: savePosition
-      ^ this nextExpression: this step
-    ]
-    // Int a::Int b::Int ->? = ^[]
-
-    isSingleExpr = this peek kind != TokenType.OpenBracket
-    body = this parseBodyOrSingleExpr
-    kwName = kwParts2 nameParts joinWith: "__" transform: [
-      it
-    ]
-    msgDecl = MessageDecl
-      token: tok
-      receiver: receiverType
-      name: kwName
-      args: kwParts2 args
-      returnType: returnType
-      body: body
-      isSingleExpr: isSingleExpr
-      isConstructor: isConstructor
-
-    msgDecl
   ]
   | TokenType.BinarySymbol => [
     // Int +^ a::Int -> Int=
@@ -357,19 +323,21 @@ extend mut Parser [
     |=> arg
   ]
 
+  // shared tail for parsing a keyword arg with known type
+  on parseTypedKeywordDeclArg(name): String namePart: String -> KeywordDeclArg? = [
+    isTypeStart = this isTypeStartToken: this peek
+    isTypeStart ifFalse: [^ null]
+    argType = this parseType
+    KeywordDeclArg
+      arg: (NameAndAstType name: name astType: argType)
+      namePart: namePart
+  ]
+
   on parseKeywordDeclArgFrom(tok): Token -> KeywordDeclArg? = [
     ^| tok kind
     | TokenType.IdentifierDoubleColon => [
       externalName = tok lexeme
-      isTypeStart = this isTypeStartToken: this peek
-      isTypeStart ifTrue: [
-        argType = this parseType
-        KeywordDeclArg
-          arg: (NameAndAstType name: externalName astType: argType)
-          namePart: externalName
-      ] ifFalse: [
-        null
-      ]
+      this parseTypedKeywordDeclArg: externalName namePart: externalName
     ]
     | TokenType.IdentifierColon => [
       externalName = tok lexeme
@@ -383,25 +351,9 @@ extend mut Parser [
 
       isOldRename ifTrue: [
         localTok = this step
-        isTypeStart = this isTypeStartToken: this peek
-        isTypeStart ifTrue: [
-          argType = this parseType
-          KeywordDeclArg
-            arg: (NameAndAstType name: localTok lexeme astType: argType)
-            namePart: externalName
-        ] ifFalse: [
-          null
-        ]
+        this parseTypedKeywordDeclArg: (localTok lexeme) namePart: externalName
       ] ifFalse: [
-        isTypeStart = this isTypeStartToken: nextTok
-        isTypeStart ifTrue: [
-          argType = this parseType
-          KeywordDeclArg
-            arg: (NameAndAstType name: externalName astType: argType)
-            namePart: externalName
-        ] ifFalse: [
-          null
-        ]
+        this parseTypedKeywordDeclArg: externalName namePart: externalName
       ]
     ]
     | TokenType.Identifier => [
@@ -420,10 +372,7 @@ extend mut Parser [
       ]
 
       ok ifTrue: [
-        argType = this parseType
-        KeywordDeclArg
-          arg: (NameAndAstType name: localTok lexeme astType: argType)
-          namePart: externalName
+        this parseTypedKeywordDeclArg: (localTok lexeme) namePart: externalName
       ] ifFalse: [
         null
       ]

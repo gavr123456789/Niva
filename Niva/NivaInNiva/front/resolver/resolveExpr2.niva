@@ -364,16 +364,7 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
   expectedFields = expectedType fields
 
   typeTFields::List(TypeTField) = args isNotEmpty
-    ifTrue: [
-      args map: [
-        name = it name
-        astType = it astType
-        t = astType toNivaTypefromDB: db inPkg: null
-        errorsList = astType toErrorsFromDb: db inPkg: null
-        c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-        TypeTField name: name typeT: t isMut: false
-      ]
-    ]
+    ifTrue: [c typedBlockArgFields: args fromDB: db]
     ifFalse: [
       untypedArgs isNotEmpty
         ifTrue: [
@@ -966,16 +957,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     c = Context fromParent: c allowsNonLocalReturn: false
 
     typeTFields::List(TypeTField) = args isNotEmpty
-      ifTrue: [
-        args map: [
-          name = it name
-          astType = it astType
-          t = astType toNivaTypefromDB: db inPkg: null
-          errorsList = astType toErrorsFromDb: db inPkg: null
-          c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-          TypeTField name: name typeT: t isMut: false
-        ]
-      ]
+      ifTrue: [c typedBlockArgFields: args fromDB: db]
       ifFalse: [
         untypedArgs isNotEmpty
           ifTrue: [

@@ -939,103 +939,52 @@ extend TyperDB [
       |=> existingTypeMaybe
   ]
 
+  on instantiateCollection(collId): String coreBase: NivaType letterToType: Map(String, NivaType) collectionType: NivaType errMsg: String -> NivaType = [
+    existingCanonical = canonicalCollectionInstances at: collId
+    ^| existingCanonical
+      | null => [
+        collectionAsType::NivaType = collectionType
+        canonicalCollectionInstances at: collId put: collectionAsType
+
+        coreBaseAsType::NivaType = coreBase
+        baseMethodsMaybe = typeToMethodNameToMethod at: (coreBaseAsType toMangledName)
+        baseMethods::mut Map(String, NivaMethod) = | baseMethodsMaybe
+          | null => TO DO: errMsg
+          |=> baseMethodsMaybe
+        instMethods::mut Map(String, NivaMethod) = #{}!
+        dontMangle = letterToType keys toSet
+
+        baseMethods values forEach: [ m ->
+          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          instMethods at: newM name put: newM
+        ]
+
+        typeToMethodNameToMethod at: (collectionAsType toMangledName) put: instMethods
+        constructorsTypeToMethodNameToMethod at: (collectionAsType toMangledName) put: #{}!
+        collectionType
+      ]
+      |=> existingCanonical
+  ]
+
   on addCollectionInstantiationIfAbsent(collectionType): NivaType -> NivaType = [
     ^| collectionType
-    | ListT => [
-      collId = "List_" + collectionType t toMangledName
-      existingCanonical = canonicalCollectionInstances at: collId
-      | existingCanonical
-      | null => [
-      collectionAsType::NivaType = collectionType
-      canonicalCollectionInstances at: collId put: collectionAsType
-
-      coreBase = dtc list
-      coreBaseAsType::NivaType = coreBase
-      letterToType::mut Map(String, NivaType) = #{}!
-      letterToType at: "T" put: collectionType t
-
-      baseMethodsMaybe = typeToMethodNameToMethod at: (coreBaseAsType toMangledName)
-      baseMethods::mut Map(String, NivaMethod) = | baseMethodsMaybe
-        | null => TO DO: "Missing List protocol methods"
-        |=> baseMethodsMaybe
-      instMethods::mut Map(String, NivaMethod) = #{}!
-      dontMangle = letterToType keys toSet
-
-      baseMethods values forEach: [ m ->
-        newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
-        instMethods at: newM name put: newM
+      | ListT => [
+        letterToType::mut Map(String, NivaType) = #{}!
+        letterToType at: "T" put: collectionType t
+        this instantiateCollection: ("List_" + (collectionType t toMangledName)) coreBase: dtc list letterToType: letterToType collectionType: collectionType errMsg: "Missing List protocol methods"
       ]
-
-      typeToMethodNameToMethod at: (collectionAsType toMangledName) put: instMethods
-      constructorsTypeToMethodNameToMethod at: (collectionAsType toMangledName) put: #{}!
-      collectionType
+      | SetT => [
+        letterToType::mut Map(String, NivaType) = #{}!
+        letterToType at: "T" put: collectionType t
+        this instantiateCollection: ("Set_" + (collectionType t toMangledName)) coreBase: dtc set letterToType: letterToType collectionType: collectionType errMsg: "Missing Set protocol methods"
       ]
-      |=> existingCanonical
-    ]
-    | SetT => [
-      collId = "Set_" + collectionType t toMangledName
-      existingCanonical = canonicalCollectionInstances at: collId
-      | existingCanonical
-      | null => [
-      collectionAsType::NivaType = collectionType
-      canonicalCollectionInstances at: collId put: collectionAsType
-
-      coreBase = dtc set
-      coreBaseAsType::NivaType = coreBase
-      letterToType::mut Map(String, NivaType) = #{}!
-      letterToType at: "T" put: collectionType t
-
-      baseMethodsMaybe = typeToMethodNameToMethod at: (coreBaseAsType toMangledName)
-      baseMethods::mut Map(String, NivaMethod) = | baseMethodsMaybe
-        | null => TO DO: "Missing Set protocol methods"
-        |=> baseMethodsMaybe
-      instMethods::mut Map(String, NivaMethod) = #{}!
-      dontMangle = letterToType keys toSet
-
-      baseMethods values forEach: [ m ->
-        newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
-        instMethods at: newM name put: newM
+      | MapT => [
+        letterToType::mut Map(String, NivaType) = #{}!
+        letterToType at: "T" put: collectionType k
+        letterToType at: "G" put: collectionType v
+        this instantiateCollection: ("Map_" + (collectionType k toMangledName) + "_" + (collectionType v toMangledName)) coreBase: dtc map letterToType: letterToType collectionType: collectionType errMsg: "Missing Map protocol methods"
       ]
-
-      typeToMethodNameToMethod at: (collectionAsType toMangledName) put: instMethods
-      constructorsTypeToMethodNameToMethod at: (collectionAsType toMangledName) put: #{}!
-      collectionType
-      ]
-      |=> existingCanonical
-    ]
-    | MapT => [
-      collId = "Map_" + collectionType k toMangledName + "_" + collectionType v toMangledName
-      existingCanonical = canonicalCollectionInstances at: collId
-      | existingCanonical
-      | null => [
-      collectionAsType::NivaType = collectionType
-      canonicalCollectionInstances at: collId put: collectionAsType
-
-      coreBase = dtc map
-      coreBaseAsType::NivaType = coreBase
-      letterToType::mut Map(String, NivaType) = #{}!
-      letterToType at: "T" put: collectionType k
-      letterToType at: "G" put: collectionType v
-
-      baseMethodsMaybe = typeToMethodNameToMethod at: (coreBaseAsType toMangledName)
-      baseMethods::mut Map(String, NivaMethod) = | baseMethodsMaybe
-        | null => TO DO: "Missing Map protocol methods"
-        |=> baseMethodsMaybe
-      instMethods::mut Map(String, NivaMethod) = #{}!
-      dontMangle = letterToType keys toSet
-
-      baseMethods values forEach: [ m ->
-        newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
-        instMethods at: newM name put: newM
-      ]
-
-      typeToMethodNameToMethod at: (collectionAsType toMangledName) put: instMethods
-      constructorsTypeToMethodNameToMethod at: (collectionAsType toMangledName) put: #{}!
-      collectionType
-      ]
-      |=> existingCanonical
-    ]
-    |=> collectionType
+      |=> collectionType
   ]
 
   on replaceMethod(m): NivaMethod inType::NivaType = [

@@ -46,25 +46,6 @@ String nivaCommonSource -> Bool = [
 String isBindingFile -> Bool =
   (this nivaFileName) endsWith: ".bind.niva"
 
-List(NivaSourceFile) nivaModuleCollisionError -> String? = [
-  seen::mut Map(String, String) = #{}!
-  mut collisionError::String? = null
-  this sortedBy: [it relativePath], forEach: [source ->
-    moduleId = source nivaModuleId
-    collisionKey = moduleId nivaModuleCollisionKey
-    existingPath = seen at: collisionKey
-    | existingPath
-    | null => [seen at: collisionKey put: source relativePath]
-    |=> [
-      existingPath != source relativePath ifTrue: [
-        collisionError <- "Niva module id collision: `" + existingPath + "` and `" +
-          source relativePath + "` both normalize to `" + collisionKey + "`"
-      ]
-    ]
-  ]
-  ^ collisionError
-]
-
 List(NivaSourceInput) nivaInputCollisionError -> String? = [
   seen::mut Map(String, String) = #{}!
   mut collisionError::String? = null

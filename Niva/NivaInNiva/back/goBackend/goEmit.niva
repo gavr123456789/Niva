@@ -4,9 +4,7 @@ constructor GoBackend [
     name = ctx goTypeNameFor: def id
     typeParams = def typeParams goTypeParams
     sb appendLine: ("type " + name + typeParams + " struct {")
-    def fields forEach: [f ->
-      sb appendIndent: 1 line: ((f name toSafeGoIdent) + " " + (f typeRef toGoType: ctx))
-    ]
+    def fields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
     sb appendLine: "}"
     sb appendLine: ""
     ()
@@ -42,14 +40,8 @@ constructor GoBackend [
         branchTypeArgs = branchTypeParams goTypeArgs
 
         sb appendLine: ("type " + branchName + branchTypeParamDecl + " struct {")
-        def commonFields forEach: [f ->
-          sb appendIndent: 1
-                     line: ((f name toSafeGoIdent) + " " + (f typeRef toGoType: ctx))
-        ]
-        br fields forEach: [f ->
-          sb appendIndent: 1
-                     line: ((f name toSafeGoIdent) + " " + (f typeRef toGoType: ctx))
-        ]
+        def commonFields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
+        br fields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
         sb appendLine: "}"
         receiverType = branchName + (branchTypeArgs == "" ifTrue: [""]
                                                           ifFalse: [branchTypeArgs])
@@ -294,10 +286,7 @@ constructor GoBackend [
         fn body validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors
       ]
     ]
-    entryMaybe = ir entry
-    | entryMaybe
-    | null => []
-    |=> entryMaybe validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors
+    ir entries forEach: [it validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors]
 
     ^ errors toList
   ]
@@ -316,10 +305,7 @@ constructor GoBackend [
       ]
       pkg functions forEach: [it body collectGoImportsInto: imports]
     ]
-    entryMaybe = ir entry
-    | entryMaybe
-    | null => []
-    |=> entryMaybe collectGoImportsInto: imports
+    ir entries forEach: [it collectGoImportsInto: imports]
 
     importsByFile::mut Map(String, Set(String)) = #{}!
     importsByFile at: "main.go" put: imports
@@ -402,12 +388,8 @@ constructor GoBackend [
     ir packages forEach: [pkg ->
       fragments addAll: (GoBackend emitPackage: pkg symbols: symbols imports: imports)
     ]
-    entryMaybe = ir entry
-    | entryMaybe
-    | null => []
-    |=> [
-      fragments add: (GoBackend entryFragment: entryMaybe symbols: symbols imports: imports)
-      ()
+    ir entries forEach: [it ->
+      fragments add: (GoBackend entryFragment: it symbols: symbols imports: imports)
     ]
 
     ^ fragments toList
@@ -480,3 +462,6 @@ constructor GoBackend [
     ^ GoBackend renderGoFile: (files first)
   ]
 ]
+
+IrField goFieldDeclaration(ctx): GoContext -> String =
+  (name toSafeGoIdent) + " " + (typeRef toGoType: ctx)

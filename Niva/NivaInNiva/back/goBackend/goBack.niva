@@ -196,10 +196,8 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
   inputType = input typeRef
   hasErrors = inputType errors isNotEmpty
   isNullable = inputType nullable
-  msgNameMaybe = msgName
-  isOrPanic = | msgNameMaybe
-    | null => false
-    |=> (msgNameMaybe == "orPANIC") || (msgNameMaybe == "unpackOrPANIC")
+  msgNameLocal = this msgNameOrEmpty
+  isOrPanic = (msgNameLocal == "orPANIC") || (msgNameLocal == "unpackOrPANIC")
   inputHasNoValue = inputType isGoUnitType && (isNullable not)
   inputStr = input toGoExpr: ctx scope: scope
   outputType = typeRef
@@ -431,10 +429,7 @@ GoContext emitBoolConditionalResult(call): IrExpr sb: StringBuilder indent: Int 
   | IrCall => [
     args = call args
     condition = args first toGoExpr: this scope: scope
-    msgNameMaybe = call msgName
-    msgNameLocal = | msgNameMaybe
-      | null => ""
-      |=> msgNameMaybe
+    msgNameLocal = call msgNameOrEmpty
     isFalseFirst = (msgNameLocal == "ifFalse_ifTrue") || (msgNameLocal == "ifFalse__ifTrue")
     trueBranch = isFalseFirst ifTrue: [args at: 2] ifFalse: [args at: 1]
     falseBranch = isFalseFirst ifTrue: [args at: 1] ifFalse: [args at: 2]
@@ -455,6 +450,16 @@ GoContext emitBoolMatchBranch(branchCase): IrMatchCase sb: StringBuilder indent:
   | branchResultMaybe
   | null => []
   |=> branchResultMaybe emitAsStmt: this scope: branchScope sb: sb indent: indent returnType: returnType
+]
+
+GoContext emitGoElseBlock(elseBranch): IrBlock sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope -> Unit = [
+  sb appendIndent: indent line: "} else {"
+  elseScope = scope copy
+  elseBranch blockToGoStatements: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+  elseResultMaybe = elseBranch result
+  | elseResultMaybe
+  | null => []
+  |=> elseResultMaybe emitAsStmt: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
 ]
 
 GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope -> Unit = [
@@ -487,13 +492,7 @@ GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
       | elseBranchMaybe
       | null => []
       |=> [
-        sb appendIndent: indent line: "} else {"
-        elseScope = scope copy
-        elseBranchMaybe blockToGoStatements: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
-        elseResultMaybe = elseBranchMaybe result
-        | elseResultMaybe
-        | null => []
-        |=> elseResultMaybe emitAsStmt: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+        this emitGoElseBlock: elseBranchMaybe sb: sb indent: indent returnType: returnType scope: scope
       ]
     ]
     sb appendIndent: indent line: "}"
@@ -507,26 +506,35 @@ GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
       | elseBranchMaybe
       | null => []
       |=> [
-        sb appendIndent: indent line: "} else {"
-        elseScope = scope copy
-        elseBranchMaybe blockToGoStatements: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
-        elseResultMaybe = elseBranchMaybe result
-        | elseResultMaybe
-        | null => []
-        |=> elseResultMaybe emitAsStmt: this scope: elseScope sb: sb indent: (indent + 1) returnType: returnType
+        this emitGoElseBlock: elseBranchMaybe sb: sb indent: indent returnType: returnType scope: scope
       ]
       sb appendIndent: indent line: "}"
     ]
   ]
 ]
 
+IrExpr isGoPropagatingCall -> Bool = | this | IrCall => propagatingErrVar != null |=> false
+
+// go type text for a match case
+IrMatchCase goCaseTypeStr(ctx): GoContext scope: GoScope -> String = [
+  asserted = this assertedTypeRef
+  ^ | asserted
+    | null => this condition toGoExpr: ctx scope: scope
+    |=> asserted toGoType: ctx
+]
+
+// alias name for match branches
+IrMatchExpr goMatchAliasOrIt -> String = [
+  alias = this typeAlias
+  ^ | alias
+    | null => "it"
+    |=> alias
+]
+
 IrExpr isGoBoolConditional -> Bool =
   | this
   | IrCall => [
-    msgNameMaybe = msgName
-    msgNameLocal = | msgNameMaybe
-      | null => ""
-      |=> msgNameMaybe
+    msgNameLocal = this msgNameOrEmpty
     ((msgNameLocal == "ifTrue__ifFalse") || (msgNameLocal == "ifFalse_ifTrue") ||
       (msgNameLocal == "ifFalse__ifTrue")) && (args count > 2)
   ]
@@ -1147,9 +1155,7 @@ extend IrExpr [
 
   on emitReturn(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
     hasErrors = returnType errors isNotEmpty
-    doPropagate = | this
-      | IrCall => propagatingErrVar != null
-      |=> false
+    doPropagate = this isGoPropagatingCall
     doPropagate ifTrue: [
       resultName = this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: ""
       resultNameMaybe = resultName
@@ -1190,9 +1196,7 @@ extend IrExpr [
   ]
 
   on emitAsStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> Unit = [
-    doPropagate = | this
-      | IrCall => propagatingErrVar != null
-      |=> false
+    doPropagate = this isGoPropagatingCall
     doPropagate ifTrue: [
       this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: ""
       ()
@@ -1227,10 +1231,7 @@ extend IrExpr [
   on toGoStatement(ctx): GoContext scope: GoScope returnType: IrTypeRef -> String = [
     | this
     | IrCall => [
-      msgNameMaybe = msgName
-      msgNameLocal = | msgNameMaybe
-        | null => ""
-        |=> msgNameMaybe
+      msgNameLocal = this msgNameOrEmpty
       receiverTypeMaybe = receiverType
       receiverTypeId = | receiverTypeMaybe
         | null => ""
@@ -1340,16 +1341,10 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
       sb appendIndent: 1 line: ("if " + errName + " != nil {")
       sb appendIndent: 2 line: ("switch " + errName + ".(type) {")
       cases forEach: [c ->
-        assertedTypeMaybe = c assertedTypeRef
-        typeStr = | assertedTypeMaybe
-          | null => c condition toGoExpr: ctx scope: innerScope
-          |=> assertedTypeMaybe toGoType: ctx
+        typeStr = c goCaseTypeStr: ctx scope: innerScope
         sb appendIndent: 2 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
-        typeAliasMaybe = typeAlias
-        aliasStr = | typeAliasMaybe
-          | null => "it"
-          |=> typeAliasMaybe
+        aliasStr = this goMatchAliasOrIt
         caseScope locals add: aliasStr
         sb appendIndent: 3 line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
         c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 3 returnType: retType
@@ -1388,10 +1383,7 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
       |=> [
         elseBlock = elseBranchLocal
         elseScope = innerScope copy
-        typeAliasMaybe = typeAlias
-        aliasStr = | typeAliasMaybe
-          | null => "it"
-          |=> typeAliasMaybe
+        aliasStr = this goMatchAliasOrIt
         elseScope locals add: aliasStr
         subjectIsUnit ifFalse: [
           sb appendIndent: 1 line: (aliasStr + " := " + valueName)
@@ -1404,10 +1396,7 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
     isByType ifTrue: [
       sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
       cases forEach: [c ->
-        assertedTypeMaybe = c assertedTypeRef
-        typeStr = | assertedTypeMaybe
-          | null => c condition toGoExpr: ctx scope: innerScope
-          |=> assertedTypeMaybe toGoType: ctx
+        typeStr = c goCaseTypeStr: ctx scope: innerScope
         sb appendIndent: 1 line: ("case " + typeStr + ":")
         caseScope = innerScope copy
         aliasNameMaybe = typeAlias
@@ -1500,7 +1489,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       | null => [sb appendIndent: indent line: ("var " + goName + " " + typeStr)]
       |=> [
         valueExpr = valueLocal
-        doProp = | valueExpr | IrCall => (valueExpr propagatingErrVar != null) |=> false
+        doProp = valueExpr isGoPropagatingCall
         doProp
           ifTrue: [
             valueExpr emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: goName
