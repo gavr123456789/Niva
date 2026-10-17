@@ -74,6 +74,14 @@ IrTypeRef isCljCollectionType -> Bool =
      ((this typeId cljNormalizeTypeId) == "core_Set") ||
      ((this typeId cljNormalizeTypeId) == "core_Map"))
 
+// same collection kind on both sides of a call
+IrTypeRef cljSameCollectionTypeAs(other): IrTypeRef -> Bool =
+  (this isCljCollectionType) && (other isCljCollectionType) && (this typeId == other typeId)
+
+// same record kind on both sides of a call
+IrTypeRef cljSameRecordTypeAs(other): IrTypeRef -> Bool =
+  (this kind == IrTypeRefKind.Custom) && (other kind == IrTypeRefKind.Custom) && (this typeId == other typeId)
+
 IrExpr toCljCollectionCellExpr(ctx): CljContext scope: CljScope -> String = [
   this toCljExpr: ctx scope: scope
 ]
@@ -105,25 +113,18 @@ IrExpr toCljExprForExpected(expected): IrTypeRef ctx(ctx): CljContext
     scope(scope): CljScope -> String = [
   raw = this toCljExpr: ctx scope: scope
   sourceType = this cljExprTypeRef
-  isMutableCollection = sourceType isMut && sourceType isCljCollectionType
-  isImmutableToMutableCollection = (sourceType isMut not) &&
-    sourceType isCljCollectionType && expected isMut &&
-    expected isCljCollectionType && (sourceType typeId == expected typeId)
-  isImmutableToMutableRecord = (sourceType isMut not) &&
-    (sourceType kind == IrTypeRefKind.Custom) && expected isMut &&
-    (expected kind == IrTypeRefKind.Custom) &&
-    (sourceType typeId == expected typeId)
-  isMutableRecordToImmutable = sourceType isMut && (expected isMut not) &&
-    (sourceType kind == IrTypeRefKind.Custom) &&
-    (expected kind == IrTypeRefKind.Custom) &&
-    (sourceType typeId == expected typeId)
-  ^ isMutableCollection ifTrue: [
+  sourceIsMut = sourceType isMut
+  expectedIsMut = expected isMut
+  sameCollection = sourceType cljSameCollectionTypeAs: expected
+  sameRecord = sourceType cljSameRecordTypeAs: expected
+  keepCell = sourceIsMut && (sourceType isCljCollectionType)
+  needsCell = (sourceIsMut not) && expectedIsMut && (sameCollection || sameRecord)
+  needsPlainValue = sourceIsMut && (expectedIsMut not) && sameRecord
+  ^ keepCell ifTrue: [
     this toCljCollectionExpectedExpr: expected ctx: ctx scope: scope
   ] ifFalse: [
-    isImmutableToMutableCollection ifTrue: ["(atom " + raw + ")"] ifFalse: [
-      isImmutableToMutableRecord ifTrue: ["(atom " + raw + ")"] ifFalse: [
-        isMutableRecordToImmutable ifTrue: ["(deref " + raw + ")"] ifFalse: [raw]
-      ]
+    needsCell ifTrue: ["(atom " + raw + ")"] ifFalse: [
+      needsPlainValue ifTrue: ["(deref " + raw + ")"] ifFalse: [raw]
     ]
   ]
 ]

@@ -661,6 +661,7 @@ constructor CompilerConstants nivaCoreSource -> String = """
 (defn Map__count [s] (count s))
 (defn Map__isEmpty [s] (empty? s))
 (defn Map__keys [s] (set (keys s)))
+(defn Map__values [s] (set (vals s)))
 (defn Map__plus [s o] (merge s o))
 (defn Map__minus [s k] (dissoc s k))
 
