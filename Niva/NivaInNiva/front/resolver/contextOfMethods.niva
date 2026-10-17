@@ -35,6 +35,18 @@ constructor Context [
 
 extend Context [
 
+  // resolve typed block args into type fields and define vars
+  on typedBlockArgFields(args): List(NameAndAstType) fromDB(db): TyperDB -> List(TypeTField) = [
+    args map: [
+      name = it name
+      astType = it astType
+      t = astType toNivaTypefromDB: db inPkg: null
+      errorsList = astType toErrorsFromDb: db inPkg: null
+      this defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
+      TypeTField name: name typeT: t isMut: false
+    ]
+  ]
+
   on defineVar(name): String withType: TypeInfo = [
     varType = vars at: name
     | varType

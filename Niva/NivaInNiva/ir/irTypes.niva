@@ -162,6 +162,13 @@ union IrExpr typeRef: IrTypeRef token: Token =
 | IrOpBin op: String left: IrExpr right: IrExpr
 | IrTypeRefExpr ref: IrTypeRef
 
+IrCall msgNameOrEmpty -> String = [
+  n = this msgName
+  ^ | n
+    | null => ""
+    |=> n
+]
+
 type IrPackage
   name: String
   imports: List(IrImport)
@@ -244,4 +251,11 @@ IrModule functions -> List(IrFunction) = [
   result::mut List::IrFunction = {}!
   packages forEach: [pkg -> result addAll: pkg functions]
   ^ result toList
+]
+
+IrModule entries -> List(IrBlock) = [
+  e = entry
+  ^ | e
+    | null => {}
+    |=> {e}
 ]

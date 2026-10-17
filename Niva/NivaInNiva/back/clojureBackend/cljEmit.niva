@@ -138,10 +138,7 @@ IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String = [
       receiverTypeValue = r
       receiverTypeValue typeId
     ]
-  msgNameLocalMaybe = this msgName
-  msgNameLocal = | msgNameLocalMaybe
-    | null => ""
-    |=> msgNameLocalMaybe
+  msgNameLocal = this msgNameOrEmpty
   // calls with no args are never bind emits so their args stay unread
   isBindEmitCall = (receiverTypeId == "core_Bind") &&
     (msgNameLocal == "emit") && (this args isNotEmpty)
@@ -183,10 +180,7 @@ IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
 ]
 
 IrCall cljTryOutput(ctx): CljContext scope: CljScope -> String = [
-  msgNameMaybe = this msgName
-  msgNameLocal = | msgNameMaybe
-    | null => ""
-    |=> msgNameMaybe
+  msgNameLocal = this msgNameOrEmpty
   (msgNameLocal == "try") || (msgNameLocal == "orPANIC") ifTrue: [
     input = this args first
     inputStr = input toCljExpr: ctx scope: scope
@@ -227,10 +221,7 @@ IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
       receiverTypeValue = receiverTypeMaybe
       receiverTypeValue typeId
     ]
-  msgNameMaybe = this msgName
-  msgNameLocal = | msgNameMaybe
-    | null => ""
-    |=> msgNameMaybe
+  msgNameLocal = this msgNameOrEmpty
   funcIdLocal = | funcIdMaybe
     | null => ""
     |=> funcIdMaybe
@@ -275,10 +266,7 @@ IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
         |=> declPkgMaybe
       declPkgLocal == "core" ifTrue: [
         ctx addImport: "niva.core"
-        msgNameMaybe = this msgName
-        msgNameLocal = | msgNameMaybe
-          | null => ""
-          |=> msgNameMaybe
+        msgNameLocal = this msgNameOrEmpty
         receiverMaybe = this receiverType
         mutReceiver = (this paramTypes) isNotEmpty && ((this paramTypes) first isMut)
         coreFn = | receiverMaybe

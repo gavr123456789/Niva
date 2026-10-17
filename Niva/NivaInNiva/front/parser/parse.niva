@@ -196,6 +196,22 @@ extend mut Parser [
     ^ this primary: tok
   ]
 
+  // whether next token starts a type name with capital letter
+  on isTypeNameAhead -> Bool = [
+    nextTok = this peek
+    ^ | nextTok kind
+      | TokenType.Identifier
+      | TokenType.NullableIdentifier
+      | TokenType.IdentifierDoubleColon => nextTok lexeme first isUpperCase
+      |=> false
+  ]
+
+  // parse binary args and build message on receiver
+  on parseBinaryOn(receiver): Expr -> Expr = [
+    binaryList = this parseManyBinary
+    BinaryMsg receiver: receiver token: receiver token args: binaryList toList
+  ]
+
   /// elements of a collection literal until `end` token(not eaten)
   on parseCollectionBody(end): TokenType -> Body = [
     body::mut List::Expr = {}!
@@ -480,15 +496,7 @@ extend mut Parser [
         ]
       ]
       | TokenType.Mut => [
-        nextTok = this peek
-        isTypeName = | nextTok kind
-                    | TokenType.Identifier
-                    | TokenType.NullableIdentifier
-                    | TokenType.IdentifierDoubleColon => [
-                      firstChar = nextTok lexeme first
-                      firstChar isUpperCase
-                    ]
-                    |=> false
+        isTypeName = this isTypeNameAhead
         isTypeName ifTrue: [
           this messageDeclarationOrExpression: tok savedPosition: savePosition isConstructor: false
         ] ifFalse: [
@@ -544,12 +552,7 @@ extend mut Parser [
     | tok kind
     | TokenType.Return => result <- this parseReturnExpr: tok
     | TokenType.Mut => [
-      nextTok = this peek
-      isTypeName = | nextTok kind
-                  | TokenType.Identifier
-                  | TokenType.NullableIdentifier
-                  | TokenType.IdentifierDoubleColon => nextTok lexeme first isUpperCase
-                  |=> false
+      isTypeName = this isTypeNameAhead
 
       | isTypeName
       | true => [
@@ -734,22 +737,10 @@ extend mut Parser [
               args: binaryList toList
           ]
         ]
-        | TokenType.BinarySymbol => [
-          binaryList = this parseManyBinary
-          result <- BinaryMsg
-            receiver: maybePrimary
-            token: maybePrimary token
-            args: binaryList toList
-        ]
+        | TokenType.BinarySymbol => result <- this parseBinaryOn: maybePrimary
         |=> []
       ]
-      | TokenType.BinarySymbol => [
-        binaryList = this parseManyBinary
-        result <- BinaryMsg
-          receiver: maybePrimary
-          token: maybePrimary token
-          args: binaryList
-      ]
+      | TokenType.BinarySymbol => result <- this parseBinaryOn: maybePrimary
       |=> []
     ]
 

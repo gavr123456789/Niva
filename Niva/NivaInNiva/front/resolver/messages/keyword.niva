@@ -93,13 +93,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           fieldType isContainsUnresolvedGenerics
             ifTrue: [
               expectedResolved = fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db
-              expectedResolved isContainsUnresolvedGenerics ifFalse: [
-                db isAssignable: realType toExpected: expectedResolved, ifFalse: [
-                  db addErrorMessage: (ErrorWrongArgType
-                                        tok: expr token
-                                        msg: "Expected " + expectedResolved toString + " but got " + realType toString)
-                ]
-              ]
+              db rejectWrongGenericArg: expectedResolved real: realType tok: (expr token)
             ]
             ifFalse: [
               db isAssignable: realType toExpected: fieldType, ifFalse: [
@@ -239,13 +233,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     argTypeFromDb isContainsUnresolvedGenerics
       ifTrue: [
         expectedResolved = argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db
-        expectedResolved isContainsUnresolvedGenerics ifFalse: [
-          db isAssignable: realType toExpected: expectedResolved, ifFalse: [
-            db addErrorMessage: (ErrorWrongArgType
-                                      tok: expr token
-                                  msg: "Expected " + expectedResolved toString + " but got " + realType toString)
-          ]
-        ]
+        db rejectWrongGenericArg: expectedResolved real: realType tok: (expr token)
       ]
       ifFalse: [
         // вот, если это не женерик то сравниваем с тем шо в дб
@@ -371,4 +359,15 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     kind: kwMsgDB kind
     ]
     |=> shadowCopyMaybe
+]
+
+// add arg type error when resolved generic arg type still mismatches
+TyperDB rejectWrongGenericArg(expected): NivaType real: NivaType tok: Token = [
+  expected isContainsUnresolvedGenerics ifFalse: [
+    this isAssignable: real toExpected: expected, ifFalse: [
+      this addErrorMessage: (ErrorWrongArgType
+                                tok: tok
+                                msg: "Expected " + expected toString + " but got " + real toString)
+    ]
+  ]
 ]

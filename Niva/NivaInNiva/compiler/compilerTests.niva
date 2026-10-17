@@ -22,7 +22,14 @@ Test moduleCollisionNormalizationIsExplicit = [
     (NivaSourceFile path: "/project/foo_bar.niva" relativePath: "foo_bar.niva")
   }
 
-  collision = files nivaModuleCollisionError
+  inputs = files map: [source ->
+    NivaSourceInput
+      moduleId: (source nivaModuleId)
+      relativePath: source relativePath
+      path: source path
+      content: ""
+  ]
+  collision = inputs nivaInputCollisionError
   Assert that: (collision != null) equals: true
   collisionMaybe = collision
   | collisionMaybe
@@ -40,7 +47,14 @@ Test sameBasenameInDifferentDirectoriesHasDistinctModuleIds = [
 
   Assert that: first nivaModuleId equals: "model.user"
   Assert that: second nivaModuleId equals: "admin.user"
-  Assert that: ({first second} nivaModuleCollisionError) equals: null
+  inputs = {first second} map: [source ->
+    NivaSourceInput
+      moduleId: (source nivaModuleId)
+      relativePath: source relativePath
+      path: source path
+      content: ""
+  ]
+  Assert that: (inputs nivaInputCollisionError) equals: null
 ]
 
 Test bindingManifestParsesUnmarkedProviderPaths = [
