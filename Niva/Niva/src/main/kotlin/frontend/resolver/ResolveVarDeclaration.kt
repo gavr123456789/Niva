@@ -300,18 +300,20 @@ fun Resolver.resolveDestruction(
     if (type !is Type.UserLike)
         valueTok.compileError("${statement.value} doesn't has fields")
 
-    if (statement.names.count() > type.fields.count())
-        valueTok.compileError("Destructing ${statement.names.count()} fields, but $type has only ${type.fields}")
+    if (statement.bindings.count() > type.fields.count())
+        valueTok.compileError("Destructing ${statement.bindings.count()} fields, but $type has only ${type.fields}")
 
-    statement.names.forEach { name ->
+    statement.bindings.forEach { binding ->
+        val fieldName = binding.fieldName
         // check that there are such name
-        val field = type.fields.find { it.name == name.name }
+        val field = type.fields.find { it.name == fieldName.name }
         if (field == null)
-            name.token.compileError("There is no $name field in $type, fields: \n${type.fields.joinToString("\n")}")
+            fieldName.token.compileError("There is no $fieldName field in $type, fields: \n${type.fields.joinToString("\n")}")
         // assign type of that name
-        name.type = field.type
+        binding.localName.type = field.type
+        fieldName.type = field.type
         // add to scope
-        currentScope[name.name] = field.type
+        currentScope[binding.localName.name] = field.type
     }
 
 

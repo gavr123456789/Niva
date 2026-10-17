@@ -2310,6 +2310,82 @@ Environment makeChild = Environment parent: this map: #{}
     }
 
     @Test
+    fun destructWithoutAliases() {
+        val source = """
+            {x1 y1} = p
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val destruct = ast[0] as DestructingAssign
+        assertEquals(2, destruct.bindings.count())
+        assertEquals("x1", destruct.bindings[0].localName.name)
+        assertEquals("x1", destruct.bindings[0].fieldName.name)
+        assertEquals("y1", destruct.bindings[1].localName.name)
+        assertEquals("y1", destruct.bindings[1].fieldName.name)
+    }
+
+    @Test
+    fun destructWithAliases() {
+        val source = """
+            {x1 = x y1 = y} = p
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val destruct = ast[0] as DestructingAssign
+        assertEquals(2, destruct.bindings.count())
+        assertEquals("x1", destruct.bindings[0].localName.name)
+        assertEquals("x", destruct.bindings[0].fieldName.name)
+        assertEquals("y1", destruct.bindings[1].localName.name)
+        assertEquals("y", destruct.bindings[1].fieldName.name)
+    }
+
+    @Test
+    fun destructWithAliasesAndCommas() {
+        val source = """
+            {x1 = x, y1 = y} = p
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 1)
+        val destruct = ast[0] as DestructingAssign
+        assertEquals(2, destruct.bindings.count())
+        assertEquals("x1", destruct.bindings[0].localName.name)
+        assertEquals("x", destruct.bindings[0].fieldName.name)
+        assertEquals("y1", destruct.bindings[1].localName.name)
+        assertEquals("y", destruct.bindings[1].fieldName.name)
+    }
+
+    @Test
+    fun destructWithMixedAliases() {
+        val source = """
+            type Person
+              name: String
+              age: Int
+
+            {n = name age} = p
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        val destruct = ast[1] as DestructingAssign
+        assertEquals(2, destruct.bindings.count())
+        assertEquals("n", destruct.bindings[0].localName.name)
+        assertEquals("name", destruct.bindings[0].fieldName.name)
+        assertEquals("age", destruct.bindings[1].localName.name)
+        assertEquals("age", destruct.bindings[1].fieldName.name)
+    }
+
+    @Test
+    fun notDestructingIsListCollection() {
+        val source = """
+            {1 2}
+            x = 5
+        """.trimIndent()
+        val ast = getAstTest(source)
+        assert(ast.count() == 2)
+        assertTrue { ast[0] is ListCollection }
+        assertTrue { ast[1] is VarDeclaration }
+    }
+
+    @Test
     fun destructInsideBody() {
         val source = """
             StackLang add = [
