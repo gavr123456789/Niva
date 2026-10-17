@@ -703,7 +703,10 @@ private fun collectAstResolutionSnapshot(statements: Collection<Statement>): Ast
                 }
             }
             is DestructingAssign -> {
-                statement.names.forEach { visitStatement(it) }
+                statement.bindings.forEach {
+                    visitStatement(it.localName)
+                    visitStatement(it.fieldName)
+                }
                 visitStatement(statement.value)
             }
             is ControlFlow.If -> {

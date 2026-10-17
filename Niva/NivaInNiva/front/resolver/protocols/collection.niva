@@ -4,12 +4,7 @@ NivaType isListType -> Bool =
   |=> false
 
 constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer collectionType::NivaType itemType::NivaType -> mut Map(String, NivaMethod) = [
-  intT = dtc int
-  str = dtc str
-  boolT = dtc bool
-  unit = dtc unit
-  t = dtc t
-  g = dtc g
+  {intT = int, str, boolT = bool, unit, t, g} = dtc
 
   collP = NivaProtocol common
   collP addMethod: (NivaMethod unary: "count" receiverType: collectionType returnT: intT)

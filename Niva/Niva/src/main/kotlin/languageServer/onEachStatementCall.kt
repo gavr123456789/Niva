@@ -225,8 +225,9 @@ fun LS.onEachStatementCall(
         }
 
         is DestructingAssign -> {
-            st.names.forEach {
-                addStToMegaStore(it)
+            st.bindings.forEach {
+                addStToMegaStore(it.localName)
+                addStToMegaStore(it.fieldName)
             }
             addStToMegaStore(st.value)
         }
