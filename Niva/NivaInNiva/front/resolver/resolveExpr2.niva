@@ -1079,10 +1079,33 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         |=> false
 
       conditionTypeInfo = conditionT typeInfo
+      // alternatives of this branch share one body so they are resolved
+      // before the subject is narrowed, they all match the original subject
+      conditionsT = br additionalConditions resolveBody2: db withContext: contextIfThisMatching
+      patternsTypeInfo::mut List(TypeInfo) = {conditionTypeInfo}!
+      conditionsT v forEach: [it -> patternsTypeInfo add: (it typeInfo)]
       mut narrowedTypeInfo = conditionTypeInfo
+      mut subjectTypeInfo = conditionTypeInfo
       (isTypeBranch && (isErrorMatch not)) ifTrue: [
         conditionType = conditionTypeInfo t
-        | conditionType
+        // many patterns on one line narrow the subject to the first common
+        // ancestor of all of them, not to the first pattern
+        mut narrowedSubjectType = conditionType
+        (patternsTypeInfo count > 1) ifTrue: [
+          patternsTypeTs = patternsTypeInfo map: [it t]
+          ancestorMaybe = db findFirstCommonUnionAncestor: patternsTypeTs
+          | ancestorMaybe
+          | null => [
+            names = patternsTypeTs joinWith: ", " transform: [it name]
+            db addErrorMessage: (LazyError tok: br condition token msg: ("Cant find common ancestor of " + names))
+          ]
+          |=> [
+            ancestorType::NivaType = ancestorMaybe
+            narrowedSubjectType <- ancestorType
+          ]
+        ]
+        narrowedFrom = narrowedSubjectType
+        | narrowedFrom
         | TypeT => [
           | subjectType
           | TypeT => [
@@ -1102,11 +1125,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             (letterToType count > 0) ifTrue: [
               narrowed = conditionType replaceGenericsFromTableDeep: letterToType db: db
               narrowedTypeInfo <- TypeInfo t: narrowed isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+              narrowedSubjectType <- narrowedFrom replaceGenericsFromTableDeep: letterToType db: db
             ]
           ]
           |=> []
         ]
         |=> []
+        (narrowedSubjectType sameTypeAs: conditionType) ifFalse: [
+          subjectTypeInfo <- TypeInfo t: narrowedSubjectType isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+        ]
       ]
       conditionForBranch =
         (isTypeBranch && (isErrorMatch not))
@@ -1131,12 +1158,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             | subjectT
             | IdentifierT => [
               (subjectT isNameOfTheType || (subjectT name == "this")) ifFalse: [
-                newC defineVar: subjectT name withType: narrowedTypeInfo
+                newC defineVar: subjectT name withType: subjectTypeInfo
               ]
             ]
             |=> []
             isMatchingOnThis ifTrue: [
-              newC defineVar: "this" withType: narrowedTypeInfo
+              newC defineVar: "this" withType: subjectTypeInfo
             ]
             newC
           ]
@@ -1150,8 +1177,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             newC
           ]
           ifFalse: [contextWithNarrowedSubject]
-
-      conditionsT = br additionalConditions resolveBody2: db withContext: contextWithNarrowedSubject
 
       bodyT = br body resolveBody2: db withContext: contextForBody expectedType: expectedType
       returnTypes add: bodyT t

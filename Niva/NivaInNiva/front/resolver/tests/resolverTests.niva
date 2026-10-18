@@ -1337,6 +1337,30 @@ Test explicitGenericUnionMatchVariableNarrowsSubject = [
   Assert that: db listOfErrors count equals: 0
 ]
 
+Test mergedMatchPatternsNarrowToCommonAncestor = [
+  fileMain = """
+    union Shape w: Double =
+    | Rect h: Double
+    | Line len: Double
+    | Point
+
+    Shape area -> String = | this
+    | Rect | Line => this w toString
+    | Point => "p"
+
+    type Helper
+    Helper areaOf(shape): Shape -> String = | shape
+    | Rect | Line => shape w toString
+    | Point => "p"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  db = result db
+
+  // only w exists on the common ancestor so just the merged line can resolve it
+  Assert that: db listOfErrors count equals: 0
+]
+
 Test shadowCopyKind = [
   fileMain = """
     type Person
