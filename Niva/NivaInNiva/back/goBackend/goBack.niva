@@ -500,6 +500,24 @@ IrMatchCase goCaseTypeStr(ctx): GoContext scope: GoScope -> String = [
     |=> asserted toGoType: ctx
 ]
 
+// all types a case matches on, the first pattern and every pattern after it
+IrMatchCase goCaseTypeStrs(ctx): GoContext scope: GoScope -> List(String) = [
+  assertedTypeMaybe = this assertedTypeRef
+  firstTypeStr = | assertedTypeMaybe
+    | null => condition toGoExpr: ctx scope: scope
+    |=> assertedTypeMaybe toGoType: ctx
+  typeStrs::mut List(String) = {firstTypeStr}!
+  additionalConditions forEach: [alt ->
+    | alt
+    | IrTypeRefExpr => [
+      typeStrs add: (alt ref toGoType: ctx)
+      ()
+    ]
+    |=> []
+  ]
+  ^ typeStrs toList
+]
+
 // alias name for match branches
 IrMatchExpr goMatchAliasOrIt -> String = [
   alias = this typeAlias
@@ -1382,23 +1400,25 @@ IrMatchExpr goMatchTypeInto(sb): StringBuilder ctx: GoContext scope: GoScope -> 
   subjectName = "__matchSubject"
   sb appendIndent: 1 line: ("switch " + subjectName + ".(type) {")
   cases forEach: [c ->
-    typeStr = c goCaseTypeStr: ctx scope: scope
-    sb appendIndent: 1 line: ("case " + typeStr + ":")
-    caseScope = scope copy
-    aliasNameMaybe = typeAlias
-    aliasNameMaybe ifNotNull: [aliasNameValue ->
-      caseRefNames = c body collectIrRefNames
-      sb appendIndent: 2 line: (aliasNameValue + " := " + subjectName + ".(" + typeStr + ")")
-      (caseRefNames contains: aliasNameValue) ifFalse: [
-        sb appendIndent: 2 line: ("_ = " + aliasNameValue)
+    // every pattern of the branch gets its own case over the same body
+    (c goCaseTypeStrs: ctx scope: scope) forEach: [typeStr ->
+      sb appendIndent: 1 line: ("case " + typeStr + ":")
+      caseScope = scope copy
+      aliasNameMaybe = typeAlias
+      aliasNameMaybe ifNotNull: [aliasNameValue ->
+        caseRefNames = c body collectIrRefNames
+        sb appendIndent: 2 line: (aliasNameValue + " := " + subjectName + ".(" + typeStr + ")")
+        (caseRefNames contains: aliasNameValue) ifFalse: [
+          sb appendIndent: 2 line: ("_ = " + aliasNameValue)
+        ]
+        caseScope locals add: aliasNameValue
+        caseScope nullablePointerLocals remove: aliasNameValue
+        caseScope narrowedNullablePointerLocals remove: aliasNameValue
+        ()
       ]
-      caseScope locals add: aliasNameValue
-      caseScope nullablePointerLocals remove: aliasNameValue
-      caseScope narrowedNullablePointerLocals remove: aliasNameValue
-      ()
+      c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
+      ctx emitBlockResultAndReturn: (c body) sb: sb indent: 2 retType: retType scope: caseScope returnStmt: "return"
     ]
-    c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
-    ctx emitBlockResultAndReturn: (c body) sb: sb indent: 2 retType: retType scope: caseScope returnStmt: "return"
   ]
   elseBranchLocal = elseBranch
   | elseBranchLocal

@@ -350,6 +350,24 @@ String cljWrapInLet(bindings): List(CljBinding) -> String = [
     ]
 ]
 
+// all types a case matches on, the first one and every pattern after it
+IrMatchCase cljCaseTypeStrs(ctx): CljContext scope: CljScope -> List(String) = [
+  assertedTypeMaybe = this assertedTypeRef
+  firstTypeStr = | assertedTypeMaybe
+    | null => condition toCljExpr: ctx scope: scope
+    |=> assertedTypeMaybe cljQualifiedTypeName: ctx
+  typeStrs::mut List(String) = {firstTypeStr}!
+  additionalConditions forEach: [alt ->
+    | alt
+    | IrTypeRefExpr => [
+      typeStrs add: (alt ref cljQualifiedTypeName: ctx)
+      ()
+    ]
+    |=> []
+  ]
+  ^ typeStrs toList
+]
+
 IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   subjectExpr = this subject toCljExpr: ctx scope: scope
   subjectName = "__cljSubject"
@@ -451,21 +469,20 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
       sb append: "(condp instance? "
       sb append: subjectName
       casesLocal forEach: [c ->
-        assertedTypeMaybe = c assertedTypeRef
-        typeStr = | assertedTypeMaybe
-          | null => c condition toCljExpr: ctx scope: innerScope
-          |=> assertedTypeMaybe cljQualifiedTypeName: ctx
         typeAliasMaybe = this typeAlias
         aliasName = typeAliasMaybe orElse: "it"
         caseScope = innerScope copy
         caseScope mutLocals remove: aliasName
         bodyStr = c body toCljBlockBodyWithBind: ctx scope: caseScope
                     bindName: aliasName bindValue: subjectName
-        sb append: "\n  "
-        sb append: typeStr
-        sb append: " "
-        sb append: (bodyStr replace: "\n" with: "\n  ")
-        ()
+        // every pattern of the branch gets its own clause over the same body
+        (c cljCaseTypeStrs: ctx scope: innerScope) forEach: [typeStr ->
+          sb append: "\n  "
+          sb append: typeStr
+          sb append: " "
+          sb append: (bodyStr replace: "\n" with: "\n  ")
+          ()
+        ]
       ]
       | elseBranchLocal
       | null => [ sb append: "\n  (throw (ex-info \"no matching type\" {})))" ]
@@ -483,13 +500,11 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
       sb = StringBuilder new
       sb append: "(cond"
       casesLocal forEach: [c ->
-        cond = c condition toCljExpr: ctx scope: innerScope
-        guardStr = c additionalConditions isNotEmpty
-          ifTrue: [" (and " + (c additionalConditions joinWith: " " transform: [it toCljExpr: ctx scope: innerScope]) + ")"]
-          ifFalse: [""]
-        fullCond = guardStr == ""
-          ifTrue: ["(= " + subjectName + " " + cond + ")"]
-          ifFalse: ["(and (= " + subjectName + " " + cond + ")" + guardStr + ")"]
+        mut fullCond::String = "(= " + subjectName + " " + (c condition toCljExpr: ctx scope: innerScope) + ")"
+        // patterns of one branch are alternatives so they are joined by or
+        c additionalConditions forEach: [alt ->
+          fullCond <- "(or " + fullCond + " (= " + subjectName + " " + (alt toCljExpr: ctx scope: innerScope) + "))"
+        ]
         caseScope = innerScope copy
         bodyStr = c body toCljBlockBody: ctx scope: caseScope
         sb append: "\n  "
