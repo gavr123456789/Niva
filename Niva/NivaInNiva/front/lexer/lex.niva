@@ -222,9 +222,7 @@ extend mut Lexer [
     ]
 
 
-    | '+' => this createToken: TokenType.BinarySymbol lexeme: l
-    | '*' => this createToken: TokenType.BinarySymbol lexeme: l
-    | '%' => this createToken: TokenType.BinarySymbol lexeme: l
+    | '+' | '*' | '%' => this createToken: TokenType.BinarySymbol lexeme: l
     | ',' =>     this createToken: TokenType.Comma lexeme: l
     | '.' => [
       this peekChar == '.', ifTrue: [

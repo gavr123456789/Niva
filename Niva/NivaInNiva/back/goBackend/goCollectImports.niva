@@ -45,8 +45,7 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
         imports add: "niva_go/core"
       ]
     ]
-  | IrVarRef   => []
-  | IrThisRef  => []
+  | IrVarRef | IrThisRef => []
   | IrFieldGet => [receiver collectGoImportsInto: imports]
   | IrCall     => [
       declPkgMaybe = declPkg

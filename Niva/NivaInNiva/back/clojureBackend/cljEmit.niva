@@ -223,9 +223,7 @@ IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
       receiverTypeValue typeId
     ]
   msgNameLocal = this msgNameOrEmpty
-  funcIdLocal = | funcIdMaybe
-    | null => ""
-    |=> funcIdMaybe
+  funcIdLocal = funcIdMaybe orElse: ""
   receiverIsCompiler = receiverTypeId contains: "Compiler"
   functionIsCompiler = funcIdLocal contains: "Compiler"
   compilerCliArgsCall = (msgNameLocal == "cliArgs") && (receiverIsCompiler || functionIsCompiler)
@@ -262,9 +260,7 @@ IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
   |=> [
       funcIdValue = funcIdMaybe
       declPkgMaybe = this declPkg
-      declPkgLocal = | declPkgMaybe
-        | null => ""
-        |=> declPkgMaybe
+      declPkgLocal = declPkgMaybe orElse: ""
       declPkgLocal == "core" ifTrue: [
         ctx addImport: "niva.core"
         msgNameLocal = this msgNameOrEmpty
@@ -354,6 +350,24 @@ String cljWrapInLet(bindings): List(CljBinding) -> String = [
     ]
 ]
 
+// all types a case matches on, the first one and every pattern after it
+IrMatchCase cljCaseTypeStrs(ctx): CljContext scope: CljScope -> List(String) = [
+  assertedTypeMaybe = this assertedTypeRef
+  firstTypeStr = | assertedTypeMaybe
+    | null => condition toCljExpr: ctx scope: scope
+    |=> assertedTypeMaybe cljQualifiedTypeName: ctx
+  typeStrs::mut List(String) = {firstTypeStr}!
+  additionalConditions forEach: [alt ->
+    | alt
+    | IrTypeRefExpr => [
+      typeStrs add: (alt ref cljQualifiedTypeName: ctx)
+      ()
+    ]
+    |=> []
+  ]
+  ^ typeStrs toList
+]
+
 IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   subjectExpr = this subject toCljExpr: ctx scope: scope
   subjectName = "__cljSubject"
@@ -370,9 +384,7 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
       // IrThrow / niva.core/Error__throw). We dispatch on the record's concrete
       // type; anything unhandled is re-thrown so it keeps propagating.
       typeAliasMaybe = this typeAlias
-      aliasRaw = | typeAliasMaybe
-        | null => "it"
-        |=> typeAliasMaybe
+      aliasRaw = typeAliasMaybe orElse: "it"
       aliasName = aliasRaw cljSanitizeIdent
       errName = "__cljErr"
 
@@ -457,23 +469,20 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
       sb append: "(condp instance? "
       sb append: subjectName
       casesLocal forEach: [c ->
-        assertedTypeMaybe = c assertedTypeRef
-        typeStr = | assertedTypeMaybe
-          | null => c condition toCljExpr: ctx scope: innerScope
-          |=> assertedTypeMaybe cljQualifiedTypeName: ctx
         typeAliasMaybe = this typeAlias
-        aliasName = | typeAliasMaybe
-          | null => "it"
-          |=> typeAliasMaybe
+        aliasName = typeAliasMaybe orElse: "it"
         caseScope = innerScope copy
         caseScope mutLocals remove: aliasName
         bodyStr = c body toCljBlockBodyWithBind: ctx scope: caseScope
                     bindName: aliasName bindValue: subjectName
-        sb append: "\n  "
-        sb append: typeStr
-        sb append: " "
-        sb append: (bodyStr replace: "\n" with: "\n  ")
-        ()
+        // every pattern of the branch gets its own clause over the same body
+        (c cljCaseTypeStrs: ctx scope: innerScope) forEach: [typeStr ->
+          sb append: "\n  "
+          sb append: typeStr
+          sb append: " "
+          sb append: (bodyStr replace: "\n" with: "\n  ")
+          ()
+        ]
       ]
       | elseBranchLocal
       | null => [ sb append: "\n  (throw (ex-info \"no matching type\" {})))" ]
@@ -491,13 +500,11 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
       sb = StringBuilder new
       sb append: "(cond"
       casesLocal forEach: [c ->
-        cond = c condition toCljExpr: ctx scope: innerScope
-        guardStr = c additionalConditions isNotEmpty
-          ifTrue: [" (and " + (c additionalConditions joinWith: " " transform: [it toCljExpr: ctx scope: innerScope]) + ")"]
-          ifFalse: [""]
-        fullCond = guardStr == ""
-          ifTrue: ["(= " + subjectName + " " + cond + ")"]
-          ifFalse: ["(and (= " + subjectName + " " + cond + ")" + guardStr + ")"]
+        mut fullCond::String = "(= " + subjectName + " " + (c condition toCljExpr: ctx scope: innerScope) + ")"
+        // patterns of one branch are alternatives so they are joined by or
+        c additionalConditions forEach: [alt ->
+          fullCond <- "(or " + fullCond + " (= " + subjectName + " " + (alt toCljExpr: ctx scope: innerScope) + "))"
+        ]
         caseScope = innerScope copy
         bodyStr = c body toCljBlockBody: ctx scope: caseScope
         sb append: "\n  "
@@ -506,10 +513,8 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
         sb append: (bodyStr replace: "\n" with: "\n  ")
         ()
       ]
-      | elseBranchLocal
-      | null => []
-      |=> [
-          elseBlock = elseBranchLocal
+      elseBranchLocal ifNotNull: [elseBranchLocalValue ->
+          elseBlock = elseBranchLocalValue
           elseStr = elseBlock toCljBlockBody: ctx scope: (innerScope copy)
           sb append: "\n  :else "
           sb append: (elseStr replace: "\n" with: "\n  ")
@@ -994,11 +999,9 @@ constructor CljBackend [
       ]
     ]
     entryMaybe = ir entry
-    | entryMaybe
-    | null => ()
-    |=> [
+    entryMaybe ifNotNull: [entryValue ->
       isRepl ifTrue: [
-        CljBackend emitEntryRepl: entryMaybe ctx: ctx sb: body
+        CljBackend emitEntryRepl: entryValue ctx: ctx sb: body
         ()
       ]
       isRepl ifFalse: [
@@ -1009,7 +1012,7 @@ constructor CljBackend [
             ()
           ]
         ]
-        CljBackend emitEntry: entryMaybe stateDefs: entryStates ctx: ctx sb: body
+        CljBackend emitEntry: entryValue stateDefs: entryStates ctx: ctx sb: body
         ()
       ]
     ]
@@ -1100,44 +1103,15 @@ constructor CljBackend [
 
 IrStmt cljStmtToken -> Token =
   | this
-  | IrLet => this token
-  | IrSetLocal => this token
-  | IrSetField => this token
-  | IrDestructure => this token
-  | IrExprStmt => this token
-  | IrReturn => this token
-  | IrWhile => this token
-  | IrThrow => this token
+  | IrLet | IrSetLocal | IrSetField | IrDestructure | IrExprStmt | IrReturn | IrWhile | IrThrow => this token
   |=> Token fake
 
 IrExpr cljExprToken -> Token =
   | this
-  | IrLiteralExpr => this token
-  | IrVarRef => this token
-  | IrThisRef => this token
-  | IrFieldGet => this token
-  | IrCall => this token
-  | IrLambda => this token
-  | IrBlockExpr => this token
-  | IrMatchExpr => this token
-  | IrNewExpr => this token
-  | IrCollectionLiteral => this token
-  | IrOpBin => this token
-  | IrTypeRefExpr => this token
+  | IrLiteralExpr | IrVarRef | IrThisRef | IrFieldGet | IrCall | IrLambda | IrBlockExpr | IrMatchExpr | IrNewExpr | IrCollectionLiteral | IrOpBin | IrTypeRefExpr => this token
   |=> Token fake
 
 IrExpr cljExprTypeRef -> IrTypeRef =
   | this
-  | IrLiteralExpr => this typeRef
-  | IrVarRef => this typeRef
-  | IrThisRef => this typeRef
-  | IrFieldGet => this typeRef
-  | IrCall => this typeRef
-  | IrLambda => this typeRef
-  | IrBlockExpr => this typeRef
-  | IrMatchExpr => this typeRef
-  | IrNewExpr => this typeRef
-  | IrCollectionLiteral => this typeRef
-  | IrOpBin => this typeRef
-  | IrTypeRefExpr => this typeRef
+  | IrLiteralExpr | IrVarRef | IrThisRef | IrFieldGet | IrCall | IrLambda | IrBlockExpr | IrMatchExpr | IrNewExpr | IrCollectionLiteral | IrOpBin | IrTypeRefExpr => this typeRef
   |=> IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Any" ownerPkg: "core" args: {} returnType: null isMut: false nullable: false errors: {}

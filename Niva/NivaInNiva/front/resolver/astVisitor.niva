@@ -258,9 +258,7 @@ TypeDeclVisitor
   validateUnionIncludes = [
     unionIncludes forEach: [rootId, includes ->
       rootTypeMaybe = db typesById at: rootId
-      | rootTypeMaybe
-      | null => []
-      |=> [
+      rootTypeMaybe ifNotNull: [rootTypeValue ->
         includes forEach: [inc ->
           includedId = inc x
           tok = inc y
@@ -268,8 +266,8 @@ TypeDeclVisitor
           | includedTypeMaybe
           | null => []
           |=> [
-            sameFieldsAs rootType: rootTypeMaybe includedType: includedTypeMaybe, ifFalse: [
-              msg = "Union include " + includedTypeMaybe name + " must have the same fields as " + rootTypeMaybe name
+            sameFieldsAs rootType: rootTypeValue includedType: includedTypeMaybe, ifFalse: [
+              msg = "Union include " + includedTypeMaybe name + " must have the same fields as " + rootTypeValue name
               db addErrorMessage: (LazyError tok: tok msg: msg)
             ]
           ]
@@ -422,9 +420,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
 MsgDeclVisitor processBodyes(pkg2Msg): Map(String, List(MessageDecl)) db::TyperDB = [
   pkg2Msg forEach: [pkgStr, msgList ->
     pkgMaybe = db packages at: pkgStr
-    pkg = | pkgMaybe
-      | null => TO DO: "Missing package $pkgStr"
-      |=> pkgMaybe
+    pkg = pkgMaybe expect: "Missing package $pkgStr"
 
     msgList forEach: [msgDecl ->
       receiverType = msgDecl receiver toNivaTypefromDB: db inPkg: null
@@ -551,7 +547,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   shouldInferSingleExprReturnType ifTrue: [
     methodsMaybe = db typeToMethodNameToMethod at: (receiverType toMangledName)
     | methodsMaybe
-    | null => []
+    | null => ()
     |=> [
       existingMethodMaybe = methodsMaybe at: name
       | existingMethodMaybe
@@ -603,7 +599,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
   (hasAnyReturnErrors not) && (isExternalBind not), ifTrue: [
     declaredReturnTypeMaybe = expectedReturnType
     | declaredReturnTypeMaybe
-    | null => []
+    | null => ()
     |=> [
       // generic return types are checked after method specialization,
       // when their concrete mapping is known
@@ -620,10 +616,8 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
 
   hasAnyReturnErrors ifTrue: [
     methodFromDbMaybe = methodFromDb
-    | methodFromDbMaybe
-    | null => []
-    |=> [
-      updatedMethod = methodFromDbMaybe copyWithDifferentReturnErrors: actualReturnErrors
+    methodFromDbMaybe ifNotNull: [methodFromDbValue ->
+      updatedMethod = methodFromDbValue copyWithDifferentReturnErrors: actualReturnErrors
       db replaceMethod: updatedMethod inType: updatedMethod receiverType
     ]
   ]

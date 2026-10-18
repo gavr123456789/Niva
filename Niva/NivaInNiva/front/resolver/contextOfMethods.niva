@@ -79,9 +79,7 @@ extend Context [
     mut p = parent
     [p != null] whileTrue: [
       parentMaybe = p
-      nonNullP = | parentMaybe
-        | null => TO DO: "Context parent disappeared during traversal"
-        |=> parentMaybe
+      nonNullP = parentMaybe expect: "Context parent disappeared during traversal"
       newLine = compute c: nonNullP
       result add: newLine
       p <- nonNullP parent

@@ -65,7 +65,7 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
 
   mapReturnGeneric = | collWithDiffferentGeneric
                      | ListT => collWithDiffferentGeneric t
-                     | SetT  => collWithDiffferentGeneric t
+                     | SetT => collWithDiffferentGeneric t
                      | MapT  => collWithDiffferentGeneric v
                      |=> [TO DO: "Compiler bug, collection type expected, got $collWithDiffferentGeneric"]
 

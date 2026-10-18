@@ -6,9 +6,7 @@ extend NivaType [
   ]
   on isNumericType -> Bool =
     | this unwrapNullable
-    | IntegerT => true
-    | FloatT => true
-    | DoubleT => true
+    | IntegerT | FloatT | DoubleT => true
     |=> false
   on isStringType -> Bool = this isCoreTypeNamed: "String"
   on isBoolType -> Bool = this isCoreTypeNamed: "Bool"

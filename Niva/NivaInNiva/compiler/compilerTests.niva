@@ -32,12 +32,10 @@ Test moduleCollisionNormalizationIsExplicit = [
   collision = inputs nivaInputCollisionError
   Assert that: (collision != null) equals: true
   collisionMaybe = collision
-  | collisionMaybe
-  | null => []
-  |=> [
-    Assert that: (collisionMaybe contains: "foo_bar") equals: true
-    Assert that: (collisionMaybe contains: "Foo-Bar.niva") equals: true
-    Assert that: (collisionMaybe contains: "foo_bar.niva") equals: true
+  collisionMaybe ifNotNull: [collisionValue ->
+    Assert that: (collisionValue contains: "foo_bar") equals: true
+    Assert that: (collisionValue contains: "Foo-Bar.niva") equals: true
+    Assert that: (collisionValue contains: "foo_bar.niva") equals: true
   ]
 ]
 
@@ -306,18 +304,12 @@ Test staleIncrementalCandidateCannotCommit = [
   afterStaleCommit = newest commit: staleCandidate
   Assert that: afterStaleCommit revision equals: newest revision
   snapshotMaybe = afterStaleCommit committedSnapshot
-  finalSnapshot = | snapshotMaybe
-    | null => TO DO: "Missing committed snapshot"
-    |=> snapshotMaybe
+  finalSnapshot = snapshotMaybe expect: "Missing committed snapshot"
   Assert that: finalSnapshot revision equals: 2
   newestMainMaybe = newest modules at: "main"
-  newestMain = | newestMainMaybe
-    | null => TO DO: "Missing newest main module"
-    |=> newestMainMaybe
+  newestMain = newestMainMaybe expect: "Missing newest main module"
   finalMainMaybe = afterStaleCommit modules at: "main"
-  finalMain = | finalMainMaybe
-    | null => TO DO: "Missing final main module"
-    |=> finalMainMaybe
+  finalMain = finalMainMaybe expect: "Missing final main module"
   Assert that: finalMain sourceHash equals: newestMain sourceHash
 ]
 
@@ -368,9 +360,7 @@ Test incrementalRemovalUpdatesBothGraphDirections = [
   Assert that: (candidate modules at: "service") equals: null
   Assert that: (candidate dependencies at: "service") equals: null
   modelDependantsMaybe = candidate reverseDependencies at: "model"
-  modelDependants = | modelDependantsMaybe
-    | null => TO DO: "Missing model dependants"
-    |=> modelDependantsMaybe
+  modelDependants = modelDependantsMaybe expect: "Missing model dependants"
   Assert that: modelDependants values count equals: 0
 ]
 
@@ -474,9 +464,7 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
   Assert that: good cancelled equals: false
   Assert that: good diagnostics count equals: 0
   candidateMaybe = good candidate
-  goodCandidate = | candidateMaybe
-    | null => TO DO: "Missing good candidate"
-    |=> candidateMaybe
+  goodCandidate = candidateMaybe expect: "Missing good candidate"
   committed = empty commit: goodCandidate
 
   failed = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
@@ -516,9 +504,7 @@ Test incompatibleReloadShapeRequiresHardRestart = [
   Assert that: (diagnostic message contains: "hard restart required") equals: true
   Assert that: (diagnostic message contains: "automatic state migration is not supported") equals: true
   manifestMaybe = committed cljManifest
-  manifest = | manifestMaybe
-    | null => TO DO: "Missing clojure manifest"
-    |=> manifestMaybe
+  manifest = manifestMaybe expect: "Missing clojure manifest"
   Assert that: (manifest canonical contains: "main/main_Person") equals: true
 ]
 
@@ -533,18 +519,14 @@ Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   Assert that: result requestVersion equals: 31
   Assert that: result diagnostics count equals: 0
   candidateMaybe = result candidate
-  candidate = | candidateMaybe
-    | null => TO DO: "Missing compile candidate"
-    |=> candidateMaybe
+  candidate = candidateMaybe expect: "Missing compile candidate"
   Assert that: candidate snapshot entryPoint equals: "app.main"
   Assert that: (candidate snapshot documentVersions at: "app.main") equals: 3
 
   committed = session commitResult: result
   Assert that: committed revision equals: 1
   committedSnapshotMaybe = committed committedSnapshot
-  committedSnapshot = | committedSnapshotMaybe
-    | null => TO DO: "Missing committed snapshot"
-    |=> committedSnapshotMaybe
+  committedSnapshot = committedSnapshotMaybe expect: "Missing committed snapshot"
   Assert that: committedSnapshot entryPoint equals: "app.main"
 
   cancelled = committed compileSnapshot: snapshot config: config requestVersion: 32 cancelled: true
@@ -587,24 +569,16 @@ Test compileSnapshotFlagSelectsPersistentOrCleanSession = [
   clean = committed compileSnapshot: changedSnapshot config: config
     requestVersion: 2 cancelled: false incremental: false
   incrementalCandidateMaybe = incremental candidate
-  incrementalCandidate = | incrementalCandidateMaybe
-    | null => TO DO: "Missing incremental candidate"
-    |=> incrementalCandidateMaybe
+  incrementalCandidate = incrementalCandidateMaybe expect: "Missing incremental candidate"
   cleanCandidateMaybe = clean candidate
-  cleanCandidate = | cleanCandidateMaybe
-    | null => TO DO: "Missing clean candidate"
-    |=> cleanCandidateMaybe
+  cleanCandidate = cleanCandidateMaybe expect: "Missing clean candidate"
 
   Assert that: incrementalCandidate bodyInvalidated equals: #( "person" )
   Assert that: cleanCandidate bodyInvalidated equals: #( "main" "person" )
   incrementalArtifactMaybe = incremental backendArtifact
-  incrementalArtifact = | incrementalArtifactMaybe
-    | null => TO DO: "Missing incremental backend artifact"
-    |=> incrementalArtifactMaybe
+  incrementalArtifact = incrementalArtifactMaybe expect: "Missing incremental backend artifact"
   cleanArtifactMaybe = clean backendArtifact
-  cleanArtifact = | cleanArtifactMaybe
-    | null => TO DO: "Missing clean backend artifact"
-    |=> cleanArtifactMaybe
+  cleanArtifact = cleanArtifactMaybe expect: "Missing clean backend artifact"
   Assert that: incrementalArtifact backend equals: cleanArtifact backend
   Assert that: incrementalArtifact target equals: cleanArtifact target
   Assert that: incrementalArtifact content equals: cleanArtifact content
@@ -646,15 +620,11 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
   initialResult = empty compileCandidate: (initialSources incrementalTestSnapshot: 1)
     interfaceSnapshot: initialInterface config: config requestVersion: 1 cancelled: false
   initialArtifactMaybe = initialResult backendArtifact
-  initialArtifact = | initialArtifactMaybe
-    | null => TO DO: "Missing initial backend artifact"
-    |=> initialArtifactMaybe
+  initialArtifact = initialArtifactMaybe expect: "Missing initial backend artifact"
   Assert that: initialArtifact content equals: initialCleanOutput
 
   initialCandidateMaybe = initialResult candidate
-  initialCandidate = | initialCandidateMaybe
-    | null => TO DO: "Missing initial candidate"
-    |=> initialCandidateMaybe
+  initialCandidate = initialCandidateMaybe expect: "Missing initial candidate"
   committed = empty commit: initialCandidate
   changedClean = ResolverHelper resolve: changedSources entryPoint: "main" backend: "clj"
   changedCleanOutput = CljBackend fullFromIrModule: changedClean toIrModule
@@ -663,20 +633,14 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
   changedResult = committed compileCandidate: (changedSources incrementalTestSnapshot: 2)
     interfaceSnapshot: changedInterface config: config requestVersion: 2 cancelled: false
   changedCandidateMaybe = changedResult candidate
-  changedCandidate = | changedCandidateMaybe
-    | null => TO DO: "Missing changed candidate"
-    |=> changedCandidateMaybe
+  changedCandidate = changedCandidateMaybe expect: "Missing changed candidate"
   changedArtifactMaybe = changedResult backendArtifact
-  changedArtifact = | changedArtifactMaybe
-    | null => TO DO: "Missing changed backend artifact"
-    |=> changedArtifactMaybe
+  changedArtifact = changedArtifactMaybe expect: "Missing changed backend artifact"
 
   Assert that: changedCandidate bodyInvalidated equals: #( "person" )
   Assert that: changedArtifact content equals: changedCleanOutput
   changedOutputMaybe = changedArtifact cljOutput
-  changedOutput = | changedOutputMaybe
-    | null => TO DO: "Missing changed clojure output"
-    |=> changedOutputMaybe
+  changedOutput = changedOutputMaybe expect: "Missing changed clojure output"
   cleanOutput = CljBackend fullOutputFromIrModule: (changedClean toIrModule)
     debug: false mode: CljEmitMode.Program
   Assert that: changedOutput files equals: cleanOutput files
@@ -762,11 +726,9 @@ Test cljEmptyProgramProducesLoadableEntryModule = [
   generated = output files at: "niva/generated/main.clj"
   Assert that: (generated != null) equals: true
   generatedMaybe = generated
-  | generatedMaybe
-  | null => []
-  |=> [
-    Assert that: (generatedMaybe contains: "(ns niva.generated.main)") equals: true
-    Assert that: (generatedMaybe contains: "(defn __niva_entry!") equals: true
+  generatedMaybe ifNotNull: [generatedValue ->
+    Assert that: (generatedValue contains: "(ns niva.generated.main)") equals: true
+    Assert that: (generatedValue contains: "(defn __niva_entry!") equals: true
   ]
   Assert that: (output manifest edn contains: "\"main\"") equals: true
 ]

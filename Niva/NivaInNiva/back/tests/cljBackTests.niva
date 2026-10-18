@@ -23,13 +23,9 @@ Test cljPackageOutputUsesStableNamespacesAndPaths = [
   Assert that: output files count equals: 2
   Assert that: output entryNamespace equals: "niva.generated.main"
   modelMaybe = output files at: "niva/generated/model.clj"
-  model = | modelMaybe
-    | null => TO DO: "Missing generated model"
-    |=> modelMaybe
+  model = modelMaybe expect: "Missing generated model"
   mainMaybe = output files at: "niva/generated/main.clj"
-  main = | mainMaybe
-    | null => TO DO: "Missing generated main"
-    |=> mainMaybe
+  main = mainMaybe expect: "Missing generated main"
   model contains: "(ns niva.generated.model)", assertTrue
   Assert that: (model contains: ":gen-class") equals: false
   main contains: "(ns niva.generated.main (:gen-class) (:require [niva.generated.model]))", assertTrue
@@ -56,9 +52,7 @@ Test cljBabashkaTargetRunsGeneratedProgram = [
     io writeFile file: destination content: content
   ]
   mainMaybe = output files at: "niva/generated/main.clj"
-  main = | mainMaybe
-    | null => TO DO: "Missing generated main"
-    |=> mainMaybe
+  main = mainMaybe expect: "Missing generated main"
   io writeFile file: root + "/main.clj" content: output legacyMainShim
   io writeFile file: root + "/deps.edn" content: "{:paths [\"generated\" \".\"]}\n"
 
@@ -150,9 +144,7 @@ Test cljPackageOutputQualifiesUnionBranches = [
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
   mainMaybe = output files at: "niva/generated/main.clj"
-  main = | mainMaybe
-    | null => TO DO: "Missing generated main"
-    |=> mainMaybe
+  main = mainMaybe expect: "Missing generated main"
 
   main contains: "niva.generated.model/->model_Circle", assertTrue
   main contains: "niva.generated.model/model_Circle", assertTrue
@@ -188,13 +180,9 @@ Test cljPackageOutputQualifiesErrorBranches = [
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
   modelMaybe = output files at: "niva/generated/model.clj"
-  model = | modelMaybe
-    | null => TO DO: "Missing generated model"
-    |=> modelMaybe
+  model = modelMaybe expect: "Missing generated model"
   mainMaybe = output files at: "niva/generated/main.clj"
-  main = | mainMaybe
-    | null => TO DO: "Missing generated main"
-    |=> mainMaybe
+  main = mainMaybe expect: "Missing generated main"
 
   model contains: "(->model_Missing 404)", assertTrue
   main contains: "niva.generated.model/model_Missing", assertTrue
@@ -211,13 +199,9 @@ Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
   modelMaybe = output files at: "niva/generated/model.clj"
-  model = | modelMaybe
-    | null => TO DO: "Missing generated model"
-    |=> modelMaybe
+  model = modelMaybe expect: "Missing generated model"
   mainMaybe = output files at: "niva/generated/main.clj"
-  main = | mainMaybe
-    | null => TO DO: "Missing generated main"
-    |=> mainMaybe
+  main = mainMaybe expect: "Missing generated main"
 
   model contains: "(:require [clojure.string]", assertTrue
   model contains: "(clojure.string/upper-case this)", assertTrue

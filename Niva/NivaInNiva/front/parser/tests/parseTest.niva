@@ -50,9 +50,7 @@ Test varDeclarationWithAstType  = [
   | vardecl
   | VarDeclaration => [
     astTypeMaybe = vardecl astType
-    astType = | astTypeMaybe
-      | null => TO DO: "Missing variable type"
-      |=> astTypeMaybe
+    astType = astTypeMaybe expect: "Missing variable type"
     Assert that: astType name equals: "Int"
     Assert that: vardecl name equals: "x"
   ]
@@ -92,9 +90,7 @@ Test parseNumber = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   intExprMaybe = parser literalExprFrom: tokens first
-  intExpr = | intExprMaybe
-    | null => TO DO: "Missing integer expression"
-    |=> intExprMaybe
+  intExpr = intExprMaybe expect: "Missing integer expression"
   | intExpr
   | IntExpr =>
     Assert
@@ -112,9 +108,7 @@ Test parseNumberWithUnderscore = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   intExprMaybe = parser literalExprFrom: tokens first
-  intExpr = | intExprMaybe
-    | null => TO DO: "Missing integer expression"
-    |=> intExprMaybe
+  intExpr = intExprMaybe expect: "Missing integer expression"
   | intExpr
   | IntExpr =>
     Assert
@@ -128,9 +122,7 @@ Test parseString = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   stringExprMaybe = parser literalExprFrom: tokens first
-  stringExpr = | stringExprMaybe
-    | null => TO DO: "Missing string expression"
-    |=> stringExprMaybe
+  stringExpr = stringExprMaybe expect: "Missing string expression"
   | stringExpr
   | StringExpr =>
     Assert
@@ -203,9 +195,7 @@ Test parseAstTypeErrorAny = [
 
   | astType | AstType => [
     errorsMaybe = astType errors
-    errors = | errorsMaybe
-      | null => TO DO: "Missing type errors"
-      |=> errorsMaybe
+    errors = errorsMaybe expect: "Missing type errors"
     Assert that: errors kind equals: AstTypeErrorsKind.Any
     Assert that: errors names count equals: 0
   ] |=> [TO DO: "It should be AstType, but it " + astType toString]
@@ -223,9 +213,7 @@ Test parseAstTypeErrorSingle = [
 
   | astType | AstType => [
     errorsMaybe = astType errors
-    errors = | errorsMaybe
-      | null => TO DO: "Missing type errors"
-      |=> errorsMaybe
+    errors = errorsMaybe expect: "Missing type errors"
     Assert that: errors kind equals: AstTypeErrorsKind.Single
     Assert that: errors names count equals: 1
     Assert that: errors names first equals: "OutOfMemory"
@@ -244,9 +232,7 @@ Test parseAstTypeErrorList = [
 
   | astType | AstType => [
     errorsMaybe = astType errors
-    errors = | errorsMaybe
-      | null => TO DO: "Missing type errors"
-      |=> errorsMaybe
+    errors = errorsMaybe expect: "Missing type errors"
     Assert that: errors kind equals: AstTypeErrorsKind.List
     Assert that: errors names count equals: 3
     Assert that: (errors names at: 0) equals: "Error1"

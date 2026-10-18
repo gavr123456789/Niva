@@ -14,8 +14,7 @@ extend NivaType [
 
   on isIrBuiltin -> Bool = [
     ^ | this
-      | UnresolvedGenericT => false
-      | FuntionT => false
+      | UnresolvedGenericT | FuntionT => false
       | NullableT => [
         nullableInner = this unwrapNullable
         nullableInner isIrBuiltin
@@ -180,23 +179,17 @@ extend MessageDecl [
     | explicitGoName
       | null => [
         tmplMaybe = this bindEmitTemplate
-        | tmplMaybe
-        | null => []
-        |=> [
+        tmplMaybe ifNotNull: [tmplValue ->
           explicitGoPkgMaybe = explicitGoPkg
-          goPkg = | explicitGoPkgMaybe
-            | null => pkg
-            |=> explicitGoPkgMaybe
-          bindPlanResult <- IrBindEmit template: tmplMaybe goPkg: goPkg
+          goPkg = explicitGoPkgMaybe orElse: pkg
+          bindPlanResult <- IrBindEmit template: tmplValue goPkg: goPkg
             isGoSpecific: (explicitGoPkgMaybe != null)
           ()
         ]
       ]
       |=> [
       explicitGoPkgMaybe = explicitGoPkg
-      goPkg = | explicitGoPkgMaybe
-        | null => pkg
-        |=> explicitGoPkgMaybe
+      goPkg = explicitGoPkgMaybe orElse: pkg
       bindPlanResult <- IrBindByName goPkg: goPkg goName: explicitGoName isStatic: isConstructor
           isGoNameExplicit: true
       ()
@@ -249,11 +242,9 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
             found == null ifTrue: [
               m = getMethodFromType t: t
               mMaybe::NivaMethod? = m
-              | mMaybe
-              | null => []
-              |=> [
-                declOnly ifTrue: [(mMaybe decl) != null ifTrue: [found <- mMaybe]]
-                declOnly ifFalse: [found <- mMaybe]
+              mMaybe ifNotNull: [mMaybeValue ->
+                declOnly ifTrue: [(mMaybeValue decl) != null ifTrue: [found <- mMaybeValue]]
+                declOnly ifFalse: [found <- mMaybeValue]
                 ()
               ]
             ]
@@ -275,9 +266,7 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
       ]
 
       ownerMethodMaybe = ownerMethod
-      ownerMethodVal = | ownerMethodMaybe
-        | null => this
-        |=> ownerMethodMaybe
+      ownerMethodVal = ownerMethodMaybe orElse: this
       ^ ownerMethodVal toIrFunctionId
     ]
     |=> [
@@ -366,10 +355,7 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
         ]
     ]
     | ExprInBracketsT => value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
-    | VarDeclarationT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
-    | AssignT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
-    | DestructingAssignT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
-    | ReturnStatementT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
+    | VarDeclarationT | AssignT | DestructingAssignT | ReturnStatementT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
     | CollectionLiteralT => [
       items = elements v map: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
       kind = | exprToken kind
@@ -651,7 +637,7 @@ MessageSendT toIrInlineIterationWithLambda(callback): IrLambda db: TyperDB curre
   callbackStatements addAll: (callback body stmts)
   callbackResult = callback body result
   | callbackResult
-  | null => []
+  | null => ()
   |=> [
     resultStmt::IrStmt = IrExprStmt token: token expr: callbackResult
     callbackStatements add: resultStmt
@@ -784,16 +770,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
     ]
 
     cases::mut List::IrMatchCase = {}!
-    | trueCase
-    | null => []
-    |=> [
-      cases add: trueCase
+    trueCase ifNotNull: [trueCaseValue ->
+      cases add: trueCaseValue
       ()
     ]
-    | falseCase
-    | null => []
-    |=> [
-      cases add: falseCase
+    falseCase ifNotNull: [falseCaseValue ->
+      cases add: falseCaseValue
       ()
     ]
 
@@ -826,7 +808,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
     whileStmt = this toIrWhileStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
     whileStmtMaybe = whileStmt
     | whileStmtMaybe
-    | null => []
+    | null => ()
     |=> [
       block = IrBlock stmts: {whileStmtMaybe} result: null resultType: exprType
       result <- IrBlockExpr typeRef: exprType token: token block: block
@@ -1073,7 +1055,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
     ifFalse: [db typeToMethodNameToMethod at: (receiverType toMangledName)]
 
   | methodsMaybe
-  | null => []
+  | null => ()
   |=> [
     methodMaybe = methodsMaybe at: name
     | methodMaybe
@@ -1101,7 +1083,7 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
   isConstructor ifFalse: [
     aliasFieldsMaybe = aliasFields
     | aliasFieldsMaybe
-    | null => []
+    | null => ()
     |=> [
       aliasFieldsMaybe forEach: [field ->
         argShadowsField = args any: [arg -> arg name == field name]
@@ -1290,8 +1272,8 @@ TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap
     receiver collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
     argExprs forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
   ]
-  | VarDeclarationT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
-  | AssignT =>            value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | VarDeclarationT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | AssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
   | DestructingAssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
   | ReturnStatementT => [
     valueMaybe = value
@@ -1466,9 +1448,7 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   // preserve per-pkg imports and membership
   fileToStatements forEach: [file, statements ->
     pkgMaybe = packages at: file
-    pkg = | pkgMaybe
-      | null => TO DO: "Missing IR package $file"
-      |=> pkgMaybe
+    pkg = pkgMaybe expect: "Missing IR package $file"
     pkgImports = (pkg imports toList map: [IrImport name: it kind: IrImportKind.Local]) +
       (pkg packageImports toList map: [IrImport name: it kind: IrImportKind.Package])
 

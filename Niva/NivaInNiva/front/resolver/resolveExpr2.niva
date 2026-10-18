@@ -322,10 +322,8 @@ extend TyperDB [
           leaves forEach: [leafId ->
             leafType = typesById at: leafId
             leafTypeMaybe = leafType
-            | leafTypeMaybe
-            | null => []
-            |=> [
-              this isAssignable: leafTypeMaybe toExpected: branchType, ifTrue: [
+            leafTypeMaybe ifNotNull: [leafTypeValue ->
+              this isAssignable: leafTypeValue toExpected: branchType, ifTrue: [
                 checked add: leafId
               ]
             ]
@@ -605,9 +603,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       db addErrorMessage: (ErrorWrongArgCount tok: this token msg: "Number of arguments for Map should be even")
     ]
     this elements unTypedBody isEmpty ifTrue: [
-      mapType = | expectedMap
-        | null => TO DO: "Can't infer type of the Map collection without elements at " + token file path + ":" + token line toString
-        |=> expectedMap
+      mapType = expectedMap expect: "Can't infer type of the Map collection without elements at " + token file path + ":" + token line toString
       typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
       db addCollectionInstantiationIfAbsent: mapType
       ^ MapLiteralT
@@ -662,10 +658,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                     | null => first sameTypeAsMany: (keyTypes drop: 1)
                     |=> null
     wrongKeyIndexMaybe = wrongKeyIndex
-    | wrongKeyIndexMaybe
-    | null => []
-    |=> [
-      wrongElement = elems at: (wrongKeyIndexMaybe * 2 + 2)
+    wrongKeyIndexMaybe ifNotNull: [wrongKeyIndexValue ->
+      wrongElement = elems at: (wrongKeyIndexValue * 2 + 2)
       db addErrorMessage: (ErrorWrongArgType tok: this token
                             msg: "Wrong type of $wrongElement element, $first key type expected")
     ]
@@ -674,10 +668,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                       | null => second sameTypeAsMany: (valueTypes drop: 1)
                       |=> null
     wrongValueIndexMaybe = wrongValueIndex
-    | wrongValueIndexMaybe
-    | null => []
-    |=> [
-      wrongElement = elems at: (wrongValueIndexMaybe * 2 + 3)
+    wrongValueIndexMaybe ifNotNull: [wrongValueIndexValue ->
+      wrongElement = elems at: (wrongValueIndexValue * 2 + 3)
       db addErrorMessage: (ErrorWrongArgType tok: this token
                             msg: "Wrong type of $wrongElement element, $second value type expected")
     ]
@@ -758,10 +750,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       | null => f sameTypeAsMany: (typesOfElems drop: 1)
       |=> null
     wrongElementIndex = numberOfWrongElementType
-    | wrongElementIndex
-    | null => []
-    |=> [
-      wrongElement = elems at: wrongElementIndex
+    wrongElementIndex ifNotNull: [wrongElementIndexValue ->
+      wrongElement = elems at: wrongElementIndexValue
       db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wrong type of $wrongElement element, $f type expected")
     ]
 
@@ -816,7 +806,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     mut declaredTypeInfo::TypeInfo? = null
     declaredAstTypeMaybe = this astType
     | declaredAstTypeMaybe
-    | null => []
+    | null => ()
     |=> [
       nivaType = declaredAstTypeMaybe toNivaTypefromDB: db inPkg: null
       declaredType <- nivaType
@@ -827,7 +817,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     declaredTypeMaybe = declaredType
     | declaredTypeMaybe
-    | null => []
+    | null => ()
     |=> [
       db isAssignable: typedExpr typeInfo t toExpected: declaredTypeMaybe,
         ifFalse: [
@@ -924,7 +914,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     c allowsNonLocalReturn ifTrue: [
       outerReturnTypeMaybe = c currentReturnType
       | outerReturnTypeMaybe
-      | null => []
+      | null => ()
       |=> [
         returnValueType = | valueT
           | null => db dtc unit
@@ -1089,10 +1079,33 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         |=> false
 
       conditionTypeInfo = conditionT typeInfo
+      // alternatives of this branch share one body so they are resolved
+      // before the subject is narrowed, they all match the original subject
+      conditionsT = br additionalConditions resolveBody2: db withContext: contextIfThisMatching
+      patternsTypeInfo::mut List(TypeInfo) = {conditionTypeInfo}!
+      conditionsT v forEach: [it -> patternsTypeInfo add: (it typeInfo)]
       mut narrowedTypeInfo = conditionTypeInfo
+      mut subjectTypeInfo = conditionTypeInfo
       (isTypeBranch && (isErrorMatch not)) ifTrue: [
         conditionType = conditionTypeInfo t
-        | conditionType
+        // many patterns on one line narrow the subject to the first common
+        // ancestor of all of them, not to the first pattern
+        mut narrowedSubjectType = conditionType
+        (patternsTypeInfo count > 1) ifTrue: [
+          patternsTypeTs = patternsTypeInfo map: [it t]
+          ancestorMaybe = db findFirstCommonUnionAncestor: patternsTypeTs
+          | ancestorMaybe
+          | null => [
+            names = patternsTypeTs joinWith: ", " transform: [it name]
+            db addErrorMessage: (LazyError tok: br condition token msg: ("Cant find common ancestor of " + names))
+          ]
+          |=> [
+            ancestorType::NivaType = ancestorMaybe
+            narrowedSubjectType <- ancestorType
+          ]
+        ]
+        narrowedFrom = narrowedSubjectType
+        | narrowedFrom
         | TypeT => [
           | subjectType
           | TypeT => [
@@ -1102,9 +1115,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
               conditionType collectGenericMappingsFrom: subjectType into: letterToType db: db
             ] ifFalse: [
               parentMaybe = db findUnionParent: subjectType
-              genericSource = | parentMaybe
-                | null => subjectType
-                |=> parentMaybe
+              genericSource = parentMaybe orElse: subjectType
               ((genericSource genericArgs count) == (subjectType genericArgs count)) ifTrue: [
                 genericSource genericArgs forEachIndexed: [i, g ->
                   letterToType at: g name put: (subjectType genericArgs at: i)
@@ -1114,11 +1125,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             (letterToType count > 0) ifTrue: [
               narrowed = conditionType replaceGenericsFromTableDeep: letterToType db: db
               narrowedTypeInfo <- TypeInfo t: narrowed isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+              narrowedSubjectType <- narrowedFrom replaceGenericsFromTableDeep: letterToType db: db
             ]
           ]
           |=> []
         ]
         |=> []
+        (narrowedSubjectType sameTypeAs: conditionType) ifFalse: [
+          subjectTypeInfo <- TypeInfo t: narrowedSubjectType isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+        ]
       ]
       conditionForBranch =
         (isTypeBranch && (isErrorMatch not))
@@ -1143,12 +1158,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             | subjectT
             | IdentifierT => [
               (subjectT isNameOfTheType || (subjectT name == "this")) ifFalse: [
-                newC defineVar: subjectT name withType: narrowedTypeInfo
+                newC defineVar: subjectT name withType: subjectTypeInfo
               ]
             ]
             |=> []
             isMatchingOnThis ifTrue: [
-              newC defineVar: "this" withType: narrowedTypeInfo
+              newC defineVar: "this" withType: subjectTypeInfo
             ]
             newC
           ]
@@ -1163,8 +1178,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ]
           ifFalse: [contextWithNarrowedSubject]
 
-      conditionsT = br additionalConditions resolveBody2: db withContext: contextWithNarrowedSubject
-
       bodyT = br body resolveBody2: db withContext: contextForBody expectedType: expectedType
       returnTypes add: bodyT t
 
@@ -1174,10 +1187,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ]
 
     elseBranchTMaybe = elseBranchT
-    | elseBranchTMaybe
-    | null => []
-    |=> [
-      returnTypes add: elseBranchTMaybe t
+    elseBranchTMaybe ifNotNull: [elseBranchTValue ->
+      returnTypes add: elseBranchTValue t
       ()
     ]
 

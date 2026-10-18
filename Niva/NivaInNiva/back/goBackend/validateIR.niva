@@ -1,14 +1,12 @@
 IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goErrors: mut List(GoIrError) -> Unit = [
   typeRef validateGoTypeRefs: knownTypeIds goErrors: goErrors
   | this
-  | IrVarRef      => []
-  | IrLiteralExpr => []
-  | IrThisRef     => []
+  | IrVarRef | IrLiteralExpr | IrThisRef => []
   | IrFieldGet    => [receiver validateGoIrExpr: knownFuncIds knownTypeIds: knownTypeIds goErrors: goErrors]
   | IrCall        => [
       bindMaybe = bind
       | bindMaybe
-      | null => []
+      | null => ()
       |=> [
         | bindMaybe
         | IrBindEmit => [
@@ -72,7 +70,7 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
       ]
       constructorBindMaybe = constructorBind
       | constructorBindMaybe
-      | null => []
+      | null => ()
       |=> [
         | constructorBindMaybe
         | IrConstructorBindEmit => [

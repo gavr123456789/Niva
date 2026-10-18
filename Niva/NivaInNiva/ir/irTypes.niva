@@ -164,9 +164,7 @@ union IrExpr typeRef: IrTypeRef token: Token =
 
 IrCall msgNameOrEmpty -> String = [
   n = this msgName
-  ^ | n
-    | null => ""
-    |=> n
+  ^ n orElse: ""
 ]
 
 type IrPackage

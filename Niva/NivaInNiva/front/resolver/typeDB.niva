@@ -165,9 +165,7 @@ constructor TyperDB new -> TyperDB = [
     bindMeta: BindMeta new
 
   echoMethodMaybe = anyProtocol at: "echo"
-  echoMethod = | echoMethodMaybe
-    | null => TO DO: "Missing echo method from the Any protocol"
-    |=> echoMethodMaybe
+  echoMethod = echoMethodMaybe expect: "Missing echo method from the Any protocol"
   db registerGenericReceiverMethod: echoMethod forType: echoMethod receiverType
   ^db
 
@@ -198,7 +196,12 @@ NivaType toFakeAstType -> AstType2 = [
     ]
     |=> {}
 
-  ^ AstType tok: (Token fake) name: astName
+  // lambda types need a lambda ast or the fake name cannot be resolved
+  ^ | nivaType
+    | FuntionT => AstLambdaType tok: (Token fake) name: name
+        args: (nivaType fields map: [it typeT toFakeAstType])
+        returnType: (nivaType returnType toFakeAstType)
+    |=> AstType tok: (Token fake) name: astName
       isNullable: this isNullableType
       genericParams: genericParams
       isMut: false errors: null
@@ -472,10 +475,8 @@ extend TyperDB [
         branchId = branchIds at: index
         index <- index inc
         branchType = typesById at: branchId
-        | branchType
-        | null => []
-        |=> [
-          field = branchType findField: fieldName
+        branchType ifNotNull: [branchTypeValue ->
+          field = branchTypeValue findField: fieldName
           field != null ifTrue: [found <- field]
         ]
       ]
@@ -532,12 +533,10 @@ extend TyperDB [
       ]
 
     declMaybe = m decl
-    | declMaybe
-    | null => []
-    |=> [
-      existing = declToMethod at: (declMaybe messageDeclKey)
+    declMaybe ifNotNull: [declValue ->
+      existing = declToMethod at: (declValue messageDeclKey)
       | existing
-      | null => declToMethod at: (declMaybe messageDeclKey) put: m
+      | null => declToMethod at: (declValue messageDeclKey) put: m
       |=> []
     ]
   ]
@@ -589,7 +588,7 @@ extend TyperDB [
         mapping = this matchGenericReceiver: candidate receiverPattern actual: forType
         mappingMaybe = mapping
         | mappingMaybe
-        | null => []
+        | null => ()
         |=> [
           resolvedGenerics::mut Map(String, NivaType) = #{}!
           mappingMaybe forEach: [k, v -> resolvedGenerics at: k put: v]
@@ -619,9 +618,7 @@ extend TyperDB [
                 | null => null
                 |=> [
                   candidatePkgMaybe = packages at: candidate pkgName
-                  candidatePkg = | candidatePkgMaybe
-                    | null => TO DO: "Missing package for generic method"
-                    |=> candidatePkgMaybe
+                  candidatePkg = candidatePkgMaybe expect: "Missing package for generic method"
                   methodDeclMaybe resolveBodyWithDb: this
                     pkg: candidatePkg
                     extraTypes: resolvedGenerics
@@ -670,9 +667,7 @@ extend TyperDB [
               isSingleExpr: originalDeclMaybe isSingleExpr
               isConstructor: originalDeclMaybe isConstructor
             specializedPkgMaybe = packages at: specializedWithActualReceiver pkgName
-            specializedPkg = | specializedPkgMaybe
-              | null => TO DO: "Missing package for specialized method"
-              |=> specializedPkgMaybe
+            specializedPkg = specializedPkgMaybe expect: "Missing package for specialized method"
             newDecl resolveBodyWithDb: this
               pkg: specializedPkg
               extraTypes: resolvedGenerics
@@ -733,12 +728,10 @@ extend TyperDB [
     x at: m name put: m
 
     declMaybe = m decl
-    | declMaybe
-    | null => []
-    |=> [
-      existing = declToMethod at: (declMaybe messageDeclKey)
+    declMaybe ifNotNull: [declValue ->
+      existing = declToMethod at: (declValue messageDeclKey)
       | existing
-      | null => declToMethod at: (declMaybe messageDeclKey) put: m
+      | null => declToMethod at: (declValue messageDeclKey) put: m
       |=> []
     ]
 
@@ -885,7 +878,7 @@ extend TyperDB [
     baseNivaType::NivaType = baseType
     methodsOfGeneric = this typeToMethodNameToMethod at: (baseNivaType toMangledName)
     | methodsOfGeneric
-    | null => []
+    | null => ()
     |=> [
        methodsOfGeneric values forEach: [ m ->
           newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
@@ -896,7 +889,7 @@ extend TyperDB [
     // copy constructors
     constructorsOfGeneric = this constructorsTypeToMethodNameToMethod at: (baseNivaType toMangledName)
     | constructorsOfGeneric
-    | null => []
+    | null => ()
     |=> [
        constructorsOfGeneric values forEach: [ m ->
           newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
@@ -981,14 +974,15 @@ extend TyperDB [
     ^ | byInnerTypeMaybe
       | null => null
       |=> [
-      nullableMethod = byInnerTypeMaybe at: (this nullableMethodKeyFor: innerType)
-      | nullableMethod
-      | null => []
-      |=> [
-        nullableMethod receiverType unwrapNullable sameTypeStrictAs: innerType, ifTrue: [^ nullableMethod]
-      ]
-
-      byInnerTypeMaybe at: "?"
+        nullableMethod = byInnerTypeMaybe at: (this nullableMethodKeyFor: innerType)
+        // a non local return inside a nested block is lost by the go backend
+        // so the branches are selected by matching here
+        isSameInnerType = | nullableMethod
+          | null => false
+          |=> nullableMethod receiverType unwrapNullable sameTypeStrictAs: innerType
+        | isSameInnerType
+        | true => nullableMethod
+        |=> byInnerTypeMaybe at: "?"
       ]
   ]
 
@@ -1048,17 +1042,13 @@ extend TyperDB [
         |=> this findMethodOnNullable: name inner: nullableInner
       nullableMethod != null ifTrue: [
         nullableMethodMaybe = nullableMethod
-        resolvedNullableMethod = | nullableMethodMaybe
-          | null => TO DO: "Nullable method disappeared during lookup"
-          |=> nullableMethodMaybe
+        resolvedNullableMethod = nullableMethodMaybe expect: "Nullable method disappeared during lookup"
         ^ resolvedNullableMethod
       ]
       genericMethod = this findGenericReceiverMethod: name forType: lookupType
       genericMethod != null ifTrue: [
         genericMethodMaybe = genericMethod
-        resolvedGenericMethod = | genericMethodMaybe
-          | null => TO DO: "Generic method disappeared during lookup"
-          |=> genericMethodMaybe
+        resolvedGenericMethod = genericMethodMaybe expect: "Generic method disappeared during lookup"
         ^ resolvedGenericMethod
       ]
       ^ null
@@ -1070,18 +1060,14 @@ extend TyperDB [
       genericMethod = this findGenericReceiverMethod: name forType: lookupType
       genericMethod != null ifTrue: [
         genericMethodMaybe = genericMethod
-        resolvedGenericMethod = | genericMethodMaybe
-          | null => TO DO: "Generic method disappeared during lookup"
-          |=> genericMethodMaybe
+        resolvedGenericMethod = genericMethodMaybe expect: "Generic method disappeared during lookup"
         ^ resolvedGenericMethod
       ]
       // method body of a generic receiver is resolved before the receiver type is specialized, in that phase a lambda
       // argument can have the unresolved type T like a + a inside `List(Int) reduce: [a b -> a + b]`
       // T is not a concrete key in typeToMethodNameToMethod so we let the caller continue with the Any protocol instead of reporting a missing type
       | lookupType
-      | NullableT => [^ null]
-      | UnresolvedGenericT => [^ null]
-      | NothingT => [^ null]
+      | NullableT | UnresolvedGenericT | NothingT => [^ null]
       |=> [
         TO DO: "cant find type " + lookupType toString + " while looking up method " + name + " at " + receiver token toPosition
       ]
@@ -1090,8 +1076,7 @@ extend TyperDB [
 
     y::mut Map(String, NivaMethod) = | x
       | null => | lookupType
-        | UnresolvedGenericT => #{}!
-        | NothingT => #{}!
+        | UnresolvedGenericT | NothingT => #{}!
         |=> [
           TO DO: "missing method table for " + lookupType toString + " while looking up " + name + " at " + receiver token toPosition
           #{}!
@@ -1197,16 +1182,12 @@ extend TyperDB [
     tryMethod = this findTryMethod: receiver byName: name
     tryMethod != null ifTrue: [
       tryMethodMaybe = tryMethod
-      resolvedTryMethod = | tryMethodMaybe
-        | null => TO DO: "Try method disappeared during lookup"
-        |=> tryMethodMaybe
+      resolvedTryMethod = tryMethodMaybe expect: "Try method disappeared during lookup"
       ^ resolvedTryMethod
     ]
     name == "try" ifTrue: [
       recoveryMethodMaybe = this findMethodInAllProtocols: "toString" forType: dtc any receiver: receiver
-      recoveryMethod = | recoveryMethodMaybe
-        | null => TO DO: "Missing toString method for error recovery"
-        |=> recoveryMethodMaybe
+      recoveryMethod = recoveryMethodMaybe expect: "Missing toString method for error recovery"
       ^ recoveryMethod
     ]
     receiverHasErrors = receiver typeInfo listOfErrors isNotEmpty
@@ -1224,9 +1205,7 @@ extend TyperDB [
 
           whileTrueProto = NivaProtocol whileTrueFromDefaultTypes: dtc
           whileTrueMethodMaybe = whileTrueProto at: "whileTrue"
-          whileTrueMethod = | whileTrueMethodMaybe
-            | null => TO DO: "Missing whileTrue protocol method"
-            |=> whileTrueMethodMaybe
+          whileTrueMethod = whileTrueMethodMaybe expect: "Missing whileTrue protocol method"
           bodyArgType = whileTrueMethod args first typeT
 
           (NivaMethod singleArgKw: "whileTrue" receiverType: receiverType argT: bodyArgType returnT: unit) markedInline
@@ -1241,25 +1220,19 @@ extend TyperDB [
       |=> null
     ]
     functionMethodMaybe != null ifTrue: [
-      functionMethod = | functionMethodMaybe
-        | null => TO DO: "Function method disappeared during lookup"
-        |=> functionMethodMaybe
+      functionMethod = functionMethodMaybe expect: "Function method disappeared during lookup"
       ^ functionMethod
     ]
     lookupType = (receiverHasErrors && receiver isIdentifierConstructor not)
       ifTrue: [dtc any]
       ifFalse: [receiverType]
     pkgMaybe = packages at: lookupType pkgName
-    pkg = | pkgMaybe
-      | null => TO DO: "Missing package for type $lookupType"
-      |=> pkgMaybe
+    pkg = pkgMaybe expect: "Missing package for type $lookupType"
 
     methodMaybe = this findMethodInAllProtocols: name forType: lookupType receiver: receiver
     unionFieldGetterMaybe = this findUnionFieldGetter: name receiver: receiver
     unionFieldGetterMaybe != null ifTrue: [
-      unionFieldGetter = | unionFieldGetterMaybe
-        | null => TO DO: "Union field getter disappeared during lookup"
-        |=> unionFieldGetterMaybe
+      unionFieldGetter = unionFieldGetterMaybe expect: "Union field getter disappeared during lookup"
       ^ unionFieldGetter
     ]
     method =
@@ -1298,9 +1271,7 @@ extend TyperDB [
         declMaybe == null ifTrue: [
           TO DO: "Compiler bug, only single expr methods can have Unknown method, and they should have decl defined"
         ]
-        nonNullDecl::MessageDecl = | declMaybe
-          | null => TO DO: "Expected a declaration for an inferred method"
-          |=> declMaybe
+        nonNullDecl::MessageDecl = declMaybe expect: "Expected a declaration for an inferred method"
         Assert that: nonNullDecl isSingleExpr equals: true
 
         typedBody = nonNullDecl resolveBodyWithDb: this pkg: pkg extraTypes: #{}!
@@ -1359,7 +1330,7 @@ extend TyperDB [
         packages values forEach: [pkg ->
           packageType = pkg types at: typeName
           | packageType
-          | null => []
+          | null => ()
           |=> [
             alreadyAdded = packageMatches any: [it toMangledName == packageType toMangledName]
             alreadyAdded ifFalse: [packageMatches add: packageType]
@@ -1715,7 +1686,7 @@ ResolverLookupEnvironment findByTypeName(typeName): String inPkg(pkgName): Strin
           packages values forEach: [pkg ->
             packageType = pkg types at: typeName
             | packageType
-            | null => []
+            | null => ()
             |=> [
               alreadyAdded = packageMatches any: [it toMangledName == packageType toMangledName]
               alreadyAdded ifFalse: [packageMatches add: packageType]
@@ -1866,10 +1837,8 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
     file = source moduleId
     content = source content
     pkgNameMaybe = file parseBindFileName
-    | pkgNameMaybe
-    | null => []
-    |=> [
-      pkgName = pkgNameMaybe
+    pkgNameMaybe ifNotNull: [pkgNameValue ->
+      pkgName = pkgNameValue
       db addBindFile: file pkgName: pkgName
       sourceFile = SourceFile path: source path
       tokens = Lexer get-tokens: content file: sourceFile
@@ -1885,8 +1854,8 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
           | it
           | MessageDecl => db markBindMessageDecl: it
           | ExtendDecl  => it messages forEach: [db markBindMessageDecl: it]
-          | TypeDecl    => db markBindTypeId: (pkgName + "_" + it name)
-          | UnionDecl   => db markBindTypeId: (pkgName + "_" + it name)
+          | TypeDecl => db markBindTypeId: (pkgName + "_" + it name)
+          | UnionDecl => db markBindTypeId: (pkgName + "_" + it name)
           |=> []
         ]
       ]
@@ -2062,9 +2031,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
   entryExprsTyped = typedMain v
   mutableStatements forEach: [file, statements ->
     pkgMaybe = db packages at: file
-    pkg = | pkgMaybe
-      | null => TO DO: "Missing package $file during body resolution"
-      |=> pkgMaybe
+    pkg = pkgMaybe expect: "Missing package $file during body resolution"
     isEntryPointFile = file == entryPoint
     mut entryExprIndex = 0
     typedList::mut List::TypedStatement = {}!

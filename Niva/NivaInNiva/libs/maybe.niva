@@ -1,0 +1,17 @@
+T? orElse(dflt): T -> T = [
+  | this
+  | null => dflt
+  |=> this
+]
+
+T? expect(msg): String -> T = [
+  | this
+  | null => TO DO: msg
+  |=> this
+]
+
+T? ifNotNull(action): [T -> Unit] -> Unit = [
+  | this
+  | null => ()
+  |=> action value: this
+]

@@ -64,9 +64,7 @@ mut Parser
       // Int inc ->? = ^[]
       this messageDeclFrom: tok receiver: receiverType name: name args: {} returnType: returnType isConstructor: isConstructor
     ] ifFalse: [
-      kwParts2 = | kwPartsMaybe
-        | null => TO DO: "Expected keyword declaration arguments"
-        |=> kwPartsMaybe
+      kwParts2 = kwPartsMaybe expect: "Expected keyword declaration arguments"
       returnType = this messageDeclReturnType
 
       this match: TokenType.Assign, ifFalse: [
@@ -199,9 +197,7 @@ extend mut Parser [
         ^ TO DO: "keyword message declaration expected after `on`"
       ]
       kwPartsMaybe = kwParts
-      kwParts2 = | kwPartsMaybe
-        | null => TO DO: "Expected keyword declaration arguments"
-        |=> kwPartsMaybe
+      kwParts2 = kwPartsMaybe expect: "Expected keyword declaration arguments"
 
       returnType = this messageDeclReturnType
 
@@ -264,9 +260,7 @@ extend mut Parser [
     firstArg = this parseKeywordDeclArgFrom: firstTok
     firstArg == null ifTrue: [^ null]
     firstArgMaybe = firstArg
-    firstArg2 = | firstArgMaybe
-      | null => TO DO: "Expected first keyword declaration argument"
-      |=> firstArgMaybe
+    firstArg2 = firstArgMaybe expect: "Expected first keyword declaration argument"
     args add: firstArg2 arg
     nameParts add: firstArg2 namePart
 
@@ -276,9 +270,7 @@ extend mut Parser [
         false
       ] ifFalse: [
         nextArgMaybe = nextArg
-        nextArg2 = | nextArgMaybe
-          | null => TO DO: "Expected keyword declaration argument"
-          |=> nextArgMaybe
+        nextArg2 = nextArgMaybe expect: "Expected keyword declaration argument"
         args add: nextArg2 arg
         nameParts add: nextArg2 namePart
         true

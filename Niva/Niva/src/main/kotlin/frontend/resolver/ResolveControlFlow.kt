@@ -376,14 +376,6 @@ fun Resolver.resolveControlFlow(
                 }
             }
             if (thisIsTypeMatching && statement.switch is IdentifierExpr) { // add current switching if Identifier to scope, type narrowed
-                if (currentType is Type.UserLike && statement.switch.name == "this") {
-                    currentType.fields.forEach {
-                        val alreadyDeclarated = currentScope[it.name]
-                        if (alreadyDeclarated == null) {
-                            scopeWithThisFields[it.name] = it.type
-                        }
-                    }
-                }
                 val generalRootBetweenManyMatches = if (it.otherIfExpressions.isNotEmpty()) {
                     val allChecksOfCurrentBranch = it.otherIfExpressions.map { it.type!! } + it.ifExpression.type!!
                     val generalRoot = findGeneralRootMany(allChecksOfCurrentBranch, it.ifExpression.token)
@@ -391,6 +383,15 @@ fun Resolver.resolveControlFlow(
                 }
                 else
                     currentType
+                // fields of a branch with many patterns come from the general root of all of them
+                if (generalRootBetweenManyMatches is Type.UserLike && statement.switch.name == "this") {
+                    generalRootBetweenManyMatches.fields.forEach {
+                        val alreadyDeclarated = currentScope[it.name]
+                        if (alreadyDeclarated == null) {
+                            scopeWithThisFields[it.name] = it.type
+                        }
+                    }
+                }
                 currentScope[statement.switch.name] = generalRootBetweenManyMatches
                 previousAndCurrentScope[statement.switch.name] = generalRootBetweenManyMatches
                 statement.switch.type = currentType
