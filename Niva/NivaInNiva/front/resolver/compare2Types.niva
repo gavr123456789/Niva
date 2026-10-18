@@ -89,9 +89,7 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
       ]
       |=> false
     ]
-    | ListT => this sameTypeAsSameKind: nivaType
-    | SetT => this sameTypeAsSameKind: nivaType
-    | MapT => this sameTypeAsSameKind: nivaType
+    | ListT | SetT | MapT => this sameTypeAsSameKind: nivaType
     | NullableT => | this
                    | NullableT => this sameTypeAsSameKind: nivaType
                    | NothingT => true
@@ -149,9 +147,7 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
                   ]
                   |=> false
 
-    | ListT => this isAssignableToSameKind: nivaType db: db
-    | SetT => this isAssignableToSameKind: nivaType db: db
-    | MapT => this isAssignableToSameKind: nivaType db: db
+    | ListT | SetT | MapT => this isAssignableToSameKind: nivaType db: db
 
     | NullableT => | this
                    | NullableT => this v isAssignableTo: nivaType v db: db

@@ -1067,9 +1067,7 @@ extend TyperDB [
       // argument can have the unresolved type T like a + a inside `List(Int) reduce: [a b -> a + b]`
       // T is not a concrete key in typeToMethodNameToMethod so we let the caller continue with the Any protocol instead of reporting a missing type
       | lookupType
-      | NullableT => [^ null]
-      | UnresolvedGenericT => [^ null]
-      | NothingT => [^ null]
+      | NullableT | UnresolvedGenericT | NothingT => [^ null]
       |=> [
         TO DO: "cant find type " + lookupType toString + " while looking up method " + name + " at " + receiver token toPosition
       ]
@@ -1078,8 +1076,7 @@ extend TyperDB [
 
     y::mut Map(String, NivaMethod) = | x
       | null => | lookupType
-        | UnresolvedGenericT => #{}!
-        | NothingT => #{}!
+        | UnresolvedGenericT | NothingT => #{}!
         |=> [
           TO DO: "missing method table for " + lookupType toString + " while looking up " + name + " at " + receiver token toPosition
           #{}!
@@ -1857,8 +1854,8 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
           | it
           | MessageDecl => db markBindMessageDecl: it
           | ExtendDecl  => it messages forEach: [db markBindMessageDecl: it]
-          | TypeDecl    => db markBindTypeId: (pkgName + "_" + it name)
-          | UnionDecl   => db markBindTypeId: (pkgName + "_" + it name)
+          | TypeDecl => db markBindTypeId: (pkgName + "_" + it name)
+          | UnionDecl => db markBindTypeId: (pkgName + "_" + it name)
           |=> []
         ]
       ]

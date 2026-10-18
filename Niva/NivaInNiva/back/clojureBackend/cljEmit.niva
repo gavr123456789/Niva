@@ -1103,44 +1103,15 @@ constructor CljBackend [
 
 IrStmt cljStmtToken -> Token =
   | this
-  | IrLet => this token
-  | IrSetLocal => this token
-  | IrSetField => this token
-  | IrDestructure => this token
-  | IrExprStmt => this token
-  | IrReturn => this token
-  | IrWhile => this token
-  | IrThrow => this token
+  | IrLet | IrSetLocal | IrSetField | IrDestructure | IrExprStmt | IrReturn | IrWhile | IrThrow => this token
   |=> Token fake
 
 IrExpr cljExprToken -> Token =
   | this
-  | IrLiteralExpr => this token
-  | IrVarRef => this token
-  | IrThisRef => this token
-  | IrFieldGet => this token
-  | IrCall => this token
-  | IrLambda => this token
-  | IrBlockExpr => this token
-  | IrMatchExpr => this token
-  | IrNewExpr => this token
-  | IrCollectionLiteral => this token
-  | IrOpBin => this token
-  | IrTypeRefExpr => this token
+  | IrLiteralExpr | IrVarRef | IrThisRef | IrFieldGet | IrCall | IrLambda | IrBlockExpr | IrMatchExpr | IrNewExpr | IrCollectionLiteral | IrOpBin | IrTypeRefExpr => this token
   |=> Token fake
 
 IrExpr cljExprTypeRef -> IrTypeRef =
   | this
-  | IrLiteralExpr => this typeRef
-  | IrVarRef => this typeRef
-  | IrThisRef => this typeRef
-  | IrFieldGet => this typeRef
-  | IrCall => this typeRef
-  | IrLambda => this typeRef
-  | IrBlockExpr => this typeRef
-  | IrMatchExpr => this typeRef
-  | IrNewExpr => this typeRef
-  | IrCollectionLiteral => this typeRef
-  | IrOpBin => this typeRef
-  | IrTypeRefExpr => this typeRef
+  | IrLiteralExpr | IrVarRef | IrThisRef | IrFieldGet | IrCall | IrLambda | IrBlockExpr | IrMatchExpr | IrNewExpr | IrCollectionLiteral | IrOpBin | IrTypeRefExpr => this typeRef
   |=> IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Any" ownerPkg: "core" args: {} returnType: null isMut: false nullable: false errors: {}

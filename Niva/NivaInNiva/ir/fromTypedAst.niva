@@ -14,8 +14,7 @@ extend NivaType [
 
   on isIrBuiltin -> Bool = [
     ^ | this
-      | UnresolvedGenericT => false
-      | FuntionT => false
+      | UnresolvedGenericT | FuntionT => false
       | NullableT => [
         nullableInner = this unwrapNullable
         nullableInner isIrBuiltin
@@ -356,10 +355,7 @@ TypedExpr2 toIrExpr(db): TyperDB currentPkg: String typeFieldsById: Map(String, 
         ]
     ]
     | ExprInBracketsT => value toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef
-    | VarDeclarationT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
-    | AssignT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
-    | DestructingAssignT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
-    | ReturnStatementT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
+    | VarDeclarationT | AssignT | DestructingAssignT | ReturnStatementT => this toIrBlockExprWrappingStmt: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef blkType: exprType token: exprToken
     | CollectionLiteralT => [
       items = elements v map: [it toIrExpr: db currentPkg: currentPkg typeFieldsById: typeFieldsById thisTypeRef: thisTypeRef]
       kind = | exprToken kind
@@ -1276,8 +1272,8 @@ TypedExpr2 collectInstantiationsFromExpr(db): TyperDB currentPkg: String instMap
     receiver collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
     argExprs forEach: [it collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses]
   ]
-  | VarDeclarationT =>    value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
-  | AssignT =>            value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | VarDeclarationT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
+  | AssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
   | DestructingAssignT => value collectInstantiationsFromExpr: db currentPkg: currentPkg instMap: instMap specializationUses: specializationUses
   | ReturnStatementT => [
     valueMaybe = value

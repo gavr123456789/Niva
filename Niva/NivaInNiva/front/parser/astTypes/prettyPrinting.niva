@@ -16,14 +16,7 @@ TypedExpr2 prettyPrintWithIndent(indent): String isLast::Bool -> String = [
     | ExprInBracketsT => [
         this value prettyPrintWithIndent: childIndent isLast: true
     ]
-    | VarDeclarationT => ""
-    | AssignT => ""
-    | DestructingAssignT => ""
-    | CollectionLiteralT => ""
-    | MessageSendT => ""
-    | ReturnStatementT => ""
-    | CodeBlockT => ""
-    | MatchT => ""
+    | VarDeclarationT | AssignT | DestructingAssignT | CollectionLiteralT | MessageSendT | ReturnStatementT | CodeBlockT | MatchT => ""
 
     ^ ""
 ]

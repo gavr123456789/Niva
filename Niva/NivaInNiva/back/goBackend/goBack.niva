@@ -632,9 +632,7 @@ extend IrTypeRef [
           | "core_Bool"    => "bool"
           | "core_Char"    => "rune"
           | "core_Unit"    => "struct{}"
-          | "core_Any"     => "interface{}"
-          | "core_Nothing" => "interface{}"
-          | "core_Null"    => "interface{}"
+          | "core_Any" | "core_Nothing" | "core_Null" => "interface{}"
           | "core_Error"   => "error"
           | "core_Compiler" => "struct{}"
           | "core_StringBuilder" => [
@@ -769,8 +767,7 @@ IrStmt collectIrStmtRefs(refs): mut Set(String) -> Unit = [
 IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
   | this
   | IrVarRef      => refs add: name
-  | IrLiteralExpr => []
-  | IrThisRef     => []
+  | IrLiteralExpr | IrThisRef => []
   | IrFieldGet    => receiver collectIrExprRefs: refs
   | IrCall        => [
     calleeMaybe = callee
@@ -866,8 +863,7 @@ extend IrExpr [
         (scope narrowedNullablePointerLocals contains: "this", not)
       |=> sourceNullablePointer
     isAddressable = | this
-      | IrVarRef => true
-      | IrThisRef => true
+      | IrVarRef | IrThisRef => true
       |=> false
     valueExpr = sourceIsNullablePointerRef && (paramType nullable not)
       ifTrue: ["*" + exprStr]
@@ -1122,9 +1118,7 @@ extend IrExpr [
 
   on isGoCallLike -> Bool =
     | this
-    | IrCall      => true
-    | IrBlockExpr => true
-    | IrMatchExpr => true
+    | IrCall | IrBlockExpr | IrMatchExpr => true
     |=> false
 
   on emitGoPropagatingCall(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef bindTo: String -> String? = [

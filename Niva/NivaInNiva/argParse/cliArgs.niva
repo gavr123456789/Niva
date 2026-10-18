@@ -147,8 +147,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
             | backendValue
             | "go" => backend <- CompilerBackend.Go
             | "js" => backend <- CompilerBackend.Js
-            | "clj" => backend <- CompilerBackend.Clj
-            | "clojure" => backend <- CompilerBackend.Clj
+            | "clj" | "clojure" => backend <- CompilerBackend.Clj
             | "lsp" => backend <- CompilerBackend.Lsp
             |=> invalid <- true
           ]

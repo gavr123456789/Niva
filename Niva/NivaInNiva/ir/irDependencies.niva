@@ -83,9 +83,7 @@ IrStmt collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
 IrExpr collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
   typeRef collectDependenciesInto: collector at: token
   | this
-  | IrLiteralExpr => []
-  | IrVarRef => []
-  | IrThisRef => []
+  | IrLiteralExpr | IrVarRef | IrThisRef => []
   | IrFieldGet => [receiver collectDependenciesInto: collector]
   | IrCall => [
       callKind = isConstructor
