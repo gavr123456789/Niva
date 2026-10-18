@@ -236,7 +236,7 @@ extend mut Parser [
 
     mut i = start + 1
     [
-      i < len &&
+      (i < len) &&
       (((content at: i) isLetter) || ((content at: i) isDigit) || ((content at: i) == '_'))
     ] whileTrue: [ i <- i + 1 ]
     ^ i

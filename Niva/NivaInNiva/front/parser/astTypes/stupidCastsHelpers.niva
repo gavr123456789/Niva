@@ -2,10 +2,62 @@ NivaType asTypeT -> TypeT = | this
   | TypeT => this
   |=> TO DO: "Its not TypeT, its $this"
 
-NivaType asListT -> ListT =| this
+NivaType asListT -> ListT = | this
   | ListT => this
   |=> TO DO: "Its not ListT, its $this"
+
+NivaType asSetT -> SetT = | this
+  | SetT => this
+  |=> TO DO: "Its not SetT, its $this"
+
+NivaType asMapT -> MapT = | this
+  | MapT => this
+  |=> TO DO: "Its not MapT, its $this"
+
+NivaType asFuntionT -> FuntionT = | this
+  | FuntionT => this
+  |=> TO DO: "Its not FuntionT, its $this"
 
 TypedExpr2 isIdentifierConstructor = | this
   | IdentifierT => this isNameOfTheType
   |=> false
+
+TypedStatement asVarDeclarationT -> VarDeclarationT = | this
+  | VarDeclarationT => this
+  |=> TO DO: "Its not VarDeclarationT, its $this"
+
+TypedStatement asMessageDeclT -> MessageDeclT = | this
+  | MessageDeclT => this
+  |=> TO DO: "Its not MessageDeclT, its $this"
+
+TypedStatement asKeywordMsgT -> KeywordMsgT = | this
+  | KeywordMsgT => this
+  |=> TO DO: "Its not KeywordMsgT, its $this"
+
+TypedStatement asUnaryMsgT -> UnaryMsgT = | this
+  | UnaryMsgT => this
+  |=> TO DO: "Its not UnaryMsgT, its $this"
+
+TypedStatement asBinaryMsgT -> BinaryMsgT = | this
+  | BinaryMsgT => this
+  |=> TO DO: "Its not BinaryMsgT, its $this"
+
+TypedStatement asExprInBracketsT -> ExprInBracketsT = | this
+  | ExprInBracketsT => this
+  |=> TO DO: "Its not ExprInBracketsT, its $this"
+
+TypedStatement asCodeBlockT -> CodeBlockT = | this
+  | CodeBlockT => this
+  |=> TO DO: "Its not CodeBlockT, its $this"
+
+TypedStatement asMatchT -> MatchT = | this
+  | MatchT => this
+  |=> TO DO: "Its not MatchT, its $this"
+
+TypedStatement asUnitExprT -> UnitExprT = | this
+  | UnitExprT => this
+  |=> TO DO: "Its not UnitExprT, its $this"
+
+ResolveErrors asErrorInvalidTry -> ErrorInvalidTry = | this
+  | ErrorInvalidTry => this
+  |=> TO DO: "Its not ErrorInvalidTry, its $this"

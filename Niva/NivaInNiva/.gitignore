@@ -1,11 +1,10 @@
 .DS_Store
 **/.DS_Store
-.bazar/*
 .clj-kondo/*
 .idea/*
 .lsp/*
 .vscode/*
 .niva_go/build/
-.bootstrap
+.bootstrap/*
 main.jar
 docs/

@@ -11,12 +11,8 @@ Test typeFieldCanReferenceTypeDeclaredLater = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
 
-  box = result db findByTypeName: "Box" inPkg: "main"
-  | box
-  | TypeT => [
-    Assert that: box fields first typeT name equals: "Kek"
-  ]
-  |=> [TO DO: "Box must be TypeT"]
+  box = (result db findByTypeName: "Box" inPkg: "main") asTypeT
+  Assert that: box fields first typeT name equals: "Kek"
 ]
 
 Test constructorReturnType = [
@@ -36,13 +32,9 @@ Test constructorReturnType = [
   db = result db
   typedAst = result entryPointExpressions
 
-  boxDecl = typedAst at: 0
-  | boxDecl
-  | VarDeclarationT => [
-      t = boxDecl value typeInfo t
-      Assert that: t name equals: "String"
-  ]
-  |=> false assert: ""
+  boxDecl = typedAst at: 0, asVarDeclarationT
+  t = boxDecl value typeInfo t
+  Assert that: t name equals: "String"
 
 ]
 
@@ -101,14 +93,10 @@ Test errorEffectsDeclared = [
 
   statementsMaybe = result fileToStatements at: "main"
   statements = statementsMaybe expect: "Missing main statements"
-  msgDecl = statements at: 0
-  | msgDecl
-  | MessageDeclT => [
-    Assert that: msgDecl returnType listOfErrors count equals: 1
-    Assert that: msgDecl body listOfErrors count equals: 1
-    Assert that: msgDecl body listOfErrors first name equals: "Error"
-  ]
-  |=> [TO DO: "MessageDeclT expected"]
+  msgDecl = statements at: 0, asMessageDeclT
+  Assert that: msgDecl returnType listOfErrors count equals: 1
+  Assert that: msgDecl body listOfErrors count equals: 1
+  Assert that: msgDecl body listOfErrors first name equals: "Error"
 ]
 
 Test errorEffectsInferFromBang = [
@@ -126,14 +114,10 @@ Test errorEffectsInferFromBang = [
 
   statementsMaybe = result fileToStatements at: "main"
   statements = statementsMaybe expect: "Missing main statements"
-  msgDecl = statements at: 0
-  | msgDecl
-  | MessageDeclT => [
-    Assert that: msgDecl returnType listOfErrors count equals: 1
-    Assert that: msgDecl returnType listOfErrors first name equals: "Error"
-    Assert that: msgDecl body listOfErrors count equals: 1
-  ]
-  |=> [TO DO: "MessageDeclT expected"]
+  msgDecl = statements at: 0, asMessageDeclT
+  Assert that: msgDecl returnType listOfErrors count equals: 1
+  Assert that: msgDecl returnType listOfErrors first name equals: "Error"
+  Assert that: msgDecl body listOfErrors count equals: 1
 ]
 
 Test declaredErrorEffectsRequireBodyErrors = [
@@ -191,13 +175,9 @@ Test tryRethrowsIntoEnclosingFunctionAndUnwrapsVariable = [
 
   statementsMaybe = result fileToStatements at: "main"
   statements = statementsMaybe expect: "Missing main statements"
-  sus = statements at: 1
-  | sus
-  | MessageDeclT => [
-    Assert that: sus body listOfErrors count equals: 1
-    Assert that: sus body listOfErrors first name equals: "Error"
-  ]
-  |=> [TO DO: "MessageDeclT expected"]
+  sus = statements at: 1, asMessageDeclT
+  Assert that: sus body listOfErrors count equals: 1
+  Assert that: sus body listOfErrors first name equals: "Error"
 ]
 
 Test callbackErrorsPropagateToEnclosingDeclarationAndMatch = [
@@ -215,13 +195,9 @@ Test callbackErrorsPropagateToEnclosingDeclarationAndMatch = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
 
-  typedMatch = result entryPointExpressions last
-  | typedMatch
-  | MatchT => [
-    Assert that: typedMatch subject typeInfo listOfErrors count equals: 1
-    Assert that: typedMatch subject typeInfo listOfErrors first name equals: "Error"
-  ]
-  |=> [TO DO: "MatchT expected"]
+  typedMatch = result entryPointExpressions last asMatchT
+  Assert that: typedMatch subject typeInfo listOfErrors count equals: 1
+  Assert that: typedMatch subject typeInfo listOfErrors first name equals: "Error"
 ]
 
 Test errorEffectsPropagateFromCall = [
@@ -267,11 +243,8 @@ Test tryRequiresErrorableOrNullableReceiver = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   errors = result db listOfErrors
   Assert that: errors count equals: 1
-  | errors first
-  | ErrorInvalidTry => [
-      Assert that: (errors first msg contains: "try can only be used on errorable or nullable values") equals: true
-    ]
-  |=> [Assert that: false equals: true]
+  err = errors first asErrorInvalidTry
+  Assert that: (err msg contains: "try can only be used on errorable or nullable values") equals: true
 ]
 
 Test errorDomainDeclaredErrors = [
@@ -414,25 +387,13 @@ Test ifTrueIfFalseEmptyListInfer = [
 
   typedStmtsMaybe = result fileToStatements at: "main"
   typedStmts = typedStmtsMaybe expect: "Missing main statements"
-  msgDecl = typedStmts at: 0
-  | msgDecl
-  | MessageDeclT => [
-    rt = msgDecl returnType t
-    | rt
-    | ListT => Assert that: rt t name equals: "Int"
-    |=> [TO DO: "List expected for sas return"]
-  ]
-  |=> [TO DO: "MessageDeclT expected"]
+  msgDecl = typedStmts at: 0, asMessageDeclT
+  rt = msgDecl returnType t asListT
+  Assert that: rt t name equals: "Int"
 
-  xDecl = typedAst at: 0
-  | xDecl
-  | VarDeclarationT => [
-    t = xDecl value typeInfo t
-    | t
-    | ListT => Assert that: t t name equals: "Int"
-    |=> [TO DO: "List expected"]
-  ]
-  |=> [TO DO: "VarDeclarationT expected"]
+  xDecl = typedAst at: 0, asVarDeclarationT
+  t = xDecl value typeInfo t asListT
+  Assert that: t t name equals: "Int"
 ]
 
 Test constructorInfersNestedGenerics = [
@@ -448,29 +409,15 @@ Test constructorInfersNestedGenerics = [
 
   Assert that: db listOfErrors count equals: 0
 
-  xDecl = typedAst at: 0
-  | xDecl
-  | VarDeclarationT => [
-    t = xDecl value typeInfo t
-    | t
-    | TypeT => [
-      f1 = t fields at: 0, typeT
-      f2 = t fields at: 1, typeT
-      | f1
-      | ListT => Assert that: f1 t name equals: "Int"
-      |=> [TO DO: "List expected for meow"]
-      | f2
-      | ListT => Assert that: f2 t name equals: "Int"
-      |=> [TO DO: "List expected for meow2"]
-    ]
-    |=> [TO DO: "TypeT expected"]
-  ]
-  |=> [TO DO: "VarDeclarationT expected"]
+  xDecl = typedAst at: 0, asVarDeclarationT
+  cellT = xDecl value typeInfo t asTypeT
+  f1 = cellT fields at: 0, typeT asListT
+  Assert that: f1 t name equals: "Int"
+  f2 = cellT fields at: 1, typeT asListT
+  Assert that: f2 t name equals: "Int"
 
-  yDecl = typedAst at: 1
-  | yDecl
-  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
-  |=> [TO DO: "VarDeclarationT expected for y"]
+  yDecl = typedAst at: 1, asVarDeclarationT
+  Assert that: yDecl value typeInfo t name equals: "Int"
 ]
 
 Test unionIncludeMismatchFields = [
@@ -562,28 +509,17 @@ Test genericsReceiverAndKwArg = [
   db = result db
   typedAst = result entryPointExpressions
 
-  boxDecl = typedAst at: 0
-  | boxDecl
-  | VarDeclarationT => [
-      t = boxDecl value typeInfo t
-      Assert that: t name equals: "Box"
-      | t
-      | TypeT => [
-        Assert that: t genericArgs count equals: 1
-        Assert that: t genericArgs first name equals: "Int"
-      ]
-      |=> Assert that: false equals: true
-  ]
-  |=> Assert that: false equals: true
+  boxDecl = typedAst at: 0, asVarDeclarationT
+  tBox = boxDecl value typeInfo t
+  Assert that: tBox name equals: "Box"
+  boxT = tBox asTypeT
+  Assert that: boxT genericArgs count equals: 1
+  Assert that: boxT genericArgs first name equals: "Int"
 
   // 2) check 'res' type
-  resDecl = typedAst at: 1
-  | resDecl
-  | VarDeclarationT => [
-      t = resDecl value typeInfo t
-      Assert that: t name equals: "Int"
-  ]
-  |=> [ Assert that: false equals: true ]
+  resDecl = typedAst at: 1, asVarDeclarationT
+  tRes = resDecl value typeInfo t
+  Assert that: tRes name equals: "Int"
 
 ]
 
@@ -617,29 +553,19 @@ Test collectionsTestingMapTry = [
   typedAst = result entryPointExpressions
 
   checkFirstList = [
-    t = typedAst at: 0, typeInfo t
-    | t
-    | ListT => Assert that: t t name equals: "Int"
-    |=> [TO DO: "list expected"]
+    t = typedAst at: 0, typeInfo t asListT
+    Assert that: t t name equals: "Int"
   ] do
 
   checkSecondSet = [
-    t = typedAst at: 1, typeInfo t
-    | t
-    | SetT => Assert that: t t name equals: "String"
-    |=> [TO DO: "set expected"]
+    t = typedAst at: 1, typeInfo t asSetT
+    Assert that: t t name equals: "String"
   ] do
 
   checkThirdMap = [
-    t = typedAst at: 2, typeInfo t
-    | t
-    | MapT => [
-      keyType = t k
-      valueType = t v
-      Assert that: keyType name equals: "Int"
-      Assert that: valueType name equals: "String"
-    ]
-    |=> [TO DO: "map expected but got: $t"]
+    t = typedAst at: 2, typeInfo t asMapT
+    Assert that: t k name equals: "Int"
+    Assert that: t v name equals: "String"
   ] do
 
 ]
@@ -697,50 +623,28 @@ Test nestedCollectionsAndExprInBracketsTypes = [
   Assert that: db listOfErrors count equals: 0
 
   checkListOfLists = [
-    t = typedAst at: 0, typeInfo t
-    | t
-    | ListT => [
-      inner = t t
-      | inner
-      | ListT => Assert that: inner t name equals: "Int"
-      |=> [TO DO: "List(List(Int)) expected, got $t"]
-    ]
-    |=> [TO DO: "list expected, got $t"]
+    t = typedAst at: 0, typeInfo t asListT
+    inner = t t asListT
+    Assert that: inner t name equals: "Int"
   ] do
 
   checkListOfExprInBrackets = [
-    t = typedAst at: 1, typeInfo t
-    | t
-    | ListT => Assert that: t t name equals: "Int"
-    |=> [TO DO: "list expected, got $t"]
+    t = typedAst at: 1, typeInfo t asListT
+    Assert that: t t name equals: "Int"
   ] do
 
   checkMapWithListValue = [
-    t = typedAst at: 2, typeInfo t
-    | t
-    | MapT => [
-      Assert that: t k name equals: "Int"
-      Assert that: t v name equals: "List"
-    ]
-    |=> [TO DO: "map expected, got $t"]
+    t = typedAst at: 2, typeInfo t asMapT
+    Assert that: t k name equals: "Int"
+    Assert that: t v name equals: "List"
   ] do
 
   // empty nested collections take their type from the declaration
   checkEmptyNested = [
-    decl = typedAst at: 3
-    | decl
-    | VarDeclarationT => [
-      t = decl value typeInfo t
-      | t
-      | ListT => [
-        inner = t t
-        | inner
-        | ListT => Assert that: inner t name equals: "Int"
-        |=> [TO DO: "List(List(Int)) expected, got $t"]
-      ]
-      |=> [TO DO: "list expected, got $t"]
-    ]
-    |=> [TO DO: "var declaration expected, got $decl"]
+    decl = typedAst at: 3, asVarDeclarationT
+    t = decl value typeInfo t asListT
+    inner = t t asListT
+    Assert that: inner t name equals: "Int"
   ] do
 ]
 
@@ -756,29 +660,14 @@ Test listMapFilterForEachChain = [
 
   Assert that: db listOfErrors count equals: 0
 
-  chainExpr = typedAst at: 1
-  | chainExpr
-  | KeywordMsgT => [
-    Assert that: chainExpr dbMsg name equals: "forEach"
-    Assert that: chainExpr typeInfo t name equals: "Unit"
+  chainExpr = typedAst at: 1, asKeywordMsgT
+  Assert that: chainExpr dbMsg name equals: "forEach"
+  Assert that: chainExpr typeInfo t name equals: "Unit"
 
-    recv = chainExpr receiver
-    | recv
-    | ExprInBracketsT => [
-      inner = recv value
-      | inner
-      | KeywordMsgT => [
-        Assert that: inner dbMsg name equals: "filter"
-        t = inner typeInfo t
-        | t
-        | ListT => Assert that: t t name equals: "Int"
-        |=> [TO DO: "List expected"]
-      ]
-      |=> [TO DO: "filter keyword expected"]
-    ]
-    |=> [TO DO: "ExprInBrackets expected"]
-  ]
-  |=> [TO DO: "KeywordMsgT expected"]
+  inner = chainExpr receiver asExprInBracketsT value asKeywordMsgT
+  Assert that: inner dbMsg name equals: "filter"
+  t = inner typeInfo t asListT
+  Assert that: t t name equals: "Int"
 ]
 
 Test inlineForEachAllowsNonLocalReturn = [
@@ -864,62 +753,26 @@ Test nestedInlineReturnInsideNonInlineMapIsRejected = [
   typedAst = result entryPointExpressions
 
   checkConstructor = [
-    cDecl = typedAst at: 0
-    | cDecl
-    | VarDeclarationT => [
-      cVal = cDecl value
-      | cVal
-      | KeywordMsgT => [
-        Assert that: cVal kind equals: MessageSendKind.DefaultConstructor
-      ]
-      |=> [TO DO: "constructor call expected"]
-    ]
-    |=> [TO DO: "VarDeclarationT expected for constructor"]
+    cVal = typedAst at: 0, asVarDeclarationT value asKeywordMsgT
+    Assert that: cVal kind equals: MessageSendKind.DefaultConstructor
   ] do
 
   checkUnary = [
-    uDecl = typedAst at: 1
-    | uDecl
-    | VarDeclarationT => [
-      uVal = uDecl value
-      | uVal
-      | UnaryMsgT => [
-        Assert that: uVal dbMsg name equals: "get"
-        Assert that: uVal typeInfo t name equals: "Int"
-      ]
-      |=> [TO DO: "UnaryMsgT expected"]
-    ]
-    |=> [TO DO: "VarDeclarationT expected for unary"]
+    uVal = typedAst at: 1, asVarDeclarationT value asUnaryMsgT
+    Assert that: uVal dbMsg name equals: "get"
+    Assert that: uVal typeInfo t name equals: "Int"
   ] do
 
   checkBinary = [
-    bDecl = typedAst at: 2
-    | bDecl
-    | VarDeclarationT => [
-      bVal = bDecl value
-      | bVal
-      | BinaryMsgT => [
-        Assert that: bVal dbMsg name equals: "+"
-        Assert that: bVal typeInfo t name equals: "Counter"
-      ]
-      |=> [TO DO: "BinaryMsgT expected"]
-    ]
-    |=> [TO DO: "VarDeclarationT expected for binary"]
+    bVal = typedAst at: 2, asVarDeclarationT value asBinaryMsgT
+    Assert that: bVal dbMsg name equals: "+"
+    Assert that: bVal typeInfo t name equals: "Counter"
   ] do
 
   checkKeyword = [
-    kDecl = typedAst at: 3
-    | kDecl
-    | VarDeclarationT => [
-      kVal = kDecl value
-      | kVal
-      | KeywordMsgT => [
-        Assert that: kVal dbMsg name equals: "add"
-        Assert that: kVal typeInfo t name equals: "Int"
-      ]
-      |=> [TO DO: "KeywordMsgT expected"]
-    ]
-    |=> [TO DO: "VarDeclarationT expected for keyword"]
+    kVal = typedAst at: 3, asVarDeclarationT value asKeywordMsgT
+    Assert that: kVal dbMsg name equals: "add"
+    Assert that: kVal typeInfo t name equals: "Int"
   ] do
 
 ]
@@ -945,31 +798,18 @@ Test codeblockReturnType = [
   Assert that: db listOfErrors count equals: 0
   typedAst = result entryPointExpressions
   checkFirst = [
-    codeBlock = typedAst at: 0
-    | codeBlock | CodeBlockT => [
-      Assert that: codeBlock args count equals: 0
-      t = codeBlock typeInfo t
-      | t | FuntionT => [
-        Assert that: t returnType name equals: "Int"
-      ] |=> [TO DO: "function type expected"]
-
-    ] |=> [TO DO: "codeblock expected"]
+    codeBlock = typedAst at: 0, asCodeBlockT
+    Assert that: codeBlock args count equals: 0
+    ft = codeBlock typeInfo t asFuntionT
+    Assert that: ft returnType name equals: "Int"
   ] do
 
 
   checkSecond = [
-    codeBlock = typedAst at: 1
-    | codeBlock | CodeBlockT => [
-      Assert that: codeBlock args count equals: 2
-
-
-
-      t = codeBlock typeInfo t
-      | t | FuntionT => [
-        Assert that: t returnType name equals: "Int"
-      ] |=> [TO DO: "function type expected"]
-
-    ] |=> [TO DO: "codeblock expected"]
+    codeBlock = typedAst at: 1, asCodeBlockT
+    Assert that: codeBlock args count equals: 2
+    ft = codeBlock typeInfo t asFuntionT
+    Assert that: ft returnType name equals: "Int"
   ] do
 
 ]
@@ -1064,26 +904,10 @@ Test constructorCall = [
   db = result db
   typedAstMaybe = result fileToStatements at: "main"
   typedAst = typedAstMaybe expect: "Missing main statements"
-  msgDecl = typedAst at: 1
-
-  | msgDecl
-  | MessageDeclT => [
-    varDecl = msgDecl body v at: 0
-
-    | varDecl
-    | VarDeclarationT => [
-      kwMsg = varDecl value
-      | kwMsg
-      | KeywordMsgT => [
-        Assert that: kwMsg kind equals: MessageSendKind.DefaultConstructor
-      ]
-      |=> TO DO
-    ]
-    |=> []
-
-
-  ]
-  |=> [TO DO]
+  msgDecl = typedAst at: 1, asMessageDeclT
+  varDecl = msgDecl body v at: 0, asVarDeclarationT
+  kwMsg = varDecl value asKeywordMsgT
+  Assert that: kwMsg kind equals: MessageSendKind.DefaultConstructor
 
 ]
 
@@ -1098,25 +922,11 @@ Test constructorOnCoreType = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   typedAstMaybe = result fileToStatements at: "main"
   typedAst = typedAstMaybe expect: "Missing main statements"
-  msgDecl = typedAst at: 1
-
-  | msgDecl
-  | MessageDeclT => [
-    varDecl = msgDecl body v at: 0
-
-    | varDecl
-    | VarDeclarationT => [
-      msg = varDecl value
-      | msg
-      | UnaryMsgT => [
-        Assert that: msg kind equals: MessageSendKind.DefaultConstructor
-        Assert that: msg dbMsg name equals: "answear"
-      ]
-      |=> TO DO
-    ]
-    |=> []
-  ]
-  |=> TO DO
+  msgDecl = typedAst at: 1, asMessageDeclT
+  varDecl = msgDecl body v at: 0, asVarDeclarationT
+  msg = varDecl value asUnaryMsgT
+  Assert that: msg kind equals: MessageSendKind.DefaultConstructor
+  Assert that: msg dbMsg name equals: "answear"
 ]
 
 Test getter = [
@@ -1135,18 +945,9 @@ Test getter = [
   db = result db
   typedAstMaybe = result fileToStatements at: "main"
   typedAst = typedAstMaybe expect: "Missing main statements"
-  msgDecl = typedAst at: 1
-  | msgDecl
-  | MessageDeclT => [
-    getter = msgDecl body v at: 0
-    ast = getter
-    | ast
-    | UnaryMsgT => [
-      Assert that: ast kind equals: MessageSendKind.Getter
-    ]
-    |=> []
-  ]
-  |=>[TO DO]
+  msgDecl = typedAst at: 1, asMessageDeclT
+  ast = msgDecl body v at: 0, asUnaryMsgT
+  Assert that: ast kind equals: MessageSendKind.Getter
 ]
 
 Test resolveAFewDeclarations = [
@@ -1220,30 +1021,19 @@ Test checkGenerics = [
 
   // 1) check 'box' type
   checkBox = [
-    boxDecl = typedAst at: 0
-    | boxDecl
-    | VarDeclarationT => [
-        t = boxDecl value typeInfo t
-        Assert that: t name equals: "Box"
-        | t
-        | TypeT => [
-          Assert that: t genericArgs count equals: 1
-          Assert that: t genericArgs first name equals: "Int"
-        ]
-        |=> [ Assert that: false equals: true ]
-    ]
-    |=> [ Assert that: false equals: true ]
+    boxDecl = typedAst at: 0, asVarDeclarationT
+    t = boxDecl value typeInfo t
+    Assert that: t name equals: "Box"
+    boxT = t asTypeT
+    Assert that: boxT genericArgs count equals: 1
+    Assert that: boxT genericArgs first name equals: "Int"
   ] do
 
   // 2) check 'res' type
   checkRes = [
-    resDecl = typedAst at: 1
-    | resDecl
-    | VarDeclarationT => [
-        t = resDecl value typeInfo t
-        Assert that: t name equals: "Int"
-    ]
-    |=> [ Assert that: false equals: true ]
+    resDecl = typedAst at: 1, asVarDeclarationT
+    t = resDecl value typeInfo t
+    Assert that: t name equals: "Int"
   ] do
 ]
 
@@ -1261,13 +1051,9 @@ Test testGenericsMethodWithTwoGenerics = [
   typedAst = result entryPointExpressions
 
   // check 'res' type
-  resDecl = typedAst last
-  | resDecl
-  | VarDeclarationT => [
-      t = resDecl value typeInfo t
-      Assert that: t name equals: "Int"
-  ]
-  |=> [ Assert that: false equals: true ]
+  resDecl = typedAst last asVarDeclarationT
+  t = resDecl value typeInfo t
+  Assert that: t name equals: "Int"
 ]
 
 Test nullableMatchExhaustiveNarrows = [
@@ -1378,17 +1164,8 @@ Test shadowCopyKind = [
 
   Assert that: db listOfErrors count equals: 0
 
-  stmt = typedAst at: 2
-  | stmt
-  | VarDeclarationT => [
-    msg = stmt value
-    | msg
-    | KeywordMsgT => [
-      Assert that: msg kind equals: MessageSendKind.ShadowCopy
-    ]
-    |=> [TO DO: "KeywordMsgT expected"]
-  ]
-  |=> [TO DO: "VarDeclarationT expected"]
+  msg = typedAst at: 2, asVarDeclarationT value asKeywordMsgT
+  Assert that: msg kind equals: MessageSendKind.ShadowCopy
 ]
 
 Test shadowCopyAllFieldsError = [
@@ -1425,28 +1202,14 @@ Test immutableNestedCopyUpdateLowersToShadowCopies = [
   typedAst = typedAstMaybe expect: "Missing main statements"
 
   Assert that: db listOfErrors count equals: 0
-  updatedDecl = typedAst last
-  | updatedDecl
-  | VarDeclarationT => [
-    Assert that: updatedDecl value typeInfo t name equals: "Person"
-    outerCopy = updatedDecl value
-    | outerCopy
-    | KeywordMsgT => [
-      Assert that: outerCopy kind equals: MessageSendKind.ShadowCopy
-      walletCopy = outerCopy args first expr
-      | walletCopy
-      | KeywordMsgT => [
-        Assert that: walletCopy kind equals: MessageSendKind.ShadowCopy
-        moneyCopy = walletCopy args first expr
-        | moneyCopy
-        | KeywordMsgT => Assert that: moneyCopy kind equals: MessageSendKind.ShadowCopy
-        |=> [TO DO: "Money shadow copy expected"]
-      ]
-      |=> [TO DO: "Wallet shadow copy expected"]
-    ]
-    |=> [TO DO: "Person shadow copy expected"]
-  ]
-  |=> [TO DO: "VarDeclarationT expected"]
+  updatedDecl = typedAst last asVarDeclarationT
+  Assert that: updatedDecl value typeInfo t name equals: "Person"
+  outerCopy = updatedDecl value asKeywordMsgT
+  Assert that: outerCopy kind equals: MessageSendKind.ShadowCopy
+  walletCopy = outerCopy args first expr asKeywordMsgT
+  Assert that: walletCopy kind equals: MessageSendKind.ShadowCopy
+  moneyCopy = walletCopy args first expr asKeywordMsgT
+  Assert that: moneyCopy kind equals: MessageSendKind.ShadowCopy
 ]
 
 Test immutableNestedCopyUpdateRejectsNonGetter = [
@@ -1498,15 +1261,11 @@ Test nullableReceiverMessageDecl = [
 
   typedAst = result entryPointExpressions
 
-  yDecl = typedAst at: 1
-  | yDecl
-  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
-  |=> [TO DO: "VarDeclarationT expected"]
+  yDecl = typedAst at: 1, asVarDeclarationT
+  Assert that: yDecl value typeInfo t name equals: "Int"
 
-  wDecl = typedAst at: 3
-  | wDecl
-  | VarDeclarationT => Assert that: wDecl value typeInfo t name equals: "String"
-  |=> [TO DO: "VarDeclarationT expected"]
+  wDecl = typedAst at: 3, asVarDeclarationT
+  Assert that: wDecl value typeInfo t name equals: "String"
 ]
 
 Test nullableReceiverMessageDeclForConcreteType = [
@@ -1532,15 +1291,11 @@ Test nullableReceiverMessageDeclForConcreteType = [
 
   typedAst = result entryPointExpressions
 
-  yDecl = typedAst at: 1
-  | yDecl
-  | VarDeclarationT => Assert that: yDecl value typeInfo t name equals: "Int"
-  |=> [TO DO: "VarDeclarationT expected"]
+  yDecl = typedAst at: 1, asVarDeclarationT
+  Assert that: yDecl value typeInfo t name equals: "Int"
 
-  zDecl = typedAst at: 2
-  | zDecl
-  | VarDeclarationT => Assert that: zDecl value typeInfo t name equals: "Bool"
-  |=> [TO DO: "VarDeclarationT expected"]
+  zDecl = typedAst at: 2, asVarDeclarationT
+  Assert that: zDecl value typeInfo t name equals: "Bool"
 ]
 
 /// a method declared for the exact inner type wins over the generic one with the same name
@@ -1566,15 +1321,11 @@ Test nullableReceiverExactTypeWinsOverGeneric = [
 
   typedAst = result entryPointExpressions
 
-  genericDecl = typedAst at: 1
-  | genericDecl
-  | VarDeclarationT => Assert that: genericDecl value typeInfo t name equals: "Int"
-  |=> [TO DO: "VarDeclarationT expected"]
+  genericDecl = typedAst at: 1, asVarDeclarationT
+  Assert that: genericDecl value typeInfo t name equals: "Int"
 
-  exactDecl = typedAst at: 3
-  | exactDecl
-  | VarDeclarationT => Assert that: exactDecl value typeInfo t name equals: "String"
-  |=> [TO DO: "VarDeclarationT expected"]
+  exactDecl = typedAst at: 3, asVarDeclarationT
+  Assert that: exactDecl value typeInfo t name equals: "String"
 ]
 
 Test setProtocolMethods = [
@@ -1600,23 +1351,17 @@ Test setProtocolMethods = [
   firstType = typedAst at: 2, typeInfo t
   Assert that: firstType name equals: "Int"
 
-  toListType = typedAst at: 3, typeInfo t
-  | toListType
-  | ListT => Assert that: toListType t name equals: "Int"
-  |=> [TO DO: "list expected but got: $toListType"]
+  toListType = typedAst at: 3, typeInfo t asListT
+  Assert that: toListType t name equals: "Int"
 
   containsType = typedAst at: 4, typeInfo t
   Assert that: containsType name equals: "Bool"
 
-  filteredType = typedAst at: 5, typeInfo t
-  | filteredType
-  | SetT => Assert that: filteredType t name equals: "Int"
-  |=> [TO DO: "set expected but got: $filteredType"]
+  filteredType = typedAst at: 5, typeInfo t asSetT
+  Assert that: filteredType t name equals: "Int"
 
-  mergedType = typedAst at: 6, typeInfo t
-  | mergedType
-  | SetT => Assert that: mergedType t name equals: "Int"
-  |=> [TO DO: "set expected but got: $mergedType"]
+  mergedType = typedAst at: 6, typeInfo t asSetT
+  Assert that: mergedType t name equals: "Int"
 ]
 
 Test structureInfoMarkdownAndTypePath = [
@@ -1663,10 +1408,7 @@ Test compileTimeInfoMessage = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
 
-  infoExpr = result entryPointExpressions last
-  | infoExpr
-  | UnitExprT => []
-  |=> [TO DO: "compile-time info should be erased to Unit"]
+  infoExpr = result entryPointExpressions last asUnitExprT
 
   personInfo = result db compileTimeInfoFor: (result db findByTypeName: "Person" inPkg: "main") showSourceLocations: true
   (personInfo contains: "type Person ( main.niva:2 )") assertTrue
@@ -1683,14 +1425,8 @@ Test interpolatedStringResolvesToStringConcat = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   Assert that: result db listOfErrors count equals: 0
 
-  tDecl = result entryPointExpressions at: 2
-  | tDecl
-  | VarDeclarationT => [
-    tVal = tDecl value
-    Assert that: tVal typeInfo t name equals: "String"
-    | tVal
-    | BinaryMsgT => Assert that: tVal dbMsg name equals: "+"
-    |=> [TO DO: "interpolation should desugar to concat"]
-  ]
-  |=> [TO DO: "var declaration expected"]
+  tDecl = result entryPointExpressions at: 2, asVarDeclarationT
+  tVal = tDecl value asBinaryMsgT
+  Assert that: tVal typeInfo t name equals: "String"
+  Assert that: tVal dbMsg name equals: "+"
 ]

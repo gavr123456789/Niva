@@ -1,67 +1,7 @@
-@emit: """run {
-    val cljRoot = java.io.File($2).parentFile
-      ?: error("Cannot find Clojure output root")
-    val classpathProcess = ProcessBuilder("clojure", "-Spath")
-      .directory(cljRoot)
-      .redirectErrorStream(true)
-      .start()
-    val classpath = classpathProcess.inputStream.bufferedReader().readText().trim()
-    val classpathExit = classpathProcess.waitFor()
-    check(classpathExit == 0) {
-      "Cannot resolve Clojure hot reload classpath: " + classpath
-    }
-    val urls = classpath.split(java.io.File.pathSeparator)
-      .filter { it.isNotBlank() }
-      .map { path ->
-        val file = java.io.File(path)
-        (if (file.isAbsolute) file else java.io.File(cljRoot, path)).toURI().toURL()
-      }
-      .toTypedArray()
-    val loader = java.net.URLClassLoader(urls, JvmReloadHost::class.java.classLoader)
-    val thread = Thread.currentThread()
-    val previousLoader = thread.contextClassLoader
-    thread.contextClassLoader = loader
-    try {
-      fun invokeNivaClj(function: Any, vararg args: Any?): Any? {
-        val method = function.javaClass.methods.first {
-          it.name == "invoke" && it.parameterCount == args.size
-        }
-        return method.invoke(function, *args)
-      }
-      val clojure = loader.loadClass("clojure.java.api.Clojure")
-      val varMethod = clojure.getMethod("var", Any::class.java, Any::class.java)
-      val readMethod = clojure.getMethod("read", String::class.java)
-      val requireFunction = varMethod.invoke(null, "clojure.core", "require")
-      val hostSymbol = readMethod.invoke(null, "niva.hot-reload.host")
-      invokeNivaClj(requireFunction, hostSymbol)
-      val startFunction = varMethod.invoke(null, "niva.hot-reload.host", "start!")
-      invokeNivaClj(startFunction, $1, $2, $3, $4, Runnable { ($5)() })
-    } catch (error: Throwable) {
-      error.printStackTrace()
-      throw error
-    } finally {
-      thread.contextClassLoader = previousLoader
-    }
-}"""
+@emit: """run { error("watch is only supported for clojure") }"""
 static JvmReloadHost start(projectRoot): String generatedDir: String
     entryNamespace(entryNamespace): String runtime(runtime): String
     onChange(onChange): [Unit -> Unit] -> Unit = []
 
-@emit: """run {
-    val thread = Thread.currentThread()
-    val loader = thread.contextClassLoader
-    val previousLoader = thread.contextClassLoader
-    try {
-      val clojure = loader.loadClass("clojure.java.api.Clojure")
-      val varMethod = clojure.getMethod("var", Any::class.java, Any::class.java)
-      val reloadFunction = varMethod.invoke(null, "niva.hot-reload.host", "reload-changed!")
-      val method = reloadFunction.javaClass.methods.first {
-        it.name == "invoke" && it.parameterCount == 0
-      }
-      method.invoke(reloadFunction)
-      Unit
-    } finally {
-      thread.contextClassLoader = previousLoader
-    }
-}"""
+@emit: """run { error("watch is only supported for clojure") }"""
 static JvmReloadHost reloadChanged -> Unit = []

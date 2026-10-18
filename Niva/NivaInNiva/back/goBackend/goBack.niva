@@ -1072,7 +1072,12 @@ extend IrExpr [
                     ], goCallArgs
                   ]
                   ifFalse: [argsStr]
-                coreCall = "core." + coreFn + "(" + coreArgs + ")"
+                // go cant infer listOfRootsTypes.add(child) so we add explicit generic like
+                // listOfRootsTypes<Root>.add(child)
+                coreTypeArgs = (recvTypeLocal args isNotEmpty)
+                  ifTrue: ["[" + (recvTypeLocal args joinWith: ", " transform: [it toGoType: ctx]) + "]"]
+                  ifFalse: [""]
+                coreCall = "core." + coreFn + coreTypeArgs + "(" + coreArgs + ")"
                 receiverBaseId = recvTypeLocal typeId goNormalizeTypeId
                 isListNullableCall = (receiverBaseId == "core_List") &&
                   ((msgNameLocal == "find") || (msgNameLocal == "firstOrNull") || (msgNameLocal == "lastOrNull"))
