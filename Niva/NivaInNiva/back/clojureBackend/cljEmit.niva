@@ -223,9 +223,7 @@ IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
       receiverTypeValue typeId
     ]
   msgNameLocal = this msgNameOrEmpty
-  funcIdLocal = | funcIdMaybe
-    | null => ""
-    |=> funcIdMaybe
+  funcIdLocal = funcIdMaybe orElse: ""
   receiverIsCompiler = receiverTypeId contains: "Compiler"
   functionIsCompiler = funcIdLocal contains: "Compiler"
   compilerCliArgsCall = (msgNameLocal == "cliArgs") && (receiverIsCompiler || functionIsCompiler)
@@ -262,9 +260,7 @@ IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
   |=> [
       funcIdValue = funcIdMaybe
       declPkgMaybe = this declPkg
-      declPkgLocal = | declPkgMaybe
-        | null => ""
-        |=> declPkgMaybe
+      declPkgLocal = declPkgMaybe orElse: ""
       declPkgLocal == "core" ifTrue: [
         ctx addImport: "niva.core"
         msgNameLocal = this msgNameOrEmpty
@@ -370,9 +366,7 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
       // IrThrow / niva.core/Error__throw). We dispatch on the record's concrete
       // type; anything unhandled is re-thrown so it keeps propagating.
       typeAliasMaybe = this typeAlias
-      aliasRaw = | typeAliasMaybe
-        | null => "it"
-        |=> typeAliasMaybe
+      aliasRaw = typeAliasMaybe orElse: "it"
       aliasName = aliasRaw cljSanitizeIdent
       errName = "__cljErr"
 
@@ -462,9 +456,7 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
           | null => c condition toCljExpr: ctx scope: innerScope
           |=> assertedTypeMaybe cljQualifiedTypeName: ctx
         typeAliasMaybe = this typeAlias
-        aliasName = | typeAliasMaybe
-          | null => "it"
-          |=> typeAliasMaybe
+        aliasName = typeAliasMaybe orElse: "it"
         caseScope = innerScope copy
         caseScope mutLocals remove: aliasName
         bodyStr = c body toCljBlockBodyWithBind: ctx scope: caseScope
@@ -506,10 +498,8 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
         sb append: (bodyStr replace: "\n" with: "\n  ")
         ()
       ]
-      | elseBranchLocal
-      | null => []
-      |=> [
-          elseBlock = elseBranchLocal
+      elseBranchLocal ifNotNull: [elseBranchLocalValue ->
+          elseBlock = elseBranchLocalValue
           elseStr = elseBlock toCljBlockBody: ctx scope: (innerScope copy)
           sb append: "\n  :else "
           sb append: (elseStr replace: "\n" with: "\n  ")
@@ -994,11 +984,9 @@ constructor CljBackend [
       ]
     ]
     entryMaybe = ir entry
-    | entryMaybe
-    | null => ()
-    |=> [
+    entryMaybe ifNotNull: [entryValue ->
       isRepl ifTrue: [
-        CljBackend emitEntryRepl: entryMaybe ctx: ctx sb: body
+        CljBackend emitEntryRepl: entryValue ctx: ctx sb: body
         ()
       ]
       isRepl ifFalse: [
@@ -1009,7 +997,7 @@ constructor CljBackend [
             ()
           ]
         ]
-        CljBackend emitEntry: entryMaybe stateDefs: entryStates ctx: ctx sb: body
+        CljBackend emitEntry: entryValue stateDefs: entryStates ctx: ctx sb: body
         ()
       ]
     ]

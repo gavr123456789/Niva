@@ -43,7 +43,7 @@ extend mut Parser [
     isMut = this match: TokenType.Mut
     pos = this peek toPosition
     identifier = this matchAssertAnyIdent: "in type declaration identifier expected, but got " + this peek toString + "\n" + pos
-    isNullable = identifier kind == TokenType.NullableIdentifier
+    mut isNullable::Bool = identifier kind == TokenType.NullableIdentifier
     name = identifier lexeme
 
 
@@ -58,6 +58,12 @@ extend mut Parser [
         this match: TokenType.Comma
       ] whileTrue: []
       this matchAssert: TokenType.CloseParen
+    ]
+
+    // nullable suffix after generic params so List(Int)? parses
+    (this peek lexeme == "?") ifTrue: [
+      isNullable <- true
+      this step
     ]
 
     AstType
@@ -79,10 +85,13 @@ extend mut Parser [
 
           args::mut List(AstType2) = {}!
 
+          // skip the loop when there are no args so empty lambda types parse
+          (this peek kind != TokenType.ReturnArrow) ifTrue: [
           [ argType = this parseGenericType
             args add: argType
             this match: TokenType.Comma
           ] whileTrue: []
+          ]
 
           this matchAssert: TokenType.ReturnArrow
           returnType = this parseType

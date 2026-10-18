@@ -199,6 +199,9 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
   letterToType::mut Map(String, NivaType) = #{}!
 
+  // seed generics from the receiver first so block args resolve with concrete types
+  kwMsgDB receiverType collectGenericMappingsFrom: receiverType into: letterToType db: db
+
   // `Bind emit:` returns T to make `Sas sus -> String = Bind emit: "..."` possible
   expectedReturnTypeMaybe = expectedType
   | expectedReturnTypeMaybe
@@ -274,17 +277,17 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList)
 
           // create args
-          // we need to update types to mangled names of resolved types
+          // fake asts carry the resolved types so lambda args resolve too
           newArgs = originalDecl args mapIndexed: [ i, arg ->
              resolvedArgType = newMethod args at: i, typeT
-             NameAndAstType name: arg name astType: (AstType name: resolvedArgType toMangledName tok: (Token fake))
+             NameAndAstType name: arg name astType: (resolvedArgType toFakeAstType)
           ]
           newDecl = MessageDecl
             token: originalDecl token
-            receiver: (AstType name: instReceiverType toMangledName tok: (Token fake))
+            receiver: (instReceiverType toFakeAstType)
             name: newMethod name // mangled name if method was generic
             args: newArgs
-            returnType: (AstType name: newMethod returnType toMangledName tok: (Token fake))
+            returnType: (newMethod returnType toFakeAstType)
             body: newBody
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor
@@ -312,7 +315,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
       unresolvedGenericMaybe = isThereUnresolvedGenerics
       | unresolvedGenericMaybe
-      | null => []
+      | null => ()
       |=> [
         db addFatalErrorFromTok: receiver token
            withMsg: "Receiver has generic param " + unresolvedGenericMaybe toString + " but I can't infer it via message arguments"

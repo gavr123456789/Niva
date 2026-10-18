@@ -161,7 +161,7 @@ constructor GoBackend [
     entry blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: entry resultType
     entryResult = entry result
     | entryResult
-    | null => []
+    | null => ()
     |=> [
       entryResult token printGoLine-intoSb: sb
       sb appendIndent: 1 line: (entryResult toGoStatement: ctx scope: scope returnType: entry resultType)

@@ -30,9 +30,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
 
   //
   dbMsgMaybe = lastDbMsg
-  dbMsg = | dbMsgMaybe
-    | null => TO DO: "Binary message did not resolve to a method"
-    |=> dbMsgMaybe
+  dbMsg = dbMsgMaybe expect: "Binary message did not resolve to a method"
   ^ BinaryMsgT
     receiver: receiverTypedExpr
     token: token

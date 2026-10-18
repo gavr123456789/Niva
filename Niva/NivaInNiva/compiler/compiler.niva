@@ -412,9 +412,7 @@ constructor NivaCompiler [
           ifTrue: ["main.niva"]
           ifFalse: [
             pathMaybe = path
-            | pathMaybe
-            | null => "main.niva"
-            |=> pathMaybe
+            pathMaybe orElse: "main.niva"
           ]
         rootPath = rootFile toPath
         entryPoint = rootPath name substringBeforeLast: "."
@@ -440,9 +438,7 @@ constructor NivaCompiler [
 
         runWatch = [
           watchPathMaybe = path
-          rootFile = | watchPathMaybe
-            | null => "main.niva"
-            |=> watchPathMaybe
+          rootFile = watchPathMaybe orElse: "main.niva"
           projectRoot = io getParent path: rootFile
           rootPath = rootFile toPath
           entryPoint = rootPath name substringBeforeLast: "."

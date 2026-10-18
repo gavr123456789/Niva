@@ -151,10 +151,8 @@ Set(String) incrementalTransitiveDependants(reverseGraph): Map(String, Increment
     current = queue at: index
     index <- index + 1
     dependantsMaybe = reverseGraph at: current
-    | dependantsMaybe
-    | null => []
-    |=> [
-      dependantsMaybe values sortedBy: [it], forEach: [dependant ->
+    dependantsMaybe ifNotNull: [dependantsValue ->
+      dependantsValue values sortedBy: [it], forEach: [dependant ->
         result contains: dependant, ifFalse: [
           result add: dependant
           queue add: dependant
@@ -354,9 +352,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
       |=> Sha256 digest: sourceMaybe content
     depApi = pkg dependencyPackageNames map: [dep ->
       depApiMaybe = newApiHashes at: dep
-      | depApiMaybe
-      | null => "<missing>"
-      |=> depApiMaybe
+      depApiMaybe orElse: "<missing>"
     ], joinWith: "|"
     currentApiMaybe = newApiHashes at: pkg name
     currentApi = | currentApiMaybe
@@ -575,13 +571,11 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
       previousManifestMaybe = cljManifest
       shapeChanges::mut List(String) = {}!
       config backend == "clj" ifTrue: [
-        | currentManifestMaybe
-        | null => []
-        |=> [
+        currentManifestMaybe ifNotNull: [currentManifestValue ->
           | previousManifestMaybe
           | null => []
           |=> [
-            shapeChanges addAll: (currentManifestMaybe incompatibleChanges: previousManifestMaybe)
+            shapeChanges addAll: (currentManifestValue incompatibleChanges: previousManifestMaybe)
             ()
           ]
         ]

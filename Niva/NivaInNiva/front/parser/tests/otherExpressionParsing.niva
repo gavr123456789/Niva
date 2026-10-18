@@ -10,9 +10,7 @@ Test expressionWithDots -> Unit = [
   | ident
   | Identifier => [
     pathMaybe = ident path
-    path = | pathMaybe
-      | null => TO DO: "Missing identifier path"
-      |=> pathMaybe
+    path = pathMaybe expect: "Missing identifier path"
     Assert that: path count equals: 3
   ]
   |=> []

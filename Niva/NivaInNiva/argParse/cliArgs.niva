@@ -123,10 +123,8 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | "--help" => explicitHelp <- true
         | "--runtime" => [
           value = readSeparatedValue index: i
-          | value
-          | null => []
-          |=> [
-            parsed = value compilerRuntimeFromCli
+          value ifNotNull: [valueValue ->
+            parsed = valueValue compilerRuntimeFromCli
             | parsed
             | null => [invalid <- true]
             |=> [runtime <- parsed]
@@ -134,10 +132,8 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         ]
         | "--target" => [
           value = readSeparatedValue index: i
-          | value
-          | null => []
-          |=> [
-            parsed = value compilerTargetFromCli
+          value ifNotNull: [valueValue ->
+            parsed = valueValue compilerTargetFromCli
             | parsed
             | null => [invalid <- true]
             |=> [target <- parsed]

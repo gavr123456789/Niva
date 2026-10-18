@@ -237,9 +237,7 @@ IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
 GoContext goTypeNameFor(typeId): String -> String = [
   baseId = typeId goNormalizeTypeId
   existing = symbols typeNames at: baseId
-  ^ | existing
-    | null => ""
-    |=> existing
+  ^ existing orElse: ""
 ]
 
 GoContext goFieldNamesFor(typeId): String -> Set(String) = [
@@ -356,9 +354,7 @@ extend GoContext [
 
   on goFuncNameFor(funcId): String -> String = [
     existing = symbols funcNames at: funcId
-    ^ | existing
-      | null => ""
-      |=> existing
+    ^ existing orElse: ""
   ]
 
 ]
@@ -468,36 +464,26 @@ GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
   elseBranchMaybe = matchExpr elseBranch
 
   trueCaseMaybe != null ifTrue: [
-    trueBranchCase::IrMatchCase = | trueCaseMaybe
-      | null => TO DO: "Missing true case in boolean match"
-      |=> trueCaseMaybe
+    trueBranchCase::IrMatchCase = trueCaseMaybe expect: "Missing true case in boolean match"
     sb appendIndent: indent line: ("if " + subjectExpr + " {")
     this emitBoolMatchBranch: trueBranchCase sb: sb indent: (indent + 1) returnType: returnType scope: scope
     falseCaseMaybe != null ifTrue: [
-      falseBranchCase::IrMatchCase = | falseCaseMaybe
-        | null => TO DO: "Missing false case in boolean match"
-        |=> falseCaseMaybe
+      falseBranchCase::IrMatchCase = falseCaseMaybe expect: "Missing false case in boolean match"
       sb appendIndent: indent line: "} else {"
       this emitBoolMatchBranch: falseBranchCase sb: sb indent: (indent + 1) returnType: returnType scope: scope
     ] ifFalse: [
-      | elseBranchMaybe
-      | null => []
-      |=> [
-        this emitGoElseBlock: elseBranchMaybe sb: sb indent: indent returnType: returnType scope: scope
+      elseBranchMaybe ifNotNull: [elseBranchValue ->
+        this emitGoElseBlock: elseBranchValue sb: sb indent: indent returnType: returnType scope: scope
       ]
     ]
     sb appendIndent: indent line: "}"
   ] ifFalse: [
     falseCaseMaybe != null ifTrue: [
-      falseBranchCase::IrMatchCase = | falseCaseMaybe
-        | null => TO DO: "Missing false case in boolean match"
-        |=> falseCaseMaybe
+      falseBranchCase::IrMatchCase = falseCaseMaybe expect: "Missing false case in boolean match"
       sb appendIndent: indent line: ("if !(" + subjectExpr + ") {")
       this emitBoolMatchBranch: falseBranchCase sb: sb indent: (indent + 1) returnType: returnType scope: scope
-      | elseBranchMaybe
-      | null => []
-      |=> [
-        this emitGoElseBlock: elseBranchMaybe sb: sb indent: indent returnType: returnType scope: scope
+      elseBranchMaybe ifNotNull: [elseBranchValue ->
+        this emitGoElseBlock: elseBranchValue sb: sb indent: indent returnType: returnType scope: scope
       ]
       sb appendIndent: indent line: "}"
     ]
@@ -517,9 +503,7 @@ IrMatchCase goCaseTypeStr(ctx): GoContext scope: GoScope -> String = [
 // alias name for match branches
 IrMatchExpr goMatchAliasOrIt -> String = [
   alias = this typeAlias
-  ^ | alias
-    | null => "it"
-    |=> alias
+  ^ alias orElse: "it"
 ]
 
 IrExpr isGoBoolConditional -> Bool =
@@ -805,6 +789,7 @@ extend IrExpr [
   on goLocalVarName -> String? =
     | this
     | IrVarRef => name
+    | IrThisRef => "this"
     |=> null
 
   on isGoNullLiteral -> Bool =
@@ -859,6 +844,8 @@ extend IrExpr [
     sourceIsNullablePointerRef = | this
       | IrVarRef => (scope nullablePointerLocals contains: name) &&
         (scope narrowedNullablePointerLocals contains: name, not)
+      | IrThisRef => (scope nullablePointerLocals contains: "this") &&
+        (scope narrowedNullablePointerLocals contains: "this", not)
       |=> sourceNullablePointer
     isAddressable = | this
       | IrVarRef => true
@@ -890,9 +877,7 @@ extend IrExpr [
     argsStr = args joinWith: ", " transform: [a -> (a name toSafeGoIdent) + " " + (a typeRef toGoParamType: ctx)]
     lambdaType = expectedType kind == IrTypeRefKind.Function ifTrue: [expectedType] ifFalse: [typeRef]
     retTypeMaybe = lambdaType returnType
-    retType = | retTypeMaybe
-      | null => typeRef
-      |=> retTypeMaybe
+    retType = retTypeMaybe orElse: typeRef
     retStr = retType isGoUnitType ifTrue: [""] ifFalse: [" " + (retType toGoType: ctx)]
     sb = StringBuilder new
     sb append: "func("
@@ -952,7 +937,11 @@ extend IrExpr [
           isNarrowed ifTrue: ["*" + goName] ifFalse: [goName]
         ]
       ]
-    | IrThisRef  => "this"
+    | IrThisRef  => [
+        isNarrowedThis = (scope nullablePointerLocals contains: "this") &&
+          (scope narrowedNullablePointerLocals contains: "this")
+        isNarrowedThis ifTrue: ["*this"] ifFalse: ["this"]
+      ]
   | IrFieldGet => [
     recv = receiver toGoExpr: ctx scope: scope
     isUnion = ctx isGoUnionType: receiver typeRef typeId
@@ -1009,9 +998,7 @@ extend IrExpr [
 
         bindExpr = this tryGoBindExpr: ctx scope: scope
         bindExprMaybe = bindExpr
-        bindExprValue = | bindExprMaybe
-          | null => ""
-          |=> bindExprMaybe
+        bindExprValue = bindExprMaybe orElse: ""
         bindExprMaybe != null ifTrue: [bindExprValue] ifFalse: [
         receiverTypeMaybe = receiverType
         isErrorReceiver = | receiverTypeMaybe
@@ -1043,20 +1030,14 @@ extend IrExpr [
         |=> [
             // if its from core => generate core.Type__funcname, if not then Pkg__
             declPkgMaybe = declPkg
-            declPkgLocal = | declPkgMaybe
-              | null => ""
-              |=> declPkgMaybe
+            declPkgLocal = declPkgMaybe orElse: ""
             declPkgLocal == "core"
               ifTrue: [
                 ctx addImport: "niva_go/core"
                 msgNameMaybe = msgName
-                msgNameLocal = | msgNameMaybe
-                  | null => ""
-                  |=> msgNameMaybe
+                msgNameLocal = msgNameMaybe orElse: ""
                 recvTypeMaybe = receiverType
-                recvTypeLocal = | recvTypeMaybe
-                  | null => typeRef
-                  |=> recvTypeMaybe
+                recvTypeLocal = recvTypeMaybe orElse: typeRef
                 mutReceiver = paramTypes isNotEmpty && (paramTypes first isMut)
                 baseCoreFn = recvTypeLocal coreFuncNameFromCall: msgNameLocal forMut: mutReceiver
                 isUnitBranch = (recvTypeLocal typeId goNormalizeTypeId == "core_Bool") &&
@@ -1405,17 +1386,15 @@ IrMatchExpr goMatchTypeInto(sb): StringBuilder ctx: GoContext scope: GoScope -> 
     sb appendIndent: 1 line: ("case " + typeStr + ":")
     caseScope = scope copy
     aliasNameMaybe = typeAlias
-    | aliasNameMaybe
-    | null => []
-    |=> [
+    aliasNameMaybe ifNotNull: [aliasNameValue ->
       caseRefNames = c body collectIrRefNames
-      sb appendIndent: 2 line: (aliasNameMaybe + " := " + subjectName + ".(" + typeStr + ")")
-      (caseRefNames contains: aliasNameMaybe) ifFalse: [
-        sb appendIndent: 2 line: ("_ = " + aliasNameMaybe)
+      sb appendIndent: 2 line: (aliasNameValue + " := " + subjectName + ".(" + typeStr + ")")
+      (caseRefNames contains: aliasNameValue) ifFalse: [
+        sb appendIndent: 2 line: ("_ = " + aliasNameValue)
       ]
-      caseScope locals add: aliasNameMaybe
-      caseScope nullablePointerLocals remove: aliasNameMaybe
-      caseScope narrowedNullablePointerLocals remove: aliasNameMaybe
+      caseScope locals add: aliasNameValue
+      caseScope nullablePointerLocals remove: aliasNameValue
+      caseScope narrowedNullablePointerLocals remove: aliasNameValue
       ()
     ]
     c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
@@ -1447,9 +1426,7 @@ IrMatchExpr goMatchValueInto(sb): StringBuilder ctx: GoContext scope: GoScope ->
             |=> true
   hasNullCase = cases any: [c -> c condition isGoNullLiteral]
   subjectLocalNameMaybe = subject goLocalVarName
-  subjectLocalName = | subjectLocalNameMaybe
-    | null => ""
-    |=> subjectLocalNameMaybe
+  subjectLocalName = subjectLocalNameMaybe orElse: ""
 
   casesCount = cases count
   cases forEachIndexed: [i, c ->
@@ -1476,10 +1453,8 @@ IrMatchExpr goMatchValueInto(sb): StringBuilder ctx: GoContext scope: GoScope ->
       sb appendIndent: 1 line: "}"
     ]
   ]
-  | elseBranchLocal
-  | null => []
-  |=> [
-    elseBlock = elseBranchLocal
+  elseBranchLocal ifNotNull: [elseBranchLocalValue ->
+    elseBlock = elseBranchLocalValue
     sb appendIndent: 1 line: "} else {"
     elseScope = scope copy
     ((subjectLocalName != "") && hasNullCase) ifTrue: [

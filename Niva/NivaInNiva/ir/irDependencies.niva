@@ -92,13 +92,9 @@ IrExpr collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
         ifTrue: [IrDependencyKind.Constructor]
         ifFalse: [IrDependencyKind.Call]
       msgNameMaybe = msgName
-      fallbackCallSymbol = | msgNameMaybe
-        | null => "<dynamic>"
-        |=> msgNameMaybe
+      fallbackCallSymbol = msgNameMaybe orElse: "<dynamic>"
       funcIdMaybe = funcId
-      callSymbol = | funcIdMaybe
-        | null => fallbackCallSymbol
-        |=> funcIdMaybe
+      callSymbol = funcIdMaybe orElse: fallbackCallSymbol
       declPkgMaybe = declPkg
       | declPkgMaybe
       | null => []
@@ -238,39 +234,29 @@ mut IrTarjanState strongConnect(node): String -> Unit = [
   onStack add: node
 
   modulePkgMaybe = packagesByName at: node
-  modulePkg = | modulePkgMaybe
-    | null => TO DO: "Missing package while sorting dependencies"
-    |=> modulePkgMaybe
+  modulePkg = modulePkgMaybe expect: "Missing package while sorting dependencies"
   modulePkg dependencyPackageNames forEach: [target ->
     targetIndex = indices at: target
     | targetIndex
     | null => [
       this strongConnect: target
       nodeLowMaybe = lowLinks at: node
-      nodeLow = | nodeLowMaybe
-        | null => TO DO: "Missing dependency index for $node"
-        |=> nodeLowMaybe
+      nodeLow = nodeLowMaybe expect: "Missing dependency index for $node"
       targetLowMaybe = lowLinks at: target
-      targetLow = | targetLowMaybe
-        | null => TO DO: "Missing dependency index for $target"
-        |=> targetLowMaybe
+      targetLow = targetLowMaybe expect: "Missing dependency index for $target"
       targetLow < nodeLow ifTrue: [lowLinks at: node put: targetLow]
     ]
     |=> [
       onStack contains: target, ifTrue: [
         nodeLowMaybe = lowLinks at: node
-        nodeLow = | nodeLowMaybe
-          | null => TO DO: "Missing dependency index for $node"
-          |=> nodeLowMaybe
+        nodeLow = nodeLowMaybe expect: "Missing dependency index for $node"
         targetIndex < nodeLow ifTrue: [lowLinks at: node put: targetIndex]
       ]
     ]
   ]
 
   nodeLowMaybe = lowLinks at: node
-  nodeLow = | nodeLowMaybe
-    | null => TO DO: "Missing dependency index for $node"
-    |=> nodeLowMaybe
+  nodeLow = nodeLowMaybe expect: "Missing dependency index for $node"
   nodeLow == nodeIndex ifTrue: [
     component::mut List(String) = {}!
     [
@@ -306,9 +292,7 @@ IrModule dependencyCycleFor(component): List(String) -> IrDependencyCycle = [
     visitedAt at: current put: pathNodes count
     pathNodes add: current
     modulePkgMaybe = packagesByName at: current
-    modulePkg = | modulePkgMaybe
-      | null => TO DO: "Missing package in dependency cycle"
-      |=> modulePkgMaybe
+    modulePkg = modulePkgMaybe expect: "Missing package in dependency cycle"
     edge = modulePkg dependencies
       filter: [componentSet contains: it toPkg]
       ,sortedBy: [it stableKey]
@@ -318,9 +302,7 @@ IrModule dependencyCycleFor(component): List(String) -> IrDependencyCycle = [
   ]
 
   cycleStartMaybe = visitedAt at: current
-  cycleStart = | cycleStartMaybe
-    | null => TO DO: "Missing dependency cycle start"
-    |=> cycleStartMaybe
+  cycleStart = cycleStartMaybe expect: "Missing dependency cycle start"
   ^ IrDependencyCycle
     packages: (pathNodes toList drop: cycleStart)
     edges: (pathEdges toList drop: cycleStart)

@@ -8,7 +8,7 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
   | IrCall        => [
       bindMaybe = bind
       | bindMaybe
-      | null => []
+      | null => ()
       |=> [
         | bindMaybe
         | IrBindEmit => [
@@ -72,7 +72,7 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
       ]
       constructorBindMaybe = constructorBind
       | constructorBindMaybe
-      | null => []
+      | null => ()
       |=> [
         | constructorBindMaybe
         | IrConstructorBindEmit => [

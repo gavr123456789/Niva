@@ -227,6 +227,12 @@ fun Resolver.resolveKeywordMsg(
 
     val fromReceiverAndfromArgsTable = (letterToTypeFromReceiver + letterToTypeFromArgs).toMutableMap()//.replaceAllInternalTypesWithItsCopies()
 
+    // a keyword message can be declared for a generic receiver like T? expect so take the letter from the receiver
+    if (kwFromDB?.forGeneric == true) {
+        val letterValue = if (receiverType is Type.NullableType) receiverType.realType else receiverType
+        fromReceiverAndfromArgsTable.putIfAbsent("T", letterValue)
+    }
+
 
     // Fix for collection literals arguments when receiver is generic
     // e.g. List(Int) val: {}
