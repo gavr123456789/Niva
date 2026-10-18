@@ -1673,3 +1673,24 @@ Test compileTimeInfoMessage = [
   (personInfo contains: "    name: String") assertTrue
   (personInfo contains: "- `greet -> String` ( main.niva:3 )") assertTrue
 ]
+
+/// dollars and quotes here are built by concatenation
+/// so that the kotlin bootstrap does not touch them
+Test interpolatedStringResolvesToStringConcat = [
+  dollar = "$"
+  quote = (34 toChar) toString
+  fileMain = "type Point\n  x: Int\n\nn = 5\np = Point x: 1\nt = " + quote + dollar + "[n + 1] of " + dollar + "[p]" + quote + "\n"
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  tDecl = result entryPointExpressions at: 2
+  | tDecl
+  | VarDeclarationT => [
+    tVal = tDecl value
+    Assert that: tVal typeInfo t name equals: "String"
+    | tVal
+    | BinaryMsgT => Assert that: tVal dbMsg name equals: "+"
+    |=> [TO DO: "interpolation should desugar to concat"]
+  ]
+  |=> [TO DO: "var declaration expected"]
+]

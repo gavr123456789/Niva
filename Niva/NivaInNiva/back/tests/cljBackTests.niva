@@ -1046,3 +1046,16 @@ Test cljCoreErrorFromCallbackUsesErrorMatch = [
   clj contains: "Object (niva.core/Any__echo \"handled\")", assertTrue
   Assert that: (clj contains: ":niva.core/Error (let") equals: false
 ]
+
+
+Test cljInterpolatedStringConcat = [
+  dollar = "$"
+  quote = (34 toChar) toString
+  fileMain = "type Point\n  x: Int\n\nn = 5\np = Point x: 1\nt = " + quote + dollar + "[n + 1] of " + dollar + "[p]" + quote + "\n"
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(str (str (niva.core/Any__toString (+ n 1)) \" of \") (niva.core/Any__toString p))", assertTrue
+]

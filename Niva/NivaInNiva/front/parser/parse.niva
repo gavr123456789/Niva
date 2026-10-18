@@ -184,6 +184,166 @@ extend mut Parser [
     x
   ]
 
+  /// string literal with dollar parts becomes an interpolation node
+  /// literals without a dollar return null
+  on interpolatedStringFrom(tok): Token -> Expr? = [
+    lexeme = tok lexeme
+    isRaw = lexeme startsWith: "\"\"\""
+    quotesCount = isRaw ifTrue: [3] ifFalse: [1]
+    content = (lexeme drop: quotesCount) dropLast: quotesCount
+    len = content count
+    parts::mut List::Expr = {}!
+    mut textStart = 0
+    mut pos = 0
+    mut hasInterpolation = false
+
+    [ pos < len ] whileTrue: [
+      isDollar = (content at: pos) == '$'
+      hasMore = pos + 1 < len
+      isNameAhead = (hasMore) && (((content at: pos + 1) isLetter) || ((content at: pos + 1) == '_'))
+      isBracketAhead = (hasMore) && ((content at: pos + 1) == '[') && ((this closingBracketIn: content from: pos + 1) != -1)
+      (isDollar && (isNameAhead || isBracketAhead)) ifTrue: [
+        hasInterpolation <- true
+        this addInterpolatedText: content from: textStart to: pos parts: parts token: tok isRaw: isRaw
+        isNameAhead ifTrue: [
+          nameEnd = this interpIdentEnd: content from: pos + 1
+          exprSource = content slice: (pos + 1)..(nameEnd - 1)
+          parts add: (this interpExpr: exprSource token: tok offset: pos)
+          pos <- nameEnd
+        ] ifFalse: [
+          close = this closingBracketIn: content from: pos + 1
+          exprSource = this interpSourceFrom: content from: (pos + 2) to: (close - 1) isRaw: isRaw
+          parts add: (this interpExpr: exprSource token: tok offset: pos)
+          pos <- close + 1
+        ]
+        textStart <- pos
+      ] ifFalse: [
+        pos <- pos + 1
+      ]
+    ]
+
+    hasInterpolation ifFalse: [^ null]
+    this addInterpolatedText: content from: textStart to: len parts: parts token: tok isRaw: isRaw
+    ^ InterpolatedString token: tok parts: parts toList
+  ]
+
+  /// end of the name after a dollar, the same position when there is no name
+  on interpIdentEnd(content): String from(start): Int -> Int = [
+    len = content count
+    start < len ifFalse: [^ start]
+    first = content at: start
+    (first isLetter) || (first == '_') ifFalse: [^ start]
+
+    mut i = start + 1
+    [
+      i < len &&
+      (((content at: i) isLetter) || ((content at: i) isDigit) || ((content at: i) == '_'))
+    ] whileTrue: [ i <- i + 1 ]
+    ^ i
+  ]
+
+  /// bracket closing a dollar bracket interpolation, -1 when it is missing
+  /// pos is the opening bracket, nested brackets and strings are skipped
+  on closingBracketIn(content): String from(pos): Int -> Int = [
+    len = content count
+    mut depth = 0
+    mut quote = '\u0000'
+    mut index = pos
+    mut result = -1
+
+    [ (index < len) && (result == -1) ] whileTrue: [
+      ch = content at: index
+      quote == '\u0000' ifTrue: [
+        ch == '[' ifTrue: [depth <- depth + 1] ifFalse: [
+          ch == ']' ifTrue: [
+            depth <- depth - 1
+            depth == 0 ifTrue: [result <- index]
+          ] ifFalse: [
+            ((ch == '"') || (ch == '\'')) ifTrue: [quote <- ch]
+          ]
+        ]
+      ] ifFalse: [
+        ch == quote ifTrue: [quote <- '\u0000']
+      ]
+      index <- index + 1
+    ]
+    ^ result
+  ]
+
+  /// literal part of an interpolated string, empty text is skipped
+  on addInterpolatedText(content): String from(start): Int to(end): Int parts::mut List(Expr) token: Token isRaw::Bool = [
+    end > start ifTrue: [
+      text = content slice: start..(end - 1)
+      quoted = isRaw ifTrue: ["\"\"\"" + text + "\"\"\""] ifFalse: ["\"" + text + "\""]
+      partToken = this interpolatedTextToken: quoted token: token offset: start isRaw: isRaw
+      parts add: (StringExpr token: partToken)
+    ]
+  ]
+
+  /// source text of a literal part is quoted again the same way it was before
+  on interpolatedTextToken(lexeme): String token: Token offset: Int isRaw::Bool -> Token = [
+    kind = isRaw ifTrue: [TokenType.RawString] ifFalse: [TokenType.String]
+    ^ Token
+      kind: kind
+      lexeme: lexeme
+      line: token line
+      start: token start + offset end: token start + offset + lexeme count
+      file: token file
+  ]
+
+  /// source text of an interpolated expression
+  /// quotes and backslashes are escaped inside a usual string literal
+  /// so they are given back as they were written
+  on interpSourceFrom(content): String from(start): Int to(end): Int isRaw::Bool -> String = [
+    mut text = content slice: start..end
+    isRaw ifFalse: [
+      len = text count
+      mut result = ""
+      mut i = 0
+      [ i < len ] whileTrue: [
+        ch = text at: i
+        (ch == '\\') && (i + 1 < len) ifTrue: [
+          next = text at: i + 1
+          ((next == '"') || (next == '\\')) ifTrue: [
+            result <- result + next toString
+            i <- i + 2
+          ] ifFalse: [
+            result <- result + ch toString
+            i <- i + 1
+          ]
+        ] ifFalse: [
+          result <- result + ch toString
+          i <- i + 1
+        ]
+      ]
+      text <- result
+    ]
+    ^ text
+  ]
+
+  /// expression written after a dollar name or between dollar brackets
+  on interpExpr(source): String token: Token offset: Int -> Expr = [
+    source isNotEmpty ifFalse: [
+      TO DO: "empty interpolated expression at " + token toPosition
+    ]
+    lexed = Lexer get-tokens: source file: token file
+    shifted = lexed map: [
+      Token
+        kind: it kind
+        lexeme: it lexeme
+        line: token line
+        start: token start + offset end: token start + offset + it lexeme count
+        file: token file
+    ]
+    subStatements::mut List::Statement = {}!
+    sub::mut Parser = Parser tokens: shifted current: 0 statements: subStatements
+    expr = sub nextExpression: sub step
+    sub done ifFalse: [
+      TO DO: "unexpected token after an interpolated expression"
+    ]
+    ^ expr
+  ]
+
   /// single element of a collection literal
   /// primary(including nested collections) or expression in brackets `(1 inc)`
   on parseCollectionElement(tok): Token -> Expr? = [
@@ -278,6 +438,10 @@ extend mut Parser [
   /// or identifier | nullableIdentifier
   /// simple literal 1 "" '' true false 1.1 1.1f
   on primary(tok): Token -> Expr? = [
+    isStringTok = (tok kind == TokenType.String) || (tok kind == TokenType.RawString)
+    interpolated = isStringTok ifTrue: [this interpolatedStringFrom: tok] ifFalse: [null]
+    interpolated != null ifTrue: [^ interpolated]
+
     literalExprMaybe = this literalExprFrom: tok
     literalExpr = | literalExprMaybe
       | null => null

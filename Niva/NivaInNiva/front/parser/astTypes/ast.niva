@@ -106,6 +106,8 @@ type DestructureBinding
 // Expressions
 union Expr token: Token =
   | ^LiteralExpr
+  // string literal with dollar parts, see interpolatedStringFrom
+  | InterpolatedString parts: List(Expr)
   | Identifier     name: String path: List?(String)
   | MutableTypeIdentifier identifier: Identifier
   | AtomIdentifier name: String // #red, #blue, Smalltalk-style symbol
@@ -144,6 +146,9 @@ constructor Identifier fromToken::Token =
   Identifier token: fromToken name: (fromToken lexeme) path: null
 
 ExprInBrackets toString = "($value)"
+
+InterpolatedString toString -> String =
+  "InterpolatedString(" + (parts joinWith: " " transform: [it toString]) + ")"
 
 
 type NameAndExpr name: Identifier expr: Expr

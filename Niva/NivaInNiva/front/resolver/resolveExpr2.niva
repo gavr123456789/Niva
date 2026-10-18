@@ -46,6 +46,7 @@ Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
     |=> elseBranchMaybe unTypedBody forEach: [it collectExprRefNames: refs]
   ]
   | CollectionLiteral => elements unTypedBody forEach: [it collectExprRefNames: refs]
+  | InterpolatedString => parts forEach: [it collectExprRefNames: refs]
   | LiteralExpr => []
   | TypedExpr => exprAst collectExprRefNames: refs
   |=> []
@@ -470,6 +471,46 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
 ]
 
 
+/// interpolated string becomes a chain of string concat calls
+/// parts that are not strings get a toString call
+InterpolatedString resolveInterpolatedString(db): TyperDB withContext(c): Context -> TypedExpr2 = [
+  typedParts::mut List::TypedExpr2 = {}!
+  allErrors::mut List::NivaType = {}!
+
+  parts forEach: [part ->
+    typed = part toTypedExprFromDb2: db withContext: c
+    isString = (typed typeInfo t) sameTypeAs: (db dtc str)
+    partExpr = isString ifTrue: [typed] ifFalse: [
+      toStringMethod = db findMsgFromReceiver: typed byName: "toString" currentPkg: c currentPkg
+      UnaryMsgT
+        receiver: typed
+        token: part token
+        typeInfo: toStringMethod returnTypeInfo
+        dbMsg: toStringMethod
+        selector: (Identifier token: part token name: "toString" path: null)
+        kind: toStringMethod kind
+    ]
+    typed typeInfo listOfErrors forEach: [err -> allErrors add: err]
+    typedParts add: partExpr
+  ]
+
+  (typedParts count == 1), ifTrue: [^ typedParts first]
+
+  mut acc::TypedExpr2 = typedParts first
+  (typedParts drop: 1) forEach: [next ->
+    plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg
+    partTypeInfo = TypeInfo t: (db dtc str) isMut: false listOfErrors: (allErrors toMutableList)
+    plusArg = NameAndExprT name: (Identifier token: token name: "+" path: null) expr: next
+    acc <- BinaryMsgT
+      receiver: acc
+      token: token
+      typeInfo: partTypeInfo
+      dbMsg: plusMethod
+      args: {plusArg}
+  ]
+  ^ acc
+]
+
 Expr toTypedExprFromDb2: TyperDB withContext: Context -> TypedExpr2 =
   this toTypedExprFromDb2: toTypedExprFromDb2 withContext: withContext expectedType: null
 
@@ -480,6 +521,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | FloatExpr   => FloatExprT token: token typeInfo: db dtc float toTypeInfoDefault
   | DoubleExpr  => DoubleExprT token: token typeInfo: db dtc double toTypeInfoDefault
   | StringExpr  => StringExprT token: token typeInfo: db dtc str toTypeInfoDefault
+  | InterpolatedString => this resolveInterpolatedString: db withContext: c
   | BooleanExpr => BooleanExprT token: token typeInfo: db dtc bool toTypeInfoDefault
   | NullExpr    => NullExprT token: token typeInfo: (NullableT v: db dtc nothing) toTypeInfoDefault
   | UnitExpr    => UnitExprT token: token typeInfo: db dtc unit toTypeInfoDefault

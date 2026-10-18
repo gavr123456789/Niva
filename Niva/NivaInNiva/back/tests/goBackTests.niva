@@ -954,3 +954,18 @@ Test goAtomIdentifierAsStringLiteral = [
   go contains: "var color string = \"red\"", assertTrue
   go contains: "var other string = \"blue\"", assertTrue
 ]
+
+
+/// dollars and quotes are built by concatenation
+/// so that the kotlin bootstrap does not touch them
+Test goInterpolatedStringConcat = [
+  dollar = "$"
+  quote = (34 toChar) toString
+  fileMain = "type Point\n  x: Int\n\nn = 5\np = Point x: 1\nt = " + quote + dollar + "[n + 1] of " + dollar + "[p]" + quote + "\n"
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var t string = ((core.Any__toString((n + 1)) + \" of \") + core.Any__toString(p))", assertTrue
+]
