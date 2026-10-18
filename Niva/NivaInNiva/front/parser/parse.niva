@@ -185,7 +185,7 @@ extend mut Parser [
   ]
 
   /// string literal with dollar parts becomes an interpolation node
-  /// literals without a dollar return null
+  /// literals without a dollar part and without an escaped dollar return null
   on interpolatedStringFrom(tok): Token -> Expr? = [
     lexeme = tok lexeme
     isRaw = lexeme startsWith: "\"\"\""
@@ -196,13 +196,15 @@ extend mut Parser [
     mut textStart = 0
     mut pos = 0
     mut hasInterpolation = false
+    mut hasEscapedDollar = false
 
     [ pos < len ] whileTrue: [
       isDollar = (content at: pos) == '$'
+      isEscaped = isDollar && (isRaw == false) && (this isEscapedDollarAt: content at: pos)
       hasMore = pos + 1 < len
       isNameAhead = (hasMore) && (((content at: pos + 1) isLetter) || ((content at: pos + 1) == '_'))
       isBracketAhead = (hasMore) && ((content at: pos + 1) == '[') && ((this closingBracketIn: content from: pos + 1) != -1)
-      (isDollar && (isNameAhead || isBracketAhead)) ifTrue: [
+      (isDollar && (isEscaped == false) && (isNameAhead || isBracketAhead)) ifTrue: [
         hasInterpolation <- true
         this addInterpolatedText: content from: textStart to: pos parts: parts token: tok isRaw: isRaw
         isNameAhead ifTrue: [
@@ -218,13 +220,28 @@ extend mut Parser [
         ]
         textStart <- pos
       ] ifFalse: [
+        (isDollar && isEscaped) ifTrue: [hasEscapedDollar <- true]
         pos <- pos + 1
       ]
     ]
 
-    hasInterpolation ifFalse: [^ null]
+    (hasInterpolation || hasEscapedDollar) ifFalse: [^ null]
     this addInterpolatedText: content from: textStart to: len parts: parts token: tok isRaw: isRaw
     ^ InterpolatedString token: tok parts: parts toList
+  ]
+
+    /// dollar is escaped if preceded by an odd number of backslashes
+    /// raw literals treat backslashes as plain characters
+    /// "\$100"   -> true
+    /// "\\$100"  -> false
+  on isEscapedDollarAt(content): String at(pos): Int -> Bool = [
+    mut backslashes = 0
+    mut i = pos - 1
+    [ (i >= 0) && ((content at: i) == '\\') ] whileTrue: [
+      backslashes <- backslashes + 1
+      i <- i - 1
+    ]
+    ^ (backslashes % 2) == 1
   ]
 
   /// end of the name after a dollar, the same position when there is no name
@@ -271,13 +288,33 @@ extend mut Parser [
   ]
 
   /// literal part of an interpolated string, empty text is skipped
-  on addInterpolatedText(content): String from(start): Int to(end): Int parts::mut List(Expr) token: Token isRaw::Bool = [
+  on addInterpolatedText(content): String from(start): Int to(end): Int parts: mut List(Expr) token: Token isRaw: Bool = [
     end > start ifTrue: [
-      text = content slice: start..(end - 1)
+      rawText = content slice: start ..< end
+      text = isRaw ifTrue: [rawText] ifFalse: [this interpUnescapeDollar: rawText]
       quoted = isRaw ifTrue: ["\"\"\"" + text + "\"\"\""] ifFalse: ["\"" + text + "\""]
       partToken = this interpolatedTextToken: quoted token: token offset: start isRaw: isRaw
       parts add: (StringExpr token: partToken)
     ]
+  ]
+
+  /// "Price: \$100" -> "Price: $100"
+  on interpUnescapeDollar(text): String -> String = [
+    len = text count
+    mut result = ""
+    mut i = 0
+    [ i < len ] whileTrue: [
+      ch = text at: i
+      isEscapedDollar = (ch == '\\') && (i + 1 < len) && ((text at: (i + 1)) == '$')
+      isEscapedDollar ifTrue: [
+        result <- result + "$"
+        i <- i + 2
+      ] ifFalse: [
+        result <- result + ch toString
+        i <- i + 1
+      ]
+    ]
+    ^ result
   ]
 
   /// source text of a literal part is quoted again the same way it was before

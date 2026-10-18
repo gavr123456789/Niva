@@ -94,18 +94,57 @@ Test unclosedBracketStaysPlainLiteral = [
 
 
 
-/// a backslash is a plain text char, it does not escape a dollar
-Test backslashDoesNotEscapeDollar = [
+/// a backslash before a dollar escapes it, the dollar stays plain text
+Test backslashEscapesDollar = [
   dollar = "$"
   bs = "\\"
   expr = TestParse expression: "\"" + bs + dollar + "x" + "\""
   | expr
   | InterpolatedString => [
+    Assert that: expr parts count equals: 1
+    part = expr parts first
+    | part
+    | StringExpr => Assert that: part token lexeme equals: "\"" + dollar + "x\""
+    |=> [TO DO: "literal part with a plain dollar expected"]
+  ]
+  |=> [TO DO: "interpolated string expected"]
+]
+
+/// an escaped dollar stays text while a real dollar still interpolates
+Test backslashEscapesDollarBeforeInterpolation = [
+  dollar = "$"
+  bs = "\\"
+  src = "\"" + bs + dollar + "x " + dollar + "y\""
+  expr = TestParse expression: src
+  | expr
+  | InterpolatedString => [
     Assert that: expr parts count equals: 2
     first = expr parts at: 0
     | first
-    | StringExpr => Assert that: first token lexeme equals: "\"" + bs + "\""
-    |=> [TO DO: "text part with a backslash expected"]
+    | StringExpr => Assert that: first token lexeme equals: "\"" + dollar + "x \""
+    |=> [TO DO: "literal part with a plain dollar expected"]
+    last = expr parts at: 1
+    | last
+    | Identifier => Assert that: last name equals: "y"
+    |=> [TO DO: "identifier part expected"]
+  ]
+  |=> [TO DO: "interpolated string expected"]
+]
+
+/// a raw literal keeps a backslash as a plain char, the dollar still interpolates
+Test rawBackslashDoesNotEscapeDollar = [
+  dollar = "$"
+  bs = "\\"
+  quote = "\""
+  triple = quote + quote + quote
+  expr = TestParse expression: triple + bs + dollar + "x" + triple
+  | expr
+  | InterpolatedString => [
+    Assert that: expr parts count equals: 2
+    first = expr parts at: 0
+    | first
+    | StringExpr => Assert that: first token lexeme equals: triple + bs + triple
+    |=> [TO DO: "raw literal part with a backslash expected"]
     last = expr parts at: 1
     | last
     | Identifier => Assert that: last name equals: "x"

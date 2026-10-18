@@ -4,7 +4,7 @@
 .idea/*
 .lsp/*
 .vscode/*
-.niva_go/build/
+.niva_go/*
 .bootstrap/*
-main.jar
+*.jar
 docs/

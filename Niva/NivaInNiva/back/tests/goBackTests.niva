@@ -566,8 +566,7 @@ Test goImplicitLambdaArgCodegen = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "core.List__map([]int{1, 2, 3}, func(it int) int {", assertTrue
+  go contains: "core.List__map[int]([]int{1, 2, 3}, func(it int) int {", assertTrue
   go contains: "return (it + 1)", assertTrue
   Assert that: (go contains: "func() int") equals: false
 ]
@@ -968,4 +967,17 @@ Test goInterpolatedStringConcat = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "var t string = ((core.Any__toString((n + 1)) + \" of \") + core.Any__toString(p))", assertTrue
+]
+
+/// escaped dollar becomes a plain dollar in the emitted go string
+Test goEscapedDollarStaysPlainText = [
+  dollar = "$"
+  bs = "\\"
+  quote = (34 toChar) toString
+  fileMain = "t = " + quote + bs + dollar + "name" + quote + "\n"
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: ("var t string = " + quote + dollar + "name" + quote), assertTrue
 ]

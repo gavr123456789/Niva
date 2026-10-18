@@ -2,31 +2,33 @@ type Assert
 
 /// prints both expressions and values
 constructor Assert that: Any? equals: Any? -> Unit = [
-  a = "COMPILE TIME REFLECTION TODO"
-  b = "COMPILE TIME REFLECTION TODO"
-  codePlace = "COMPILE TIME REFLECTION TODO"
+  //a = "COMPILE TIME REFLECTION TODO"
+  //b = "COMPILE TIME REFLECTION TODO"
+  //codePlace = "COMPILE TIME REFLECTION TODO"
   that != equals ifTrue: [
-    Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) \n\n$that\n\n----!=----\n\n$equals\n", orPANIC
+    //Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) \n\n$that\n\n----!=----\n\n$equals\n", orPANIC
+    Error throwWithMessage: "Assertion failed: \n\n$that\n\n----!=----\n\n$equals\n", orPANIC
   ]
 ]
 
 constructor Assert that: Any? equals: Any? andSay: String -> Unit = [
-  a = "COMPILE TIME REFLECTION TODO"
-  b = "COMPILE TIME REFLECTION TODO"
-  codePlace = "COMPILE TIME REFLECTION TODO"
+  //a = "COMPILE TIME REFLECTION TODO"
+  //b = "COMPILE TIME REFLECTION TODO"
+  //codePlace = "COMPILE TIME REFLECTION TODO"
 
   that != equals ifTrue: [
-    Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) \n\n$that\n\n----!=----\n\n$equals\n $andSay", orPANIC
+    //Error throwWithMessage: "$codePlace Assertion failed: ($a != $b) \n\n$that\n\n----!=----\n\n$equals\n $andSay", orPANIC
+    Error throwWithMessage: "Assertion failed:\n\n$that\n\n----!=----\n\n$equals\n $andSay", orPANIC
   ]
 ]
 
 /// If thats false - ends the program with message
 Bool assert(msg): String = [
-  x = "COMPILE TIME REFLECTION TODO"
-  this == false ifTrue: [Error throwWithMessage: "assert failed: " + x + "\n" + msg, orPANIC]
+  //x = "COMPILE TIME REFLECTION TODO"
+  this == false ifTrue: [Error throwWithMessage: "assert failed: \n" + msg, orPANIC]
 ]
 
 Bool assertTrue = [
-  x = "COMPILE TIME REFLECTION TODO"
-  this == false ifTrue: [Error throwWithMessage: "assert failed: " + x, orPANIC]
+  //x = "COMPILE TIME REFLECTION TODO"
+  this == false ifTrue: [Error throwWithMessage: "assert failed: its false", orPANIC]
 ]
