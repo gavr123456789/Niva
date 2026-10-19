@@ -312,9 +312,10 @@ IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> Stri
   listExpr = "[" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "]"
   setExpr = "#{" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
   mapExpr = "{" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
-  value = kindLocal == IrCollectionKind.List ifTrue: [listExpr] ifFalse: [
-    kindLocal == IrCollectionKind.Set ifTrue: [setExpr] ifFalse: [mapExpr]
-  ]
+  value = | kindLocal
+    | IrCollectionKind.List => listExpr
+    | IrCollectionKind.Set => setExpr
+    |=> mapExpr
   isMutable = this typeRef isMut
   ^ isMutable ifTrue: ["(atom " + value + ")"] ifFalse: [value]
 ]
@@ -376,10 +377,9 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
   elseBranchLocal = this elseBranch
   casesLocal = this cases
   kindLocal = this kind
-  isByError = kindLocal == IrMatchKind.ByError
-  isByType = kindLocal == IrMatchKind.ByType
 
-  ^ isByError ifTrue: [
+  ^ | kindLocal
+    | IrMatchKind.ByError => [
       // Errors are exceptions carrying the error record under `:value` (see
       // IrThrow / niva.core/Error__throw). We dispatch on the record's concrete
       // type; anything unhandled is re-thrown so it keeps propagating.
@@ -462,8 +462,8 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
             sb append: ")"
             sb toString
           ]
-    ] ifFalse: [
-      isByType ifTrue: [
+    ]
+    | IrMatchKind.ByType => [
       // condp instance? subject Foo (let [alias subject] body) ...
       sb = StringBuilder new
       sb append: "(condp instance? "
@@ -495,7 +495,8 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
           sb append: ")"
         ]
       (sb toString) cljWrapInLet: {(CljBinding name: subjectName value: subjectExpr)}
-      ] ifFalse: [
+    ]
+    |=> [
       // ByValue or ByBool -> cond chain
       sb = StringBuilder new
       sb append: "(cond"
@@ -522,8 +523,7 @@ IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
         ]
       sb append: ")"
       (sb toString) cljWrapInLet: {(CljBinding name: subjectName value: subjectExpr)}
-      ]
-  ]
+    ]
 ]
 
 // ---------------------------------------------------------------------------

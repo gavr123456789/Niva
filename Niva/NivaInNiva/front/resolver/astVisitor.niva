@@ -385,7 +385,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
     resolveError::ResolveErrors = ErrorNoSuchType tok: st token msg: "type $name not found"
     db addErrorMessage: resolveError
 
-    ^ null
+    null
   ]
   |=> [
 
@@ -413,7 +413,7 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
         typeStub genericArgs add: it
       ]
     ]
-    ^ typeStub
+    typeStub
   ]
 ]
 

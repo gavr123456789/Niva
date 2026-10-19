@@ -152,24 +152,24 @@ extend Body [
 
   /// resolve collection elements with expected type
   on resolveCollectionElements(db): TyperDB withContext(upperContext): Context expectedEven: NivaType? expectedOdd: NivaType? -> TypedBody = [
-    (expectedEven == null) && (expectedOdd == null) ifTrue: [
-      ^ this resolveBody2: db withContext: upperContext
+    | true
+    | (expectedEven == null) && (expectedOdd == null) => this resolveBody2: db withContext: upperContext
+    |=> [
+      c = Context fromParent: upperContext
+      unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
+
+      typedElems = unTypedBody mapIndexed: [ i, elem ->
+        expectedForElem = i % 2 == 0 ifTrue: [expectedEven] ifFalse: [expectedOdd]
+        elem toTypedExprFromDb2: db withContext: c expectedType: expectedForElem
+      ]
+
+      bodyErrors = typedElems collectBodyErrors
+
+      TypedBody
+          v: typedElems
+          t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
+          listOfErrors: (bodyErrors normalizeErrorList)
     ]
-
-    c = Context fromParent: upperContext
-    unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
-
-    typedElems = unTypedBody mapIndexed: [ i, elem ->
-      expectedForElem = i % 2 == 0 ifTrue: [expectedEven] ifFalse: [expectedOdd]
-      elem toTypedExprFromDb2: db withContext: c expectedType: expectedForElem
-    ]
-
-    bodyErrors = typedElems collectBodyErrors
-
-    TypedBody
-        v: typedElems
-        t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
-        listOfErrors: (bodyErrors normalizeErrorList)
   ]
 ]
 
@@ -227,10 +227,13 @@ List(NivaType) errorsToString -> String =
   this normalizeErrorList joinWith: ", " transform: [it name]
 
 NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
+  mut result::Int? = null
   types forEachIndexed: [i, it ->
-    this sameTypeAs: it, ifFalse: [^ i]
+    result == null ifTrue: [
+      this sameTypeAs: it, ifFalse: [result <- i]
+    ]
   ]
-  null
+  result
 ]
 
 extend TyperDB [
@@ -362,44 +365,38 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
 
   expectedFields = expectedType fields
 
-  typeTFields::List(TypeTField) = args isNotEmpty
-    ifTrue: [c typedBlockArgFields: args fromDB: db]
-    ifFalse: [
-      untypedArgs isNotEmpty
-        ifTrue: [
-          expectedFields count != untypedArgs count ifTrue: [
-            db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Wrong number of block args, expected " + expectedFields count toString)
-          ]
+  typeTFields::List(TypeTField) = | true
+    | args isNotEmpty => c typedBlockArgFields: args fromDB: db
+    | untypedArgs isNotEmpty => [
+        expectedFields count != untypedArgs count ifTrue: [
+          db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Wrong number of block args, expected " + expectedFields count toString)
+        ]
 
-          expectedFields count != untypedArgs count
-            ifTrue: [
-              noTypeTFields::List(TypeTField) = {}
-              noTypeTFields
+        expectedFields count != untypedArgs count
+          ifTrue: [
+            noTypeTFields::List(TypeTField) = {}
+            noTypeTFields
+          ]
+          ifFalse: [
+            untypedArgs mapIndexed: [i, ident ->
+              expectedField = expectedFields at: i
+              c defineVar: ident name withType: expectedField typeT toTypeInfoDefault
+              TypeTField name: ident name typeT: expectedField typeT isMut: expectedField isMut
             ]
-            ifFalse: [
-              untypedArgs mapIndexed: [i, ident ->
-                expectedField = expectedFields at: i
-                c defineVar: ident name withType: expectedField typeT toTypeInfoDefault
-                TypeTField name: ident name typeT: expectedField typeT isMut: expectedField isMut
-              ]
-            ]
+          ]
+      ]
+    | expectedFields count == 1 => [
+        expectedField = expectedFields first
+        c defineVar: expectedField name withType: expectedField typeT toTypeInfoDefault
+        { expectedField }
+      ]
+    |=> [
+        expectedFields isNotEmpty ifTrue: [
+          db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Block has no args, but expected " + expectedFields count toString)
         ]
-        ifFalse: [
-          expectedFields count == 1
-            ifTrue: [
-              expectedField = expectedFields first
-              c defineVar: expectedField name withType: expectedField typeT toTypeInfoDefault
-              { expectedField }
-            ]
-            ifFalse: [
-              expectedFields isNotEmpty ifTrue: [
-                db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Block has no args, but expected " + expectedFields count toString)
-              ]
-              noTypeTFields::List(TypeTField) = {}
-              noTypeTFields
-            ]
-        ]
-    ]
+        noTypeTFields::List(TypeTField) = {}
+        noTypeTFields
+      ]
 
   genericList = typeTFields
                   filter: [
@@ -410,35 +407,28 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
                   ],
                   map: [it typeT]
 
-  typedArgs::List(IdentifierT) = untypedArgs isNotEmpty
-    ifTrue: [
-      expectedFields count == untypedArgs count
-        ifTrue: [
-          untypedArgs mapIndexed: [i, ident ->
-            expectedField = expectedFields at: i
-            IdentifierT
-              token: ident token
-              typeInfo: expectedField typeT toTypeInfoDefault
-              name: ident name
-              path: ident path
-              isNameOfTheType: false
-          ]
-        ]
-        ifFalse: [
-          untypedArgs map: [ident ->
-            IdentifierT
-              token: ident token
-              typeInfo: db dtc any toTypeInfoDefault
-              name: ident name
-              path: ident path
-              isNameOfTheType: false
-          ]
-        ]
-    ]
-    ifFalse: [
-      noTypedArgs::List(IdentifierT) = {}
-      noTypedArgs
-    ]
+  typedArgs::List(IdentifierT) = | true
+    | untypedArgs isEmpty => [
+        noTypedArgs::List(IdentifierT) = {}
+        noTypedArgs
+      ]
+    | expectedFields count == untypedArgs count => untypedArgs mapIndexed: [i, ident ->
+        expectedField = expectedFields at: i
+        IdentifierT
+          token: ident token
+          typeInfo: expectedField typeT toTypeInfoDefault
+          name: ident name
+          path: ident path
+          isNameOfTheType: false
+      ]
+    |=> untypedArgs map: [ident ->
+        IdentifierT
+          token: ident token
+          typeInfo: db dtc any toTypeInfoDefault
+          name: ident name
+          path: ident path
+          isNameOfTheType: false
+      ]
 
   expectedReturnType = expectedType returnType
   bodyExpectedType = expectedReturnType isContainsUnresolvedGenerics
@@ -449,13 +439,10 @@ CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Contex
     ifTrue: [expectedReturnType]
     ifFalse: [typedBody t]
 
-  name = args isNotEmpty
-    ifTrue: [args joinWith: "__" transform: [it astType name]]
-    ifFalse: [
-      typedArgs isNotEmpty
-        ifTrue: [typedArgs joinWith: "__" transform: [it name]]
-        ifFalse: [expectedType name]
-    ]
+  name = | true
+    | args isNotEmpty => args joinWith: "__" transform: [it astType name]
+    | typedArgs isNotEmpty => typedArgs joinWith: "__" transform: [it name]
+    |=> expectedType name
 
   CodeBlockT token: token
     typeInfo: (FuntionT
@@ -494,21 +481,23 @@ InterpolatedString resolveInterpolatedString(db): TyperDB withContext(c): Contex
     typedParts add: partExpr
   ]
 
-  (typedParts count == 1), ifTrue: [^ typedParts first]
-
-  mut acc::TypedExpr2 = typedParts first
-  (typedParts drop: 1) forEach: [next ->
-    plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg
-    partTypeInfo = TypeInfo t: (db dtc str) isMut: false listOfErrors: (allErrors toMutableList)
-    plusArg = NameAndExprT name: (Identifier token: token name: "+" path: null) expr: next
-    acc <- BinaryMsgT
-      receiver: acc
-      token: token
-      typeInfo: partTypeInfo
-      dbMsg: plusMethod
-      args: {plusArg}
+  | true
+  | (typedParts count == 1) => typedParts first
+  |=> [
+    mut acc::TypedExpr2 = typedParts first
+    (typedParts drop: 1) forEach: [next ->
+      plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg
+      partTypeInfo = TypeInfo t: (db dtc str) isMut: false listOfErrors: (allErrors toMutableList)
+      plusArg = NameAndExprT name: (Identifier token: token name: "+" path: null) expr: next
+      acc <- BinaryMsgT
+        receiver: acc
+        token: token
+        typeInfo: partTypeInfo
+        dbMsg: plusMethod
+        args: {plusArg}
+    ]
+    acc
   ]
-  ^ acc
 ]
 
 Expr toTypedExprFromDb2: TyperDB withContext: Context -> TypedExpr2 =

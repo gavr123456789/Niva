@@ -315,7 +315,9 @@ constructor GoBackend [
 
     ir packages forEach: [pkg ->
       pkg imports forEach: [imp ->
-        imp kind == IrImportKind.Package ifTrue: [imports add: imp name] ifFalse: [()]
+        | imp kind
+        | IrImportKind.Package => imports add: imp name
+        |=> []
       ]
       pkg functions forEach: [it body collectGoImportsInto: imports]
     ]

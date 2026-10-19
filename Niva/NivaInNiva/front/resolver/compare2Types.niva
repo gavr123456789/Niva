@@ -42,29 +42,35 @@ NivaType sameDeclaredTypeAs(nivaType): TypeT -> Bool = | this
   |=> false
 
 NivaType sameTypeAsSameKind(nivaType): NivaType -> Bool = [
-  this name != nivaType name ifTrue: [^ false]
   thisArgs = this typeArgsForComparison
   otherArgs = nivaType typeArgsForComparison
-  thisArgs count != otherArgs count ifTrue: [^ false]
-  mut allSame = true
-  thisArgs forEachIndexed: [i, thisArg ->
-    otherArg = otherArgs at: i
-    thisArg sameTypeAs: otherArg, ifFalse: [allSame <- false]
+  | true
+  | this name != nivaType name => false
+  | thisArgs count != otherArgs count => false
+  |=> [
+    mut allSame = true
+    thisArgs forEachIndexed: [i, thisArg ->
+      otherArg = otherArgs at: i
+      thisArg sameTypeAs: otherArg, ifFalse: [allSame <- false]
+    ]
+    allSame
   ]
-  allSame
 ]
 
 NivaType isAssignableToSameKind(nivaType): NivaType db: TyperDB -> Bool = [
-  this name != nivaType name ifTrue: [^ false]
   thisArgs = this typeArgsForComparison
   expectedArgs = nivaType typeArgsForComparison
-  thisArgs count != expectedArgs count ifTrue: [^ false]
-  mut allAssignable = true
-  thisArgs forEachIndexed: [i, thisArg ->
-    expectedArg = expectedArgs at: i
-    thisArg isAssignableTo: expectedArg db: db, ifFalse: [allAssignable <- false]
+  | true
+  | this name != nivaType name => false
+  | thisArgs count != expectedArgs count => false
+  |=> [
+    mut allAssignable = true
+    thisArgs forEachIndexed: [i, thisArg ->
+      expectedArg = expectedArgs at: i
+      thisArg isAssignableTo: expectedArg db: db, ifFalse: [allAssignable <- false]
+    ]
+    allAssignable
   ]
-  allAssignable
 ]
 
 NivaType sameTypeAs(nivaType): NivaType -> Bool = [
@@ -74,18 +80,19 @@ NivaType sameTypeAs(nivaType): NivaType -> Bool = [
     | FuntionT => [
       | this
       | FuntionT => [
-        fields count != nivaType fields count
-          ifTrue: [^ false]
-
-        mut fieldsMatch = true
-        fields forEachIndexed: [i, f1 ->
-          f2 = nivaType fields at: i
-          f1 typeT sameTypeAs: f2 typeT, ifFalse: [
-            fieldsMatch <- false
+        | true
+        | fields count != nivaType fields count => false
+        |=> [
+          mut fieldsMatch = true
+          fields forEachIndexed: [i, f1 ->
+            f2 = nivaType fields at: i
+            f1 typeT sameTypeAs: f2 typeT, ifFalse: [
+              fieldsMatch <- false
+            ]
           ]
+          returnTypeMatch = returnType sameTypeAs: nivaType returnType
+          fieldsMatch && returnTypeMatch
         ]
-        returnTypeMatch = returnType sameTypeAs: nivaType returnType
-        fieldsMatch && returnTypeMatch
       ]
       |=> false
     ]
@@ -106,8 +113,9 @@ NivaType sameTypeStrictAs(nivaType): NivaType -> Bool =
 
 
 NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
-  (this name == "Nothing") ifTrue: [^ true]
-  ^ nivaType needsDeepTypeCompare ifTrue: [
+  ^ | true
+    | this name == "Nothing" => true
+    |=> nivaType needsDeepTypeCompare ifTrue: [
     | nivaType
     | TypeT =>  | this
                 | TypeT => [
@@ -128,22 +136,23 @@ NivaType isAssignableTo(nivaType): NivaType db: TyperDB -> Bool = [
 
     | FuntionT => | this
                   | FuntionT => [
-                    fields count != nivaType fields count
-                      ifTrue: [^ false]
+                    | true
+                    | fields count != nivaType fields count => false
+                    |=> [
+                      mut fieldsMatch = true
+                      fields forEachIndexed: [i, f1 ->
+                        f2 = nivaType fields at: i
+                        f1 typeT isAssignableTo: f2 typeT db: db,
+                          ifFalse: [fieldsMatch <- false]
+                      ]
 
-                    mut fieldsMatch = true
-                    fields forEachIndexed: [i, f1 ->
-                      f2 = nivaType fields at: i
-                      f1 typeT isAssignableTo: f2 typeT db: db,
-                        ifFalse: [fieldsMatch <- false]
+                      // ktlike Unit coercion: any return type is acceptable when Unit is expected
+                      returnTypeMatch = | nivaType returnType
+                                        | UnitT => true
+                                        |=> returnType isAssignableTo: nivaType returnType db: db
+
+                      fieldsMatch && returnTypeMatch
                     ]
-
-                    // ktlike Unit coercion: any return type is acceptable when Unit is expected
-                    returnTypeMatch = | nivaType returnType
-                                      | UnitT => true
-                                      |=> returnType isAssignableTo: nivaType returnType db: db
-
-                    fieldsMatch && returnTypeMatch
                   ]
                   |=> false
 

@@ -235,27 +235,14 @@ String toCljRawStringLiteral -> String = [
 IrLiteral toCljLiteral -> String = [
     literalKind = this kind
     literalText = this lexeme
-    (literalKind == IrLiteralKind.Null) ifTrue: ["nil"] ifFalse: [
-      (literalKind == IrLiteralKind.Unit) ifTrue: [":unit"] ifFalse: [
-        (literalKind == IrLiteralKind.Bool) ifTrue: [literalText] ifFalse: [
-          (literalKind == IrLiteralKind.Int) ifTrue: [literalText] ifFalse: [
-            (literalKind == IrLiteralKind.Double) ifTrue: [literalText] ifFalse: [
-              (literalKind == IrLiteralKind.Float) ifTrue: [
-                literalText endsWith: "f", ifTrue: [literalText dropLast: 1] ifFalse: [literalText]
-              ] ifFalse: [
-                (literalKind == IrLiteralKind.Char) ifTrue: [literalText toCljCharLiteral] ifFalse: [
-                  (literalKind == IrLiteralKind.String) ifTrue: [literalText] ifFalse: [
-                    (literalKind == IrLiteralKind.RawString) ifTrue: [literalText toCljRawStringLiteral] ifFalse: [
-                      ":" + literalText
-                    ]
-                  ]
-                ]
-              ]
-            ]
-          ]
-        ]
-      ]
-    ]
+    ^ | literalKind
+      | IrLiteralKind.Null => "nil"
+      | IrLiteralKind.Unit => ":unit"
+      | IrLiteralKind.Bool | IrLiteralKind.Int | IrLiteralKind.Double | IrLiteralKind.String => literalText
+      | IrLiteralKind.Float => literalText endsWith: "f", ifTrue: [literalText dropLast: 1] ifFalse: [literalText]
+      | IrLiteralKind.Char => literalText toCljCharLiteral
+      | IrLiteralKind.RawString => literalText toCljRawStringLiteral
+      |=> ":" + literalText
   ]
 
 String toCljCharLiteral -> String = [

@@ -559,6 +559,30 @@ Test goInlineForEachNonLocalReturnCodegen = [
   Assert that: (go contains: "func(item int)") equals: false
 ]
 
+Test goStatementMatchNonLocalReturnCodegen = [
+  fileMain = """
+    Unit find -> Int = [
+      n = 1
+      n == 0 ifTrue: [
+        | n
+        | 1 => [^ 10]
+        |=> [^ 20]
+      ]
+      ^ 30
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "__matchSubject := n", assertTrue
+  go contains: "if (__matchSubject == 1) {", assertTrue
+  go contains: "return 10", assertTrue
+  go contains: "return 20", assertTrue
+  Assert that: (go contains: "_ = 10") equals: false
+]
+
 Test goImplicitLambdaArgCodegen = [
   fileMain = """
     {1 2 3} map: [it + 1]
