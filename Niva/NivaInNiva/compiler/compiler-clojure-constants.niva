@@ -66,6 +66,9 @@ constructor CompilerConstants nivaCoreSource -> String = """
 (defn Int__rangeTo [s to]
   (->IntRange s to))
 
+(defn Int__rangeUntil [s to]
+  (->IntRange s (dec to)))
+
 
 (defn Int__repeat [^long n ^clojure.lang.IFn f]
   (dotimes [i n]
@@ -104,17 +107,17 @@ constructor CompilerConstants nivaCoreSource -> String = """
 
 (defn CharRange__forEach [s f]
   (doseq [cp (inclusive-range (:start s) (:end-inclusive s))]
-    (f cp))
+    (f (char cp)))
   :unit)
 
 (defn CharRange__map [s f]
-  (mapv f (inclusive-range (:start s) (:end-inclusive s))))
+  (mapv (fn [cp] (f (char cp))) (inclusive-range (:start s) (:end-inclusive s))))
 
 (defn CharRange__filter [s f]
-  (filterv f (inclusive-range (:start s) (:end-inclusive s))))
+  (filterv (fn [cp] (f (char cp))) (map char (inclusive-range (:start s) (:end-inclusive s)))))
 
 (defn CharRange__contains [s v]
-  (<= (:start s) v (:end-inclusive s)))
+  (<= (:start s) (long v) (:end-inclusive s)))
 
 (defn CharRange__isEmpty [s]
   (> (:start s) (:end-inclusive s)))
@@ -430,7 +433,8 @@ constructor CompilerConstants nivaCoreSource -> String = """
 (defn Char__isWhitespace [s] (Character/isWhitespace (int s)))
 (defn Char__lowercaseChar [s] (long (Character/toLowerCase (int s))))
 (defn Char__uppercaseChar [s] (long (Character/toUpperCase (int s))))
-(defn Char__rangeTo [s t] (->CharRange s t))
+(defn Char__rangeTo [s t] (->CharRange (long s) (long t)))
+(defn Char__rangeUntil [s t] (->CharRange (long s) (dec (long t))))
 (defn Char__equals [s o] (= s o))
 (defn Char__notEquals [s o] (not= s o))
 

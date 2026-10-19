@@ -27,6 +27,7 @@ constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContai
   num name == "Int" ifTrue: [ // not for float or double
     intProtocol addMethod: (NivaMethod unary: "toLong" receiverType: num returnT: long)
     intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
+    intProtocol addMethod: (NivaMethod binary: "..<" receiverType: num argT: num returnT: intRange)
   ]
 
 

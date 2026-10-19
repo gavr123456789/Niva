@@ -28,6 +28,7 @@ constructor NivaProtocol charFromDefaultTypes(dtc): DefaultTypesContainer -> mut
   charProto addMethod: (NivaMethod binary: "==" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: "!=" receiverType: char argT: char returnT: bool)
   charProto addMethod: (NivaMethod binary: ".." receiverType: char argT: char returnT: charRange)
+  charProto addMethod: (NivaMethod binary: "..<" receiverType: char argT: char returnT: charRange)
 
 
 

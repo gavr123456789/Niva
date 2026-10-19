@@ -94,6 +94,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	}
   }
   func Int__rangeTo(s int, to int) IntRange { return IntRange{s, to} }
+  func Int__rangeUntil(s int, to int) IntRange { return IntRange{s, to - 1} }
 
 
   func (r IntRange) ForEach(f func(int)) {
@@ -497,6 +498,7 @@ constructor GoRuntimeSources coreSource -> String = """
   func Char__lowercaseChar(s rune) rune        { return unicode.ToLower(s) }
   func Char__uppercaseChar(s rune) rune        { return unicode.ToUpper(s) }
   func Char__rangeTo(s rune, t rune) CharRange { return CharRange{s, t} }
+  func Char__rangeUntil(s rune, t rune) CharRange { return CharRange{s, t - 1} }
   func Char__equals(s, o rune) bool            { return s == o }
   func Char__notEquals(s, o rune) bool         { return s != o }
   func WhileTrue(c func() bool, b func()) {

@@ -11,7 +11,8 @@ extend String [
 
   // verrry badd, need iterate over symbols
   on goSanitizeIdent -> String =
-        this replace: ".." with: "rangeTo"
+        this replace: "..<" with: "rangeUntil"
+        ,replace: ".." with: "rangeTo"
         ,replace: "==" with: "equals"
         ,replace: "!=" with: "notEquals"
         ,replace: ">=" with: "gte"

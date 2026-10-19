@@ -110,7 +110,8 @@ type CljBinding name: String value: String
 
 extend String [
   on cljSanitizeIdent -> String =
-        this replace: ".." with: "rangeTo"
+        this replace: "..<" with: "rangeUntil"
+        ,replace: ".." with: "rangeTo"
         ,replace: "?" with: "_QM"
 
   on cljGeneratedNamespace -> String = "niva.generated." + this

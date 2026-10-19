@@ -227,7 +227,12 @@ extend mut Lexer [
     | '.' => [
       this peekChar == '.', ifTrue: [
         this step // consume second dot
-        this createToken: TokenType.BinarySymbol lexeme: ".."
+        this peekChar == '<', ifTrue: [
+          this step // consume '<'
+          this createToken: TokenType.BinarySymbol lexeme: "..<"
+        ] ifFalse: [
+          this createToken: TokenType.BinarySymbol lexeme: ".."
+        ]
       ] ifFalse: [
         this createToken: TokenType.Dot lexeme: l
       ]

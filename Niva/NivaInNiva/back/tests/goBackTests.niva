@@ -981,3 +981,12 @@ Test goEscapedDollarStaysPlainText = [
 
   go contains: ("var t string = " + quote + dollar + "name" + quote), assertTrue
 ]
+
+
+Test goRangeUntilExclusive = [
+  fileMain = "r = 1..<3"
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go contains: "core.Int__rangeUntil(1, 3)", assertTrue
+]

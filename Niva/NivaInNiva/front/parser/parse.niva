@@ -241,7 +241,8 @@ extend mut Parser [
       backslashes <- backslashes + 1
       i <- i - 1
     ]
-    ^ (backslashes % 2) == 1
+    isOdd = (backslashes % 2) == 1
+    ^ isOdd
   ]
 
   /// end of the name after a dollar, the same position when there is no name
@@ -290,7 +291,7 @@ extend mut Parser [
   /// literal part of an interpolated string, empty text is skipped
   on addInterpolatedText(content): String from(start): Int to(end): Int parts: mut List(Expr) token: Token isRaw: Bool = [
     end > start ifTrue: [
-      rawText = content slice: start ..< end
+      rawText = content slice: start..(end - 1)
       text = isRaw ifTrue: [rawText] ifFalse: [this interpUnescapeDollar: rawText]
       quoted = isRaw ifTrue: ["\"\"\"" + text + "\"\"\""] ifFalse: ["\"" + text + "\""]
       partToken = this interpolatedTextToken: quoted token: token offset: start isRaw: isRaw

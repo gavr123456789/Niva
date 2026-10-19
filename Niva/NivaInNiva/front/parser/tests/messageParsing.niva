@@ -122,6 +122,30 @@ Test parseSimbleBinaryMsg -> Unit = [
   |=> TO DO: "It should be MessageSend, but it " + msgSend toString
 ]
 
+/// the exclusive range operator is one binary message
+Test parseRangeToExclusiveMsg -> Unit = [
+  msgSend = TestParse expression: "1..<3"
+
+  | msgSend
+  | BinaryMsg => [
+    Assert that: msgSend args count equals: 1
+
+    first = msgSend args at: 0
+    Assert that: first name token lexeme equals: "..<"
+
+    expr = first expr
+    | expr
+    | IntExpr => Assert that: expr num equals: 3
+    |=> TO DO: "It should be IntExpr, but it " + expr toString
+
+    receiver = msgSend receiver
+    | receiver
+    | IntExpr => Assert that: receiver num equals: 1
+    |=> TO DO: "It should be IntExpr, but it " + receiver toString
+  ]
+  |=> TO DO: "It should be BinaryMsg, but it " + msgSend toString
+]
+
 Test parseBinaryMsgWithUnary -> Unit = [
   msgSend = TestParse expression: "1 + 2 inc"
   Assert that: msgSend toString equals: "IntExpr 1 + UnaryMsg Call(IntExpr 2 inc)"
