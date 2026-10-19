@@ -87,8 +87,6 @@ compilerTry2 = [
   cliArgs = Compiler cliArgs
   path = cliArgs isEmpty
     ifTrue: [{"run" ".niva_go/main.niva" "--backend=go"}]
-    // run the clojure smoke test
-    // show cli help
     ifFalse: [cliArgs]
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
 ] do

@@ -45,7 +45,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
       FILE defaults to main.niva.
 
       Options:
-        --backend=go|js|clj|lsp — select backend (default: clj)
+        --backend=go|clj|lsp — select backend (default: clj)
         --debug — include Niva stack traces in the Clojure backend
         --repl — emit a loadable Clojure REPL module without -main (build + Clojure only)
         --repl-line=N — emit entry expressions starting at source line N

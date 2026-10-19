@@ -122,7 +122,6 @@ Test parseSimbleBinaryMsg -> Unit = [
   |=> TO DO: "It should be MessageSend, but it " + msgSend toString
 ]
 
-/// the exclusive range operator is one binary message
 Test parseRangeToExclusiveMsg -> Unit = [
   msgSend = TestParse expression: "1..<3"
 
