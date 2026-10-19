@@ -144,6 +144,20 @@ constructor GoBackend [
 
     sb appendLine: "}"
     sb appendLine: ""
+
+    // the go backend resolves any.toString statically so union typed value loses its
+    // concrete toString and falls back to a raw struct dump
+    // exposing the type specific toString as String() lets Any__toString pick it up
+    isUnaryToString = (fn name == "toString") && (fn args count == 1) && (fn generics isEmpty)
+    isUnaryToString ifTrue: [
+      receiverTypeId = fn receiverType typeId
+      receiverGoType = ctx goTypeNameFor: receiverTypeId
+      isConcreteReceiver = (receiverGoType != "") && ((ctx isGoUnionType: receiverTypeId) not)
+      isConcreteReceiver ifTrue: [
+        sb appendLine: ("func (r " + receiverGoType + ") String() string { return " + name + "(r) }")
+        sb appendLine: ""
+      ]
+    ]
     ()
   ]
 

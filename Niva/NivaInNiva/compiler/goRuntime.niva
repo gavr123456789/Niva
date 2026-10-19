@@ -218,6 +218,11 @@ constructor GoRuntimeSources coreSource -> String = """
   		if _, ok := v.(Unit); ok {
   			return "()"
   		}
+  		// prefer the type specific toString over a raw struct dump
+  		// this matches the reference compiler dynamic dispatch
+  		if stringer, ok := v.(interface{ String() string }); ok {
+  			return stringer.String()
+  		}
   		return fmt.Sprintf("%#v", v)
 
   	case reflect.String:
