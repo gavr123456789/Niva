@@ -291,6 +291,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             body: newBody
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor
+            isInline: originalDecl isInline
           newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType
 
           db addGeneratedMessageDecl: newDecl

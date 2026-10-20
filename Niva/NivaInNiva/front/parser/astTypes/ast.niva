@@ -36,6 +36,7 @@ union Declaration token: Token =
     body: Body
     isSingleExpr: Bool
     isConstructor: Bool
+    isInline: Bool
 
 
 TypeDecl toString -> String = [

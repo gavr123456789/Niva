@@ -349,7 +349,7 @@ TypeDeclVisitor
           decl: msg
           protocolName: "common"
           pkgName: pkg
-          isInline: false
+          isInline: msg isInline
 
         db registerMethodDeclaration: receiverType name: msg name token: msg token
         db addNewMethod: method forType: receiverType inProtocol: null

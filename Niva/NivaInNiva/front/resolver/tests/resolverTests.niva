@@ -682,6 +682,40 @@ Test inlineForEachAllowsNonLocalReturn = [
   Assert that: result db listOfErrors count equals: 0
 ]
 
+Test userInlineMethodAllowsNonLocalReturn = [
+  fileMain = """
+    Int apply(body): [Int -> Unit] ^= [
+      body item: this
+    ]
+
+    Int run ^= [
+      this apply: [item::Int -> ^ item]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test plainMethodRejectsNonLocalReturnInCallback = [
+  fileMain = """
+    Int apply(body): [Int -> Unit] = [
+      body item: this
+    ]
+
+    Int run = [
+      this apply: [item::Int -> ^ item]
+      ^ 0
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  errors = result db listOfErrors
+  Assert that: errors count equals: 1
+  errors first msg contains: "non-local return requires an inline function", assertTrue
+]
+
 Test nestedInlineBranchAllowsNonLocalReturn = [
   fileMain = """
     Unit find -> Int = [

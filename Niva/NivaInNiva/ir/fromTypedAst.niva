@@ -1478,7 +1478,9 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
       packages: packagesIr toList
       entry: entryBlock
 
-  rawModule withNormalizedDependencies
+  // dependencies are computed from the original call graph then `^=` methods
+  // are expanded at their call sites
+  (rawModule withNormalizedDependencies) inlineExpandModule
 ]
 
 ResolverHelper toIrModule -> IrModule =

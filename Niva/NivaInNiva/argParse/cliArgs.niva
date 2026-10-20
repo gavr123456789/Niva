@@ -23,10 +23,12 @@ String compilerTargetFromCli -> CompilerTarget? =
   | true
   | this == "jvm" => CompilerTarget.Jvm
   | this == "bb" => CompilerTarget.Bb
+  | this == "go" => CompilerTarget.Go
+  | this == "ixgo" => CompilerTarget.Ixgo
   |=> null
 
 constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help
-  backend: CompilerBackend.Js runtime: CompilerRuntime.Jvm target: CompilerTarget.Jvm
+  backend: CompilerBackend.Clj runtime: CompilerRuntime.Jvm target: CompilerTarget.Jvm
   verbose: false debug: false repl: false replLine: 0 nativeBuild: false incremental: false
 
 /// prints help if its explicit
@@ -51,8 +53,8 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         --repl-line=N — emit entry expressions starting at source line N
         --native — compile a Clojure build to a native executable with GraalVM native-image
         --incremental — opt in to a persistent compiler session
-        --runtime=jvm|bb — select the runtime for run/watch
-        --target=jvm|bb — select the Clojure output target
+        --runtime=jvm|bb — select the Clojure runtime for run/watch
+        --target=jvm|bb|go|ixgo — select the Clojure output target or the Go toolchain
         --verbose
         --help
     """ trimIndent
@@ -108,6 +110,26 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     value
   ]
 
+  applyRuntime = [value: String ->
+    parsed = value compilerRuntimeFromCli
+    | parsed
+    | null => [invalid <- true]
+    |=> [runtime <- parsed]
+  ]
+
+  // `--target=go|ixgo` selects the Go toolchain, so it also picks the Go backend
+  applyTarget = [value: String ->
+    parsed = value compilerTargetFromCli
+    | parsed
+    | null => [invalid <- true]
+    |=> [
+      target <- parsed
+      (target == CompilerTarget.Go) || (target == CompilerTarget.Ixgo) ifTrue: [
+        backend <- CompilerBackend.Go
+      ]
+    ]
+  ]
+
   args forEachIndexed: [i, arg ->
     i >= optionStart ifTrue: [
       previous = i > optionStart ifTrue: [args at: i - 1] ifFalse: [""]
@@ -123,21 +145,11 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | "--help" => explicitHelp <- true
         | "--runtime" => [
           value = readSeparatedValue index: i
-          value ifNotNull: [valueValue ->
-            parsed = valueValue compilerRuntimeFromCli
-            | parsed
-            | null => [invalid <- true]
-            |=> [runtime <- parsed]
-          ]
+          value ifNotNull: [valueValue -> applyRuntime value: valueValue]
         ]
         | "--target" => [
           value = readSeparatedValue index: i
-          value ifNotNull: [valueValue ->
-            parsed = valueValue compilerTargetFromCli
-            | parsed
-            | null => [invalid <- true]
-            |=> [target <- parsed]
-          ]
+          value ifNotNull: [valueValue -> applyTarget value: valueValue]
         ]
         |=> [
           mut handled = false
@@ -146,7 +158,6 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
             backendValue = arg substringAfter: "="
             | backendValue
             | "go" => backend <- CompilerBackend.Go
-            | "js" => backend <- CompilerBackend.Js
             | "clj" | "clojure" => backend <- CompilerBackend.Clj
             | "lsp" => backend <- CompilerBackend.Lsp
             |=> invalid <- true
@@ -157,19 +168,11 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
           ]
           arg startsWith: "--runtime=", ifTrue: [
             handled <- true
-            value = arg substringAfter: "="
-            parsed = value compilerRuntimeFromCli
-            | parsed
-            | null => [invalid <- true]
-            |=> [runtime <- parsed]
+            applyRuntime value: (arg substringAfter: "=")
           ]
           arg startsWith: "--target=", ifTrue: [
             handled <- true
-            value = arg substringAfter: "="
-            parsed = value compilerTargetFromCli
-            | parsed
-            | null => [invalid <- true]
-            |=> [target <- parsed]
+            applyTarget value: (arg substringAfter: "=")
           ]
           handled ifFalse: [invalid <- true]
         ]
@@ -186,6 +189,6 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
 ]
 
 enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | Help
-enum CompilerBackend = Go | Js | Clj | Lsp
+enum CompilerBackend = Go  | Clj | Lsp
 enum CompilerRuntime = Jvm | Bb
-enum CompilerTarget = Jvm | Bb
+enum CompilerTarget = Jvm | Bb | Go | Ixgo

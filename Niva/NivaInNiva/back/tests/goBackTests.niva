@@ -1014,3 +1014,26 @@ Test goRangeUntilExclusive = [
   go = GoBackend fullFromIrModule: (result toIrModule)
   go contains: "core.Int__rangeUntil(1, 3)", assertTrue
 ]
+
+Test goUserInlineMethodSplicesCallbackReturn = [
+  fileMain = """
+    Int apply(body): [Int -> Unit] ^= [
+      body item: this
+    ]
+
+    Int run ^= [
+      this apply: [item::Int -> item == 1 ifTrue: [^ 42]]
+      ^ 0
+    ]
+
+    1 run echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // the inline method body is expanded at the call site
+  go contains: "__niva_inline_", assertTrue
+  // the callback body is spliced so its `^` becomes a real return
+  go contains: "return 42", assertTrue
+]

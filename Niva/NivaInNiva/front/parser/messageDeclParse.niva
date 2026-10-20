@@ -12,8 +12,12 @@ mut Parser messageDeclReturnType -> AstType2? = [
   ^ this match: TokenType.ReturnArrow, ifTrue: [this parseType] ifFalse: [null]
 ]
 
+// optional `^` right before `=` marks a message declaration as inline
+mut Parser messageDeclInline -> Bool =
+  this match: TokenType.Return, ifTrue: [true] ifFalse: [false]
+
 // read the body and build the declaration while the caller handles the assign
-mut Parser messageDeclFrom(tok): Token receiver: AstType2 name: String args: List(NameAndAstType) returnType: AstType2? isConstructor: Bool -> MessageDecl = [
+mut Parser messageDeclFrom(tok): Token receiver: AstType2 name: String args: List(NameAndAstType) returnType: AstType2? isConstructor: Bool isInline: Bool -> MessageDecl = [
   isSingleExpr = this peek kind != TokenType.OpenBracket
   body = this parseBodyOrSingleExpr
   ^ MessageDecl
@@ -25,6 +29,7 @@ mut Parser messageDeclFrom(tok): Token receiver: AstType2 name: String args: Lis
     body: body
     isSingleExpr: isSingleExpr
     isConstructor: isConstructor
+    isInline: isInline
 ]
 
 mut Parser
@@ -56,16 +61,18 @@ mut Parser
       this restoreFrom: kwSavePoint
       returnType = this messageDeclReturnType
       name = tok2 lexeme
+      isInline = this messageDeclInline
 
       this match: TokenType.Assign, ifFalse: [
         this restoreFrom: savePosition
         ^ this nextExpression: this step
       ]
       // Int inc ->? = ^[]
-      this messageDeclFrom: tok receiver: receiverType name: name args: {} returnType: returnType isConstructor: isConstructor
+      this messageDeclFrom: tok receiver: receiverType name: name args: {} returnType: returnType isConstructor: isConstructor isInline: isInline
     ] ifFalse: [
       kwParts2 = kwPartsMaybe expect: "Expected keyword declaration arguments"
       returnType = this messageDeclReturnType
+      isInline = this messageDeclInline
 
       this match: TokenType.Assign, ifFalse: [
         this restoreFrom: savePosition
@@ -75,7 +82,7 @@ mut Parser
       kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
       ]
-      this messageDeclFrom: tok receiver: receiverType name: kwName args: kwParts2 args returnType: returnType isConstructor: isConstructor
+      this messageDeclFrom: tok receiver: receiverType name: kwName args: kwParts2 args returnType: returnType isConstructor: isConstructor isInline: isInline
     ]
   ]
   | TokenType.BinarySymbol => [
@@ -95,6 +102,7 @@ mut Parser
 
     returnType = this messageDeclReturnType
     name = tok2 lexeme
+    isInline = this messageDeclInline
 
     this matchAssert: TokenType.Assign
     // Int inc ->? = ^[]
@@ -105,6 +113,7 @@ mut Parser
       args: {(NameAndAstType name: arg lexeme astType: argType)}
       returnType: returnType
       isConstructor: isConstructor
+      isInline: isInline
   ]
   |=> [
     this restoreFrom: savePosition
@@ -166,6 +175,7 @@ extend mut Parser [
         this restoreFrom: kwSavePoint
         returnType = this messageDeclReturnType
         name = tok2 lexeme
+        isInline = this messageDeclInline
 
         this matchAssert: TokenType.Assign
         this messageDeclFrom: token
@@ -174,9 +184,11 @@ extend mut Parser [
           args: {}
           returnType: returnType
           isConstructor: isConstructor
+          isInline: isInline
       ]
       |=> [
         returnType = this messageDeclReturnType
+        isInline = this messageDeclInline
 
         this matchAssert: TokenType.Assign
 
@@ -189,6 +201,7 @@ extend mut Parser [
           args: kwParts args
           returnType: returnType
           isConstructor: isConstructor
+          isInline: isInline
       ]
     ]
     | TokenType.IdentifierDoubleColon | TokenType.IdentifierColon => [
@@ -200,6 +213,7 @@ extend mut Parser [
       kwParts2 = kwPartsMaybe expect: "Expected keyword declaration arguments"
 
       returnType = this messageDeclReturnType
+      isInline = this messageDeclInline
 
       this matchAssert: TokenType.Assign
 
@@ -212,6 +226,7 @@ extend mut Parser [
         args: kwParts2 args
         returnType: returnType
         isConstructor: isConstructor
+        isInline: isInline
     ]
     | TokenType.BinarySymbol => [
       arg = this step
@@ -225,6 +240,7 @@ extend mut Parser [
 
       returnType = this messageDeclReturnType
       name = tok2 lexeme
+      isInline = this messageDeclInline
 
       this matchAssert: TokenType.Assign
 
@@ -235,6 +251,7 @@ extend mut Parser [
         args: args
         returnType: returnType
         isConstructor: isConstructor
+        isInline: isInline
     ]
     |=> [
       TO DO: "message declaration expected after `on`"

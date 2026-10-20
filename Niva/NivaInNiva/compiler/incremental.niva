@@ -441,7 +441,7 @@ CompilerSession compilationFailure(requestVersion): Int diagnostics: List(Compil
     requestVersion: requestVersion candidate: null backendArtifact: null
     diagnostics: diagnostics cancelled: false
 
-CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container -> CljGenerationResult = [
+CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container hotReload(hotReload): Bool -> CljGenerationResult = [
   | true
   | this commitReady not => CljGenerationResult notPublished
   |=> [
@@ -458,7 +458,7 @@ CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Containe
         TO DO: "Clj backend artifact has no output"
         CljGenerationResult notPublished
       ]
-      |=> cljOutputMaybe publishTo: root withIO: io
+      |=> cljOutputMaybe publishTo: root withIO: io hotReload: hotReload
     ]
   ]
 ]

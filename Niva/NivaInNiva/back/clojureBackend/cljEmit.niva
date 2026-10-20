@@ -1088,7 +1088,7 @@ constructor CljBackend [
 
   on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> String = [
     nsName = mode == CljEmitMode.Repl
-      ifTrue: ["niva.repl.session"]
+      ifTrue: [CompilerConstants cljReplNamespace]
       ifFalse: ["main"]
     ^ CljBackend fullFromIrModule: ir debug: debug mode: mode
       namespace: nsName initialImports: #() mainClass: (mode == CljEmitMode.Program)

@@ -655,7 +655,7 @@ Test cljPublishingUsesGenerationDirectory = [
   result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  published = output publishTo: root withIO: io
+  published = output publishTo: root withIO: io hotReload: true
 
   Assert that: published published equals: true
   Assert that: (published generationId count > 0) equals: true
@@ -674,20 +674,54 @@ Test cljPublishingUsesGenerationDirectory = [
   io deleteRecursively path: ".niva_clj/publish-tests"
 ]
 
+Test cljPublishingWithoutHotReloadOmitsReloadArtifacts = [
+  io = IO_Container new
+  root = ".niva_clj/publish-tests/plain"
+  io deleteRecursively path: root
+  // seed artifacts left behind by a previous watch run
+  io createDirectories path: (root + "/niva/hot_reload")
+  io writeFile file: root + "/niva/hot_reload/host.clj" content: "stale host"
+  io writeFile file: root + "/deps.edn" content: (CompilerConstants cljProjectDepsSource)
+  io writeFile file: root + "/bb.edn" content: (CompilerConstants cljProjectDepsSource)
+
+  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  published = output publishTo: root withIO: io hotReload: false
+
+  Assert that: published published equals: true
+  Assert that: (io readFile path: root + "/deps.edn") equals: (CompilerConstants cljPlainDepsSource)
+  Assert that: (io readFile path: root + "/bb.edn") equals: (CompilerConstants cljPlainDepsSource)
+  Assert that: ((io readFile path: root + "/deps.edn") contains: "clj-reload") equals: false
+  hostExists = FileSystem exists: ((root + "/niva/hot_reload/host.clj") toPath)
+  Assert that: hostExists equals: false
+  hotReloadExists = FileSystem exists: ((root + "/niva/hot_reload") toPath)
+  Assert that: hotReloadExists equals: false
+  generatedFiles = io walkDir path: root + "/generated"
+  Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
+
+  io deleteRecursively path: ".niva_clj/publish-tests"
+]
+
 Test cljProjectBootstrapCreatesMissingRuntimeFiles = [
   io = IO_Container new
   root = ".niva_clj/bootstrap-tests"
   io deleteRecursively path: root
 
-  io ensureCljProjectAt: root
+  io ensureCljProjectAt: root hotReload: true
 
   Assert that: (io readFile path: root + "/bb.edn") equals: (CompilerConstants cljProjectDepsSource)
   Assert that: (io readFile path: root + "/deps.edn") equals: (CompilerConstants cljProjectDepsSource)
   Assert that: (io readFile path: root + "/niva/core.clj") equals: (CompilerConstants nivaCoreSource)
 
+  // switching to plain generation refreshes niva-owned dependency files
+  io ensureCljProjectAt: root hotReload: false
+  Assert that: (io readFile path: root + "/deps.edn") equals: (CompilerConstants cljPlainDepsSource)
+  Assert that: (io readFile path: root + "/bb.edn") equals: (CompilerConstants cljPlainDepsSource)
+
   io writeFile file: root + "/deps.edn" content: "preserved"
   io writeFile file: root + "/bb.edn" content: "also preserved"
-  io ensureCljProjectAt: root
+  io ensureCljProjectAt: root hotReload: false
   Assert that: (io readFile path: root + "/deps.edn") equals: "preserved"
   Assert that: (io readFile path: root + "/bb.edn") equals: "also preserved"
 
@@ -705,7 +739,7 @@ Test cljPublishingPreservesProjectDependencyFiles = [
   result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  published = output publishTo: root withIO: io
+  published = output publishTo: root withIO: io hotReload: false
 
   Assert that: published published equals: true
   Assert that: (io readFile path: root + "/deps.edn")
@@ -745,7 +779,7 @@ Test cljPublishingRemovesStaleGeneratedFiles = [
   result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "clj"
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  published = output publishTo: root withIO: io
+  published = output publishTo: root withIO: io hotReload: false
 
   Assert that: published published equals: true
   generatedFiles = io walkDir path: root + "/generated"
@@ -768,7 +802,7 @@ Test failedCljCompilationDoesNotReplacePublishedOutput = [
   failed = CompilerCompilationResult requestVersion: 9 candidate: null
     backendArtifact: null diagnostics: {(CompilerDiagnostic requestVersion: 9
       path: "main.niva" message: "compile error")} cancelled: false
-  publishResult = failed publishCljOutput: root withIO: io
+  publishResult = failed publishCljOutput: root withIO: io hotReload: true
 
   Assert that: publishResult published equals: false
   Assert that: (io readFile path: root + "/generated/niva/generated/main.clj") equals: "old output"

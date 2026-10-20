@@ -672,6 +672,7 @@ extend TyperDB [
               body: (Body unTypedBody: (originalDeclMaybe body unTypedBody toMutableList))
               isSingleExpr: originalDeclMaybe isSingleExpr
               isConstructor: originalDeclMaybe isConstructor
+              isInline: originalDeclMaybe isInline
             specializedPkgMaybe = packages at: specializedWithActualReceiver pkgName
             specializedPkg = specializedPkgMaybe expect: "Missing package for specialized method"
             newDecl resolveBodyWithDb: this
