@@ -19,6 +19,11 @@
   <img src="https://github.com/user-attachments/assets/4d9ee517-8c4d-426c-a15f-e158b6364fec" width="65%"/>
 </p>
 
+"inline repl" feature
+
+https://github.com/user-attachments/assets/ba537afa-5040-4017-b113-4067992d8a77
+
+
 
 Niva is a simple language that takes a lot of inspiration from Smalltalk.
 But leaning towards the functional side and static types. Everything is still an object, but instead of classes, interfaces, inheritance, and abstract classes, we have tagged unions, which is the only way to achieve polymorphism.
@@ -391,6 +396,7 @@ p = Point new
 - [eBF](https://github.com/Nadelio/eBF) - Extended Brainfuck implementation
 - [writing interpreter in go](https://github.com/gavr123456789/writing-an-interpreter-in-niva) (not finished)
 - [tons of small stupid things](https://github.com/gavr123456789/bazar/tree/main/Examples)
+- [Boids with ImGui](https://github.com/dharmatech/boids-niva)
 
 ## Learn
 - [main site](https://gavr123456789.github.io/niva-site/reference.html)
