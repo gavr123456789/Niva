@@ -662,8 +662,8 @@ Test cljPublishingUsesGenerationDirectory = [
   Assert that: (io readFile path: root + "/manifest.edn") equals: output manifest edn
   Assert that: (io readFile path: root + "/main.clj") equals: output legacyMainShim
   host = io readFile path: root + "/niva/hot_reload/host.clj"
-  Assert that: (host contains: "(reload/reload {:only :all})") equals: true
-  Assert that: (host contains: "(reload/reload {:only :changed})") equals: true
+  Assert that: (host contains: "(reload/reload {:only :all :log-fn quiet-reload-log})") equals: true
+  Assert that: (host contains: "(reload/reload {:only :changed :log-fn quiet-reload-log})") equals: true
   Assert that: ((io readFile path: root + "/deps.edn")
     contains: "io.github.tonsky/clj-reload") equals: true
   Assert that: ((io readFile path: root + "/bb.edn")
@@ -841,8 +841,8 @@ Test watchQueueSerializesBuildsAndKeepsPendingEvents = [
 
 Test jvmHostHasReloadSafeLifecycle = [
   Assert that: ((CompilerConstants jvmHostSource) contains: "(reload/init") equals: true
-  Assert that: ((CompilerConstants jvmHostSource) contains: "{:only :all}") equals: true
-  Assert that: ((CompilerConstants jvmHostSource) contains: "{:only :changed}") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "{:only :all :log-fn") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "{:only :changed :log-fn") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: "requiring-resolve") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: "__niva_entry!") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: ":entry-executed?") equals: true
@@ -852,6 +852,10 @@ Test jvmHostHasReloadSafeLifecycle = [
   Assert that: ((CompilerConstants jvmHostSource) contains: "runtime-name") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: "niva-reload.signal") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: "locking reload-lock") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "read-syntax-sweep") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "rerun-entry") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "quiet-reload-log") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "(declare print-error!") equals: true
 ]
 
 Test jvmHostDoesNotRequireGeneratedNamespaces = [
@@ -944,9 +948,9 @@ Test babashkaHostLoadsRecoversAndWatchesSources = [
   Assert that: runExit equals: 0
   result = io readFile path: root + "/result.txt"
   Assert that: (result contains: "true 7 1 1") equals: true
-  Assert that: (result contains: "true 7 1 2") equals: true
+  Assert that: (result contains: "true 7 2 2") equals: true
   Assert that: (result contains: "false") equals: true
-  Assert that: (result contains: "true 7 1 3") equals: true
+  Assert that: (result contains: "true 7 3 3") equals: true
   Assert that: (result contains: "watch true") equals: true
   Assert that: (result contains: "watch-stopped true") equals: true
 
