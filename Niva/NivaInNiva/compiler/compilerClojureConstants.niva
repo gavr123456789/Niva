@@ -809,16 +809,19 @@ constructor CompilerConstants jvmHostSource -> String = """
             (swap! runtime assoc :entry-started? false)
             (print-error! "Clojure entry failed" error)))))))
 
+(defonce reload-lock (Object.))
+
 (defn- reload-in-process! []
-  (try
-    (reload/reload {:only :changed})
-    (swap! runtime assoc :initial-loaded? true)
-    (when-not (:entry-executed? @runtime)
-      (start-entry!))
-    {:ok true}
-    (catch Throwable error
-      (print-error! "Clojure reload failed" error)
-      {:ok false :error error})))
+  (locking reload-lock
+    (try
+      (reload/reload {:only :changed})
+      (swap! runtime assoc :initial-loaded? true)
+      (when-not (:entry-executed? @runtime)
+        (start-entry!))
+      {:ok true}
+      (catch Throwable error
+        (print-error! "Clojure reload failed" error)
+        {:ok false :error error}))))
 
 (defn reload-changed! []
   (if-let [writer (:bb-writer @runtime)]
@@ -972,13 +975,33 @@ constructor CompilerConstants jvmHostSource -> String = """
     (try (.destroy process) (catch Throwable _)))
   (swap! runtime assoc :bb-process nil :bb-writer nil))
 
+(defn- signal-file [generated-dir]
+  (io/file (.getParentFile (java.io.File. ^String generated-dir)) "niva-reload.signal"))
+
 (defn runtime-loop! [generated-dir entry-namespace]
   (init! generated-dir entry-namespace true)
   (initial-code-load!)
   (start-entry!)
-  (doseq [line (line-seq (java.io.BufferedReader. *in*))]
-    (when (= line "reload")
-      (reload-in-process!))))
+  (let [signal (signal-file generated-dir)
+        reader (java.io.BufferedReader. (java.io.InputStreamReader. System/in))]
+    (future
+      (try
+        (loop [^String line (.readLine reader)]
+          (when (some? line)
+            (when (= line "reload")
+              (reload-in-process!))
+            (recur (.readLine reader))))
+        (catch Throwable _))
+      ;; closed stdin means the parent compiler process is gone
+      (System/exit 0))
+    (loop [seen (when (.exists signal) (slurp signal))]
+      (Thread/sleep 200)
+      (let [current (when (.exists signal) (slurp signal))]
+        (if (and (some? current) (not= seen current))
+          (do
+            (reload-in-process!)
+            (recur current))
+          (recur seen))))))
 
 (defn -main [& [command generated-dir entry-namespace]]
   (when (= command "runtime-loop")

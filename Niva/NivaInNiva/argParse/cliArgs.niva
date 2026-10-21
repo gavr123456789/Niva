@@ -49,7 +49,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
       Options:
         --backend=go|clj|lsp — select backend (default: clj)
         --debug — include Niva stack traces in the Clojure backend
-        --repl — emit a loadable Clojure REPL module without -main (build + Clojure only)
+        --repl — with run start a watched niva session, with build emit a loadable Clojure REPL module
         --repl-line=N — emit entry expressions starting at source line N
         --native — compile a Clojure build to a native executable with GraalVM native-image
         --incremental — opt in to a persistent compiler session
@@ -64,7 +64,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   commandIsHelp ifTrue: [help echo
     ()]
 
-  option = | command
+  mut option::CompilerOption = | command
     | "run" => CompilerOption.Run
     | "build" => CompilerOption.Build
     | "watch" => CompilerOption.Watch
@@ -177,6 +177,10 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   // go and ixgo targets mean the go toolchain so the backend follows from the target
   goTarget = (target == CompilerTarget.Go) || (target == CompilerTarget.Ixgo)
   goTarget ifTrue: [backend <- CompilerBackend.Go]
+
+  // a repl run is a watched niva session so edits recompile into the live session
+  replWatch = (option == CompilerOption.Run) && repl && (backend == CompilerBackend.Clj)
+  replWatch ifTrue: [option <- CompilerOption.Watch]
 
   explicitHelp ifTrue: [help echo
     ()]

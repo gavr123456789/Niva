@@ -850,6 +850,8 @@ Test jvmHostHasReloadSafeLifecycle = [
   Assert that: ((CompilerConstants jvmHostSource) contains: "150") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: "org.babashka/fswatcher") equals: true
   Assert that: ((CompilerConstants jvmHostSource) contains: "runtime-name") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "niva-reload.signal") equals: true
+  Assert that: ((CompilerConstants jvmHostSource) contains: "locking reload-lock") equals: true
 ]
 
 Test jvmHostDoesNotRequireGeneratedNamespaces = [

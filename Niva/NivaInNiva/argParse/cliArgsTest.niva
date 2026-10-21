@@ -156,3 +156,15 @@ Test cliArgsRejectsInvalidTarget = [
   result = ArgParser args: {"watch" "main.niva" "--target=cloud"} toList
   Assert that: result option equals: CompilerOption.Help
 ]
+
+Test cliArgsRunReplBecomesWatch = [
+  result = ArgParser args: {"run" "repl.niva" "--repl"} toList
+  Assert that: result option equals: CompilerOption.Watch
+  Assert that: result repl equals: true
+
+  go = ArgParser args: {"run" "main.niva" "--repl" "--backend=go"} toList
+  Assert that: go option equals: CompilerOption.Run
+
+  build = ArgParser args: {"build" "main.niva" "--repl"} toList
+  Assert that: build option equals: CompilerOption.Build
+]
