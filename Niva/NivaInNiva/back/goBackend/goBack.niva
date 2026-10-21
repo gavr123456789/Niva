@@ -1,5 +1,7 @@
 type GoBackend
 
+
+
 type GoSymbolTable
    typeNames: Map(String, String)
    funcNames: Map(String, String)
@@ -7,6 +9,7 @@ packageNames: Map(String, String)
    fileNames: Map(String, String)
  fieldNames: Map(String, Set(String))
 constructorFieldTypes: Map(String, List(IrTypeRef))
+fieldTypesByName: Map(String, Map(String, IrTypeRef))
 unionTypeIds: Set(String)
 unionDefs: Map(String, IrUnionDef)
 
@@ -51,9 +54,11 @@ nullablePointerLocals: mut Set(String)
 narrowedNullablePointerLocals: mut Set(String)
  implicitFields: mut Set(String)
 implicitUnionFields: mut Set(String)
+          mutLocals: mut Set(String)
 unitReturnValue: Bool
+receiverTypeRefHolder: mut List(IrTypeRef)
 
-constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()! unitReturnValue: false
+constructor GoScope new = GoScope locals: #()! pointerLocals: #()! nullablePointerLocals: #()! narrowedNullablePointerLocals: #()! implicitFields: #()! implicitUnionFields: #()! mutLocals: #()! unitReturnValue: false receiverTypeRefHolder: {}!
 
 GoScope copy -> GoScope = [
   newLocals::mut Set(String) = #()!
@@ -62,6 +67,9 @@ GoScope copy -> GoScope = [
   newNarrowedNullablePointers::mut Set(String) = #()!
   newImplicitFields::mut Set(String) = #()!
   newImplicitUnionFields::mut Set(String) = #()!
+  newMutLocals::mut Set(String) = #()!
+  newReceiverTypeRefHolder::mut List(IrTypeRef) = {}!
+  newReceiverTypeRefHolder addAll: receiverTypeRefHolder
   newUnitReturnValue = unitReturnValue
   newLocals addAll: locals
   newPointers addAll: pointerLocals
@@ -69,19 +77,28 @@ GoScope copy -> GoScope = [
   newNarrowedNullablePointers addAll: narrowedNullablePointerLocals
   newImplicitFields addAll: implicitFields
   newImplicitUnionFields addAll: implicitUnionFields
+  newMutLocals addAll: mutLocals
 
-  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields unitReturnValue: newUnitReturnValue
+  ^ GoScope locals: newLocals pointerLocals: newPointers nullablePointerLocals: newNullablePointers narrowedNullablePointerLocals: newNarrowedNullablePointers implicitFields: newImplicitFields implicitUnionFields: newImplicitUnionFields mutLocals: newMutLocals unitReturnValue: newUnitReturnValue receiverTypeRefHolder: newReceiverTypeRefHolder
 ]
 
 GoScope copyWithUnitReturnValue(value): Bool -> GoScope = [
   copied = this copy
-  GoScope locals: copied locals pointerLocals: copied pointerLocals nullablePointerLocals: copied nullablePointerLocals narrowedNullablePointerLocals: copied narrowedNullablePointerLocals implicitFields: copied implicitFields implicitUnionFields: copied implicitUnionFields unitReturnValue: value
+  ^ copied unitReturnValue: value
 ]
 
 GoScope addGoArg(arg): IrArg ctx: GoContext -> Unit = [
   locals add: arg name
   (ctx needsGoNullablePointerFor: arg typeRef) ifTrue: [nullablePointerLocals add: arg name]
+  (arg typeRef goIsMutBoxType: ctx) ifTrue: [pointerLocals add: arg name]
 ]
+
+// choose the effective type of a receiver because match narrowing does not
+// update the ir type of this
+IrExpr goReceiverTypeRef(ctx): GoContext scope: GoScope -> IrTypeRef? =
+  | this
+  | IrThisRef => scope receiverTypeRefHolder first
+  |=> typeRef
 
 IrExpr goBlockMaybe -> IrBlock? =
   | this
@@ -96,6 +113,14 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
   | null => [
     hasErrors = retType errors isNotEmpty
     retType isGoUnitType
+      ifTrue: [
+        | emitResult
+        | null => []
+        |=> [
+          emitResult token printGoLine-intoSb: sb
+          sb appendIndent: indent
+                 line: (emitResult toGoStatement: this scope: scope returnType: retType) ]
+      ]
       ifFalse: [
         | emitResult
         | null => [TO DO: "bug: Go emitResult: missing result for non-Unit return"]
@@ -105,15 +130,14 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
             this emitBoolConditionalResult: emitResult sb: sb indent: indent retType: retType scope: scope
           ] ifFalse: [
             isNothingType = (emitResult typeRef typeId goNormalizeTypeId) == "core_Nothing"
-            isNullValue = emitResult isGoNullLiteral
-            isNothing = isNothingType && (isNullValue not)
+            isNothing = isNothingType && (emitResult isGoNullLiteral not)
             isNothing ifTrue: [
               sb appendIndent: indent line: (emitResult toGoStatement: this scope: scope returnType: retType)
               sb appendIndent: indent line: "panic(\"unreachable\")"
             ] ifFalse: [
               exprStr = (this needsGoNullablePointerFor: retType)
                 ifTrue: [emitResult toGoNullableInitExpr: this scope: scope targetType: retType]
-                ifFalse: [emitResult toGoExpr: this scope: scope]
+                ifFalse: [emitResult toGoValueExpr: this scope: scope]
               line = hasErrors
                 ifTrue:  ["return " + exprStr + ", nil"]
                ifFalse: ["return " + exprStr]
@@ -121,14 +145,6 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
             ]
           ]
         ]
-      ]
-      ifTrue: [
-        | emitResult
-        | null => []
-        |=> [
-          emitResult token printGoLine-intoSb: sb
-          sb appendIndent: indent
-                 line: (emitResult toGoStatement: this scope: scope returnType: retType) ]
       ]
   ]
   |=> [
@@ -142,7 +158,9 @@ GoContext emitResult: IrExpr? sb: StringBuilder indent: Int retType: IrTypeRef s
         this emitResult: null sb: sb indent: (indent + 1) retType: retType scope: blockScope
       ]
     ]
-    |=> [this emitResult: blockResultMaybe sb: sb indent: (indent + 1) retType: retType scope: blockScope]
+    |=> [
+      this emitResult: blockResultMaybe sb: sb indent: (indent + 1) retType: retType scope: blockScope
+    ]
     sb appendIndent: indent line: "}"
   ]
 ]
@@ -261,6 +279,44 @@ GoContext needsGoNullablePointerFor(typeRef): IrTypeRef -> Bool =
 
 GoContext goFieldGetterName(fieldName): String -> String =
   "nivaField__" + (fieldName toSafeGoIdent)
+
+GoSymbolTable irFieldTypeOf(receiverTypeRef): IrTypeRef field(fieldName): String -> IrTypeRef? = [
+  key = receiverTypeRef typeId goNormalizeTypeId
+  fieldMapMaybe = fieldTypesByName at: key
+  mut directMaybe::IrTypeRef? = null
+  | fieldMapMaybe
+  | null => ()
+  |=> [
+    directMaybe <- (fieldMapMaybe at: fieldName)
+    ()
+  ]
+  ^ | directMaybe
+    | null => [
+        unionMaybe = unionDefs at: key
+        | unionMaybe
+        | null => null
+        |=> this branchFieldTypeOf: unionMaybe field: fieldName
+      ]
+    |=> directMaybe
+]
+
+// field type from any union branch including included unions
+GoSymbolTable branchFieldTypeOf(unionDef): IrUnionDef field(fieldName): String -> IrTypeRef? = [
+  mut result::IrTypeRef? = null
+  unionDef branches forEach: [branch ->
+    (result == null) ifTrue: [
+      branchKey = ((unionDef pkgId + "_" + branch name) goNormalizeTypeId)
+      fieldMapMaybe = fieldTypesByName at: branchKey
+      | fieldMapMaybe
+      | null => ()
+      |=> [
+        result <- (fieldMapMaybe at: fieldName)
+        ()
+      ]
+    ]
+  ]
+  ^ result
+]
 
 GoSymbolTable collectUnionBranchTypes(typeId): String seenUnions: mut Set(String) concreteTypes: mut Set(String) -> Unit = [
   normalizedTypeId = typeId goNormalizeTypeId
@@ -415,7 +471,7 @@ GoContext emitBoolConditionalResult(call): IrExpr sb: StringBuilder indent: Int 
   | call
   | IrCall => [
     args = call args
-    condition = args first toGoExpr: this scope: scope
+    condition = args first toGoValueExpr: this scope: scope
     msgNameLocal = call msgNameOrEmpty
     isFalseFirst = (msgNameLocal == "ifFalse_ifTrue") || (msgNameLocal == "ifFalse__ifTrue")
     trueBranch = isFalseFirst ifTrue: [args at: 2] ifFalse: [args at: 1]
@@ -458,7 +514,7 @@ GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
     conditionStr == "false" ifTrue: [falseCase <- branchCase]
   ]
 
-  subjectExpr = matchExpr subject toGoExpr: this scope: scope
+  subjectExpr = matchExpr subject toGoValueExpr: this scope: scope
   trueCaseMaybe = trueCase
   falseCaseMaybe = falseCase
   elseBranchMaybe = matchExpr elseBranch
@@ -522,9 +578,7 @@ GoContext emitMatchBlockStatements(block): IrBlock sb: StringBuilder indent: Int
 
 GoContext emitMatchValueStatement(matchExpr): IrMatchExpr sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope subjectName: String -> Unit = [
   elseBranchLocal = matchExpr elseBranch
-  hasElse = | elseBranchLocal
-            | null => false
-            |=> true
+  hasElse = elseBranchLocal ifSome: [it -> true]
   hasNullCase = matchExpr cases any: [c -> c condition isGoNullLiteral]
   subjectLocalNameMaybe = matchExpr subject goLocalVarName
   subjectLocalName = subjectLocalNameMaybe orElse: ""
@@ -579,6 +633,23 @@ GoContext emitMatchTypeStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
         caseScope locals add: aliasNameValue
         caseScope nullablePointerLocals remove: aliasNameValue
         caseScope narrowedNullablePointerLocals remove: aliasNameValue
+        (aliasNameValue == "this") ifTrue: [
+          c assertedTypeRef ifNotNull: [narrowedType ->
+            caseScope receiverTypeRefHolder clear
+            caseScope receiverTypeRefHolder add: narrowedType
+            narrowedKey = narrowedType typeId goNormalizeTypeId
+            isNarrowedUnion = this isGoUnionType: narrowedKey
+            narrowedNamesMaybe = this symbols fieldNames at: narrowedKey
+            | narrowedNamesMaybe
+            | null => ()
+            |=> [
+              mut targetSet = caseScope implicitUnionFields
+              isNarrowedUnion ifFalse: [targetSet <- caseScope implicitFields]
+              targetSet addAll: narrowedNamesMaybe
+              ()
+            ]
+          ]
+        ]
         ()
       ]
       this emitMatchBlockStatements: (c body) sb: sb indent: (indent + 1) returnType: returnType scope: caseScope
@@ -834,6 +905,22 @@ extend IrTypeRef [
       ]
       ifFalse: [this toGoType: ctx]
 
+  // mut values of boxable types live as go pointers so struct copies share
+  // the same cell this mirrors the reference semantics of jvm and clojure
+  on goIsMutBoxType(ctx): GoContext -> Bool = [
+    baseId = typeId goNormalizeTypeId
+    isRefLikeGo = (kind == IrTypeRefKind.Function) ||
+      ((kind == IrTypeRefKind.Builtin) && ((baseId == "core_StringBuilder") || (baseId == "core_Any") || (baseId == "core_Nothing") || (baseId == "core_Null") || (baseId == "core_Error") || (baseId == "core_Unit")))
+    isUnionCustom = (kind == IrTypeRefKind.Custom) && (ctx isGoUnionType: typeId)
+    ^ isMut && (nullable not) && (isRefLikeGo not) && (isUnionCustom not)
+  ]
+
+  // struct field declaration type boxes mut values into pointers
+  on toGoFieldType(ctx): GoContext -> String =
+    (this goIsMutBoxType: ctx)
+      ifTrue: ["*" + (this goBaseType: ctx)]
+      ifFalse: [this toGoType: ctx]
+
 ]
 
 String goEscapeString -> String = [
@@ -916,10 +1003,9 @@ IrExpr collectIrExprRefs(refs): mut Set(String) -> Unit = [
       c additionalConditions forEach: [it collectIrExprRefs: refs]
       c body collectIrRefNames forEach: [refs add: it]
     ]
-    elseBranchMaybe = elseBranch
-    | elseBranchMaybe
-    | null => []
-    |=> elseBranchMaybe collectIrRefNames forEach: [refs add: it]
+    elseBranch ifNotNull: [elseBranchMaybe ->
+      elseBranchMaybe collectIrRefNames forEach: [refs add: it]
+    ]
   ]
   | IrNewExpr           => args forEach: [it collectIrExprRefs: refs]
   | IrCollectionLiteral => items forEach: [it collectIrExprRefs: refs]
@@ -943,11 +1029,42 @@ extend IrExpr [
     | IrLiteralExpr => literal kind == IrLiteralKind.Null
     |=> false
 
-  on goIsPointerArg(scope): GoScope -> Bool =
+  // mut values whose type is boxable live as go pointers so struct copies
+  // share the same cell this mirrors the reference semantics of the jvm and
+  // clojure backends
+  on isGoPointerValue(ctx): GoContext scope: GoScope -> Bool =
     | this
-    | IrVarRef => scope pointerLocals contains: name
+    | IrVarRef => [
+        (scope pointerLocals contains: name) ifTrue: [true] ifFalse: [
+          isImplicit = (scope implicitFields contains: name) || (scope implicitUnionFields contains: name)
+          isImplicit ifFalse: [false] ifTrue: [
+            recvType = scope receiverTypeRefHolder first
+            ftMaybe = ctx symbols irFieldTypeOf: recvType field: name
+            ftMaybe ifSome: [it -> it goIsMutBoxType: ctx]
+          ]
+        ]
+      ]
     | IrThisRef => scope pointerLocals contains: "this"
+    | IrFieldGet => this isGoMutBoxRead: ctx scope: scope
     |=> false
+
+  // this can be narrowed in a match so its fields are resolved from the
+  // receiver holder rather than the original union type
+  on isGoMutBoxRead(ctx): GoContext scope: GoScope -> Bool =
+    | this
+    | IrFieldGet => [
+        recvTypeMaybe = receiver goReceiverTypeRef: ctx scope: scope
+        recvType = recvTypeMaybe orElse: typeRef
+        ftMaybe = ctx symbols irFieldTypeOf: recvType field: field
+        ftMaybe ifSome: [it -> it goIsMutBoxType: ctx]
+      ]
+    |=> false
+
+  // plain value form of an expression dereferences mut cells
+  on toGoValueExpr(ctx): GoContext scope: GoScope -> String = [
+    valueStr = this toGoExpr: ctx scope: scope
+    (this isGoPointerValue: ctx scope: scope) ifTrue: ["*" + valueStr] ifFalse: [valueStr]
+  ]
 
   on toGoNullableInitExpr(ctx): GoContext scope: GoScope targetType: IrTypeRef -> String = [
     valueStr = this toGoExpr: ctx scope: scope
@@ -961,10 +1078,11 @@ extend IrExpr [
     ^ result
   ]
 
-  on toGoLocalAssignExpr(ctx): GoContext scope: GoScope targetIsNullable: Bool -> String = [
+  on toGoLocalAssignExpr(ctx): GoContext scope: GoScope targetIsNullable: Bool targetIsMutPointer: Bool -> String = [
     valueStr = this toGoExpr: ctx scope: scope
     isNull = this isGoNullLiteral
     sourceIsNullablePointer = ctx needsGoNullablePointerFor: typeRef
+    sourceIsCell = this isGoPointerValue: ctx scope: scope
     result = targetIsNullable ifTrue: [
         sourceIsNullablePointer || isNull
           ifTrue: [valueStr]
@@ -975,7 +1093,20 @@ extend IrExpr [
           ]
       ]
       ifFalse: [
-        (sourceIsNullablePointer && (isNull not)) ifTrue: ["*" + valueStr] ifFalse: [valueStr]
+        (sourceIsNullablePointer && (isNull not)) ifTrue: ["*" + valueStr] ifFalse: [
+            targetIsMutPointer ifTrue: [
+                sourceIsCell ifTrue: [valueStr] ifFalse: [
+                    | this
+                    | IrNewExpr => ["&" + valueStr]
+                    |=> [
+                        targetGoType = typeRef goBaseType: ctx
+                        "func() *" + targetGoType + " { __nivaCell := " + valueStr + "; return &__nivaCell }()"
+                    ]
+                ]
+            ] ifFalse: [
+                sourceIsCell ifTrue: ["*" + valueStr] ifFalse: [valueStr]
+            ]
+        ]
       ]
     ^ result
   ]
@@ -1011,9 +1142,13 @@ extend IrExpr [
           ifFalse: [exprStr]
       ]
 
+    mut valueExpr2 = valueExpr
+    ((this isGoPointerValue: ctx scope: scope) && (paramType isGoPointerParam not)) ifTrue: [
+      valueExpr2 <- "*" + valueExpr
+    ]
     paramType needsGoAddressAtCall,
-      ifTrue: [(this goIsPointerArg: scope) ifTrue: [valueExpr] ifFalse: ["&" + valueExpr]]
-      ifFalse: [valueExpr]
+      ifTrue: [(this isGoPointerValue: ctx scope: scope) ifTrue: [valueExpr2] ifFalse: ["&" + valueExpr2]]
+      ifFalse: [valueExpr2]
   ]
 
   on toGoLambdaExpr(ctx): GoContext scope: GoScope expectedType: IrTypeRef -> String = [
@@ -1096,15 +1231,15 @@ extend IrExpr [
       ]
     | IrTypeRefExpr => ref toGoType: ctx
     | IrOpBin       => [
-        l = left toGoExpr: ctx scope: scope
-        r = right toGoExpr: ctx scope: scope
+        l = left toGoValueExpr: ctx scope: scope
+        r = right toGoValueExpr: ctx scope: scope
         "(" + l + " " + op + " " + r + ")"
     ]
     | IrCall => [
         msgNameMaybe = msgName
-    isTry = | msgNameMaybe
-      | null => false
-      |=> (msgNameMaybe == "try") || (msgNameMaybe == "orPANIC") || (msgNameMaybe == "unpackOrPANIC")
+    isTry = msgNameMaybe ifSome: [it ->
+      (it == "try") || (it == "orPANIC") || (it == "unpackOrPANIC")
+    ]
         isTry ifTrue: [this toGoTryExpr: ctx scope: scope] ifFalse: [
 
         // new bind design: inlineable bind plan attached during IR generation
@@ -1126,10 +1261,9 @@ extend IrExpr [
             ]
           | IrBindEmit => [
               // emit templates import their declared package
-              importPathsMaybe = bindMaybe goPkg
-              | importPathsMaybe
-              | null => []
-              |=> (importPathsMaybe split: ",") forEach: [ctx addImport: it]
+              (bindMaybe goPkg) ifNotNull: [importPathsMaybe ->
+                (importPathsMaybe split: ",") forEach: [ctx addImport: it]
+              ]
               // $0 = receiver/this, $1 = first keyword arg, ...
               emitArgVals = args mapIndexed: [i, it ->
                 paramType = paramTypes at: i
@@ -1146,12 +1280,12 @@ extend IrExpr [
         bindExprValue = bindExprMaybe orElse: ""
         bindExprMaybe != null ifTrue: [bindExprValue] ifFalse: [
         receiverTypeMaybe = receiverType
-        isErrorReceiver = | receiverTypeMaybe
-          | null => false
-          |=> receiverTypeMaybe typeId goNormalizeTypeId == "core_Error"
-        isStaticCoreReceiver = isErrorReceiver || (| receiverTypeMaybe
-          | null => false
-          |=> receiverTypeMaybe typeId goNormalizeTypeId == "core_Compiler")
+        isErrorReceiver = receiverTypeMaybe ifSome: [it ->
+          (it typeId goNormalizeTypeId) == "core_Error"
+        ]
+        isStaticCoreReceiver = isErrorReceiver || (receiverTypeMaybe ifSome: [it ->
+          (it typeId goNormalizeTypeId) == "core_Compiler"
+        ])
         callArgs = isStaticCoreReceiver ifTrue: [args drop: 1] ifFalse: [args]
         argsStr = callArgs mapIndexed: [i, it ->
           paramIndex = isStaticCoreReceiver ifTrue: [i + 1] ifFalse: [i]
@@ -1198,7 +1332,7 @@ extend IrExpr [
                       isListReceiver = i == 0
                       isListReceiver ifTrue: [
                         argStr = it toGoExpr: ctx scope: scope
-                        (it goIsPointerArg: scope) ifTrue: [argStr] ifFalse: ["&" + argStr]
+                        (it isGoPointerValue: ctx scope: scope) ifTrue: [argStr] ifFalse: ["&" + argStr]
                       ] ifFalse: [it toGoArgExpr: ctx scope: scope paramType: paramType]
                     ], goCallArgs
                   ]
@@ -1244,8 +1378,7 @@ extend IrExpr [
           | null => args joinWith: ", " transform: [it toGoExpr: ctx scope: scope]
           |=> (args mapIndexed: [i, arg ->
             fieldType = fieldTypesMaybe at: i
-            argExpr = arg toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (ctx needsGoNullablePointerFor: fieldType)
-            (fieldType isMut && (arg goIsPointerArg: scope)) ifTrue: ["*" + argExpr] ifFalse: [argExpr]
+            arg toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (ctx needsGoNullablePointerFor: fieldType) targetIsMutPointer: (fieldType goIsMutBoxType: ctx)
           ]) joinWith: ", "
         argsStr == "" ifTrue: [name + "{}"] ifFalse: [name + "{" + argsStr + "}"]
         ]
@@ -1301,14 +1434,12 @@ extend IrExpr [
     hasErrors = returnType errors isNotEmpty
     doPropagate = this isGoPropagatingCall
     doPropagate ifTrue: [
-      resultName = this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: ""
-      resultNameMaybe = resultName
-      | resultNameMaybe
-      | null => [
-        sb appendIndent: indent line: (returnType goReturnResult: "nil" withError: hasErrors)
+      resultNameMaybe = this emitGoPropagatingCall: ctx scope: scope sb: sb indent: indent returnType: returnType bindTo: ""
+      resultNameMaybe ifNotNull: [resultName ->
+        sb appendIndent: indent line: (returnType goReturnResult: resultName withError: hasErrors)
       ]
-      |=> [
-        sb appendIndent: indent line: (returnType goReturnResult: resultNameMaybe withError: hasErrors)
+      (resultNameMaybe == null) ifTrue: [
+        sb appendIndent: indent line: (returnType goReturnResult: "nil" withError: hasErrors)
       ]
     ] ifFalse: [
       isNothingType = (typeRef typeId goNormalizeTypeId) == "core_Nothing"
@@ -1327,7 +1458,7 @@ extend IrExpr [
         ] ifFalse: [
           exprStr = (ctx needsGoNullablePointerFor: returnType)
             ifTrue: [this toGoNullableInitExpr: ctx scope: scope targetType: returnType]
-            ifFalse: [this toGoExpr: ctx scope: scope]
+            ifFalse: [this toGoValueExpr: ctx scope: scope]
           line = returnType goReturnResult: exprStr withError: hasErrors
           sb appendIndent: indent line: line
         ]
@@ -1378,7 +1509,7 @@ extend IrExpr [
         branch = args at: 1
         | branch
         | IrLambda => [
-          condition = args first toGoExpr: ctx scope: scope
+          condition = args first toGoValueExpr: ctx scope: scope
           branchCondition = msgNameLocal == "ifFalse"
             ifTrue: ["!(" + condition + ")"]
             ifFalse: [condition]
@@ -1409,11 +1540,11 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
   elemType = typeRef args isNotEmpty ifTrue: [(typeRef args first) toGoType: ctx] ifFalse: ["interface{}"]
   ^ | kind
     | IrCollectionKind.List => [
-        elems = items joinWith: ", " transform: [it toGoExpr: ctx scope: scope]
+        elems = items joinWith: ", " transform: [it toGoValueExpr: ctx scope: scope]
         "[]" + elemType + "{" + elems + "}"
       ]
     | IrCollectionKind.Set => [
-        pairs = items joinWith: ", " transform: [(it toGoExpr: ctx scope: scope) + ": struct{}{}"]
+        pairs = items joinWith: ", " transform: [(it toGoValueExpr: ctx scope: scope) + ": struct{}{}"]
         "map[" + elemType + "]struct{}{ " + pairs + " }"
       ]
     |=> [
@@ -1422,8 +1553,8 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
         elems forEachIndexed: [i, key ->
           i % 2 == 0 ifTrue: [
             value = elems at: (i + 1)
-            keyStr = key toGoExpr: ctx scope: scope
-            valueStr = value toGoExpr: ctx scope: scope
+            keyStr = key toGoValueExpr: ctx scope: scope
+            valueStr = value toGoValueExpr: ctx scope: scope
             pairParts add: (keyStr + ": " + valueStr)
           ]
         ]
@@ -1442,7 +1573,7 @@ IrMatchExpr matchToGoExpr(ctx): GoContext scope: GoScope -> String = [
   sb appendLine: " {"
 
   innerScope = scope copy
-  subjectExpr = subject toGoExpr: ctx scope: innerScope
+  subjectExpr = subject toGoValueExpr: ctx scope: innerScope
 
   // other match kinds read the subject into a local first
   | kind
@@ -1539,6 +1670,23 @@ IrMatchExpr goMatchTypeInto(sb): StringBuilder ctx: GoContext scope: GoScope -> 
         caseScope locals add: aliasNameValue
         caseScope nullablePointerLocals remove: aliasNameValue
         caseScope narrowedNullablePointerLocals remove: aliasNameValue
+        (aliasNameValue == "this") ifTrue: [
+          c assertedTypeRef ifNotNull: [narrowedType ->
+            caseScope receiverTypeRefHolder clear
+            caseScope receiverTypeRefHolder add: narrowedType
+            narrowedKey = narrowedType typeId goNormalizeTypeId
+            isNarrowedUnion = ctx isGoUnionType: narrowedKey
+            narrowedNamesMaybe = ctx symbols fieldNames at: narrowedKey
+            | narrowedNamesMaybe
+            | null => ()
+            |=> [
+              mut targetSet = caseScope implicitUnionFields
+              isNarrowedUnion ifFalse: [targetSet <- caseScope implicitFields]
+              targetSet addAll: narrowedNamesMaybe
+              ()
+            ]
+          ]
+        ]
         ()
       ]
       c body blockToGoStatements: ctx scope: caseScope sb: sb indent: 2 returnType: retType
@@ -1566,9 +1714,7 @@ IrMatchExpr goMatchValueInto(sb): StringBuilder ctx: GoContext scope: GoScope ->
   retType = typeRef
   subjectName = "__matchSubject"
   elseBranchLocal = elseBranch
-  hasElse = | elseBranchLocal
-            | null => false
-            |=> true
+  hasElse = elseBranchLocal ifSome: [it -> true]
   hasNullCase = cases any: [c -> c condition isGoNullLiteral]
   subjectLocalNameMaybe = subject goLocalVarName
   subjectLocalName = subjectLocalNameMaybe orElse: ""
@@ -1619,7 +1765,18 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       scope locals add: name
       (ctx needsGoNullablePointerFor: typeRef) ifTrue: [scope nullablePointerLocals add: name]
       valueLocal = value
-      typeStr = typeRef toGoType: ctx
+      mut targetIsMutPtr = (isMut || (typeRef isMut)) && (typeRef goIsMutBoxType: ctx)
+      | valueLocal
+      | null => ()
+      |=> [
+        vv = valueLocal
+        cellSource = vv isGoPointerValue: ctx scope: scope
+        cellSource ifTrue: [targetIsMutPtr <- true]
+      ]
+      targetIsMutPtr ifTrue: [scope pointerLocals add: name]
+      scope mutLocals remove: name
+      isMut ifTrue: [scope mutLocals add: name]
+      typeStr = targetIsMutPtr ifTrue: ["*" + (typeRef goBaseType: ctx)] ifFalse: [typeRef toGoType: ctx]
       | valueLocal
       | null => [sb appendIndent: indent line: ("var " + goName + " " + typeStr)]
       |=> [
@@ -1631,7 +1788,7 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
             ()
           ]
           ifFalse: [
-            valueStr = valueExpr toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (scope nullablePointerLocals contains: name)
+            valueStr = valueExpr toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (scope nullablePointerLocals contains: name) targetIsMutPointer: targetIsMutPtr
             sb appendIndent: indent line: ("var " + goName + " " + typeStr + " = " + valueStr)
           ]
       ]
@@ -1641,17 +1798,30 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
     ]
   | IrSetLocal => [
       goName = name toSafeGoIdent
-      valueStr = value toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (scope nullablePointerLocals contains: name)
+      (scope mutLocals contains: name) ifFalse: [
+        TO DO: "go backend: assignment to non mut var " + name
+        ()
+      ]
+      isPtrTarget = scope pointerLocals contains: name
+      valueStr = value toGoLocalAssignExpr: ctx scope: scope targetIsNullable: (scope nullablePointerLocals contains: name) targetIsMutPointer: isPtrTarget
       sb appendIndent: indent line: (goName + " = " + valueStr)
   ]
   | IrSetField => [
       recvStr = receiver toGoExpr: ctx scope: scope
-      valueStr = value toGoExpr: ctx scope: scope
-      sb appendIndent: indent line: ("(" + recvStr + ")." + (field toSafeGoIdent) + " = " + valueStr)
+      recvTypeMaybe = receiver goReceiverTypeRef: ctx scope: scope
+      recvType = recvTypeMaybe orElse: receiver typeRef
+      ftMaybe = ctx symbols irFieldTypeOf: recvType field: field
+      fieldIsBoxed = ftMaybe ifSome: [it -> it goIsMutBoxType: ctx]
+      valueStr = value toGoValueExpr: ctx scope: scope
+      fieldIsBoxed ifTrue: [
+        sb appendIndent: indent line: ("*((" + recvStr + ")." + (field toSafeGoIdent) + ") = " + valueStr)
+      ] ifFalse: [
+        sb appendIndent: indent line: ("(" + recvStr + ")." + (field toSafeGoIdent) + " = " + valueStr)
+      ]
   ]
   | IrDestructure => [
       tmpName = "__destructTmp" uniqueName: scope locals
-      valueStr = value toGoExpr: ctx scope: scope
+      valueStr = value toGoValueExpr: ctx scope: scope
       sb appendIndent: indent line: (tmpName + " := " + valueStr)
       bindings forEach: [b ->
         goName = b name toSafeGoIdent
@@ -1699,13 +1869,13 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
         | condResultMaybe
         | null => [sb appendIndent: (indent + 2) line: "if !(false) { break }"]
         |=> [
-          condResult = condResultMaybe toGoExpr: ctx scope: condScope
+          condResult = condResultMaybe toGoValueExpr: ctx scope: condScope
           sb appendIndent: (indent + 2) line: ("if !(" + condResult + ") { break }")
         ]
         sb appendIndent: (indent + 1) line: "}"
       ]
       |=> [
-        condExpr = condLocal toGoExpr: ctx scope: scope
+        condExpr = condLocal toGoValueExpr: ctx scope: scope
         sb appendIndent: (indent + 1) line: ("if !(" + condExpr + ") { break }")
       ]
 
@@ -1798,10 +1968,9 @@ IrTypeRef collectGoTypeParamsInto(names): mut List(String) seen: mut Set(String)
     ]
   ]
   args forEach: [it collectGoTypeParamsInto: names seen: seen]
-  returnTypeMaybe = returnType
-  | returnTypeMaybe
-  | null => []
-  |=> returnTypeMaybe collectGoTypeParamsInto: names seen: seen
+  returnType ifNotNull: [returnTypeMaybe ->
+    returnTypeMaybe collectGoTypeParamsInto: names seen: seen
+  ]
   errors forEach: [it collectGoTypeParamsInto: names seen: seen]
 ]
 

@@ -15,3 +15,8 @@ T? ifNotNull(action): [T -> Unit] -> Unit = [
   | null => ()
   |=> action value: this
 ]
+
+T? ifSome(action): [T -> Bool] -> Bool =
+  | this
+  | null => false
+  |=> action value: this

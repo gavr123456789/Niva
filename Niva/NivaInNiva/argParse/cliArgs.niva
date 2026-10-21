@@ -117,17 +117,11 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     |=> [runtime <- parsed]
   ]
 
-  // `--target=go|ixgo` selects the Go toolchain, so it also picks the Go backend
   applyTarget = [value: String ->
     parsed = value compilerTargetFromCli
     | parsed
     | null => [invalid <- true]
-    |=> [
-      target <- parsed
-      (target == CompilerTarget.Go) || (target == CompilerTarget.Ixgo) ifTrue: [
-        backend <- CompilerBackend.Go
-      ]
-    ]
+    |=> [target <- parsed]
   ]
 
   args forEachIndexed: [i, arg ->
@@ -179,6 +173,10 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
       ]
     ]
   ]
+
+  // go and ixgo targets mean the go toolchain so the backend follows from the target
+  goTarget = (target == CompilerTarget.Go) || (target == CompilerTarget.Ixgo)
+  goTarget ifTrue: [backend <- CompilerBackend.Go]
 
   explicitHelp ifTrue: [help echo
     ()]

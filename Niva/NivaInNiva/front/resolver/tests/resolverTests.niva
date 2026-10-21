@@ -1181,6 +1181,46 @@ Test mergedMatchPatternsNarrowToCommonAncestor = [
   Assert that: db listOfErrors count equals: 0
 ]
 
+Test shadowCopyThisReceiverNoMatch = [
+  fileMain = """
+    type Point x: Int y: Int
+
+    Point copyX(v): Int -> Point = [
+      q = this x: v
+      ^ q
+    ]
+
+    p = Point x: 1 y: 2
+    q = p copyX: 5
+    (q x toString) echo
+    (q y toString) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
+Test shadowCopyInMatchBranch = [
+  fileMain = """
+    union Shape color: String =
+    | Circle radius: Int
+    | Square side: Int
+
+    Shape recolor(c): String -> Shape =
+      | this
+      | Circle => this color: c
+      | Square => this color: c
+      |=> this
+
+    c = Circle color: "red" radius: 3
+    d = c recolor: "blue"
+    d color echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
 Test shadowCopyKind = [
   fileMain = """
     type Person

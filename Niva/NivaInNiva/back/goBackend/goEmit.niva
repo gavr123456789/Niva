@@ -23,7 +23,7 @@ constructor GoBackend [
     ]
     def commonFields forEach: [f ->
       getterName = ctx goFieldGetterName: f name
-      fieldType = f typeRef toGoType: ctx
+      fieldType = f typeRef toGoFieldType: ctx
       sb appendIndent: 1 line: (getterName + "() " + fieldType)
     ]
     sb appendLine: "}"
@@ -49,7 +49,7 @@ constructor GoBackend [
         branchFields forEach: [f ->
           getterName = ctx goFieldGetterName: f name
           fieldName = f name toSafeGoIdent
-          fieldType = f typeRef toGoType: ctx
+          fieldType = f typeRef toGoFieldType: ctx
           sb appendLine: ("func (this " + receiverType + ") " + getterName + "() " + fieldType + " { return this." + fieldName + " }")
           ()
         ]
@@ -110,6 +110,7 @@ constructor GoBackend [
     fn args isNotEmpty ifTrue: [
       firstArg = fn args first
       firstArg name == "this" ifTrue: [
+        scope receiverTypeRefHolder add: firstArg typeRef
         fieldNames = ctx goFieldNamesFor: firstArg typeRef typeId
         scope implicitFields addAll: fieldNames
         (ctx isGoUnionType: firstArg typeRef typeId) ifTrue: [
@@ -193,6 +194,7 @@ constructor GoBackend [
     fileNames::mut Map(String, String) = #{}!
     fieldNames::mut Map(String, Set(String)) = #{}!
     constructorFieldTypes::mut Map(String, List(IrTypeRef)) = #{}!
+    fieldTypesByName::mut Map(String, Map(String, IrTypeRef)) = #{}!
     unionTypeIds::mut Set(String) = #()!
     unionDefs::mut Map(String, IrUnionDef) = #{}!
     usedTypeNames::mut Set(String) = #()!
@@ -227,6 +229,9 @@ constructor GoBackend [
         collectedTypeIds add: def id
         fieldNames at: (def id goNormalizeTypeId) put: (def fields map: [it name]) toSet
         constructorFieldTypes at: (def id goNormalizeTypeId) put: (def fields map: [it typeRef])
+        byName::mut Map(String, IrTypeRef) = #{}!
+        def fields forEach: [f -> byName at: f name put: f typeRef]
+        fieldTypesByName at: (def id goNormalizeTypeId) put: byName
       ]
       pkg unions forEach: [def ->
         collectedTypeIds add: def id
@@ -234,12 +239,18 @@ constructor GoBackend [
         unionDefs at: (def id goNormalizeTypeId) put: def
         commonNames = (def commonFields map: [it name]) toSet
         fieldNames at: (def id goNormalizeTypeId) put: commonNames
+        commonByName::mut Map(String, IrTypeRef) = #{}!
+        def commonFields forEach: [f -> commonByName at: f name put: f typeRef]
+        fieldTypesByName at: (def id goNormalizeTypeId) put: commonByName
         def branches forEach: [branch ->
           branchTypeId = def pkgId + "_" + branch name
           branchNames = commonNames + ((branch fields map: [it name]) toSet)
           fieldNames at: (branchTypeId goNormalizeTypeId) put: branchNames
           branchFields::List(IrField) = def commonFields + branch fields
           constructorFieldTypes at: (branchTypeId goNormalizeTypeId) put: (branchFields map: [it typeRef])
+          branchByName::mut Map(String, IrTypeRef) = #{}!
+          branchFields forEach: [f -> branchByName at: f name put: f typeRef]
+          fieldTypesByName at: (branchTypeId goNormalizeTypeId) put: branchByName
           collectedTypeIds add: branchTypeId
         ]
       ]
@@ -261,7 +272,7 @@ constructor GoBackend [
       fileNames at: it name put: "main.go"
     ]
 
-    ^ GoSymbolTable typeNames: typeNames funcNames: funcNames packageNames: packageNames fileNames: fileNames fieldNames: fieldNames constructorFieldTypes: constructorFieldTypes unionTypeIds: unionTypeIds unionDefs: unionDefs
+    ^ GoSymbolTable typeNames: typeNames funcNames: funcNames packageNames: packageNames fileNames: fileNames fieldNames: fieldNames constructorFieldTypes: constructorFieldTypes fieldTypesByName: fieldTypesByName unionTypeIds: unionTypeIds unionDefs: unionDefs
   ]
 
   // Phase 1: reject IR shapes that the Go backend cannot emit safely.
@@ -480,4 +491,4 @@ constructor GoBackend [
 ]
 
 IrField goFieldDeclaration(ctx): GoContext -> String =
-  (name toSafeGoIdent) + " " + (typeRef toGoType: ctx)
+  (name toSafeGoIdent) + " " + (typeRef toGoFieldType: ctx)

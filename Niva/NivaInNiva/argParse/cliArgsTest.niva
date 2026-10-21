@@ -43,6 +43,16 @@ Test cliArgsGoTargetSelectsBackend = [
   Assert that: stock target equals: CompilerTarget.Go
 ]
 
+Test cliArgsGoTargetWinsOverBackendAnyOrder = [
+  a = ArgParser args: {"run" "main.niva" "--target=go" "--backend=clj"} toList
+  Assert that: a backend equals: CompilerBackend.Go
+  Assert that: a target equals: CompilerTarget.Go
+
+  b = ArgParser args: {"run" "main.niva" "--backend=clj" "--target=ixgo"} toList
+  Assert that: b backend equals: CompilerBackend.Go
+  Assert that: b target equals: CompilerTarget.Ixgo
+]
+
 Test cliArgsCljTargetKeepsCljBackend = [
   result = ArgParser args: {"run" "main.niva" "--backend=clj" "--target=bb"} toList
   Assert that: result backend equals: CompilerBackend.Clj
