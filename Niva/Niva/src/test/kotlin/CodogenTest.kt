@@ -96,6 +96,31 @@ class CodogenTest {
         """.trimIndent() + "\n"
         assertEquals(expected, ktCode)
     }
+
+
+    @Test
+    fun negativeNumberReceiverOfUnaryIsWrappedInBrackets() {
+        // in Kotlin -1.inc() is -(1.inc())
+        val source = """
+            Double plusOne -> Double = this + 1.0
+
+            a = -1 inc
+            b = -1 inc inc
+            c = -1.5 plusOne
+            d = -1 inc + 1
+            e = 2 inc
+            x = -1
+            f = x inc
+        """.trimIndent()
+        val ktCode = generateMainKotlin(source)
+
+        assertTrue(ktCode.contains("(-1).inc()\n"))
+        assertTrue(ktCode.contains("(-1).inc().inc()"))
+        assertTrue(ktCode.contains("(-1.5).plusOne()"))
+        assertTrue(ktCode.contains("(-1).inc() + 1"))
+        assertTrue(ktCode.contains("\n2.inc()"))
+        assertTrue(ktCode.contains("\nx.inc()"))
+    }
 //
 //    @Test
 //    fun stringLiteral() {
