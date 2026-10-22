@@ -19,7 +19,7 @@
   <img src="https://github.com/user-attachments/assets/4d9ee517-8c4d-426c-a15f-e158b6364fec" width="65%"/>
 </p>
 
-"inline repl" feature
+"inline repl" feature:  
 
 https://github.com/user-attachments/assets/ba537afa-5040-4017-b113-4067992d8a77
 
@@ -298,6 +298,11 @@ z echo // 246913578246870
 Other bindings: https://github.com/gavr123456789/bazar/tree/main/Bindings
 </details>
 
+#### Discussions
+join the github [discussions](https://github.com/gavr123456789/Niva/discussions) or niva channels on  
+[Programming Language Development](https://discord.com/channels/530598289813536771/985983920849952768) | [The Fixpoint](https://discord.com/channels/1530640725807464570/1562043908228255794) discord servers
+  
+
 ## Features
 
 - Simple expression-based syntax inspired by Smalltalk
@@ -391,12 +396,15 @@ p = Point new
 </details>
 
 ## Project examples
-- [niva in niva impl](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (lexer, parser, half of resolver)
+- [niva in niva](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (self hosted niva)
 - [JSON](https://github.com/gavr123456789/bazar/tree/main/LittleLibs/JSON_parser) - naive parser
-- [eBF](https://github.com/Nadelio/eBF) - Extended Brainfuck implementation
 - [writing interpreter in go](https://github.com/gavr123456789/writing-an-interpreter-in-niva) (not finished)
-- [tons of small stupid things](https://github.com/gavr123456789/bazar/tree/main/Examples)
-- [Boids with ImGui](https://github.com/dharmatech/boids-niva)
+- [tons of small stupid things](https://github.com/gavr123456789/bazar) bazar
+Not mine: 
+- [Extended Brainfuck implementation](https://github.com/Nadelio/eBF) by Nadelio
+- [Rust like type system with W algo](https://codeberg.org/FishingHacks/mira-type-system) by FishingHacks
+- [Beautiful diagnostics library](https://codeberg.org/FishingHacks/diagnostics.niva) by FishingHacks
+- [Boids with ImGui](https://github.com/dharmatech/boids-niva) by dharmatech
 
 ## Learn
 - [main site](https://gavr123456789.github.io/niva-site/reference.html)
