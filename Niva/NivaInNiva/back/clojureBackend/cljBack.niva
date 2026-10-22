@@ -22,6 +22,8 @@ type CljContext
   hotReload: Bool
   debugEntries: mut Map(Int, CljDebugEntry)
   currentPackage: String
+  // `^` that can't be put in tail position, reported once emitting is done
+  unsupportedReturns: mut Set(String)
 
 type CljDebugEntry
   generatedLine: Int
@@ -37,6 +39,7 @@ constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String hotReload(hotReload): Bool -> CljContext =
   CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
     hotReload: hotReload debugEntries: #{}! currentPackage: pkg
+    unsupportedReturns: #()!
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
@@ -52,6 +55,12 @@ CljContext addStateName(name): String -> Unit = [
 
 CljContext isStateName(name): String -> Bool = [
   ^ stateNames contains: name
+]
+
+CljContext addUnsupportedReturn(token): Token -> Unit = [
+  unsupportedReturns add: token toPosition +
+    ": the Clojure backend can't return from here yet. `^` only works at the end of a method," +
+    " or at the end of a branch that ends the method"
 ]
 
 String cljDebugQuoted -> String =

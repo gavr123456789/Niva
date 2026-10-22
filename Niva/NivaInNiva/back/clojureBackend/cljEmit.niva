@@ -4,7 +4,7 @@
 // fns      -> defn
 // values that can change use one cell
 // blocks   -> one let with unused bindings for side effects
-// return   -> only supported as the last statement
+// return   -> only in tail position, anywhere else a compile error
 // errors   -> exceptions
 // field changes replace the value in that cell
 extend IrExpr [
@@ -541,27 +541,21 @@ extend IrBlock [
   // match cases to alias the subject inside a type-cast branch.
   on toCljBlockBodyWithBind(ctx): CljContext scope: CljScope
                              bindName: String bindValue: String -> String = [
-    // If the last statement is an IrReturn, treat its expression as the body's
-    // result. IrReturn anywhere else is not allowed on this backend.
-    lastIdx = this stmts count - 1
-    mut trailingReturnExpr::IrExpr? = null
-    stmtsToEmit::mut List(IrStmt) = {}!
+    // Clojure has no return, so a `^` has to be in tail position.
+    // The first statement that can return splits the block: a `^` ends it.
+    // A `^` anywhere else is reported rather than dropped.
+    mut splitIdx = -1
     this stmts forEachIndexed: [i, st ->
-      | st
-      | IrReturn => [
-          (i != lastIdx) ifTrue: [
-            TO DO: "Clojure does not support ^"
-            ()
-          ]
-          i == lastIdx ifTrue: [
-            trailingReturnExpr <- st expr
-            ()
-          ]
-        ]
-      |=> [
-        stmtsToEmit add: st
-        ()
+      returns = st cljReturnTokens
+      ((splitIdx == -1) && returns isNotEmpty) ifTrue: [
+        st cljCanSplitBlock
+          ifTrue: [splitIdx <- i]
+          ifFalse: [ctx addUnsupportedReturn: returns first]
       ]
+    ]
+    splitIdx != -1 ifTrue: [
+      ^ (this cljSplitAt: splitIdx) toCljBlockBodyWithBind: ctx scope: scope
+          bindName: bindName bindValue: bindValue
     ]
 
     injectedBinding::mut List(CljBinding) = {}
@@ -570,12 +564,12 @@ extend IrBlock [
       injectedBinding add: binding
       ()
     ]
-    bindings = injectedBinding + (stmtsToEmit map: [it toCljStmtBinding: ctx scope: scope])
+    bindings = injectedBinding + (this stmts map: [it toCljStmtBinding: ctx scope: scope])
 
-    // trailing IrReturn or block result
-    resultExpr::IrExpr? = | trailingReturnExpr
-      | null => this result
-      |=> trailingReturnExpr
+    resultExpr = this result
+    | resultExpr
+    | null => []
+    |=> resultExpr cljCheckTailReturns: ctx
 
     resultStr = | resultExpr
                 | null => [this resultType isCljUnitType ifTrue: [":unit"] ifFalse: ["nil"]]
@@ -588,6 +582,126 @@ extend IrBlock [
 
   on toCljBlockExpr(ctx): CljContext scope: CljScope -> String =
     this toCljBlockBody: ctx scope: scope
+]
+
+// ---------------------------------------------------------------------------
+// early returns
+// ---------------------------------------------------------------------------
+
+// tokens of the `^` inside, without entering a lambda: that's its own fn
+// a loop's lambdas are inlined, so those are entered
+extend IrExpr [
+  on cljCollectReturns(into): mut List(Token) -> Unit = [
+    | this
+    | IrLiteralExpr | IrVarRef | IrThisRef | IrTypeRefExpr | IrLambda => []
+    | IrFieldGet => receiver cljCollectReturns: into
+    | IrCall => [
+        calleeMaybe = callee
+        | calleeMaybe
+        | null => []
+        |=> calleeMaybe cljCollectReturns: into
+        // an inline call that wasn't lowered still gets its block as a fn
+        args forEach: [arg ->
+          isInline
+            ifTrue: [arg cljCollectLoopReturns: into]
+            ifFalse: [arg cljCollectReturns: into]
+        ]
+      ]
+    | IrBlockExpr => block cljCollectReturns: into
+    | IrMatchExpr => [
+        subject cljCollectReturns: into
+        cases forEach: [it body cljCollectReturns: into]
+        elseBranch ifNotNull: [elseBranchValue -> elseBranchValue cljCollectReturns: into]
+      ]
+    | IrNewExpr => args forEach: [it cljCollectReturns: into]
+    | IrCollectionLiteral => items forEach: [it cljCollectReturns: into]
+    | IrOpBin => [
+        left cljCollectReturns: into
+        right cljCollectReturns: into
+      ]
+  ]
+
+  on cljCollectLoopReturns(into): mut List(Token) -> Unit =
+    | this
+    | IrLambda => body cljCollectReturns: into
+    |=> this cljCollectReturns: into
+
+  on cljReturnTokens -> List(Token) = [
+    tokens::mut List(Token) = {}!
+    this cljCollectReturns: tokens
+    ^ tokens toList
+  ]
+
+  // in tail position a `^` can end a branch of a match or a block, which are
+  // checked when they're emitted; anywhere else it can't be emitted
+  on cljCheckTailReturns(ctx): CljContext -> Unit = [
+    tokens::mut List(Token) = {}!
+    | this
+    | IrMatchExpr => subject cljCollectReturns: tokens
+    | IrBlockExpr => []
+    |=> this cljCollectReturns: tokens
+    tokens isNotEmpty ifTrue: [ctx addUnsupportedReturn: tokens first]
+  ]
+]
+
+extend IrStmt [
+  on cljCollectReturns(into): mut List(Token) -> Unit = [
+    | this
+    | IrReturn => [
+        into add: token
+        exprMaybe = expr
+        | exprMaybe
+        | null => []
+        |=> exprMaybe cljCollectReturns: into
+      ]
+    | IrLet => [
+        valueMaybe = value
+        | valueMaybe
+        | null => []
+        |=> valueMaybe cljCollectReturns: into
+      ]
+    | IrSetLocal => value cljCollectReturns: into
+    | IrSetField => [
+        receiver cljCollectReturns: into
+        value cljCollectReturns: into
+      ]
+    | IrDestructure => value cljCollectReturns: into
+    | IrExprStmt => expr cljCollectReturns: into
+    | IrWhile => [
+        cond cljCollectLoopReturns: into
+        body cljCollectLoopReturns: into
+      ]
+    | IrThrow => errExpr cljCollectReturns: into
+  ]
+
+  on cljReturnTokens -> List(Token) = [
+    tokens::mut List(Token) = {}!
+    this cljCollectReturns: tokens
+    ^ tokens toList
+  ]
+
+  on cljCanSplitBlock -> Bool =
+    | this
+    | IrReturn => true
+    |=> false
+]
+
+extend IrBlock [
+  on cljCollectReturns(into): mut List(Token) -> Unit = [
+    stmts forEach: [it cljCollectReturns: into]
+    resultMaybe = result
+    | resultMaybe
+    | null => []
+    |=> resultMaybe cljCollectReturns: into
+  ]
+
+  // the block up to the statement at `idx`, which can split it
+  on cljSplitAt(idx): Int -> IrBlock = [
+    split = stmts at: idx
+    ^ | split
+      | IrReturn => IrBlock stmts: (stmts dropLast: stmts count - idx) result: split expr resultType: resultType
+      |=> this
+  ]
 ]
 
 // ---------------------------------------------------------------------------
@@ -1083,6 +1197,10 @@ constructor CljBackend [
     ]
     header append: (body toString)
 
+    ctx unsupportedReturns count > 0 ifTrue: [
+      TO DO: (ctx unsupportedReturns toList joinWith: "\n")
+      ()
+    ]
     ^ header toString
   ]
 
