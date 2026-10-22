@@ -173,6 +173,17 @@ extend Body [
   ]
 ]
 
+// a branch that ends with ^ has no value, so it doesn't decide the match's type
+TypedBody matchBranchType(db): TyperDB -> NivaType = [
+  endsWithReturn = v isEmpty ifTrue: [false] ifFalse: [
+    lastExpr = v last
+    | lastExpr
+    | ReturnStatementT => true
+    |=> false
+  ]
+  endsWithReturn ifTrue: [db dtc nothing] ifFalse: [t]
+]
+
 List(TypedExpr2) collectBodyErrors -> List(NivaType) = [
   errors::mut List(NivaType) = {}!
   this forEach: [expr -> expr typeInfo listOfErrors forEach: [errors add: it]]
@@ -1211,7 +1222,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ifFalse: [contextWithNarrowedSubject]
 
       bodyT = br body resolveBody2: db withContext: contextForBody :expectedType
-      returnTypes add: bodyT t
+      returnTypes add: (bodyT matchBranchType: db)
 
       MatchBranchT condition: conditionForBranch
                    additionalConditions: conditionsT
@@ -1220,7 +1231,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     elseBranchTMaybe = elseBranchT
     elseBranchTMaybe ifNotNull: [elseBranchTValue ->
-      returnTypes add: elseBranchTValue t
+      returnTypes add: (elseBranchTValue matchBranchType: db)
       ()
     ]
 

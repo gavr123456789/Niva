@@ -662,6 +662,41 @@ Test goValueMatchNonLocalReturnCodegen = [
   Assert that: (go contains: "func() string {") equals: false
 ]
 
+Test goValueMatchReturnOnErrorCodegen = [
+  fileMain = """
+    errordomain E =
+    | Bad text: String
+
+    Int parse -> Int!{Bad} = [
+      this >= 0 ifTrue: [^ this * 10]
+      (Bad text: "negative") throw
+      ^ 0
+    ]
+
+    Int describe -> String = [
+      v = | this parse
+          | Bad => ^ "bad input"
+          |=> it
+      "value " + v toString
+    ]
+
+    Int noElse -> String = [
+      v = | this parse
+          | Bad => ^ "bad input"
+      "value " + v toString
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var v int\n", assertTrue
+  go contains: "return \"bad input\"", assertTrue
+  go contains: "v = it", assertTrue
+  Assert that: (go contains: "func() int {") equals: false
+]
+
 Test goTailMatchNonLocalReturnCodegen = [
   fileMain = """
     union Expr = | Num v: Int | Sym name: String
