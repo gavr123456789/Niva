@@ -840,24 +840,8 @@ extend mut Parser [
     // message expr
     primaryUnaryBinary = this parsePrimaryOrUnaryOrBinary: tok receiver: receiver
    ^| this peek kind
-    | TokenType.IdentifierColon => [
-
-      result::mut List::NameAndExpr = {}!
-      // parse keyword
-      [
-        colon = this peek
-        | colon kind
-        | TokenType.IdentifierColon => [
-          result add:
-            (NameAndExpr
-              name: (Identifier fromToken: this step)
-              expr: (this parsePrimaryOrUnaryOrBinary: this step))
-          true
-        ]
-        |=> [
-          false
-        ]
-      ] whileTrue: []
+    | TokenType.IdentifierColon | TokenType.Colon => [
+      result = this parseKeywordArgs
       KeywordMsg
         receiver: primaryUnaryBinary
         token: tok
@@ -866,6 +850,35 @@ extend mut Parser [
 
     ]
     |=> primaryUnaryBinary
+  ]
+
+  // colon sugar is `obj :key` and becomes `obj key: key`
+  on parseKeywordArgs -> mut List(NameAndExpr) = [
+    args::mut List(NameAndExpr) = {}!
+
+    [
+      | this peek kind
+      | TokenType.Colon => [
+        (this peekAt: 1) isIdentifier ifTrue: [
+          this step
+          keyToken = this step
+          key = Identifier token: keyToken name: keyToken lexeme path: null
+          args add: (NameAndExpr name: key expr: key)
+          true
+        ] ifFalse: [
+          false
+        ]
+      ]
+      | TokenType.IdentifierColon => [
+        key = Identifier fromToken: this step
+        value = this parsePrimaryOrUnaryOrBinary: this step
+        args add: (NameAndExpr name: key expr: value)
+        true
+      ]
+      |=> false
+    ] whileTrue: []
+
+    ^ args
   ]
 
 
