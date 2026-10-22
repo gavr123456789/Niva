@@ -8,14 +8,14 @@ type WorkspaceSnapshot
   entryPoint: String
 
 constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int -> WorkspaceSnapshot =
-  WorkspaceSnapshot fromSources: sources revision: revision
+  WorkspaceSnapshot fromSources: sources :revision
     entryPoint: "main" documentVersions: #{}
 
 constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int
     entryPoint(entryPoint): String documentVersions(documentVersions): Map(String, Int)
     -> WorkspaceSnapshot =
-  WorkspaceSnapshot revision: revision sources: (sources sortedBy: [it moduleId])
-    documentVersions: documentVersions entryPoint: entryPoint
+  WorkspaceSnapshot :revision sources: (sources sortedBy: [it moduleId])
+    :documentVersions :entryPoint
 
 WorkspaceSnapshot sourceFor(moduleId): String -> NivaSourceInput? =
   sources find: [it moduleId == moduleId]
@@ -245,9 +245,9 @@ CompilerCandidate emitBackend -> CompilerBackendArtifact = [
       debug: false mode: cljMode target: cljTarget
   ]
   CompilerBackendArtifact
-    backend: backend
+    :backend
     target: compilerConfig target
-    content: content
+    :content
     cljOutput: output
 ]
 
@@ -369,7 +369,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
     ]
     state = IncrementalModuleState
       moduleId: pkg name
-      sourceHash: sourceHash
+      :sourceHash
       apiHash: currentApi
       dependencyApiHash: (Sha256 digest: depApi)
       dependencies: pkg dependencyPackageNames
@@ -396,11 +396,11 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
   ]
 
   CompilerCandidate
-    baseRevision: revision snapshot: snapshot modules: newModules irModule: ir
+    baseRevision: revision :snapshot modules: newModules irModule: ir
     dependencies: newDependencies reverseDependencies: newReverse
     specializationUses: candidateSpecializationUses compilerConfig: config
-    sourceInvalidated: sourceInvalidated interfaceInvalidated: interfaceInvalidated
-    bodyInvalidated: bodyInvalidated outputInvalidated: outputInvalidated
+    :sourceInvalidated :interfaceInvalidated
+    :bodyInvalidated :outputInvalidated
     cljManifest: cljManifestMaybe
 ]
 
@@ -438,8 +438,8 @@ CompilerCompilationResult commitReady -> Bool =
 
 CompilerSession compilationFailure(requestVersion): Int diagnostics: List(CompilerDiagnostic) -> CompilerCompilationResult =
   CompilerCompilationResult
-    requestVersion: requestVersion candidate: null backendArtifact: null
-    diagnostics: diagnostics cancelled: false
+    :requestVersion candidate: null backendArtifact: null
+    :diagnostics cancelled: false
 
 CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container hotReload(hotReload): Bool -> CljGenerationResult = [
   | true
@@ -458,7 +458,7 @@ CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Containe
         TO DO: "Clj backend artifact has no output"
         CljGenerationResult notPublished
       ]
-      |=> cljOutputMaybe publishTo: root withIO: io hotReload: hotReload
+      |=> cljOutputMaybe publishTo: root withIO: io :hotReload
     ]
   ]
 ]
@@ -489,8 +489,8 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver)
     isGeneric = genericFunctionIds any: [key contains: ("|" + it + "|")]
     isGeneric ifTrue: [genericUses at: key put: contributors]
   ]
-  this prepareCandidate: snapshot ir: ir specializationUses: genericUses
-      apiHashes: resolver interfaceApiHashes config: config
+  this prepareCandidate: snapshot :ir specializationUses: genericUses
+      apiHashes: resolver interfaceApiHashes :config
 ]
 
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot bodyResolver(bodyResolver): ResolverHelper bodyModules(bodyModules): Set(String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
@@ -535,15 +535,15 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
 
   this prepareCandidate: snapshot ir: mergedIr
       specializationUses: mergedSpecializationUses
-      apiHashes: apiHashes config: config
+      :apiHashes :config
 ]
 
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   apiHashes = interfaceSnapshot interfaceApiHashes
-  bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
+  bodyModules = this bodyModulesFor: snapshot :apiHashes :config
   bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
-  this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
-      bodyResolver: bodyResolver bodyModules: bodyModules config: config
+  this prepareCandidate: snapshot :interfaceSnapshot
+      :bodyResolver :bodyModules :config
 ]
 
 CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
@@ -551,21 +551,21 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
   | cancelled => CompilerCompilationResult cancelled: requestVersion
   |=> [
     apiHashes = interfaceSnapshot interfaceApiHashes
-    bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
+    bodyModules = this bodyModulesFor: snapshot :apiHashes :config
     bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
 
     diagnostics::mut List(CompilerDiagnostic) = {}!
     // A working TyperDB starts with the declaration-pass errors, so reading it
     // once avoids publishing duplicate diagnostics for the same source token.
     bodyResolver db listOfErrors forEach: [error ->
-      diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+      diagnostics add: (CompilerDiagnostic :requestVersion
         path: error tok file path message: error toConsoleMsg)
     ]
     diagnostics isEmpty ifFalse: [
       this compilationFailure: requestVersion diagnostics: diagnostics toList
     ] ifTrue: [
-      candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
-        bodyResolver: bodyResolver bodyModules: bodyModules config: config
+      candidate = this prepareCandidate: snapshot :interfaceSnapshot
+        :bodyResolver :bodyModules :config
       artifact = candidate emitBackend
       currentManifestMaybe = candidate cljManifest
       previousManifestMaybe = cljManifest
@@ -581,7 +581,7 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
         ]
       ]
       shapeChanges forEach: [change ->
-        diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
+        diagnostics add: (CompilerDiagnostic :requestVersion
           path: snapshot entryPoint + ".niva"
           message: "hard restart required: " + change +
             "; automatic state migration is not supported")
@@ -589,7 +589,7 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
       diagnostics isEmpty ifFalse: [
         this compilationFailure: requestVersion diagnostics: diagnostics toList
       ] ifTrue: [
-        CompilerCompilationResult requestVersion: requestVersion candidate: candidate
+        CompilerCompilationResult :requestVersion :candidate
           backendArtifact: artifact diagnostics: {} cancelled: false
       ]
     ]
@@ -604,8 +604,8 @@ CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): Com
   |=> [
     interfaceSnapshot = ResolverInterfaceSnapshot
       collectSources: snapshot sources entryPoint: snapshot entryPoint backend: config backend
-    this compileCandidate: snapshot interfaceSnapshot: interfaceSnapshot
-      config: config requestVersion: requestVersion cancelled: false
+    this compileCandidate: snapshot :interfaceSnapshot
+      :config :requestVersion cancelled: false
   ]
 ]
 
@@ -613,6 +613,6 @@ CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): Com
 CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): CompilerConfigFingerprint
     requestVersion(requestVersion): Int cancelled(cancelled): Bool incremental(incremental): Bool -> CompilerCompilationResult = [
   activeSession = incremental ifTrue: [this] ifFalse: [CompilerSession empty]
-  activeSession compileSnapshot: snapshot config: config
-    requestVersion: requestVersion cancelled: cancelled
+  activeSession compileSnapshot: snapshot :config
+    :requestVersion :cancelled
 ]

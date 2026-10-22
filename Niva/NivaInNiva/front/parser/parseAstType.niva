@@ -68,10 +68,10 @@ extend mut Parser [
 
     AstType
         tok: identifier
-        name: name
-        isNullable: isNullable
+        :name
+        :isNullable
         genericParams: genericParams toList
-        isMut: isMut
+        :isMut
         errors: this parseTypeErrors
   ]
 
@@ -96,7 +96,7 @@ extend mut Parser [
           this matchAssert: TokenType.ReturnArrow
           returnType = this parseType
           lastBracketTok = this matchAssert: TokenType.CloseBracket
-          AstLambdaType tok: lastBracketTok name: "[$args -> ]" args: args toList returnType: returnType
+          AstLambdaType tok: lastBracketTok name: "[$args -> ]" args: args toList :returnType
         ]
         ifFalse: [this parseGenericType]
 

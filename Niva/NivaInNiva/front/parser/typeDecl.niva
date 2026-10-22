@@ -10,7 +10,7 @@ extend mut Parser [
           this step // skip
 
           astType = this parseType
-          type_field = TypeField name: (tok lexeme) astType: astType
+          type_field = TypeField name: (tok lexeme) :astType
           result add: (type_field)
           this peek kind == TokenType.IdentifierColon
         ] ifFalse: [
@@ -95,8 +95,8 @@ extend mut Parser [
         fields = this typeFields
         branch = UnionBranch
           name: nameTok lexeme
-          fields: fields
-          isInclude: isInclude
+          :fields
+          :isInclude
           token: nameTok
         branches add: branch
         this match: TokenType.If
@@ -107,7 +107,7 @@ extend mut Parser [
 
 
 
-    res = UnionDecl token: tok name: name genericParams: genericParams commonUnionFields: commonUnionFields branches: branches
+    res = UnionDecl token: tok :name :genericParams :commonUnionFields :branches
 
 
     ^ res

@@ -944,7 +944,7 @@ Test goUnsupportedConstructorBindHasDiagnostic = [
     nullable: false
     errors: {}
   expr::IrExpr = IrNewExpr
-    typeRef: typeRef
+    :typeRef
     token: Token eof
     typeId: "sample_Box"
     args: {}

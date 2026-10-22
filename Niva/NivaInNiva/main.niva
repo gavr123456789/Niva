@@ -44,7 +44,7 @@ constructor IO_Container new -> IO_Container = [
     x map: [
       normalized = it normalized
       relativePath = (normalized segments drop: rootSegmentCount) joinWith: "/"
-      NivaSourceFile path: normalized toString relativePath: relativePath
+      NivaSourceFile path: normalized toString :relativePath
     ]
   ]
 
@@ -71,9 +71,9 @@ constructor IO_Container new -> IO_Container = [
     ProcessRunner run: args dir: path
   ]
 
-  ^ IO_Container readFile: readFile writeFile: writeFile walkDir: walkDir getParent: getParent
-    createDirectories: createDirectories deleteRecursively: deleteRecursively
-    currentDir: System currentDir runProgram: runProgram runProgramFromPath: runProgramFromPath
+  ^ IO_Container :readFile :writeFile :walkDir :getParent
+    :createDirectories :deleteRecursively
+    currentDir: System currentDir :runProgram :runProgramFromPath
 ]
 
 

@@ -187,7 +187,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   shouldReturnHelp = invalid || explicitHelp || commandIsHelp || (option == CompilerOption.Help)
   | shouldReturnHelp
   | true => ArgsParsed help
-  |=> ArgsParsed path: path option: option backend: backend runtime: runtime target: target verbose: verbose debug: debug repl: repl replLine: replLine nativeBuild: nativeBuild incremental: incremental
+  |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl :replLine :nativeBuild :incremental
 ]
 
 enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | Help

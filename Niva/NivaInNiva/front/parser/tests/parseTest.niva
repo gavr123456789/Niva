@@ -33,7 +33,7 @@ constructor TestParse expression::String -> Expr = [
 
 Test parserPeekAtOutOfBoundsReturnsEof = [
   tokens = Lexer get-tokens: "1"
-  parser::mut Parser = Parser tokens: tokens current: 0 statements: {}!
+  parser::mut Parser = Parser :tokens current: 0 statements: {}!
 
   beforeStart = parser peekAt: -1
   afterEnd = parser peekAt: tokens count
@@ -83,7 +83,7 @@ Test parseNumber = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   intExprMaybe = parser literalExprFrom: tokens first
   intExpr = (intExprMaybe expect: "Missing integer expression") asIntExpr
   Assert that: intExpr num equals: 123
@@ -96,7 +96,7 @@ Test parseNumberWithUnderscore = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   intExprMaybe = parser literalExprFrom: tokens first
   intExpr = (intExprMaybe expect: "Missing integer expression") asIntExpr
   Assert that: intExpr num equals: 1000000
@@ -105,7 +105,7 @@ Test parseNumberWithUnderscore = [
 Test parseString = [
   tokens = Lexer get-tokens: """ "sas" """
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   stringExprMaybe = parser literalExprFrom: tokens first
   stringExpr = (stringExprMaybe expect: "Missing string expression") asStringExpr
   Assert that: stringExpr token lexeme equals: "\"sas\""
@@ -121,7 +121,7 @@ Test parseAstTypeList = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   astType = (parser parseType) asAstType
   Assert that: astType genericParams count equals: 1
   list = (astType genericParams at: 0) asAstType
@@ -135,7 +135,7 @@ Test parseAstTypeMap = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   astType = (parser parseType) asAstType
   Assert that: astType genericParams count equals: 2
   Assert that: ((astType genericParams at: 0) asAstType) name equals: "Int"
@@ -149,7 +149,7 @@ Test parseAstTypeErrorAny = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   astType = (parser parseType) asAstType
   errors = (astType errors) expect: "Missing type errors"
   Assert that: errors kind equals: AstTypeErrorsKind.Any
@@ -163,7 +163,7 @@ Test parseAstTypeErrorSingle = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   astType = (parser parseType) asAstType
   errors = (astType errors) expect: "Missing type errors"
   Assert that: errors kind equals: AstTypeErrorsKind.Single
@@ -178,7 +178,7 @@ Test parseAstTypeErrorList = [
 
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
-  parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
+  parser:: mut Parser = Parser :tokens current: 0 :statements
   astType = (parser parseType) asAstType
   errors = (astType errors) expect: "Missing type errors"
   Assert that: errors kind equals: AstTypeErrorsKind.List

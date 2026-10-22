@@ -67,7 +67,7 @@ TypeDeclVisitor
     statements forEach: [
       | it
       | TypeDecl => [
-        noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
+        noFieldsType = TypeT noFieldsWithName: it name :pkgName
         it genericParams forEach: [genericParam ->
           genericArg::NivaType = UnresolvedGenericT name: genericParam
           noFieldsType genericArgs add: genericArg
@@ -100,7 +100,7 @@ TypeDeclVisitor
           name: it name
           genericParams: it genericParams
           fields: common
-        rootStub = TypeT noFieldsWithName: rootDecl name pkgName: pkgName
+        rootStub = TypeT noFieldsWithName: rootDecl name :pkgName
         it genericParams forEach: [genericParam ->
           genericArg::NivaType = UnresolvedGenericT name: genericParam
           rootStub genericArgs add: genericArg
@@ -143,7 +143,7 @@ TypeDeclVisitor
               genericParams: it genericParams
               fields: fields toList
 
-            noFieldsType = TypeT noFieldsWithName: fullDecl name pkgName: pkgName
+            noFieldsType = TypeT noFieldsWithName: fullDecl name :pkgName
             it genericParams forEach: [genericParam ->
               genericArg::NivaType = UnresolvedGenericT name: genericParam
               noFieldsType genericArgs add: genericArg
@@ -164,7 +164,7 @@ TypeDeclVisitor
         ]
       ]
       | EnumDecl => [
-        noFieldsType = TypeT noFieldsWithName: it name pkgName: pkgName
+        noFieldsType = TypeT noFieldsWithName: it name :pkgName
         noFieldsTypes at: it name put: noFieldsType
         db addNewType: noFieldsType inPkg: pkgName
         db registerTypeDeclaration: noFieldsType token: it token
@@ -177,7 +177,7 @@ TypeDeclVisitor
 
   // first iteration, fill the lists of statements, create pkgs
   fileToStatements forEach: [file, statements ->
-    processDeclarations file: file statements: statements
+    processDeclarations :file :statements
   ]
 
   fillTypesAndMessages = [
@@ -268,7 +268,7 @@ TypeDeclVisitor
           |=> [
             sameFieldsAs rootType: rootTypeValue includedType: includedTypeMaybe, ifFalse: [
               msg = "Union include " + includedTypeMaybe name + " must have the same fields as " + rootTypeValue name
-              db addErrorMessage: (LazyError tok: tok msg: msg)
+              db addErrorMessage: (LazyError :tok :msg)
             ]
           ]
         ]
@@ -322,7 +322,7 @@ TypeDeclVisitor
       msg isConstructor ifTrue: [
         constructorMethod = NivaMethod
           defaultConstructorWithName: msg name
-          receiverType: receiverType
+          :receiverType
           args: argsT
           returnType: (msg getReturnTypeIfDeclaredOrUnknown: db)
           decl: msg
@@ -339,10 +339,10 @@ TypeDeclVisitor
 
         method = NivaMethod
           name: msg name
-          receiverType: receiverType
+          :receiverType
           args: argsT
           returnType: (msg getReturnTypeIfDeclaredOrUnknown: db) // if generic need to resolve
-          returnErrors: returnErrors
+          :returnErrors
           forMut: isMutable
           possibleErrors: {}
           kind: MessageSendKind.Call
@@ -391,13 +391,13 @@ TypeDeclVisitor fillFields(st): TypeDecl knownTypes::mut Map(String, TypeT) -> T
 
 
     st fields forEach: [
-      fieldType = it astType toNivaTypefromDBWithKnown: db knownTypes: knownTypes
+      fieldType = it astType toNivaTypefromDBWithKnown: db :knownTypes
       astFieldType = it astType
       isMut = | astFieldType
               | AstType => astFieldType isMut
               | AstLambdaType => false
 
-      field = TypeTField name: it name typeT: fieldType isMut: isMut
+      field = TypeTField name: it name typeT: fieldType :isMut
       typeStub fields add: field
 
     ]
@@ -433,7 +433,7 @@ MsgDeclVisitor processBodyes(pkg2Msg): Map(String, List(MessageDecl)) db::TyperD
           ]
           generics
         ] |=> #{}!
-      msgDecl resolveBodyWithDb: db pkg: pkg extraTypes: extraTypes
+      msgDecl resolveBodyWithDb: db :pkg :extraTypes
     ]
   ]
 ]
@@ -605,7 +605,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
       // when their concrete mapping is known
       declaredReturnTypeMaybe isContainsUnresolvedGenerics ifFalse: [
         actualReturnType = finalTypedBody t
-        actualReturnType isAssignableTo: declaredReturnTypeMaybe db: db, ifFalse: [
+        actualReturnType isAssignableTo: declaredReturnTypeMaybe :db, ifFalse: [
           db addErrorMessage: (ErrorWrongArgType
             tok: token
             msg: "Function " + name + " returns " + actualReturnType toString + ", but " + declaredReturnTypeMaybe toString + " is declared")
@@ -622,7 +622,7 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     ]
   ]
 
-  (hasAnyReturnErrors not) && (declaredReturnErrors errorListCovers: actualReturnErrors db: db, not), ifTrue: [
+  (hasAnyReturnErrors not) && (declaredReturnErrors errorListCovers: actualReturnErrors :db, not), ifTrue: [
     declaredStr = declaredReturnErrors errorsToString
     actualStr = actualReturnErrors errorsToString
     declaredShown = declaredStr == "" ifTrue: ["none"] ifFalse: [declaredStr]

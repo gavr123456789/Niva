@@ -14,7 +14,7 @@ type Lexer
   file: SourceFile
 
 constructor Lexer lex-input(input): String file(sf): SourceFile -> mut Lexer = [
-  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0 file: sf
+  l::mut Lexer = Lexer :input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0 file: sf
   l step // add EOF, probably
   ^ l
 ]
@@ -68,11 +68,11 @@ extend mut Lexer [
 
   on createToken(kind): TokenType lexeme: String -> Token = [
     tok = Token
-      kind: kind
-      lexeme: lexeme
-      line: line
+      :kind
+      :lexeme
+      :line
       start: posOnLine - lexeme count end: posOnLine//lexeme count
-      file: file
+      :file
     pos <- readPos
     ^ tok
   ]

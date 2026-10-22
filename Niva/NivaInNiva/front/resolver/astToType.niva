@@ -1,16 +1,16 @@
 
 
 AstType2 toNivaTypefromDB(db): TyperDB inPkg: String? -> NivaType =
-  this toNivaTypefromDB2: db inPkg: inPkg knownTypes: null
+  this toNivaTypefromDB2: db :inPkg knownTypes: null
 
 AstType2 toNivaTypefromDBWithKnown(db): TyperDB knownTypes: Map(String, TypeT) -> NivaType =
-  this toNivaTypefromDB2: db inPkg: null knownTypes: knownTypes
+  this toNivaTypefromDB2: db inPkg: null :knownTypes
 
 AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, TypeT) -> NivaType = [
   ^ | this
   | AstType => [
     name isGeneric ifTrue: [
-      base = UnresolvedGenericT name: name
+      base = UnresolvedGenericT :name
       ^ | isNullable
         | true => NullableT v: base
         | false => base
@@ -21,7 +21,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, 
     |=> knownTypes at: name
 
     baseType = | baseTypeMaybe
-    | null => db findByTypeName: name inPkg: inPkg
+    | null => db findByTypeName: name :inPkg
     |=> baseTypeMaybe
 
     result = genericParams isNotEmpty ifTrue: [
@@ -41,7 +41,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, 
         mut hasConcreteGeneric = false
 
         genericArgs2 forEachIndexed: [ i, it ->
-          sas = genericParams at: i, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+          sas = genericParams at: i, toNivaTypefromDB2: db :inPkg :knownTypes
           | sas
           | UnresolvedGenericT => []
           |=> [hasConcreteGeneric <- true]
@@ -57,7 +57,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, 
           db addErrorFromTok: tok withMsg: "List expects 1 generic param, got " + genericParams count toString
           ^ baseType
         ]
-        inner = genericParams first, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+        inner = genericParams first, toNivaTypefromDB2: db :inPkg :knownTypes
         db addCollectionInstantiationIfAbsent: (ListT t: inner)
       ]
       | SetT => [
@@ -65,7 +65,7 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, 
           db addErrorFromTok: tok withMsg: "Set expects 1 generic param, got " + genericParams count toString
           ^ baseType
         ]
-        inner = genericParams first, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+        inner = genericParams first, toNivaTypefromDB2: db :inPkg :knownTypes
         db addCollectionInstantiationIfAbsent: (SetT t: inner)
       ]
       | MapT => [
@@ -73,8 +73,8 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, 
           db addErrorFromTok: tok withMsg: "Map expects 2 generic params, got " + genericParams count toString
           ^ baseType
         ]
-        keyType = genericParams at: 0, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
-        valType = genericParams at: 1, toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+        keyType = genericParams at: 0, toNivaTypefromDB2: db :inPkg :knownTypes
+        valType = genericParams at: 1, toNivaTypefromDB2: db :inPkg :knownTypes
         db addCollectionInstantiationIfAbsent: (MapT k: keyType v: valType)
       ]
       |=> [TO DO: "only TypeT/ListT/SetT/MapT can have generics"]
@@ -86,18 +86,18 @@ AstType2 toNivaTypefromDB2(db): TyperDB inPkg: String? knownTypes: Map?(String, 
   ]
   | AstLambdaType => [
     argFields = args map: [
-      argType = it toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+      argType = it toNivaTypefromDB2: db :inPkg :knownTypes
       TypeTField name: "it" typeT: argType isMut: false
     ]
-    returnT = returnType toNivaTypefromDB2: db inPkg: inPkg knownTypes: knownTypes
+    returnT = returnType toNivaTypefromDB2: db :inPkg :knownTypes
 
     FuntionT
-      name: name
+      :name
       pkgName: "core"
       fields: argFields toMutableList
       genericArgs: {}!
       returnType: returnT
-      returnErrors: (returnType toErrorsFromDb: db inPkg: inPkg)
+      returnErrors: (returnType toErrorsFromDb: db :inPkg)
   ]
 
 ]
@@ -112,10 +112,10 @@ AstType2 toErrorsFromDb(db): TyperDB inPkg: String? -> List(NivaType) = | this
       | kind
       | AstTypeErrorsKind.Any    => {}
       | AstTypeErrorsKind.Single => [
-                                      err = db findByTypeName: (astErrors names first) inPkg: inPkg
+                                      err = db findByTypeName: (astErrors names first) :inPkg
                                       {err}
                                     ]
-      | AstTypeErrorsKind.List   => astErrors names map: [db findByTypeName: it inPkg: inPkg]
+      | AstTypeErrorsKind.List   => astErrors names map: [db findByTypeName: it :inPkg]
     ]
   ]
   | AstLambdaType => {}
@@ -132,10 +132,10 @@ AstType2 hasAnyErrorMarker -> Bool = | this
 
 
 AstType2 toTypeInfoFromDb(db): TyperDB inPkg: String? -> TypeInfo = [
-  t = this toNivaTypefromDB: db inPkg: inPkg
-  errorsList = this toErrorsFromDb: db inPkg: inPkg
+  t = this toNivaTypefromDB: db :inPkg
+  errorsList = this toErrorsFromDb: db :inPkg
   isMut = | this
           | AstType => this isMut
           |=> false
-  ^ TypeInfo t: t isMut: isMut listOfErrors: errorsList
+  ^ TypeInfo :t :isMut listOfErrors: errorsList
 ]

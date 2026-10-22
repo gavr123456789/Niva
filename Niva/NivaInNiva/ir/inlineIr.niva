@@ -15,7 +15,7 @@ type InlineCtx
   lambdas: mut Map(String, IrLambda)
 
 constructor InlineCtx functions: Map(String, IrFunction) =
-  InlineCtx functions: functions active: {}! generated: {}! lambdas: #{}!
+  InlineCtx :functions active: {}! generated: {}! lambdas: #{}!
 
 extend InlineCtx [
   on nextFresh -> Int = [
@@ -88,7 +88,7 @@ extend InlineCtx [
     emptyRenames::Map(String, String) = #{}
     renames = emptyRenames withBindings: frame
     calleeBody = calleeFn body
-    newBody = calleeBody inlineRewriteBlock: renames thisVar: thisVar doRename: true ctx: this
+    newBody = calleeBody inlineRewriteBlock: renames :thisVar doRename: true ctx: this
 
     splicedBlock = newBody stmts: (paramLets toList + newBody stmts)
     IrBlockExpr typeRef: (call typeRef) token: (call token) block: splicedBlock
@@ -107,9 +107,9 @@ Map(String, String) withBindings(frame): Map(String, String) -> Map(String, Stri
   this + frame
 
 IrMatchCase inlineRewriteCase(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrMatchCase = [
-  s1 = this condition: (condition inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
-  s2 = s1 additionalConditions: (additionalConditions map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx])
-  ^ s2 body: (body inlineRewriteBlock: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  s1 = this condition: (condition inlineRewriteExpr: renames :thisVar :doRename :ctx)
+  s2 = s1 additionalConditions: (additionalConditions map: [it inlineRewriteExpr: renames :thisVar :doRename :ctx])
+  ^ s2 body: (body inlineRewriteBlock: renames :thisVar :doRename :ctx)
 ]
 
 IrStmt inlineRewriteStmt(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrStmt =
@@ -117,25 +117,25 @@ IrStmt inlineRewriteStmt(renames): Map(String, String) thisVar: String doRename:
   | IrLet | IrDestructure => this
   | IrSetLocal => [
       s1 = this name: ((renames at: name) orElse: name)
-      ^ s1 value: (value inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      ^ s1 value: (value inlineRewriteExpr: renames :thisVar :doRename :ctx)
     ]
   | IrSetField => [
-      s1 = this receiver: (receiver inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
-      ^ s1 value: (value inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      s1 = this receiver: (receiver inlineRewriteExpr: renames :thisVar :doRename :ctx)
+      ^ s1 value: (value inlineRewriteExpr: renames :thisVar :doRename :ctx)
     ]
-  | IrExprStmt => this expr: (expr inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrExprStmt => this expr: (expr inlineRewriteExpr: renames :thisVar :doRename :ctx)
   | IrReturn => [
       exprMaybe = expr
       newExpr::IrExpr? = | exprMaybe
         | null => null
-        |=> exprMaybe inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx
+        |=> exprMaybe inlineRewriteExpr: renames :thisVar :doRename :ctx
       this expr: newExpr
     ]
   | IrWhile => [
-      s1 = this cond: (cond inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
-      ^ s1 body: (body inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      s1 = this cond: (cond inlineRewriteExpr: renames :thisVar :doRename :ctx)
+      ^ s1 body: (body inlineRewriteExpr: renames :thisVar :doRename :ctx)
     ]
-  | IrThrow => this errExpr: (errExpr inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrThrow => this errExpr: (errExpr inlineRewriteExpr: renames :thisVar :doRename :ctx)
 
 IrExpr inlineRewriteExpr(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrExpr =
   | this
@@ -145,16 +145,16 @@ IrExpr inlineRewriteExpr(renames): Map(String, String) thisVar: String doRename:
       | null => this
       |=> this name: renamed
     ]
-  | IrThisRef => thisVar == "" ifTrue: [this] ifFalse: [IrVarRef typeRef: typeRef token: token name: thisVar]
+  | IrThisRef => thisVar == "" ifTrue: [this] ifFalse: [IrVarRef :typeRef :token name: thisVar]
   | IrLiteralExpr => this
   | IrTypeRefExpr => this
-  | IrFieldGet => this receiver: (receiver inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrFieldGet => this receiver: (receiver inlineRewriteExpr: renames :thisVar :doRename :ctx)
   | IrCall => [
-      newArgs = args map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx]
+      newArgs = args map: [it inlineRewriteExpr: renames :thisVar :doRename :ctx]
       calleeMaybe = callee
       newCallee::IrExpr? = | calleeMaybe
         | null => null
-        |=> calleeMaybe inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx
+        |=> calleeMaybe inlineRewriteExpr: renames :thisVar :doRename :ctx
       s1 = this args: newArgs
       s2 = s1 callee: newCallee
       ^ s2 inlineMaybeInline: ctx
@@ -169,9 +169,9 @@ IrExpr inlineRewriteExpr(renames): Map(String, String) thisVar: String doRename:
       ]
       inner = doRename ifTrue: [renames withBindings: frame] ifFalse: [renames]
       s1 = this args: newArgs toList
-      ^ s1 body: (body inlineRewriteBlock: inner thisVar: thisVar doRename: doRename ctx: ctx)
+      ^ s1 body: (body inlineRewriteBlock: inner :thisVar :doRename :ctx)
     ]
-  | IrBlockExpr => this block: (block inlineRewriteBlock: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrBlockExpr => this block: (block inlineRewriteBlock: renames :thisVar :doRename :ctx)
   | IrMatchExpr => [
       aliasName = typeAlias orElse: "it"
       freshAlias = doRename ifTrue: [aliasName inlineFreshName: ctx] ifFalse: [aliasName]
@@ -181,20 +181,20 @@ IrExpr inlineRewriteExpr(renames): Map(String, String) thisVar: String doRename:
       elseBranchMaybe = elseBranch
       newElse::IrBlock? = | elseBranchMaybe
         | null => null
-        |=> elseBranchMaybe inlineRewriteBlock: inner thisVar: thisVar doRename: doRename ctx: ctx
+        |=> elseBranchMaybe inlineRewriteBlock: inner :thisVar :doRename :ctx
       mut newAlias::String? = typeAlias
       doRename ifTrue: [newAlias <- freshAlias]
-      s1 = this subject: (subject inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
-      s2 = s1 cases: (cases map: [c -> c inlineRewriteCase: inner thisVar: thisVar doRename: doRename ctx: ctx])
+      s1 = this subject: (subject inlineRewriteExpr: renames :thisVar :doRename :ctx)
+      s2 = s1 cases: (cases map: [c -> c inlineRewriteCase: inner :thisVar :doRename :ctx])
       s3 = s2 elseBranch: newElse
       s4 = s3 typeAlias: newAlias
-      ^ s4 subjectIsUnit: subjectIsUnit
+      ^ s4 :subjectIsUnit
     ]
-  | IrNewExpr => this args: (args map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx])
-  | IrCollectionLiteral => this items: (items map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx])
+  | IrNewExpr => this args: (args map: [it inlineRewriteExpr: renames :thisVar :doRename :ctx])
+  | IrCollectionLiteral => this items: (items map: [it inlineRewriteExpr: renames :thisVar :doRename :ctx])
   | IrOpBin => [
-      s1 = this left: (left inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
-      ^ s1 right: (right inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      s1 = this left: (left inlineRewriteExpr: renames :thisVar :doRename :ctx)
+      ^ s1 right: (right inlineRewriteExpr: renames :thisVar :doRename :ctx)
     ]
 
 // statements to splice in place of a statement position call of a captured
@@ -218,7 +218,7 @@ IrExpr spliceLambdaStatements(renames): Map(String, String) thisVar: String ctx:
                 lambdaArgs forEachIndexed: [i, lambdaArg ->
                   fresh = (lambdaArg name) inlineFreshName: ctx
                   spliced add: (IrLet
-                    token: token
+                    :token
                     name: fresh
                     typeRef: (lambdaArg typeRef)
                     value: (lambdaActuals at: i)
@@ -227,7 +227,7 @@ IrExpr spliceLambdaStatements(renames): Map(String, String) thisVar: String ctx:
                   frame at: (lambdaArg name) put: fresh
                 ]
                 inner = renames withBindings: frame
-                newBody = (lambdaMaybe body) inlineRewriteBlock: inner thisVar: thisVar doRename: true ctx: ctx
+                newBody = (lambdaMaybe body) inlineRewriteBlock: inner :thisVar doRename: true :ctx
                 (newBody stmts) forEach: [s ->
                   spliced add: s
                   ()
@@ -236,7 +236,7 @@ IrExpr spliceLambdaStatements(renames): Map(String, String) thisVar: String ctx:
                 | resultMaybe
                 | null => ()
                 |=> [
-                  spliced add: (IrExprStmt token: token expr: resultMaybe)
+                  spliced add: (IrExprStmt :token expr: resultMaybe)
                   ()
                 ]
                 out <- spliced toList
@@ -257,7 +257,7 @@ IrBlock inlineRewriteBlock(renames): Map(String, String) thisVar: String doRenam
         valueMaybe = st value
         newValue::IrExpr? = | valueMaybe
           | null => null
-          |=> valueMaybe inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
+          |=> valueMaybe inlineRewriteExpr: current :thisVar :doRename :ctx
         fresh = doRename ifTrue: [(st name) inlineFreshName: ctx] ifFalse: [st name]
         s1 = st name: fresh
         newStmts add: (s1 value: newValue)
@@ -276,14 +276,14 @@ IrBlock inlineRewriteBlock(renames): Map(String, String) thisVar: String doRenam
           newBindings add: (b name: fresh)
           doRename ifTrue: [frame at: (b name) put: fresh]
         ]
-        newValue = (st value) inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
+        newValue = (st value) inlineRewriteExpr: current :thisVar :doRename :ctx
         s1 = st bindings: newBindings toList
         newStmts add: (s1 value: newValue)
         doRename ifTrue: [current <- (current withBindings: frame)]
       ]
     | IrExprStmt => [
-        newCall = (st expr) inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
-        splicedMaybe = newCall spliceLambdaStatements: current thisVar: thisVar ctx: ctx
+        newCall = (st expr) inlineRewriteExpr: current :thisVar :doRename :ctx
+        splicedMaybe = newCall spliceLambdaStatements: current :thisVar :ctx
         | splicedMaybe
         | null => [
             newStmts add: (st expr: newCall)
@@ -295,15 +295,15 @@ IrBlock inlineRewriteBlock(renames): Map(String, String) thisVar: String doRenam
             ]
       ]
     |=> [
-      newStmts add: (st inlineRewriteStmt: current thisVar: thisVar doRename: doRename ctx: ctx)
+      newStmts add: (st inlineRewriteStmt: current :thisVar :doRename :ctx)
       ()
     ]
   ]
   resultMaybe = result
   newResult::IrExpr? = | resultMaybe
     | null => null
-    |=> resultMaybe inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
-  IrBlock stmts: newStmts toList result: newResult resultType: resultType
+    |=> resultMaybe inlineRewriteExpr: current :thisVar :doRename :ctx
+  IrBlock stmts: newStmts toList result: newResult :resultType
 ]
 
 // inline one call if it targets an inline method that is not already being
@@ -337,7 +337,7 @@ IrExpr inlineMaybeInline(ctx): InlineCtx -> IrExpr =
   |=> this
 
 IrFunction inlineExpandFunction(ctx): InlineCtx -> IrFunction =
-  this body: (body inlineRewriteBlock: #{} thisVar: "" doRename: false ctx: ctx)
+  this body: (body inlineRewriteBlock: #{} thisVar: "" doRename: false :ctx)
 
 IrPackage inlineExpandPackage -> IrPackage = [
   functionsById::mut Map(String, IrFunction) = #{}!

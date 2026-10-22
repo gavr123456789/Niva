@@ -1,9 +1,9 @@
 // helper to build a throwing method shared by all error domain protocols
 constructor NivaMethod errorThrowMethod(name): String errorType: NivaType nothing: NivaType str: NivaType hasArg: Bool =
   NivaMethod
-    name: name
+    :name
     receiverType: errorType
-    args: (hasArg ifTrue: [{(TypeTField name: name typeT: str isMut: false)}] ifFalse: [{}])
+    args: (hasArg ifTrue: [{(TypeTField :name typeT: str isMut: false)}] ifFalse: [{}])
     returnType: nothing
     returnErrors: {errorType}
     forMut: false
@@ -18,9 +18,9 @@ constructor NivaProtocol errorFromDefaultTypes(dtc): DefaultTypesContainer error
   {str nothing} = dtc
 
   errProto = NivaProtocol common
-  errProto addMethod: (NivaMethod errorThrowMethod: "throw" errorType: errorType nothing: nothing str: str hasArg: false)
-  errProto addMethod: (NivaMethod errorThrowMethod: "throwWithMsg" errorType: errorType nothing: nothing str: str hasArg: true)
-  errProto addMethod: (NivaMethod errorThrowMethod: "throwWithMessage" errorType: errorType nothing: nothing str: str hasArg: true)
+  errProto addMethod: (NivaMethod errorThrowMethod: "throw" :errorType :nothing :str hasArg: false)
+  errProto addMethod: (NivaMethod errorThrowMethod: "throwWithMsg" :errorType :nothing :str hasArg: true)
+  errProto addMethod: (NivaMethod errorThrowMethod: "throwWithMessage" :errorType :nothing :str hasArg: true)
 
   ^ errProto methods
 ]

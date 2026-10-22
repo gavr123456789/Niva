@@ -49,7 +49,7 @@ Test cljBabashkaTargetRunsGeneratedProgram = [
   io = IO_Container new
   output files forEach: [relativePath, content ->
     destination = root + "/generated/" + relativePath
-    io writeFile file: destination content: content
+    io writeFile file: destination :content
   ]
   mainMaybe = output files at: "niva/generated/main.clj"
   main = mainMaybe expect: "Missing generated main"
@@ -236,7 +236,7 @@ Test cljPackageOutputMatchesSingleStringAtRuntime = [
     debug: false mode: CljEmitMode.Program
   output files forEach: [relativePath, content ->
     destination = multiRoot + "/" + relativePath
-    io writeFile file: destination content: content
+    io writeFile file: destination :content
   ]
   io writeFile file: multiRoot + "/deps.edn" content: "{:paths [\".\"]}\n"
   multiExit = io runProgramFromPath path: multiRoot
@@ -266,7 +266,7 @@ Test cljPackageRequireDoesNotRunEntry = [
   Assert that: setupExit equals: 0
   output files forEach: [relativePath, content ->
     destination = root + "/" + relativePath
-    io writeFile file: destination content: content
+    io writeFile file: destination :content
   ]
   io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
 

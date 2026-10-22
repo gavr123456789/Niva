@@ -77,7 +77,7 @@ mut JsonParser parseArray -> JArray = [
         this peek == ',' ifTrue: [ this consume: ',' ]
     ]
     this consume: ']'
-    ^ JArray list: list
+    ^ JArray :list
 ]
 
 mut JsonParser parseObject -> JObject = [
@@ -93,7 +93,7 @@ mut JsonParser parseObject -> JObject = [
         this peek == ',' ifTrue: [ this consume: ',' ]
     ]
     this consume: '}'
-    ^ JObject map: map
+    ^ JObject :map
 ]
 
 /// simple way to get json from str
