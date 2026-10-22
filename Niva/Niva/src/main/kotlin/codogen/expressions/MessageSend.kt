@@ -609,10 +609,16 @@ fun generateSingleUnary(
             }
         }
         // -1 inc must be (-1).inc(), in Kotlin -1.inc() is -(1.inc())
-        val isNegativeNumber = (receiver is LiteralExpression.IntExpr ||
-                receiver is LiteralExpression.FloatExpr ||
-                receiver is LiteralExpression.DoubleExpr) && receiverCode.startsWith("-")
-        if (isNegativeNumber) append("(", receiverCode, ")") else append(receiverCode)
+        val isNegativeNumber = when (receiver) {
+            is LiteralExpression.IntExpr,
+            is LiteralExpression.FloatExpr,
+            is LiteralExpression.DoubleExpr -> receiverCode.startsWith("-")
+            else -> false
+        }
+        if (isNegativeNumber)
+            append("(", receiverCode, ")")
+        else
+            append(receiverCode)
     }
 
 
