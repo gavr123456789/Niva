@@ -611,10 +611,7 @@ extend IrExpr [
     | IrMatchExpr => [
         subject cljCollectReturns: into
         cases forEach: [it body cljCollectReturns: into]
-        elseBranchMaybe = elseBranch
-        | elseBranchMaybe
-        | null => []
-        |=> elseBranchMaybe cljCollectReturns: into
+        elseBranch ifNotNull: [elseBranchValue -> elseBranchValue cljCollectReturns: into]
       ]
     | IrNewExpr => args forEach: [it cljCollectReturns: into]
     | IrCollectionLiteral => items forEach: [it cljCollectReturns: into]
