@@ -1,41 +1,30 @@
-String operatorToString -> String =
-  | this
-  | "+" => "plus"
-  | "-" => "minus"
-  | "*" => "times"
-  | "/" => "div"
-  | "%" => "rem"
-  | ".." => "rangeTo"
-  | "==" => "equals"
-  | "!=" => "notEquals"
-  | ">" => "gt"
-  | "<" => "lt"
-  | ">=" => "gte"
-  | "<=" => "lte"
-  | "||" => "or"
-  | "&&" => "and"
-  |=> this
-
 extend NivaType [
-  on isCoreTypeNamed(name): String -> Bool = [
-    base = .unwrapNullable
-    ^ (base name == name) && (base pkgName == "core")
+  on isCoreTypeNamed(typeName): String -> Bool = [
+    nivaType = this unwrapNullable
+    isCore = (nivaType name == typeName) && (nivaType pkgName == "core")
+    ^ isCore
   ]
-  on isNumericType -> Bool = [
-    ^ (.isCoreTypeNamed: "Int") ||
-      (.isCoreTypeNamed: "Double") ||
-      (.isCoreTypeNamed: "Float")
-  ]
-  on isStringType -> Bool = .isCoreTypeNamed: "String"
-  on isBoolType -> Bool = .isCoreTypeNamed: "Bool"
+  on isNumericType -> Bool =
+    | this unwrapNullable
+    | IntegerT | FloatT | DoubleT => true
+    |=> false
+  on isStringType -> Bool = this isCoreTypeNamed: "String"
+  on isBoolType -> Bool = this isCoreTypeNamed: "Bool"
   on isNullableType -> Bool = | this | NullableT => true |=> false
   on isNothingType -> Bool = | this | NothingT => true |=> false
 ]
 
 
-type NumAndStr str: String num: Int
-
 extend String [
+  on stripPkgPrefix(prefix): String -> String = [
+    pre = prefix + "_"
+    preLen = pre count
+    len = this count
+    ^ len >= preLen ifTrue: [
+      (this slice: 0..(preLen - 1)) == pre ifTrue: [this slice: preLen..(len - 1)] ifFalse: [this]
+    ] ifFalse: [this]
+  ]
+
   on unquoteLiteral -> String = [
     len = this count
     ^ len >= 2 ifTrue: [
@@ -44,35 +33,10 @@ extend String [
       this
     ]
   ]
-  on unquoteRawLiteral -> String =
-    | this count > 6
-    | true => .drop: 3, dropLast: 3
-    | false => this
-
-  on escapedTemplateLiteralChunkAt(i): Int -> NumAndStr = [
-    bs = '\\' toString
-    dollar = '$' toString
-    brace = '{' toString
-    c = this at: i
-    ^ | true
-      | c == '\\' => [ NumAndStr str: "\\\\" num: 1 ]
-      | c == '`'  => [ NumAndStr str: "\\`"  num: 1 ]
-      | c == '$' && (i + 1 < .count) && ((.at: i + 1) == '{') => [ NumAndStr str: bs + dollar + brace num: 2 ]
-      |=> NumAndStr str: c toString num: 1
-  ]
-  on escapeForTemplateLiteral -> String = [
-    sb = StringBuilder new
-    mut i = 0
-    len = this count
-
-    [i < len] whileTrue: [
-      chunk = this escapedTemplateLiteralChunkAt: i
-
-      sb append: chunk str
-      i <- i + chunk num
-    ]
-
-    ^ sb toString
+  on unquoteRawLiteral -> String = [
+    ^ this count > 6
+      ifTrue: [this drop: 3, dropLast: 3]
+      ifFalse: [this]
   ]
 
   // `$0` is the receiver/this, `$1` is the first argument, and so on.
@@ -81,27 +45,36 @@ extend String [
     sb = StringBuilder new
     len = template count
     mut i = 0
-    [i < len] whileTrue: [
-      ch = template at: i
-      ch == '$' ifTrue: [
-        (i + 1) < len && ((template at: (i + 1)) isDigit) ifTrue: [
+      [i < len] whileTrue: [
+        ch = template at: i
+      isDollar = ch == '$'
+      isDollar ifTrue: [
+        hasArgument = ((i + 1) < len) && ((template at: (i + 1)) isDigit)
+        hasArgument ifTrue: [
           mut digitStr = ""
           mut j = i + 1
-          [j < len && ((template at: j) isDigit)] whileTrue: [
+          [((j < len) && ((template at: j) isDigit))] whileTrue: [
             digitStr <- digitStr + ((template at: j) toString)
             j <- j + 1
           ]
           idx = digitStr toInt
-          isValid = (idx >= 0) && (idx < (argsValues count))
-          isValid
-            ifTrue: [sb append: (argsValues at: idx)]
-            ifFalse: [sb append: "$" + digitStr]
+          isValid = ((idx >= 0) && (idx < (argsValues count)))
+          isValid ifTrue: [
+            sb append: (argsValues at: idx)
+            ()
+          ]
+          isValid ifFalse: [
+            sb append: "$" + digitStr
+            ()
+          ]
           i <- j
-        ] ifFalse: [
+        ]
+        hasArgument ifFalse: [
           sb append: "$"
           i <- i + 1
         ]
-      ] ifFalse: [
+      ]
+      isDollar ifFalse: [
         sb append: (ch toString)
         i <- i + 1
       ]
@@ -110,7 +83,3 @@ extend String [
   ]
 
 ]
-
-String
-
-String

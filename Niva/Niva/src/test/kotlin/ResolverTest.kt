@@ -2400,6 +2400,36 @@ class ResolverTest {
     }
 
     @Test
+    fun destructFromBodyAliases() {
+        val source = """
+            type Last2Elems last: Int secondLast: Int
+
+            g = [
+              ppp = Last2Elems last: 1 secondLast: 2
+              {n = last a = secondLast} = ppp
+              sas = n + a
+            ]
+        """.trimIndent()
+        val (x) = resolveWithResolver(source)
+        assert(x.count() == 2)
+    }
+
+    @Test
+    fun destructFromBodyAliasesWrongField() {
+        val source = """
+            type Last2Elems last: Int secondLast: Int
+
+            g = [
+              ppp = Last2Elems last: 1 secondLast: 2
+              {n = lost a = secondLast} = ppp
+            ]
+        """.trimIndent()
+        assertThrows<CompilerError> {
+            resolveWithResolver(source)
+        }
+    }
+
+    @Test
     fun returnCheck() {
         val source = """
             Int sus -> Int = [

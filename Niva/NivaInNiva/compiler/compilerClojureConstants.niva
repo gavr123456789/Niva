@@ -1,7 +1,12 @@
-static CLJ_PROJECT_DEPS_SOURCE = "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
-static CLJ_NATIVE_DEPS_SOURCE = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+type CompilerConstants
 
-static NIVA_CORE_SOURCE = """
+constructor CompilerConstants cljProjectDepsSource -> String = "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
+constructor CompilerConstants cljPlainDepsSource -> String = "{:paths [\"generated\" \".\"]}\n"
+constructor CompilerConstants cljNativeDepsSource -> String = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
+// repl modules live in this namespace; loading one leaves the session in `user`
+constructor CompilerConstants cljReplNamespace -> String = "niva.repl.session"
+
+constructor CompilerConstants nivaCoreSource -> String = """
 (ns niva.core
   (:refer-clojure :exclude [filter first last random reduce replace])
   (:require [clojure.string :as str] [clojure.pprint :refer [pprint]])
@@ -64,6 +69,9 @@ static NIVA_CORE_SOURCE = """
 (defn Int__rangeTo [s to]
   (->IntRange s to))
 
+(defn Int__rangeUntil [s to]
+  (->IntRange s (dec to)))
+
 
 (defn Int__repeat [^long n ^clojure.lang.IFn f]
   (dotimes [i n]
@@ -102,17 +110,17 @@ static NIVA_CORE_SOURCE = """
 
 (defn CharRange__forEach [s f]
   (doseq [cp (inclusive-range (:start s) (:end-inclusive s))]
-    (f cp))
+    (f (char cp)))
   :unit)
 
 (defn CharRange__map [s f]
-  (mapv f (inclusive-range (:start s) (:end-inclusive s))))
+  (mapv (fn [cp] (f (char cp))) (inclusive-range (:start s) (:end-inclusive s))))
 
 (defn CharRange__filter [s f]
-  (filterv f (inclusive-range (:start s) (:end-inclusive s))))
+  (filterv (fn [cp] (f (char cp))) (map char (inclusive-range (:start s) (:end-inclusive s)))))
 
 (defn CharRange__contains [s v]
-  (<= (:start s) v (:end-inclusive s)))
+  (<= (:start s) (long v) (:end-inclusive s)))
 
 (defn CharRange__isEmpty [s]
   (> (:start s) (:end-inclusive s)))
@@ -428,7 +436,8 @@ static NIVA_CORE_SOURCE = """
 (defn Char__isWhitespace [s] (Character/isWhitespace (int s)))
 (defn Char__lowercaseChar [s] (long (Character/toLowerCase (int s))))
 (defn Char__uppercaseChar [s] (long (Character/toUpperCase (int s))))
-(defn Char__rangeTo [s t] (->CharRange s t))
+(defn Char__rangeTo [s t] (->CharRange (long s) (long t)))
+(defn Char__rangeUntil [s t] (->CharRange (long s) (dec (long t))))
 (defn Char__equals [s o] (= s o))
 (defn Char__notEquals [s o] (not= s o))
 
@@ -486,6 +495,7 @@ static NIVA_CORE_SOURCE = """
 (defn List__map [s f] (mapv f s))
 (defn List__mapIndexed [s f] (mapv f (range) s))
 (defn List__filter [s predicate] (filterv predicate s))
+(defn List__sortedBy [s key-fn] (vec (sort-by key-fn s)))
 
 (defn List__at [s i]
   (when (or (neg? i) (>= i (count s)))
@@ -580,8 +590,8 @@ static NIVA_CORE_SOURCE = """
   (swap! s conj item)
   :unit)
 
-(defn List__mut_addAt [s i item]
-  (require-atom s 'List__mut_addAt)
+(defn List__mut_at__add [s i item]
+  (require-atom s 'List__mut_at__add)
   (swap! s
          (fn [items]
            (let [items (vec items)]
@@ -591,7 +601,7 @@ static NIVA_CORE_SOURCE = """
   :unit)
 
 (defn List__mut_addFirst [s item]
-  (List__mut_addAt s 0 item))
+  (List__mut_at__add s 0 item))
 
 (defn List__mut_addAll [s other]
   (require-atom s 'List__mut_addAll)
@@ -608,8 +618,8 @@ static NIVA_CORE_SOURCE = """
              (into (subvec items 0 i) (subvec items (clojure.core/inc i))))))
   :unit)
 
-(defn List__mut_set [s i item]
-  (require-atom s 'List__mut_set)
+(defn List__mut_at__set [s i item]
+  (require-atom s 'List__mut_at__set)
   (swap! s
          (fn [items]
            (when (or (neg? i) (>= i (count items)))
@@ -658,6 +668,7 @@ static NIVA_CORE_SOURCE = """
 (defn Map__count [s] (count s))
 (defn Map__isEmpty [s] (empty? s))
 (defn Map__keys [s] (set (keys s)))
+(defn Map__values [s] (set (vals s)))
 (defn Map__plus [s o] (merge s o))
 (defn Map__minus [s k] (dissoc s k))
 
@@ -668,9 +679,14 @@ static NIVA_CORE_SOURCE = """
 (defn Map__at [s k] (get s k))
 (defn Map__containsKey [s k] (contains? s k))
 
-(defn Map__mut_putAt [s k v]
-  (require-atom s 'Map__mut_putAt)
+(defn Map__mut_at__put [s k v]
+  (require-atom s 'Map__mut_at__put)
   (swap! s assoc k v)
+  :unit)
+
+(defn Map__mut_clear [s]
+  (require-atom s 'Map__mut_clear)
+  (reset! s {})
   :unit)
 
 ;; StringBuilder
@@ -697,13 +713,15 @@ static NIVA_CORE_SOURCE = """
   sb)
 """ trimIndent
 
-static JVM_HOST_SOURCE = """
+constructor CompilerConstants jvmHostSource -> String = """
 (ns niva.hot-reload.host
   (:require [clj-reload.core :as reload]
+            [clj-reload.util :as reload-util]
             [clojure.java.io :as io]))
 
 (defonce runtime
-  (atom {:initialized? false
+  (atom {:entry-future nil
+         :initialized? false
          :initial-loaded? false
          :entry-started? false
          :entry-executed? false
@@ -712,6 +730,8 @@ static JVM_HOST_SOURCE = """
          :watch-stop nil
          :bb-process nil
          :bb-writer nil}))
+
+(declare print-error! init! invoke-entry! read-syntax-sweep! quiet-reload-log initial-code-load! initial-load! start-entry! rerun-entry! reload-in-process! reload-changed! java-class invoke-static-no-args enum-value watch-kind project-directory? register-directory! register-tree! event-is-source? drain-key! wait-for-debounced-batch! invoke-change! watch-jvm! bb-source-event? watch-bb! stop-watch! babashka-runtime? start-bb-runtime! stop-bb-runtime! signal-file runtime-loop! -main watch! start!)
 
 (defn- print-error! [prefix error]
   (binding [*out* *err*]
@@ -738,6 +758,7 @@ static JVM_HOST_SOURCE = """
          :output :quieter}))
      (swap! runtime assoc
             :initialized? true
+            :generated-dir (.getAbsolutePath (java.io.File. ^String generated-dir))
             :entry-namespace entry-namespace))))
 
 (defn- invoke-entry! []
@@ -753,9 +774,45 @@ static JVM_HOST_SOURCE = """
     (entry-var)
     (swap! runtime assoc :entry-executed? true)))
 
+(defn- read-syntax-sweep! []
+  ;; babashka clj-reload crashes on unreadable files and corrupts its state
+  ;; so we check every fresh generated source can be read before reloading
+  (let [now (System/currentTimeMillis)
+        seen (or (:last-sweep @runtime) 0)
+        files (filter #(.endsWith (.getName ^java.io.File %) ".clj")
+                      (file-seq (java.io.File. ^String (:generated-dir @runtime))))]
+    (loop [remaining (seq files)
+           result {:ok true}]
+      (if (not (:ok result))
+        result
+        (if (nil? remaining)
+          (do
+            (swap! runtime assoc :last-sweep now)
+            result)
+          (let [^java.io.File file (first remaining)]
+            (if (<= (.lastModified file) seen)
+              (recur (next remaining) result)
+              (let [outcome (try
+                              (let [rdr (reload-util/file-reader file)]
+                                (loop []
+                                  (let [form (reload-util/read-form rdr)]
+                                    (when-not (= :clj-reload.util/eof form)
+                                      (recur))))
+                                :done)
+                              (catch Throwable read-error
+                                read-error))]
+                (swap! runtime assoc :last-sweep now)
+                (if (= :done outcome)
+                  (recur (next remaining) {:ok true})
+                  (do
+                    (println "Syntax error in" (.getPath file))
+                    (println (or (.getMessage ^Throwable outcome) outcome))
+                    {:ok false :error outcome}))))))))))
+
 (defn- initial-code-load! []
   (try
-    (reload/reload {:only :all})
+    (read-syntax-sweep!)
+    (reload/reload {:only :all :log-fn quiet-reload-log})
     (swap! runtime assoc :initial-loaded? true)
     {:ok true}
     (catch Throwable error
@@ -786,23 +843,44 @@ static JVM_HOST_SOURCE = """
                  (reset! should-start? true)
                  (assoc state :entry-started? true)))))
     (when @should-start?
-      (future
-        (try
-          (invoke-entry!)
-          (catch Throwable error
-            (swap! runtime assoc :entry-started? false)
-            (print-error! "Clojure entry failed" error)))))))
+      (let [f (future
+                (try
+                  (invoke-entry!)
+                  (catch Throwable error
+                    (swap! runtime assoc :entry-started? false)
+                    (print-error! "Clojure entry failed" error))))]
+        (swap! runtime assoc :entry-future f)))))
+
+(defonce reload-lock (Object.))
+
+(defn- quiet-reload-log [& args]
+  ;; replace clj reload progress lines with a single separator
+  (when (some #(and (string? %) (.startsWith ^String % "Reloading ")) args)
+    (println "------")))
+
+
+(defn- rerun-entry! []
+  ;; stop the previous run then execute the reloaded entry again right away
+  (when-let [previous (:entry-future @runtime)]
+    (future-cancel previous))
+  (try
+    (invoke-entry!)
+    (catch Throwable error
+      (print-error! "Clojure entry failed" error))))
 
 (defn- reload-in-process! []
-  (try
-    (reload/reload {:only :changed})
-    (swap! runtime assoc :initial-loaded? true)
-    (when-not (:entry-executed? @runtime)
-      (start-entry!))
-    {:ok true}
-    (catch Throwable error
-      (print-error! "Clojure reload failed" error)
-      {:ok false :error error})))
+  (locking reload-lock
+    (try
+      (let [sweep (read-syntax-sweep!)]
+        (when-not (:ok sweep)
+          (throw (:error sweep))))
+      (reload/reload {:only :changed :log-fn quiet-reload-log})
+      (swap! runtime assoc :initial-loaded? true)
+      (rerun-entry!)
+      {:ok true}
+      (catch Throwable error
+        (print-error! "Clojure reload failed" error)
+        {:ok false :error error}))))
 
 (defn reload-changed! []
   (if-let [writer (:bb-writer @runtime)]
@@ -956,13 +1034,33 @@ static JVM_HOST_SOURCE = """
     (try (.destroy process) (catch Throwable _)))
   (swap! runtime assoc :bb-process nil :bb-writer nil))
 
+(defn- signal-file [generated-dir]
+  (io/file (.getParentFile (java.io.File. ^String generated-dir)) "niva-reload.signal"))
+
 (defn runtime-loop! [generated-dir entry-namespace]
   (init! generated-dir entry-namespace true)
   (initial-code-load!)
   (start-entry!)
-  (doseq [line (line-seq (java.io.BufferedReader. *in*))]
-    (when (= line "reload")
-      (reload-in-process!))))
+  (let [signal (signal-file generated-dir)
+        reader (java.io.BufferedReader. (java.io.InputStreamReader. System/in))]
+    (future
+      (try
+        (loop [^String line (.readLine reader)]
+          (when (some? line)
+            (when (= line "reload")
+              (reload-in-process!))
+            (recur (.readLine reader))))
+        (catch Throwable _))
+      ;; closed stdin means the parent compiler process is gone
+      (System/exit 0))
+    (loop [seen (when (.exists signal) (slurp signal))]
+      (Thread/sleep 200)
+      (let [current (when (.exists signal) (slurp signal))]
+        (if (and (some? current) (not= seen current))
+          (do
+            (reload-in-process!)
+            (recur current))
+          (recur seen))))))
 
 (defn -main [& [command generated-dir entry-namespace]]
   (when (= command "runtime-loop")
@@ -987,7 +1085,7 @@ static JVM_HOST_SOURCE = """
       (watch! project-root on-change runtime-name))))
 """
 
-static NATIVE_BUILD_SOURCE = """
+constructor CompilerConstants nativeBuildSource -> String = """
                         (ns build (:require [clojure.tools.build.api :as b]))
 
                         (def class-dir "target/classes")

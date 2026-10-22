@@ -13,14 +13,14 @@ type Lexer
   posOnLine: Int
   file: SourceFile
 
-constructor Lexer lex-input(input): String file(sf): SourceFile = [
-  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0 file: sf, toMut
+constructor Lexer lex-input(input): String file(sf): SourceFile -> mut Lexer = [
+  l::mut Lexer = Lexer input: input pos: 0 readPos: 0 ch: '\u0000' line: 1 posOnLine: 0 file: sf
   l step // add EOF, probably
   ^ l
 ]
 
 constructor Lexer lex-input: String -> mut Lexer =
-  Lexer lex-input: lex-input file: fakeSourceFile
+  Lexer lex-input: lex-input file: (SourceFile fake)
 
 
 constructor Lexer get-tokens(input): String -> List(Token) = [
@@ -29,7 +29,8 @@ constructor Lexer get-tokens(input): String -> List(Token) = [
 ]
 
 constructor Lexer get-tokens(input): String file(sf): SourceFile -> List(Token) = [
-  ^ (Lexer lex-input: input file: sf), lex toList
+  lexer::mut Lexer = Lexer lex-input: input file: sf
+  ^ lexer lex toList
 ]
 
 extend mut Lexer [
@@ -38,7 +39,6 @@ extend mut Lexer [
       ifTrue: [ch <- '\u0000']
       ifFalse: [ch <- input at: readPos]
 
-    readPos >= 10000 => Error throwWithMessage: "readPos >= 10000, we are in infinit loop probably, $readPos", orPANIC
     pos       <- readPos
     readPos   <- readPos inc
     posOnLine <- posOnLine inc // resets to 0 on \n
@@ -46,24 +46,24 @@ extend mut Lexer [
 
   on peekChar = readPos == input count
     ifTrue:  ['\u0000']
-    ifFalse: [input at: (.readPos)]
+    ifFalse: [input at: (this readPos)]
 
   on peekSecondChar = (readPos + 1) >= input count
     ifTrue:  ['\u0000']
     ifFalse: [input at: (readPos + 1)]
 
   on match(char): Char -> Bool =
-    .ch == char
+    this ch == char
       ifTrue: [
-        .step
+        this step
         true
       ] ifFalse: [
         false
       ]
 
   on stepMatch(char): Char -> Bool = [
-    .step
-    ^.match: char
+    this step
+    ^this match: char
   ]
 
   on createToken(kind): TokenType lexeme: String -> Token = [
@@ -77,219 +77,231 @@ extend mut Lexer [
     ^ tok
   ]
 
-  on nextToken -> Token! = [
-    .skipWhiteSpaces
-    .skipComments
+  on nextToken -> Token = [
+    this skipWhiteSpaces
+    this skipComments
 
 
 
 
-    l = ch toString
+    l = this ch toString
 
-
-    tok = | ch
+    mut hasAdvancedToNext = false
+    tok = | this ch
     | '\u0000' => [
-      ^.createToken: TokenType.EndOfFile lexeme: l]
+      ^this createToken: TokenType.EndOfFile lexeme: l]
     | '=' => [
-      .peekChar == '=', ifTrue: [
-        .step
-        .createToken: TokenType.BinarySymbol lexeme: "=="
+      this peekChar == '=', ifTrue: [
+        this step
+        this createToken: TokenType.BinarySymbol lexeme: "=="
       ] ifFalse: [
-        .peekChar == '>', ifTrue: [
-          .step
-          .createToken: TokenType.Then lexeme: "=>"
+        this peekChar == '>', ifTrue: [
+          this step
+          this createToken: TokenType.Then lexeme: "=>"
         ] ifFalse: [
-          .createToken: TokenType.Assign lexeme: "="
+          this createToken: TokenType.Assign lexeme: "="
         ]
       ]
     ]
 
     | '|' => [
-      .peekChar == '=', ifTrue: [
-        .step
-        .peekChar == '>', ifTrue: [
-          .step
-          .createToken: TokenType.Else lexeme: "|=>"
+      this peekChar == '=', ifTrue: [
+        this step
+        this peekChar == '>', ifTrue: [
+          this step
+          this createToken: TokenType.Else lexeme: "|=>"
         ] ifFalse: [
-          Error throwWithMessage: "expected |=>"
+          Error throwWithMessage: "expected |=>", orPANIC
         ]
       ] ifFalse: [
-        .peekChar == '|', ifTrue: [
-          .step
-          .createToken: TokenType.BinarySymbol lexeme: "||"
+        this peekChar == '|', ifTrue: [
+          this step
+          this createToken: TokenType.BinarySymbol lexeme: "||"
         ] ifFalse: [
-          .createToken: TokenType.If lexeme: "|"
+          this createToken: TokenType.If lexeme: "|"
         ]
       ]
     ]
 
     | '"' => [
-      result = .parseStringLike: '"'
+      hasAdvancedToNext <- true
+      result = this parseStringLike: '"'
       kind = (result startsWith: "\"\"\"")
         ifTrue: [TokenType.RawString]
         ifFalse: [TokenType.String]
-      ^ .createToken: kind lexeme: result
+      ^ this createToken: kind lexeme: result
     ]
     | '\'' => [
-      result = .parseStringLike: '\''
-      ^ .createToken: TokenType.Char lexeme: result
+      hasAdvancedToNext <- true
+      result = this parseStringLike: '\''
+      ^ this createToken: TokenType.Char lexeme: result
     ]
 
-    | '/' => .createToken: TokenType.BinarySymbol lexeme: l
+    | '/' => this createToken: TokenType.BinarySymbol lexeme: l
 
 
     | '!' => [
-      .peekChar == '=', ifTrue: [
-        .step // consume '='
-        .createToken: TokenType.BinarySymbol lexeme: "!="
+      this peekChar == '=', ifTrue: [
+        this step // consume '='
+        this createToken: TokenType.BinarySymbol lexeme: "!="
       ] ifFalse: [
-        .createToken: TokenType.Bang lexeme: "!"
+        this createToken: TokenType.Bang lexeme: "!"
       ]
     ]
     | '&' => [
-      .peekChar == '&', ifTrue: [
-        .step
-        .createToken: TokenType.BinarySymbol lexeme: "&&"
+      this peekChar == '&', ifTrue: [
+        this step
+        this createToken: TokenType.BinarySymbol lexeme: "&&"
       ] ifFalse: [
-        .createToken: TokenType.Ampersand lexeme: "&"
+        this createToken: TokenType.Ampersand lexeme: "&"
       ]
     ]
 
     | '(' => [
       // avoid consuming the next char unless it's a unit "()"
-      .peekChar == ')', ifTrue: [
-        .step // move to ')'
-        .createToken: TokenType.UnitTok lexeme: "()"
+      this peekChar == ')', ifTrue: [
+        this step // move to ')'
+        this createToken: TokenType.UnitTok lexeme: "()"
       ] ifFalse: [
-        .createToken: TokenType.OpenParen lexeme: "("
+        this createToken: TokenType.OpenParen lexeme: "("
       ]
     ]
-    | ')' => .createToken: TokenType.CloseParen  lexeme: l
-    | '[' => .createToken: TokenType.OpenBracket   lexeme: l
-    | ']' => .createToken: TokenType.CloseBracket  lexeme: l
-    | '{' => .createToken: TokenType.OpenBrace   lexeme: l
-    | '}' => .createToken: TokenType.CloseBrace  lexeme: l
+    | ')' => this createToken: TokenType.CloseParen  lexeme: l
+    | '[' => this createToken: TokenType.OpenBracket   lexeme: l
+    | ']' => this createToken: TokenType.CloseBracket  lexeme: l
+    | '{' => this createToken: TokenType.OpenBrace   lexeme: l
+    | '}' => this createToken: TokenType.CloseBrace  lexeme: l
     | '#' => [
-      .step
-      | ch
-      | '{' => .createToken: TokenType.OpenBraceHash lexeme: "#{"
-      | '(' => .createToken: TokenType.OpenParenHash lexeme: "#("
+      this step
+      | this ch
+      | '{' => this createToken: TokenType.OpenBraceHash lexeme: "#{"
+      | '(' => this createToken: TokenType.OpenParenHash lexeme: "#("
       |=> [
-        (ch isLetter || (ch == '_')) ifTrue: [
-          lit = .readIdentifier
-          ^ .createToken: TokenType.AtomIdentifier lexeme: "#" + lit
+        (this ch isLetter || (this ch == '_')) ifTrue: [
+          hasAdvancedToNext <- true
+          lit = this readIdentifier
+          ^ this createToken: TokenType.AtomIdentifier lexeme: "#" + lit
         ]
-        Error throwWithMessage: "only { or ( or identifier can be after #"
+        Error throwWithMessage: "only { or ( or identifier can be after #", orPANIC
       ]
     ]
 
 
-    | '-' => ^ .peekChar isDigit ifTrue: [
-      .step // skip minus
-      .numberTokenWithPrefix: "-"
+    | '-' => ^ this peekChar isDigit ifTrue: [
+      hasAdvancedToNext <- true
+      this step // skip minus
+      this numberTokenWithPrefix: "-"
     ] ifFalse: [
-      .stepMatch: '>',
-        ifTrue:  [.createToken: TokenType.ReturnArrow lexeme: "->"]
-        ifFalse: [.createToken: TokenType.BinarySymbol lexeme: "-"]
+      hasAdvancedToNext <- true
+      this stepMatch: '>',
+        ifTrue:  [this createToken: TokenType.ReturnArrow lexeme: "->"]
+        ifFalse: [this createToken: TokenType.BinarySymbol lexeme: "-"]
     ]
 
     |'<' => [
-      .peekChar == '=', ifTrue: [
-        .step
-        .createToken: TokenType.BinarySymbol lexeme: "<="
+      this peekChar == '=', ifTrue: [
+        this step
+        this createToken: TokenType.BinarySymbol lexeme: "<="
       ] ifFalse: [
-        .peekChar == '-', ifTrue: [
-          .step
-          .createToken: TokenType.AssignArrow lexeme: "<-"
+        this peekChar == '-', ifTrue: [
+          this step
+          this createToken: TokenType.AssignArrow lexeme: "<-"
         ] ifFalse: [
-          .createToken: TokenType.BinarySymbol lexeme: "<"
+          this createToken: TokenType.BinarySymbol lexeme: "<"
         ]
       ]
     ]
 
     |'>' => [
-      .peekChar == '=', ifTrue: [
-        .step
-        .createToken: TokenType.BinarySymbol lexeme: ">="
+      this peekChar == '=', ifTrue: [
+        this step
+        this createToken: TokenType.BinarySymbol lexeme: ">="
       ] ifFalse: [
-        .createToken: TokenType.BinarySymbol lexeme: ">"
+        this createToken: TokenType.BinarySymbol lexeme: ">"
       ]
     ]
 
 
-    |'+'|'*'|'%' => .createToken: TokenType.BinarySymbol lexeme: l
-    | ',' =>     .createToken: TokenType.Comma lexeme: l
+    | '+' | '*' | '%' => this createToken: TokenType.BinarySymbol lexeme: l
+    | ',' =>     this createToken: TokenType.Comma lexeme: l
     | '.' => [
-      .peekChar == '.', ifTrue: [
-        .step // consume second dot
-        .createToken: TokenType.BinarySymbol lexeme: ".."
+      this peekChar == '.', ifTrue: [
+        this step // consume second dot
+        this peekChar == '<', ifTrue: [
+          this step // consume '<'
+          this createToken: TokenType.BinarySymbol lexeme: "..<"
+        ] ifFalse: [
+          this createToken: TokenType.BinarySymbol lexeme: ".."
+        ]
       ] ifFalse: [
-        .createToken: TokenType.Dot lexeme: l
+        this createToken: TokenType.Dot lexeme: l
       ]
     ]
-    | ':' =>     .createToken: TokenType.Colon lexeme: l
-    | '^' =>     .createToken: TokenType.Return  lexeme: l
+    | ':' =>     this createToken: TokenType.Colon lexeme: l
+    | '^' =>     this createToken: TokenType.Return  lexeme: l
 
     |=> [
-      ch isLetter || (ch == '_') ifTrue: [
-        pos == readPos ifTrue: [
-          pos <- pos dec
+      this ch isLetter || (this ch == '_') ifTrue: [
+        this pos == this readPos ifTrue: [
+          pos <- this pos dec
         ]
-        lit = .readIdentifier
+        hasAdvancedToNext <- true
+        lit = this readIdentifier
         tt = Token lookupKeyword: lit
 
-        ch isDigit ifTrue: [
-          litDigit = .parseNumber
-          ^ .createToken: TokenType.Identifier lexeme: lit + litDigit
+        this ch isDigit ifTrue: [
+          litDigit = this parseNumber
+          ^ this createToken: TokenType.Identifier lexeme: lit + litDigit
         ]
 
 
-        ^| ch
+        ^| this ch
         | ':' => [
-          .step
-          | ch
+          this step
+          | this ch
           | ':' => [
-            .step
-            .createToken: TokenType.IdentifierDoubleColon lexeme: lit
+            this step
+            this createToken: TokenType.IdentifierDoubleColon lexeme: lit
           ]
-          |=> .createToken: TokenType.IdentifierColon lexeme: lit
+          |=> this createToken: TokenType.IdentifierColon lexeme: lit
         ]
         | '?' => [
-          .step
-          .createToken: TokenType.NullableIdentifier lexeme: lit
+          this step
+          this createToken: TokenType.NullableIdentifier lexeme: lit
         ]
         |=> [
-          .createToken: tt lexeme: lit
+          this createToken: tt lexeme: lit
         ]
       ]
-      ch isDigit ifTrue: [
-        ^ .numberTokenWithPrefix: ""
+      this ch isDigit ifTrue: [
+        hasAdvancedToNext <- true
+        ^ this numberTokenWithPrefix: ""
       ]
 
-      .createToken: TokenType.Invalid lexeme: l
+      this createToken: TokenType.Invalid lexeme: l
     ]
 
-    .step
+    hasAdvancedToNext ifFalse: [this step]
     ^ tok
   ]
 
   on lex -> mut List(Token) = [
-    mut newTok = .nextToken orPANIC
+    mut newTok = this nextToken
     mut tokens::mut List(Token) = {newTok}!
 
     [newTok kind != TokenType.EndOfFile] whileTrue: [
-      newTok <- .nextToken orPANIC
+      newTok <- this nextToken
       tokens add: newTok
     ]
     ^ tokens
   ]
   /// skip symbols until line end
   on skipCurrentLine = [
-    [(ch != '\n') && (ch != '\u0000')] whileTrue: [
-      .step
+    [(this ch != '\n') && (this ch != '\u0000')] whileTrue: [
+      this step
     ]
-    .match: '\n', ifTrue: [
-      line <- line inc
+    this match: '\n', ifTrue: [
+      line <- this line inc
       posOnLine <- 0
     ]
   ]
@@ -302,115 +314,115 @@ mut Lexer parseStringLike(delimiter): Char -> String = [
   mut escaped = false
   localPos = pos
 
-  isRaw = (delimiter == '"') && (.peekChar == '"') && (.peekSecondChar == '"')
+  isRaw = (delimiter == '"') && (this peekChar == '"') && (this peekSecondChar == '"')
   ^ isRaw ifTrue: [
     mut found = false
-    .match: '"'
-    .match: '"'
-    .match: '"'
-    [(ch != '\u0000') && (found == false)] whileTrue: [
-      ((ch == '"') && (.peekChar == '"') && (.peekSecondChar == '"')) ifTrue: [
+    this match: '"'
+    this match: '"'
+    this match: '"'
+    [(this ch != '\u0000') && (found == false)] whileTrue: [
+      ((this ch == '"') && (this peekChar == '"') && (this peekSecondChar == '"')) ifTrue: [
         found <- true
       ] ifFalse: [
-        .step
+        this step
       ]
     ]
     found == false ifTrue: [
       TO DO: "unterminated string literal"
     ]
-    .match: '"'
-    .match: '"'
-    .match: '"'
-    input slice: localPos..<pos
+    this match: '"'
+    this match: '"'
+    this match: '"'
+    input slice: localPos..(this pos - 1)
   ] ifFalse: [
-    .match: delimiter
-    [(ch != delimiter) || escaped] whileTrue: [
-      ch == '\u0000' ifTrue: [
+    this match: delimiter
+    [(this ch != delimiter) || escaped] whileTrue: [
+      this ch == '\u0000' ifTrue: [
         TO DO: "unterminated string literal"
       ]
 
       escaped ifTrue: [
         escaped <- false
-        .step
+        this step
       ] ifFalse: [
-        ch == '\\' ifTrue: [
+        this ch == '\\' ifTrue: [
           escaped <- true
-          .step
+          this step
         ] ifFalse: [
-          .step
+          this step
         ]
       ]
     ]
 
-    .match: delimiter
-    input slice: localPos..<pos
+    this match: delimiter
+    input slice: localPos..(this pos - 1)
   ]
 ]
 
 mut Lexer readIdentifier -> String = [
   localPos = pos
 
-  [ch isLetter || ch isDigit || (ch == '_') || (ch == '-')] whileTrue: [
-    .step
+  [this ch isLetter || this ch isDigit || (this ch == '_') || (this ch == '-')] whileTrue: [
+    this step
   ]
 
   // A bang is part of a value identifier only when it is adjacent to it and
   // really terminates the identifier. Uppercase names are types, where `!`
   // is the existing error-type separator (`Int!Error`, `Int!{Error}`).
   firstChar = input at: localPos
-  nextChar = readPos >= input count ifTrue: ['\u0000'] ifFalse: [.peekChar]
+  nextChar = this readPos >= input count ifTrue: ['\u0000'] ifFalse: [this peekChar]
   nextIsIdentifierChar = nextChar isLetter || nextChar isDigit ||
     (nextChar == '_') || (nextChar == '-')
-  isBangSuffix = (ch == '!') &&
+  isBangSuffix = (this ch == '!') &&
     (firstChar isLowerCase || (firstChar == '_')) &&
     (nextChar != '=') && nextIsIdentifierChar not && (nextChar != '{')
   isBangSuffix ifTrue: [
-    .step
+    this step
   ]
 
-  result = input slice: localPos..<pos //readPos dec
+  result = input slice: localPos..(this pos - 1) //readPos dec
   ^result
 ]
 
 mut Lexer parseNumber -> String = [
   localPos = pos
-  [ch isDigit || ((ch == '_') && (.peekChar isDigit))] whileTrue: [
-    .step
+  [this ch isDigit || ((this ch == '_') && (this peekChar isDigit))] whileTrue: [
+    this step
   ]
 
-  result = input slice: localPos..<pos // readPos dec
+  result = input slice: localPos..(this pos - 1) // readPos dec
   ^result
 ]
 
 mut Lexer numberTokenWithPrefix(prefix): String -> Token = [
-  intPart = .parseNumber
-  full <- prefix + intPart
+  intPart = this parseNumber
+  mut full = prefix + intPart
 
-  ch == '.' ifTrue: [
-    .peekChar isDigit ifTrue: [
-      .step // consume '.'
-      frac = .parseNumber
+  this ch == '.' ifTrue: [
+    this peekChar isDigit ifTrue: [
+      this step // consume '.'
+      frac = this parseNumber
       full <- full + "." + frac
-      | ch
+      | this ch
       | 'f' => [
-        .step
-        ^ .createToken: TokenType.Float lexeme: full + "f"
+        this step
+        ^ this createToken: TokenType.Float lexeme: full + "f"
       ]
-      |=> [^ .createToken: TokenType.Double lexeme: full]
+      |=> [^ this createToken: TokenType.Double lexeme: full]
     ]
   ]
 
-  ^ .createToken: TokenType.Integer lexeme: full
+  ^ this createToken: TokenType.Integer lexeme: full
 ]
 
 mut Lexer skipWhiteSpaces = [
-  [(ch == ' ') || (ch == '\t') || (ch == '\n') || (ch == '\r')] whileTrue: [
+  [(this ch == ' ') || (this ch == '\t') || (this ch == '\n') || (this ch == '\r')] whileTrue: [
 
-    ch == '\n' ifTrue: [
-      line <- line inc
+    this ch == '\n' ifTrue: [
+      line <- this line inc
       posOnLine <- 0
     ]
-    .step
+    this step
 
   ]
 
@@ -418,14 +430,14 @@ mut Lexer skipWhiteSpaces = [
 
 mut Lexer skipComments = [
   [
-    .skipWhiteSpaces
+    this skipWhiteSpaces
 
-    savePoint = readPos
-    |ch
+    savePoint = this readPos
+    | this ch
     | '/' => [
-      .peekChar == '/',
+      this peekChar == '/',
         ifTrue: [
-          .skipCurrentLine
+          this skipCurrentLine
           true
         ]
         ifFalse: [

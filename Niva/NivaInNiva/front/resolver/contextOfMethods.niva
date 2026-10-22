@@ -5,17 +5,47 @@ type Context
   vars: mut Map(String, TypeInfo)
   currentPkg: NivaPkg
   currentBlockRefNames: mut Set(String)
+  currentReturnType: NivaType?
+  allowsNonLocalReturn: Bool
+  hasNonInlineLambdaBoundary: Bool
 
 
 
 constructor Context [
   /// no parents no vars(yet)
-  on rootWithPkg(currentPkg): NivaPkg = Context parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
+  on rootWithPkg(currentPkg): NivaPkg = Context
+    parent: null vars: #{}! currentPkg: currentPkg currentBlockRefNames: #()!
+    currentReturnType: null allowsNonLocalReturn: false hasNonInlineLambdaBoundary: false
+  on rootWithPkg(currentPkg): NivaPkg returnType(returnType): NivaType? = Context
+    parent: null vars: #{}! currentPkg: currentPkg currentBlockRefNames: #()!
+    currentReturnType: returnType allowsNonLocalReturn: false hasNonInlineLambdaBoundary: false
   on fromParent::Context =
-    Context parent: fromParent vars: #{}! currentPkg: fromParent currentPkg currentBlockRefNames: #()!
+    Context
+      parent: fromParent vars: #{}! currentPkg: fromParent currentPkg currentBlockRefNames: #()!
+      currentReturnType: fromParent currentReturnType
+      allowsNonLocalReturn: fromParent allowsNonLocalReturn
+      hasNonInlineLambdaBoundary: fromParent hasNonInlineLambdaBoundary
+  on fromParent::Context allowsNonLocalReturn(allowed): Bool =
+    Context
+      parent: fromParent vars: #{}! currentPkg: fromParent currentPkg currentBlockRefNames: #()!
+      currentReturnType: fromParent currentReturnType
+      allowsNonLocalReturn: allowed && (fromParent hasNonInlineLambdaBoundary not)
+      hasNonInlineLambdaBoundary: (fromParent hasNonInlineLambdaBoundary) || (allowed not)
 ]
 
 extend Context [
+
+  // resolve typed block args into type fields and define vars
+  on typedBlockArgFields(args): List(NameAndAstType) fromDB(db): TyperDB -> List(TypeTField) = [
+    args map: [
+      name = it name
+      astType = it astType
+      t = astType toNivaTypefromDB: db inPkg: null
+      errorsList = astType toErrorsFromDb: db inPkg: null
+      this defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
+      TypeTField name: name typeT: t isMut: false
+    ]
+  ]
 
   on defineVar(name): String withType: TypeInfo = [
     varType = vars at: name
@@ -39,20 +69,29 @@ extend Context [
 
   on allKnownVars -> String = [
     compute = [c::Context ->
-      c vars map: [k, v -> "$k: $v"], joinWith: ", "
+      pairs::mut List(String) = {}!
+      c vars forEach: [k, v -> pairs add: "$k: $v"]
+      pairs joinWith: ", "
     ]
 
-    result::{String}! = {(compute c: this)}!
+    result = {(compute c: this)}!
 
     mut p = parent
     [p != null] whileTrue: [
-      nonNullP = p unpackOrPANIC
+      parentMaybe = p
+      nonNullP = parentMaybe expect: "Context parent disappeared during traversal"
       newLine = compute c: nonNullP
       result add: newLine
       p <- nonNullP parent
     ]
+    reversed::mut List(String) = {}!
+    mut i = result count - 1
+    [i >= 0] whileTrue: [
+      reversed add: (result at: i)
+      i <- i - 1
+    ]
     mut level = -1
-    ^result reversed joinWith: "\n" transform: [
+    ^reversed joinWith: "\n" transform: [
       level <- level inc
       levelStr = "  " repeat: level
       levelStr + it

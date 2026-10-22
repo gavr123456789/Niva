@@ -1,0 +1,131 @@
+constructor NivaProtocol mapFromDefaultTypes(dtc): DefaultTypesContainer
+  mapType: NivaType
+  keyType: NivaType
+  valueType: NivaType
+  -> mut Map(String, NivaMethod) = [
+
+  {int bool unit} = dtc
+
+  mapP = NivaProtocol common
+
+  // count empty keys
+  mapP addMethod: (
+    NivaMethod unary: "count"
+        receiverType: mapType
+             returnT: int
+  )
+
+  mapP addMethod: (
+    NivaMethod unary: "isEmpty"
+        receiverType: mapType
+             returnT: bool
+  )
+
+  mapP addMethod: (
+    NivaMethod unary: "toMap"
+        receiverType: mapType
+             returnT: mapType
+  )
+
+  mapP addMethod: (
+    NivaMethod unary: "toMutableMap"
+        receiverType: mapType
+             returnT: mapType
+  )
+
+  mapP addMethod: (
+    NivaMethod unary: "clear"
+        receiverType: mapType
+             returnT: unit
+              forMut: true
+  )
+
+  keysType = SetT t: keyType
+  valuesType = ListT t: valueType
+  mapP addMethod: (
+    NivaMethod unary: "values"
+        receiverType: mapType
+             returnT: valuesType
+  )
+  mapP addMethod: (
+    NivaMethod unary: "keys"
+        receiverType: mapType
+             returnT: keysType
+  )
+
+  // map plus other map
+  mapP addMethod: (
+    NivaMethod binary: "+"
+         receiverType: mapType
+                 argT: mapType
+              returnT: mapType
+  )
+
+  // map minus key
+  mapP addMethod: (
+    NivaMethod binary: "-"
+         receiverType: mapType
+                 argT: keyType
+              returnT: mapType
+  )
+
+
+  mapP addMethod: (
+    NivaMethod singleArgKw: "at"
+              receiverType: mapType
+                      argT: keyType
+                   returnT: valueType toNullable
+  )
+
+  mapP addMethod: (
+    NivaMethod singleArgKw: "containsKey"
+              receiverType: mapType
+                      argT: keyType
+                   returnT: bool
+  )
+
+  keyArg = TypeTField
+             name: "key"
+            typeT: keyType
+            isMut: false
+
+  valueArg = TypeTField
+               name: "value"
+              typeT: valueType
+              isMut: false
+
+  foreachBlock = FuntionT
+                 fields: {keyArg valueArg}!
+                   name: "forEach"
+            genericArgs: {}!
+                pkgName: "core"
+             returnType: unit
+
+  mapP addMethod: (
+    NivaMethod singleArgKw: "forEach"
+              receiverType: mapType
+                      argT: foreachBlock
+                   returnT: unit
+  )
+
+  atPutArgs = {
+    (TypeTField
+       name: "at"
+      typeT: keyType
+       isMut: false)
+
+    (TypeTField
+       name: "put"
+      typeT: valueType
+       isMut: false)
+  }
+
+  mapP addMethod: (
+    NivaMethod manyArgKw: atPutArgs
+            receiverType: mapType
+                 returnT: unit
+                  forMut: true
+  )
+
+  ^ mapP methods
+]

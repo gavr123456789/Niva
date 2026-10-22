@@ -1,5 +1,4 @@
-enum TokenType =
-  |EndOfFile
+enum TokenType = EndOfFile
 
 
   // Literal types
@@ -51,8 +50,7 @@ enum TokenType =
 
 type SourceFile
   path: String
-static fakeSourceFile = SourceFile path: ""
-//constructor SourceFile fake = SourceFile path: ""
+constructor SourceFile fake -> SourceFile = SourceFile path: ""
 
 
 type Token
@@ -67,19 +65,19 @@ Token toPosition = file path + ":" + line toString + ":" + start toString
 Token printGoLine-intoSb(sb): StringBuilder =
   file path != "" ifTrue: [sb appendLine: ("//line " + file path + ":" + line toString)]
 
-static FAKE_TOKEN = Token
+constructor Token fake -> Token = Token
   kind: TokenType.Identifier
   lexeme: "FakeToken"
   line: 1
   start: 0 end: 1
-  file: fakeSourceFile
+  file: SourceFile fake
 
-static EOF_TOKEN = Token
+constructor Token eof -> Token = Token
   kind: TokenType.EndOfFile
   lexeme: ""
   line: 1
   start: 0 end: 1
-  file: fakeSourceFile
+  file: SourceFile fake
 
 extend Token [
   on isIdentifier =
@@ -92,7 +90,7 @@ extend Token [
 
 ]
 
-static Token lookupKeyword: String -> TokenType = | lookupKeyword
+constructor Token lookupKeyword: String -> TokenType = | lookupKeyword
 | "type" => TokenType.Type
 | "mut" => TokenType.Mut
 | "union" => TokenType.Union

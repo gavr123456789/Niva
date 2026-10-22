@@ -40,37 +40,49 @@ union Complex
   returnType: NivaType // method or lambda
   returnErrors: List(NivaType) // latent errors produced when the function is called
 
-/// nullable names use a prefixed form
-static NULLABLE_MANGLE_PREFIX = "Nullable__"
-
 extend NivaType [
 
   /// type name used in user-facing project information.
   on nameForInfo -> String = [
-    ^ | this
+    nivaType = this
+    ^ | nivaType
       | TypeT => [
-        genericArgs isNotEmpty
-          ifTrue: [name + "(" + (genericArgs joinWith: ", " transform: [it nameForInfo]) + ")"]
+        nivaType genericArgs isNotEmpty
+          ifTrue: [name + "(" + (nivaType genericArgs joinWith: ", " transform: [it nameForInfo]) + ")"]
           ifFalse: [name]
       ]
       | FuntionT => [
-        argsStr = fields joinWith: ", " transform: [it typeT nameForInfo]
-        errorsStr = returnErrors isEmpty
+        argsStr = nivaType fields joinWith: ", " transform: [it typeT nameForInfo]
+        errorsStr = nivaType returnErrors isEmpty
           ifTrue: [""]
-          ifFalse: ["!{" + (returnErrors joinWith: " " transform: [it nameForInfo]) + "}"]
-        "[" + argsStr + " -> " + returnType nameForInfo + errorsStr + "]"
+          ifFalse: ["!{" + (nivaType returnErrors joinWith: " " transform: [it nameForInfo]) + "}"]
+        "[" + argsStr + " -> " + (nivaType returnType nameForInfo) + errorsStr + "]"
       ]
-      | ListT => "List(" + t nameForInfo + ")"
-      | SetT => "Set(" + t nameForInfo + ")"
-      | MapT => "Map(" + k nameForInfo + ", " + v nameForInfo + ")"
-      | NullableT => v nameForInfo + "?"
+      | ListT => [
+        elementType = nivaType t
+        "List(" + (elementType nameForInfo) + ")"
+      ]
+      | SetT => [
+        elementType = nivaType t
+        "Set(" + (elementType nameForInfo) + ")"
+      ]
+      | MapT => [
+        keyType = nivaType k
+        valueType = nivaType v
+        "Map(" + (keyType nameForInfo) + ", " + (valueType nameForInfo) + ")"
+      ]
+      | NullableT => [
+        valueType = nivaType v
+        (valueType nameForInfo) + "?"
+      ]
       |=> name
   ]
 
-  on unwrapNullable -> NivaType =
-    | this
-    | NullableT => v
-    |=> this
+  on unwrapNullable -> NivaType = [
+    ^ | this
+      | NullableT => this v
+      |=> this
+  ]
 
 
   on toNullable -> NullableT =
@@ -81,19 +93,46 @@ extend NivaType [
 
   /// generate unique identifiers for instantiated types (Box__Int)
   on toMangledName -> String = [
-    ^ | this
+    nivaType = this
+    ^ | nivaType
     | TypeT => [
-      genericArgsStr = genericArgs isNotEmpty
-                        ifTrue:  ["__" + (genericArgs joinWith: "_" transform: [it toMangledName])]
+      genericArgsStr = nivaType genericArgs isNotEmpty
+                        ifTrue:  ["__" + (nivaType genericArgs joinWith: "_" transform: [it toMangledName])]
                         ifFalse: [""]
       pkgName + "_" + name + genericArgsStr
     ]
     | UnresolvedGenericT => [name]
-    | NullableT => [NULLABLE_MANGLE_PREFIX + this v toMangledName]
+    | ListT => [
+      elementType = nivaType t
+      pkgName + "_" + name + "__" + (elementType toMangledName)
+    ]
+    | SetT => [
+      elementType = nivaType t
+      pkgName + "_" + name + "__" + (elementType toMangledName)
+    ]
+    | MapT => [
+      keyType = nivaType k
+      valueType = nivaType v
+      pkgName + "_" + name + "__" + (keyType toMangledName) + "__" + (valueType toMangledName)
+    ]
+    | NullableT => [
+      valueType = nivaType v
+      "Nullable__" + (valueType toMangledName)
+    ]
     | Unknown => ["Unknown"]
     |=> [
       pkgName + "_" + name
     ]
+  ]
+
+  on typeArgsForComparison -> List(NivaType) = [
+    nivaType = this
+    | nivaType
+    | ListT => {(nivaType t)}
+    | SetT => {(nivaType t)}
+    | MapT => {(nivaType k) (nivaType v)}
+    | NullableT => {(nivaType v)}
+    |=> {}
   ]
 
   on replaceGenericsFromTableDeep(letterToType): Map(String, NivaType) db: TyperDB -> NivaType = [
@@ -128,10 +167,10 @@ extend NivaType [
       newReturnType = returnType replaceGenericsFromTableDeep: letterToType db: db
       newReturnErrors = returnErrors map: [it replaceGenericsFromTableDeep: letterToType db: db]
       FuntionT
-        fields: newFields toMutableList
         name: name
-        genericArgs: newGenericArgs toMutableList
         pkgName: pkgName
+        fields: newFields toMutableList
+        genericArgs: newGenericArgs toMutableList
         returnType: newReturnType
         returnErrors: newReturnErrors
     ]
@@ -163,7 +202,12 @@ extend NivaType [
 
   on collectUnresolvedGenericsInto(visitedTypes): mut Set(String) -> List(NivaType) = [
     ^ | this
-      | UnresolvedGenericT => {this}
+      | UnresolvedGenericT => [
+        result::mut List(NivaType) = {}!
+        genericArg::NivaType = this
+        result add: genericArg
+        result toList
+      ]
       | ListT => this t collectUnresolvedGenericsInto: visitedTypes
       | SetT => this t collectUnresolvedGenericsInto: visitedTypes
       | MapT => [
@@ -181,7 +225,10 @@ extend NivaType [
       ]
       | TypeT => [
         typeKey = pkgName + "." + name
-        visitedTypes contains: typeKey, ifTrue: [^ {NivaType}]
+        visitedTypes contains: typeKey, ifTrue: [
+          empty::mut List(NivaType) = {}!
+          ^ empty toList
+        ]
         visitedTypes add: typeKey
         res::mut List::NivaType = {}!
         genericArgs forEach: [it collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
@@ -190,7 +237,7 @@ extend NivaType [
         res toList
       ]
       | NullableT => this v collectUnresolvedGenericsInto: visitedTypes
-      |=> {NivaType} // empty list
+      |=> {} // empty list
   ]
 
   on collectUnresolvedGenerics -> List(NivaType) = [
@@ -214,11 +261,7 @@ extend NivaType [
         existing sameTypeAs: actual, ifFalse: [
           merged = db mergeTypesByUnion: {existing actual}
           | merged
-          | null => [
-            l = letter
-            to = actual
-            TO DO: "Cant resolve $l to $to, it was already resolved to $existing"
-          ]
+          | null => []
           |=> into at: letter put: merged
 
         ]
@@ -226,19 +269,19 @@ extend NivaType [
     ]
     | ListT => [
       | actual
-      | ListT => this t collectGenericMappingsFrom: actual t :into :db
+      | ListT => this t collectGenericMappingsFrom: actual t into: into db: db
       |=> []
     ]
     | SetT => [
       | actual
-      | SetT => this t collectGenericMappingsFrom: actual t :into :db
+      | SetT => this t collectGenericMappingsFrom: actual t into: into db: db
       |=> []
     ]
     | MapT => [
       | actual
       | MapT => [
-        this k collectGenericMappingsFrom: actual k :into :db
-        this v collectGenericMappingsFrom: actual v :into :db
+        this k collectGenericMappingsFrom: actual k into: into db: db
+        this v collectGenericMappingsFrom: actual v into: into db: db
       ]
       |=> []
     ]
@@ -248,10 +291,10 @@ extend NivaType [
         fields count == actual fields count ifTrue: [
           fields forEachIndexed: [i, fExp ->
             fAct = actual fields at: i
-            fExp typeT collectGenericMappingsFrom: fAct typeT :into :db
+            fExp typeT collectGenericMappingsFrom: fAct typeT into: into db: db
           ]
         ]
-        returnType collectGenericMappingsFrom: actual returnType :into :db
+        returnType collectGenericMappingsFrom: actual returnType into: into db: db
       ]
       |=> []
     ]
@@ -261,7 +304,7 @@ extend NivaType [
         (name == actual name) && (pkgName == actual pkgName), ifTrue: [
           genericArgs forEachIndexed: [i, gExp ->
             gAct = actual genericArgs at: i
-            gExp collectGenericMappingsFrom: gAct :into :db
+            gExp collectGenericMappingsFrom: gAct into: into db: db
           ]
         ]
       ]
@@ -269,7 +312,7 @@ extend NivaType [
     ]
     | NullableT => [
       | actual
-      | NullableT => this v collectGenericMappingsFrom: actual v :into :db
+      | NullableT => this v collectGenericMappingsFrom: actual v into: into db: db
       |=> []
     ]
     |=> []
@@ -290,7 +333,7 @@ extend NivaType [
 ]
 
 constructor TypeT noFieldsWithName(name): String pkgName: String  = TypeT
-  :name :pkgName fields: {}! genericArgs: {}!
+  name: name pkgName: pkgName fields: {}! genericArgs: {}!
 
 extend TypeT [
   on generateDefaultConstructor -> NivaMethod =
@@ -335,9 +378,10 @@ extend TypeT [
 ]
 
 
-constructor UnresolvedGenericT name: String = UnresolvedGenericT name: name letter: name pkgName: "core"
+constructor UnresolvedGenericT name: String = UnresolvedGenericT name: name pkgName: "core" letter: name
 constructor UnitT new    = UnitT    name: "Unit"    pkgName: "core"
 constructor IntegerT new = IntegerT name: "Int"     pkgName: "core"
+constructor IntegerT long = IntegerT name: "Long"   pkgName: "core"
 constructor FloatT new   = FloatT   name: "Float"   pkgName: "core"
 constructor DoubleT new  = DoubleT  name: "Double"  pkgName: "core"
 constructor BoolT new    = BoolT    name: "Bool"    pkgName: "core"
@@ -348,16 +392,16 @@ constructor AnyT new     = AnyT     name: "Any"     pkgName: "core"
 constructor NothingT new = NothingT name: "Nothing" pkgName: "core"
 constructor Unknown new  = Unknown  name: "Unknown" pkgName: "core"
 
-constructor ListT t::NivaType            = ListT t: t     name: "List" pkgName: "core"
-constructor SetT t::NivaType             = SetT t: t      name: "Set"  pkgName: "core"
-constructor MapT k::NivaType v::NivaType = MapT k: k v: v name: "Map"  pkgName: "core"
+constructor ListT t::NivaType            = ListT name: "List" pkgName: "core" t: t
+constructor SetT t::NivaType             = SetT name: "Set" pkgName: "core" t: t
+constructor MapT k::NivaType v::NivaType = MapT name: "Map" pkgName: "core" k: k v: v
 
-constructor NullableT v::NivaType = NullableT v: v name: v name pkgName: v pkgName
+constructor NullableT v::NivaType = NullableT name: v name pkgName: v pkgName v: v
 
 // keep core function types error free
 constructor FuntionT [
   on fields(fields): mut List::TypeTField name(name): String genericArgs(genericArgs): mut List::NivaType pkgName(pkgName): String returnType(returnType): NivaType -> FuntionT =
-    FuntionT :fields :name :genericArgs :pkgName :returnType returnErrors: {}
+    FuntionT name: name pkgName: pkgName fields: fields genericArgs: genericArgs returnType: returnType returnErrors: {}
 ]
 
 
@@ -373,6 +417,7 @@ type NivaMethod
   decl: MessageDecl? // getters, default constructors(new and fields) and messages from Core pkg does not have decls
   protocolName: String
   pkgName: String
+  isInline: Bool
 
 extend NivaMethod [
   on infoSignature -> String = [
@@ -416,12 +461,12 @@ extend NivaMethod [
     // if the method itself has generics, the method name must include concrete types
     // tGeneric -> tGeneric__String
 
-    methodGenericArgs = .getGenericArgs
+    methodGenericArgs = this getGenericArgs
     genericsToMangle = methodGenericArgs filter: [
          dontMangle contains: it typeT name, not
     ]
 
-    newMethodName = (mangle and: genericsToMangle isNotEmpty)
+    newMethodName = (mangle && genericsToMangle isNotEmpty)
       ifTrue: [
         genericMangled = genericsToMangle map: [
           // find what this generic arg resolves to
@@ -447,27 +492,26 @@ extend NivaMethod [
         args: newArgs
         returnType: instantiatedReturnOrDefaultT
         returnErrors: instantiatedReturnErrors
-        :forMut
-        :possibleErrors
-        :kind
-        :decl
-        :protocolName
-        :pkgName
+        forMut: forMut
+        possibleErrors: possibleErrors
+        kind: kind
+        decl: decl
+        protocolName: protocolName
+        pkgName: pkgName
+        isInline: isInline
   ]
 
   on copyWithDifferentReturnType(rt): NivaType =
-    NivaMethod :name  :receiverType :args returnType: rt returnErrors: returnErrors :forMut :possibleErrors :kind :decl :protocolName :pkgName
+    NivaMethod name: name receiverType: receiverType args: args returnType: rt returnErrors: returnErrors forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: isInline
 
   on copyWithDifferentReturnErrors(errors): List::NivaType =
-    NivaMethod :name :receiverType :args :returnType returnErrors: errors :forMut :possibleErrors :kind :decl :protocolName :pkgName
+    NivaMethod name: name receiverType: receiverType args: args returnType: returnType returnErrors: errors forMut: forMut possibleErrors: possibleErrors kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: isInline
 
-  /// sort args and checks them with fields, so any arg order should work probably
-  on isConstructorForReceiver(receiver): TypeT -> Bool = [
-    {fields} = receiver
-    argsSorted = args map: [it name], sortedBy: [it], joinWith: ", "
-    fieldsSorted = fields map: [it name], sortedBy: [it], joinWith: ", "
-    ^ argsSorted == fieldsSorted
-  ]
+  on markedInline -> NivaMethod = NivaMethod
+    name: name receiverType: receiverType args: args returnType: returnType
+    returnErrors: returnErrors forMut: forMut possibleErrors: possibleErrors
+    kind: kind decl: decl protocolName: protocolName pkgName: pkgName isInline: true
+
   on toString -> String = [
     isMut = forMut ifTrue: ["mut"] ifFalse: [""]
     possibleErrorsStr = (possibleErrors joinWith: ", " transform: [it name])
@@ -476,15 +520,22 @@ extend NivaMethod [
     ^ "(NivaMethod " + isMut + " " + name + "(" + argsStr + ")" + p2 + " -> " + returnType toString + ")"
   ]
 
-  on returnTypeInfo -> TypeInfo =
-    TypeInfo t: returnType isMut: forMut listOfErrors: returnErrors
+  on returnTypeInfo -> TypeInfo = [
+    getterFieldMaybe = | kind
+      | MessageSendKind.Getter => receiverType findField: name
+      |=> null
+    isMut = | getterFieldMaybe
+      | null => forMut
+      |=> getterFieldMaybe isMut
+    TypeInfo t: returnType isMut: isMut listOfErrors: returnErrors
+  ]
 ]
 
 constructor NivaMethod [
 
   on name::String receiverType::NivaType args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String pkgName::String = NivaMethod
     name: name
-    :receiverType
+    receiverType: receiverType
     args: args
     returnType: returnType
     returnErrors: {}!
@@ -493,20 +544,22 @@ constructor NivaMethod [
     kind: MessageSendKind.Call
     decl: null
     protocolName: protocolName
-    :pkgName
+    pkgName: pkgName
+    isInline: false
 
   on defaultConstructorWithName(name): String receiverType: NivaType args: List(TypeTField) returnType: NivaType decl: MessageDecl? protocolName::String pkgName::String -> NivaMethod = NivaMethod
-    :name
-    :receiverType
-    :args
-    :returnType
+    name: name
+    receiverType: receiverType
+    args: args
+    returnType: returnType
     returnErrors: {}!
     forMut: false
     possibleErrors: {}
     kind: MessageSendKind.DefaultConstructor
-    :decl
-    :protocolName
-    :pkgName
+    decl: decl
+    protocolName: protocolName
+    pkgName: pkgName
+    isInline: false
 
 ]
 
@@ -535,11 +588,11 @@ type NivaPkg
 
 
 constructor NivaPkg name: String =
-  NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()! packageImports: #()!
+  NivaPkg name: name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #()! packageImports: #()!
 
 /// create package with core imported
 constructor NivaPkg withCoreImportednamed(name): String =
-  NivaPkg :name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #("core")! packageImports: #()!
+  NivaPkg name: name types: #{}! constructorsProtocol: NivaProtocol constructors imports: #("core")! packageImports: #()!
 
 extend NivaPkg [
   on addImport(pkgName): String = [
@@ -557,6 +610,7 @@ extend NivaPkg [
 type DefaultTypesContainer
   char: CharT
   int: IntegerT
+  long: IntegerT
   float: FloatT
   double: DoubleT
   str: StringT
@@ -587,6 +641,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
   w = (UnresolvedGenericT name: "W")
   char = CharT new
   int = IntegerT new
+  long = IntegerT long
   float = FloatT new
   double = DoubleT new
   str = StringT new
@@ -622,7 +677,7 @@ constructor DefaultTypesContainer new -> DefaultTypesContainer = [
     genericArgs: {}!
 
   dtc = DefaultTypesContainer
-    :char :int :float :double :str :bool :bind :compiler :error :unit :nothing :any :t :g :list :list2 :map :map2 :set :set2 :intRange :charRange
+    char: char int: int long: long float: float double: double str: str bool: bool bind: bind compiler: compiler error: error unit: unit nothing: nothing any: any t: t g: g list: list list2: list2 map: map map2: map2 set: set set2: set2 intRange: intRange charRange: charRange
   ^ dtc
 ]
 
@@ -639,6 +694,7 @@ DefaultTypesContainer collection-with-different-generic(collection): NivaType ->
 constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
   dtc = DefaultTypesContainer new
   {char, int, float, double, str, bool, bind, compiler, error, unit,
+  long,
   // utils
   nothing, any,
   // T
@@ -653,6 +709,7 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
     "String" str
     "Char" char
     "Int" int
+    "Long" long
     "Float" float
     "Double" double
     "Bind" bind
@@ -684,11 +741,28 @@ constructor NivaPkg core -> Tuple(NivaPkg, DefaultTypesContainer) = [
 
 Project protocol: "toString"
 
+NivaType toTypeShapeString -> String = [
+  nivaType = this
+  ^ | nivaType
+    | TypeT => [
+      genericArgs = nivaType genericArgs
+      genericArgsString = genericArgs isNotEmpty
+        ifTrue: [" <" + (genericArgs joinWith: " " transform: [it name]) + ">"]
+        ifFalse: [""]
+      " Type(" + nivaType name + genericArgsString + ")"
+    ]
+    | ListT => " Type(" + nivaType name + " <" + (nivaType t toTypeShapeString) + ">)"
+    | SetT => " Type(" + nivaType name + " <" + (nivaType t toTypeShapeString) + ">)"
+    | MapT => " Type(" + nivaType name + " <key: " + (nivaType k toTypeShapeString) + " val: " + (nivaType v toTypeShapeString) + ">)"
+    | NullableT => (nivaType v toTypeShapeString) + "?"
+    |=> " Type(" + nivaType name + ")"
+]
+
 TypeT toString -> String = [
   strFields = fields joinWith: " " transform: [
-    it name + ": " + it typeT toString
+    it name + ": " + (it typeT toTypeShapeString)
   ]
-  strGenericArgs =  genericArgs joinWith: " " transform: [
+  strGenericArgs = genericArgs joinWith: " " transform: [
     it name
   ]
   strGenerics2 = genericArgs isNotEmpty ifTrue: [" <$strGenericArgs> "] ifFalse: [""]

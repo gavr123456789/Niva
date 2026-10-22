@@ -2,17 +2,14 @@ type Program
   io: IO_Container
 
 
-type FilePath = String
-type FileContent = String
-
 type NivaSourceFile
   path: String
   relativePath: String
 
 type IO_Container
-  readFile:   [FilePath -> String]
-  writeFile:  [FilePath, FileContent -> Unit]
-  walkDir:    [FilePath -> List(NivaSourceFile)]
+  readFile:   [String -> String]
+  writeFile:  [String, String -> Unit]
+  walkDir:    [String -> List(NivaSourceFile)]
   getParent:  [String -> String]
   createDirectories: [String -> Unit]
   deleteRecursively: [String -> Unit]
@@ -22,18 +19,19 @@ type IO_Container
 
 
 constructor IO_Container new -> IO_Container = [
-  readFile::[FilePath -> String] = [path::String ->
+  readFile::[String -> String] = [path::String ->
     FileSystem read: (path toPath)
   ]
 
-  writeFile = [path: String, fileContent: FileContent ->
+  writeFile = [path: String, fileContent: String ->
     FileSystem write: path toPath
                content: fileContent
     ()
   ]
 
-  walkDir::[FilePath -> List(NivaSourceFile)] = [path: String ->
-    root = path toPath normalized
+  walkDir::[String -> List(NivaSourceFile)] = [path: String ->
+    pathValue = path toPath
+    root = pathValue normalized
     // Okio keeps `.` as a path segment after normalization. Recursive entries
     // do not contain that segment, so dropping it used to turn a root-level
     // `main.niva` into an empty relative path and `.niva_clj/main.niva` into
@@ -50,7 +48,10 @@ constructor IO_Container new -> IO_Container = [
     ]
   ]
 
-  getParent = [path: String -> path toPath parent unpackOrPANIC toString]
+  getParent = [path: String ->
+    pathValue = path toPath
+    pathValue parent toString
+  ]
 
   createDirectories = [path: String ->
     FileSystem createDirectories: (path toPath)
@@ -63,18 +64,16 @@ constructor IO_Container new -> IO_Container = [
   ]
 
   runProgram = [args: List(String) ->
-    processBuilder = ProcessBuilder command: args
-    processBuilder redirectOutput start waitFor
+    ProcessRunner run: args dir: null
   ]
 
   runProgramFromPath = [path: String, args: List(String) ->
-    processBuilder = ProcessBuilder command: args dir: path
-    processBuilder redirectAll start waitFor
+    ProcessRunner run: args dir: path
   ]
 
-  ^ IO_Container :readFile :writeFile :walkDir :getParent
-    :createDirectories :deleteRecursively
-    currentDir: "." :runProgram :runProgramFromPath
+  ^ IO_Container readFile: readFile writeFile: writeFile walkDir: walkDir getParent: getParent
+    createDirectories: createDirectories deleteRecursively: deleteRecursively
+    currentDir: System currentDir runProgram: runProgram runProgramFromPath: runProgramFromPath
 ]
 
 
@@ -87,7 +86,7 @@ compilerTry = [
 compilerTry2 = [
   cliArgs = Compiler cliArgs
   path = cliArgs isEmpty
-    ifTrue: [{"run" ".niva_clj/main.niva" "--runtime=bb"}]
+    ifTrue: [{"run" ".niva_go/main.niva" "--backend=go"}]
     ifFalse: [cliArgs]
   NivaCompiler runArgs: path withIO: IO_Container new measureTime: false
 ]

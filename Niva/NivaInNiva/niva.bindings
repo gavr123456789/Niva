@@ -1,0 +1,10 @@
+go|compiler.compiler.bind|compiler/compiler-go.niva
+go|libs.binds.okio.bind|libs/binds/okio-go.niva
+go|libs.binds.hash.bind|libs/binds/hash-go.niva
+go|libs.binds.simgleTime.bind|libs/binds/simgleTime-go.niva
+kotlin|compiler|compiler/compiler-kotlin.niva
+kotlin|hash.bind|libs/binds/hash-kotlin.niva
+kotlin|okio.bind|libs/binds/okio-kotlin.niva
+kotlin|process.bind|libs/binds/process-kotlin.niva
+kotlin|simgleTime.bind|libs/binds/simgleTime-kotlin.niva
+kotlin|stackTrace|libs/binds/stackTrace-kotlin.niva

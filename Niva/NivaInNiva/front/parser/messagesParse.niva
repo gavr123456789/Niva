@@ -5,7 +5,7 @@ extend mut Parser [
     result::mut List(Identifier) = {}!
 
     [
-      tok = .peek
+      tok = this peek
 
       | tok kind
       | TokenType.Identifier => [
@@ -13,10 +13,13 @@ extend mut Parser [
         result isNotEmpty && (tok line > result last token line), ifTrue: [
           false
         ] ifFalse: [
-          identifier = .step
-          expr = (.parseDotSeparatedIdentifier: tok)
+          identifier = this step
+          expr = (this parseDotSeparatedIdentifier: tok)
           result add: expr
-          sep unpack: [.match: it]
+          sepMaybe = sep
+          | sepMaybe
+          | null => false
+          |=> this match: sepMaybe
           true
         ]
       ]
@@ -31,23 +34,26 @@ extend mut Parser [
   on parseManyBinary -> List(NameAndExpr) = [
       result::mut List(NameAndExpr) = {}!
       [
-        tok = .peek
+        tok = this peek
         | tok kind
         | TokenType.BinarySymbol => [
-          binarySymbol = .step
-          rhsTok = .step
+          binarySymbol = this step
+          rhsTok = this step
           receiver =
             | rhsTok kind
             | TokenType.OpenParen => [
-              inner = .nextExpression: .step
-              .matchAssert: TokenType.CloseParen
-              ExprInBrackets value: inner token: rhsTok
+              inner = this nextExpression: this step
+              this matchAssert: TokenType.CloseParen
+              ExprInBrackets token: rhsTok value: inner
             ]
             |=> [
-              (.primary: rhsTok) unpackOrMsg: "Cant find primary"
+              primaryMaybe = this primary: rhsTok
+              | primaryMaybe
+              | null => TO DO: "Cant find primary"
+              |=> primaryMaybe
             ]
-          unaryList = .peek line == receiver token line, ifTrue: [
-            .parseManyIdentSeparated: null
+          unaryList = this peek line == receiver token line, ifTrue: [
+            this parseManyIdentSeparated: null
           ] ifFalse: [{}!]
 
 
@@ -59,17 +65,17 @@ extend mut Parser [
               NameAndExpr name: it expr: it
             ]
             mut tempUnary = UnaryMsg
-              selector: unaryList first
-              kind: MessageSendKind.Call
               receiver: receiver
               token: tok
+              selector: unaryList first
+              kind: MessageSendKind.Call
 
             unaryList drop: 1, forEach: [
               newUnary = UnaryMsg
-                selector: it
-                kind: MessageSendKind.Call
                 receiver: tempUnary
                 token: tok
+                selector: it
+                kind: MessageSendKind.Call
               tempUnary <- newUnary
             ]
 

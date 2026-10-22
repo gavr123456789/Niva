@@ -1,0 +1,137 @@
+constructor NivaProtocol setFromDefaultTypes(dtc): DefaultTypesContainer
+  setType: NivaType
+  itemType: NivaType
+  -> mut Map(String, NivaMethod) = [
+
+  {int bool unit} = dtc
+
+  setP = NivaProtocol common
+
+  // count first to list
+  setP addMethod: (
+    NivaMethod unary: "count"
+        receiverType: setType
+             returnT: int
+  )
+
+  setP addMethod: (
+    NivaMethod unary: "first"
+        receiverType: setType
+             returnT: itemType
+  )
+
+  listType = ListT t: itemType
+  setP addMethod: (
+    NivaMethod unary: "toList"
+        receiverType: setType
+             returnT: listType
+  )
+
+  setP addMethod: (
+    NivaMethod unary: "toSet"
+        receiverType: setType
+             returnT: setType
+  )
+
+  setP addMethod: (
+    NivaMethod unary: "toMutableSet"
+        receiverType: setType
+             returnT: setType
+  )
+
+  setP addMethod: (
+    NivaMethod unary: "toMutableList"
+        receiverType: setType
+             returnT: listType
+  )
+
+  // set plus other set
+  setP addMethod: (
+    NivaMethod binary: "+"
+         receiverType: setType
+                 argT: setType
+              returnT: setType
+  )
+
+  // set minus other set
+  setP addMethod: (
+    NivaMethod binary: "-"
+         receiverType: setType
+                 argT: setType
+              returnT: setType
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "contains"
+              receiverType: setType
+                      argT: itemType
+                   returnT: bool
+  )
+
+  itemArg = TypeTField
+             name: "it"
+            typeT: itemType
+            isMut: false
+
+  foreachBlock = FuntionT
+                 fields: {itemArg}!
+                   name: "forEach"
+            genericArgs: {}!
+                pkgName: "core"
+             returnType: unit
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "forEach"
+              receiverType: setType
+                      argT: foreachBlock
+                   returnT: unit
+  )
+
+  predicateBlock = FuntionT
+                   fields: {itemArg}!
+                     name: "filter"
+              genericArgs: {}!
+                  pkgName: "core"
+               returnType: bool
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "filter"
+              receiverType: setType
+                      argT: predicateBlock
+                   returnT: setType
+  )
+
+  // mutable set operations
+  setP addMethod: (
+    NivaMethod unary: "clear"
+        receiverType: setType
+             returnT: unit
+              forMut: true
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "add"
+              receiverType: setType
+                      argT: itemType
+                   returnT: unit
+                    forMut: true
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "addAll"
+              receiverType: setType
+                      argT: setType
+                   returnT: unit
+                    forMut: true
+  )
+
+  setP addMethod: (
+    NivaMethod singleArgKw: "remove"
+              receiverType: setType
+                      argT: itemType
+                   returnT: bool
+                    forMut: true
+  )
+
+  ^ setP methods
+]

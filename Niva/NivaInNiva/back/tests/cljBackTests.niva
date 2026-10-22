@@ -22,8 +22,10 @@ Test cljPackageOutputUsesStableNamespacesAndPaths = [
 
   Assert that: output files count equals: 2
   Assert that: output entryNamespace equals: "niva.generated.main"
-  model = output files at: "niva/generated/model.clj", unpackOrPANIC
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  modelMaybe = output files at: "niva/generated/model.clj"
+  model = modelMaybe expect: "Missing generated model"
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
   model contains: "(ns niva.generated.model)", assertTrue
   Assert that: (model contains: ":gen-class") equals: false
   main contains: "(ns niva.generated.main (:gen-class) (:require [niva.generated.model]))", assertTrue
@@ -49,7 +51,8 @@ Test cljBabashkaTargetRunsGeneratedProgram = [
     destination = root + "/generated/" + relativePath
     io writeFile file: destination content: content
   ]
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
   io writeFile file: root + "/main.clj" content: output legacyMainShim
   io writeFile file: root + "/deps.edn" content: "{:paths [\"generated\" \".\"]}\n"
 
@@ -113,9 +116,9 @@ Test cljManifestDetectsChangedUnionBranches = [
 
 Test cljManifestDetectsChangedEnumValues = [
   oldEnum = IrEnumDef
-    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green"} token: FAKE_TOKEN
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green"} token: (Token fake)
   newEnum = IrEnumDef
-    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green" "Blue"} token: FAKE_TOKEN
+    id: "main_Color" pkgId: "main" name: "Color" values: {"Red" "Green" "Blue"} token: (Token fake)
   oldManifest = CljManifest
     version: 1 entryNamespace: "niva.generated.main" modules: {}
     stateVars: {}
@@ -140,7 +143,8 @@ Test cljPackageOutputQualifiesUnionBranches = [
   result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
 
   main contains: "niva.generated.model/->model_Circle", assertTrue
   main contains: "niva.generated.model/model_Circle", assertTrue
@@ -159,7 +163,7 @@ Test cljPackageOutputQualifiesEnumAtom = [
   atom = IrLiteralExpr
     literal: (IrLiteral kind: IrLiteralKind.Atom lexeme: "red")
     typeRef: enumRef
-    token: FAKE_TOKEN
+    token: (Token fake)
   ctx = CljContext newDebug: false imports: #() pkg: "main"
   clj = atom toCljExpr: ctx scope: CljScope new
 
@@ -175,8 +179,10 @@ Test cljPackageOutputQualifiesErrorBranches = [
   Assert that: result db listOfErrors count equals: 0
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  model = output files at: "niva/generated/model.clj", unpackOrPANIC
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  modelMaybe = output files at: "niva/generated/model.clj"
+  model = modelMaybe expect: "Missing generated model"
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
 
   model contains: "(->model_Missing 404)", assertTrue
   main contains: "niva.generated.model/model_Missing", assertTrue
@@ -192,8 +198,10 @@ Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
   Assert that: result db listOfErrors count equals: 0
   output = CljBackend fullOutputFromIrModule: (result toIrModule)
     debug: false mode: CljEmitMode.Program
-  model = output files at: "niva/generated/model.clj", unpackOrPANIC
-  main = output files at: "niva/generated/main.clj", unpackOrPANIC
+  modelMaybe = output files at: "niva/generated/model.clj"
+  model = modelMaybe expect: "Missing generated model"
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
 
   model contains: "(:require [clojure.string]", assertTrue
   model contains: "(clojure.string/upper-case this)", assertTrue
@@ -495,6 +503,23 @@ Test cljWhileTrueUnwrapsLambdas = [
   clj contains: "(reset! c (- @c 1))", assertTrue
 ]
 
+// an inline loop reads its condition as a plain form so extra parens would call it
+Test cljInlineForEachCodegen = [
+  fileMain = """
+    mut total = 0
+    {1 2 3} forEach: [item::Int -> total <- total + item]
+    total echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(while (< @__niva_inline_index", assertTrue
+  clj contains: "(reset! total (+ @total item))", assertTrue
+  Assert that: (clj contains: "List__forEach") equals: false
+  Assert that: (clj contains: "(while ((") equals: false
+]
+
 Test cljCoreCallGoesToCoreNs = [
   fileMain = """
     1 echo
@@ -790,6 +815,25 @@ Test cljBindEmitInBody = [
   clj contains: "(defn main__core_Int__compute", assertTrue
 ]
 
+// a call without arguments is not a bind emit so its empty args stay unread
+Test cljCallWithoutArgs = [
+  fileMain = """
+    type Input
+      name: String
+
+    static Input sas = 42 echo
+
+    Input sas
+
+    1 echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(main_Input__sas__ctor_0)", assertTrue
+]
+
 Test cljDestructure = [
   fileMain = """
     type Person
@@ -1001,4 +1045,26 @@ Test cljCoreErrorFromCallbackUsesErrorMatch = [
   clj contains: "(niva.core/handling [it", assertTrue
   clj contains: "Object (niva.core/Any__echo \"handled\")", assertTrue
   Assert that: (clj contains: ":niva.core/Error (let") equals: false
+]
+
+
+Test cljInterpolatedStringConcat = [
+  dollar = "$"
+  quote = (34 toChar) toString
+  fileMain = "type Point\n  x: Int\n\nn = 5\np = Point x: 1\nt = " + quote + dollar + "[n + 1] of " + dollar + "[p]" + quote + "\n"
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(str (str (niva.core/Any__toString (+ n 1)) \" of \") (niva.core/Any__toString p))", assertTrue
+]
+
+Test cljRangeUntilExclusive = [
+  fileMain = "r = 1..<3"
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "clj"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Int__rangeUntil 1 3)", assertTrue
 ]

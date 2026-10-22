@@ -1,0 +1,46 @@
+constructor NivaProtocol numArithmeticsFromDefaultTypes(dtc): DefaultTypesContainer num: NivaType -> mut Map(String, NivaMethod) = [
+  {str bool unit char intRange double long} = dtc
+
+  intProtocol = NivaProtocol name: "arithmetic"
+
+  // unary
+  intProtocol addMethod: (NivaMethod unary: "inc" receiverType: num returnT: num)
+  intProtocol addMethod: (NivaMethod unary: "dec" receiverType: num returnT: num)
+  intProtocol addMethod: (NivaMethod unary: "toChar" receiverType: num returnT: char)
+  // temporary for int and double
+  intProtocol addMethod: (NivaMethod unary: "toDouble" receiverType: num returnT: double)
+  // binary
+  intProtocol addMethod: (NivaMethod binary: "+" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "-" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "*" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "/" receiverType: num argT: num  returnT: num)
+  intProtocol addMethod: (NivaMethod binary: "%" receiverType: num argT: num  returnT: num)
+
+  intProtocol addMethod: (NivaMethod binary: "<" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: ">=" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "<=" receiverType: num argT: num  returnT: bool)
+
+  intProtocol addMethod: (NivaMethod binary: "==" receiverType: num argT: num  returnT: bool)
+  intProtocol addMethod: (NivaMethod binary: "!=" receiverType: num argT: num  returnT: bool)
+
+  num name == "Int" ifTrue: [ // not for float or double
+    intProtocol addMethod: (NivaMethod unary: "toLong" receiverType: num returnT: long)
+    intProtocol addMethod: (NivaMethod binary: ".." receiverType: num argT: num returnT: intRange)
+    intProtocol addMethod: (NivaMethod binary: "..<" receiverType: num argT: num returnT: intRange)
+  ]
+
+
+  itArg = TypeTField name: "it" typeT: num isMut: false
+  repeatBlock = FuntionT
+                  fields: { itArg }!
+                    name: "repeat"
+             genericArgs: {}!
+                 pkgName: "core"
+              returnType: unit
+
+  intProtocol addMethod: (NivaMethod singleArgKw: "repeat" receiverType: num argT: repeatBlock returnT: unit)
+
+
+  ^ intProtocol methods
+]

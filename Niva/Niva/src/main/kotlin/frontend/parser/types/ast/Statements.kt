@@ -71,14 +71,25 @@ class VarDeclaration(
     }
 }
 
+data class DestructureBinding(
+    val localName: IdentifierExpr,
+    val fieldName: IdentifierExpr,
+) {
+    override fun toString(): String =
+        if (fieldName.name == localName.name)
+            localName.name
+        else
+            "${localName.name} = ${fieldName.name}"
+}
+
 class DestructingAssign(
     token: Token,
-    val names: List<IdentifierExpr>,
+    val bindings: List<DestructureBinding>,
     val value: Expression,
     pragmas: MutableList<Pragma> = mutableListOf()
 ) : Statement(token, pragmas) {
     override fun toString(): String {
-        return "{" + "${names.joinToString(", ") + "}"} <- $value"
+        return "{" + "${bindings.joinToString(", ") + "}"} <- $value"
     }
 }
 

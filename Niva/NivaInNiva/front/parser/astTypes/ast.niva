@@ -36,6 +36,7 @@ union Declaration token: Token =
     body: Body
     isSingleExpr: Bool
     isConstructor: Bool
+    isInline: Bool
 
 
 TypeDecl toString -> String = [
@@ -106,7 +107,9 @@ type DestructureBinding
 // Expressions
 union Expr token: Token =
   | ^LiteralExpr
-  | Identifier     name: String path: {String}?
+  // string literal with dollar parts, see interpolatedStringFrom
+  | InterpolatedString parts: List(Expr)
+  | Identifier     name: String path: List?(String)
   | MutableTypeIdentifier identifier: Identifier
   | AtomIdentifier name: String // #red, #blue, Smalltalk-style symbol
   | ExprInBrackets value: Expr
@@ -141,15 +144,18 @@ Expr isNullExpr -> Bool =
 
 /// path will be empty when
 constructor Identifier fromToken::Token =
-  Identifier name: (fromToken lexeme) token: fromToken path: null
+  Identifier token: fromToken name: (fromToken lexeme) path: null
 
 ExprInBrackets toString = "($value)"
+
+InterpolatedString toString -> String =
+  "InterpolatedString(" + (parts joinWith: " " transform: [it toString]) + ")"
 
 
 type NameAndExpr name: Identifier expr: Expr
 
 type NameAndAstType name: String astType: AstType2
-NameAndAstType toString = [
+NameAndAstType toString -> String = [
   ^ "$name::$astType"
 ]
 
@@ -169,7 +175,7 @@ union AstType2 tok: Token name: String =
   args: List(AstType2)
   returnType: AstType2
 
-AstType toString = [
+AstType toString -> String = [
   genericParamsStr = genericParams joinWith: ": " transform: [it toString]
   astErrors = this errors
   errorsStr = | astErrors
@@ -184,15 +190,15 @@ AstType toString = [
 ]
 
 constructor AstType name: String tok: Token = AstType
+  tok: tok
   name: name
   isNullable: false
   genericParams: {}
   isMut: false
   errors: null
-  tok: tok
 
 
-union CollectionLiteral token: Token elements: Body =
+union CollectionLiteral token: Token elements: Body isMutable: Bool =
   | ListLiteral
   | SetLiteral
   | MapLiteral

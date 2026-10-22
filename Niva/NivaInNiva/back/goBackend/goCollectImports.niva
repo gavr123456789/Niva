@@ -1,11 +1,19 @@
 IrBlock collectGoImportsInto(imports): mut Set(String) -> Unit = [
   stmts forEach: [it collectGoImportsInto: imports]
-  result unpack: [it collectGoImportsInto: imports]
+  resultMaybe = result
+  | resultMaybe
+  | null => []
+  |=> resultMaybe collectGoImportsInto: imports
 ]
 
 IrStmt collectGoImportsInto(imports): mut Set(String) -> Unit = [
   | this
-  | IrLet      => [value unpack: [it collectGoImportsInto: imports]]
+  | IrLet      => [
+      valueMaybe = value
+      | valueMaybe
+      | null => []
+      |=> valueMaybe collectGoImportsInto: imports
+    ]
   | IrSetLocal => [value collectGoImportsInto: imports]
   | IrSetField => [
       receiver collectGoImportsInto: imports
@@ -13,14 +21,19 @@ IrStmt collectGoImportsInto(imports): mut Set(String) -> Unit = [
     ]
   | IrDestructure => [value collectGoImportsInto: imports]
   | IrExprStmt    => [expr collectGoImportsInto: imports]
-  | IrReturn      => [expr unpack: [it collectGoImportsInto: imports]]
+  | IrReturn      => [
+      exprMaybe = expr
+      | exprMaybe
+      | null => []
+      |=> exprMaybe collectGoImportsInto: imports
+    ]
   | IrWhile       => [
       cond collectGoImportsInto: imports
       body collectGoImportsInto: imports
     ]
   | IrThrow       => [
       throwErrExpr = errExpr
-      | throwErrExpr | IrTypeRefExpr => ["fmt" addToGoImports: imports] |=> []
+      | throwErrExpr | IrTypeRefExpr => [imports add: "fmt"] |=> []
       throwErrExpr collectGoImportsInto: imports
     ]
 ]
@@ -29,16 +42,21 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
   | this
   | IrLiteralExpr => [
       literal kind == IrLiteralKind.Unit ifTrue: [
-        "niva_go/core" addToGoImports: imports
+        imports add: "niva_go/core"
       ]
     ]
-  | IrVarRef   => []
-  | IrThisRef  => []
+  | IrVarRef | IrThisRef => []
   | IrFieldGet => [receiver collectGoImportsInto: imports]
   | IrCall     => [
-      isCore = declPkg unpack: [it == "core"] or: false
-      isCore ifTrue: ["niva_go/core" addToGoImports: imports]
-      callee unpack: [it collectGoImportsInto: imports]
+      declPkgMaybe = declPkg
+      isCore = | declPkgMaybe
+        | null => false
+        |=> declPkgMaybe == "core"
+      isCore ifTrue: [imports add: "niva_go/core"]
+      calleeMaybe = callee
+      | calleeMaybe
+      | null => []
+      |=> calleeMaybe collectGoImportsInto: imports
       args forEach: [it collectGoImportsInto: imports]
     ]
   | IrLambda    => [body collectGoImportsInto: imports]
@@ -50,7 +68,10 @@ IrExpr collectGoImportsInto(imports): mut Set(String) -> Unit = [
         c additionalConditions forEach: [it collectGoImportsInto: imports]
         c body collectGoImportsInto: imports
       ]
-      elseBranch unpack: [it collectGoImportsInto: imports]
+      elseBranchMaybe = elseBranch
+      | elseBranchMaybe
+      | null => []
+      |=> elseBranchMaybe collectGoImportsInto: imports
     ]
   | IrNewExpr           => [args forEach: [it collectGoImportsInto: imports]]
   | IrCollectionLiteral => [items forEach: [it collectGoImportsInto: imports]]

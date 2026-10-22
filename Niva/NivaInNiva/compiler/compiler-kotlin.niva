@@ -1,0 +1,43 @@
+static JvmReloadHost start(projectRoot): String generatedDir: String
+    entryNamespace(entryNamespace): String runtime(runtime): String
+    onChange(onChange): [ -> Unit] -> Unit = [
+  root = projectRoot isEmpty ifTrue: ["."] ifFalse: [projectRoot]
+  sessionRoot = generatedDir substringBeforeLast: "/"
+  useBb = runtime == "bb"
+  command = useBb
+    ifTrue: [{"bb" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace}]
+    ifFalse: [{"clojure" "-M" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace}]
+  // the session keeps its stdin pipe open so it exits when this compiler dies
+  (ProcessBuilder command: command dir: sessionRoot) redirectOutput start
+  "Watching for niva changes" echo
+  mut last = JvmReloadHost sourcesFingerprint: root
+  mut running = true
+  [running] whileTrue: [
+    JvmReloadHost sleepMillis: 200 toLong
+    current = JvmReloadHost sourcesFingerprint: root
+    current != last ifTrue: [
+      last <- current
+      JvmReloadHost runProtected: onChange
+    ]
+    ()
+  ]
+  ()
+]
+
+static JvmReloadHost reloadChanged -> Unit = [
+  // the live session polls this marker and reloads the changed namespaces
+  signal = (Process currentDir) + "/.niva_clj/niva-reload.signal"
+  FileSystem write: (signal toPath) content: (System nanoTime toString)
+  ()
+]
+
+// watch service register cannot be called from kotlin so the watcher compares file mtimes
+@emit: """runCatching { java.nio.file.Files.walk(java.nio.file.Paths.get($1)).filter { p -> java.nio.file.Files.isRegularFile(p) && p.toString().endsWith(".niva") && !p.toString().drop($1.length).contains("/.") }.map { it.toString() + "@" + it.toFile().lastModified() }.collect(java.util.stream.Collectors.toList()).sorted().joinToString(";") }.getOrDefault("")"""
+static JvmReloadHost sourcesFingerprint(root): String -> String = ""
+
+@emit: """java.lang.Thread.sleep($1)"""
+static JvmReloadHost sleepMillis(millis): Long -> Unit = []
+
+// a broken edit must not stop the watcher so report it and keep waiting
+@emit: """runCatching { $1() }.onFailure { e -> println("recompile failed") ; println(e.toString().take(400)) }"""
+static JvmReloadHost runProtected(cb): [ -> Unit] -> Unit = []

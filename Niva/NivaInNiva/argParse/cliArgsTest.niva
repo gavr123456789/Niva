@@ -27,6 +27,38 @@ Test cliArgsRunGoBackend = [
   Assert that: result backend equals: CompilerBackend.Go
 ]
 
+Test cliArgsGoToolchainTarget = [
+  result = ArgParser args: {"run" "main.niva" "--backend=go" "--target=ixgo"} toList
+  Assert that: result backend equals: CompilerBackend.Go
+  Assert that: result target equals: CompilerTarget.Ixgo
+]
+
+Test cliArgsGoTargetSelectsBackend = [
+  ixgo = ArgParser args: {"run" "main.niva" "--target=ixgo"} toList
+  Assert that: ixgo backend equals: CompilerBackend.Go
+  Assert that: ixgo target equals: CompilerTarget.Ixgo
+
+  stock = ArgParser args: {"run" "main.niva" "--target=go"} toList
+  Assert that: stock backend equals: CompilerBackend.Go
+  Assert that: stock target equals: CompilerTarget.Go
+]
+
+Test cliArgsGoTargetWinsOverBackendAnyOrder = [
+  a = ArgParser args: {"run" "main.niva" "--target=go" "--backend=clj"} toList
+  Assert that: a backend equals: CompilerBackend.Go
+  Assert that: a target equals: CompilerTarget.Go
+
+  b = ArgParser args: {"run" "main.niva" "--backend=clj" "--target=ixgo"} toList
+  Assert that: b backend equals: CompilerBackend.Go
+  Assert that: b target equals: CompilerTarget.Ixgo
+]
+
+Test cliArgsCljTargetKeepsCljBackend = [
+  result = ArgParser args: {"run" "main.niva" "--backend=clj" "--target=bb"} toList
+  Assert that: result backend equals: CompilerBackend.Clj
+  Assert that: result target equals: CompilerTarget.Bb
+]
+
 Test cliArgsReplEmission = [
   args = {"build" "main.niva" "--backend=clojure" "--repl" "--repl-line=7"} toList
   result = ArgParser args: args
@@ -123,4 +155,16 @@ Test cliArgsRejectsInvalidRuntime = [
 Test cliArgsRejectsInvalidTarget = [
   result = ArgParser args: {"watch" "main.niva" "--target=cloud"} toList
   Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRunReplBecomesWatch = [
+  result = ArgParser args: {"run" "repl.niva" "--repl"} toList
+  Assert that: result option equals: CompilerOption.Watch
+  Assert that: result repl equals: true
+
+  go = ArgParser args: {"run" "main.niva" "--repl" "--backend=go"} toList
+  Assert that: go option equals: CompilerOption.Run
+
+  build = ArgParser args: {"build" "main.niva" "--repl"} toList
+  Assert that: build option equals: CompilerOption.Build
 ]

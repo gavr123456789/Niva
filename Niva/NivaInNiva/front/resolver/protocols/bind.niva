@@ -1,0 +1,20 @@
+constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mut Map(String, NivaMethod) = [
+  {str bind list any t} = dtc
+  bindProto = NivaProtocol name: "constructors"
+
+  bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: t)
+
+  goNameArgs = {
+    (TypeTField name: "goPkg" typeT: str isMut: false)
+    (TypeTField name: "goName" typeT: str isMut: false)
+  }
+  bindProto addMethod: (NivaMethod manyArgKw: goNameArgs receiverType: bind returnT: t)
+
+  goEmitArgs = {
+    (TypeTField name: "goPkg" typeT: str isMut: false)
+    (TypeTField name: "emit" typeT: str isMut: false)
+  }
+  bindProto addMethod: (NivaMethod manyArgKw: goEmitArgs receiverType: bind returnT: t)
+
+  ^bindProto methods
+]

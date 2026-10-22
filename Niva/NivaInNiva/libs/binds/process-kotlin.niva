@@ -22,13 +22,3 @@ Bind package: "java.lang" content: [
   @emit: """System.getenv($1)"""
   constructor Process getEnv::String -> String
 ]
-
-// Process getEnv: "JAVA_HOME" |> echo
-
-// dsl
-// ProcessBuilder redirectAndStart =
-//   this redirectOutput start waitFor
-
-// String runCommand =
-//   ProcessBuilder command: {this},
-//   redirectOutput start waitFor

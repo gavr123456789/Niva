@@ -12,7 +12,12 @@ Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
     value collectExprRefNames: refs
   ]
   | DestructingAssign => value collectExprRefNames: refs
-  | ReturnStatement => value unpack: [it collectExprRefNames: refs]
+  | ReturnStatement => [
+    returnValue = value
+    | returnValue
+    | null => []
+    |=> returnValue collectExprRefNames: refs
+  ]
   | UnaryMsg => [
     // compile time info about type
     (selector name == "info") || (selector name == "infoFull")
@@ -35,9 +40,13 @@ Expr collectExprRefNames(refs): mut Set(String) -> Unit = [
       br additionalConditions unTypedBody forEach: [it collectExprRefNames: refs]
       br body unTypedBody forEach: [it collectExprRefNames: refs]
     ]
-    elseBranch unpack: [it unTypedBody forEach: [it collectExprRefNames: refs]]
+    elseBranchMaybe = elseBranch
+    | elseBranchMaybe
+    | null => []
+    |=> elseBranchMaybe unTypedBody forEach: [it collectExprRefNames: refs]
   ]
   | CollectionLiteral => elements unTypedBody forEach: [it collectExprRefNames: refs]
+  | InterpolatedString => parts forEach: [it collectExprRefNames: refs]
   | LiteralExpr => []
   | TypedExpr => exprAst collectExprRefNames: refs
   |=> []
@@ -60,9 +69,9 @@ UnaryMsgT firstNonGetterInCopyUpdate -> Token? = [
 UnaryMsg expandImmutableCopyUpdate(value): Expr -> Expr = [
   localReceiver = receiver
   shadowCopy = KeywordMsg
-    args: {(NameAndExpr name: selector expr: value)}
     receiver: localReceiver
     token: token
+    args: {(NameAndExpr name: selector expr: value)}
     kind: MessageSendKind.Call
 
   | localReceiver
@@ -72,11 +81,15 @@ UnaryMsg expandImmutableCopyUpdate(value): Expr -> Expr = [
 
 extend Body [
   on resolveBody2(db): TyperDB withContext(upperContext): Context  -> TypedBody =
-    .resolveBody2: db withContext: upperContext expectedType: null
+    this resolveBody2: db withContext: upperContext expectedType: null
 
   /// resolve body inside expressions
   /// expected type comes from surrounding expression
   on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? -> TypedBody = [
+    this resolveBody2: db withContext: upperContext expectedType: expectedType includeNonLocalReturns: false
+  ]
+
+  on resolveBody2(db): TyperDB withContext(upperContext): Context expectedType: NivaType? includeNonLocalReturns: Bool -> TypedBody = [
 
     c = Context fromParent: upperContext
 
@@ -101,7 +114,7 @@ extend Body [
       typed = expr toTypedExprFromDb2: db withContext: c expectedType: expectedForExpr
       typeOfExpr = typed typeInfo t
       | typeOfExpr | Unknown => [
-        TO DO: "Unknown type of expr is not possible $expr"
+        TO DO: "unknown expression type at " + typed token toPosition + " for " + expr toString
       ] |=> []
 
       typed
@@ -109,16 +122,18 @@ extend Body [
 
 
     returnTypes::mut List(NivaType) = {}!
-    listOfTypedExpr2 forEach: [expr ->
-      | expr
-      | ReturnStatementT => returnTypes add: expr typeInfo t
-      |=> []
+    includeNonLocalReturns ifTrue: [
+      listOfTypedExpr2 forEach: [expr ->
+        | expr
+        | ReturnStatementT => [
+          returnTypes add: expr typeInfo t
+          ()
+        ]
+        |=> expr collectNonLocalReturnTypesInto: returnTypes
+      ]
     ]
 
-    bodyErrors::mut List(NivaType) = {}!
-    listOfTypedExpr2 forEach: [expr ->
-      expr typeInfo listOfErrors forEach: [bodyErrors add: it]
-    ]
+    bodyErrors = listOfTypedExpr2 collectBodyErrors
 
     bodyType =
       returnTypes isNotEmpty
@@ -137,28 +152,31 @@ extend Body [
 
   /// resolve collection elements with expected type
   on resolveCollectionElements(db): TyperDB withContext(upperContext): Context expectedEven: NivaType? expectedOdd: NivaType? -> TypedBody = [
-    (expectedEven == null) && (expectedOdd == null) ifTrue: [
-      ^ .resolveBody2: db withContext: upperContext
+    | true
+    | (expectedEven == null) && (expectedOdd == null) => this resolveBody2: db withContext: upperContext
+    |=> [
+      c = Context fromParent: upperContext
+      unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
+
+      typedElems = unTypedBody mapIndexed: [ i, elem ->
+        expectedForElem = i % 2 == 0 ifTrue: [expectedEven] ifFalse: [expectedOdd]
+        elem toTypedExprFromDb2: db withContext: c expectedType: expectedForElem
+      ]
+
+      bodyErrors = typedElems collectBodyErrors
+
+      TypedBody
+          v: typedElems
+          t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
+          listOfErrors: (bodyErrors normalizeErrorList)
     ]
-
-    c = Context fromParent: upperContext
-    unTypedBody forEach: [it collectExprRefNames: c currentBlockRefNames]
-
-    typedElems = unTypedBody mapIndexed: [ i, elem ->
-      expectedForElem = i % 2 == 0 ifTrue: [expectedEven] ifFalse: [expectedOdd]
-      elem toTypedExprFromDb2: db withContext: c expectedType: expectedForElem
-    ]
-
-    bodyErrors::mut List(NivaType) = {}!
-    typedElems forEach: [expr ->
-      expr typeInfo listOfErrors forEach: [bodyErrors add: it]
-    ]
-
-    TypedBody
-        v: typedElems
-        t: (typedElems isEmpty ifTrue: [db dtc unit] ifFalse: [typedElems last typeInfo t])
-        listOfErrors: (bodyErrors normalizeErrorList)
   ]
+]
+
+List(TypedExpr2) collectBodyErrors -> List(NivaType) = [
+  errors::mut List(NivaType) = {}!
+  this forEach: [expr -> expr typeInfo listOfErrors forEach: [errors add: it]]
+  ^ errors toList
 ]
 
 List(NivaType) normalizeErrorList -> List(NivaType) = [
@@ -209,10 +227,13 @@ List(NivaType) errorsToString -> String =
   this normalizeErrorList joinWith: ", " transform: [it name]
 
 NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
+  mut result::Int? = null
   types forEachIndexed: [i, it ->
-    this sameTypeAs: it, ifFalse: [^ i]
+    result == null ifTrue: [
+      this sameTypeAs: it, ifFalse: [result <- i]
+    ]
   ]
-  null
+  result
 ]
 
 extend TyperDB [
@@ -254,11 +275,15 @@ extend TyperDB [
           ]
         ]
 
-        missing = unionLeaves
+        allLeaves = unionLeaves toList
+        missing = allLeaves
                     filter: [branchId -> checkedLeaves contains: branchId, not],
                     map: [branchId ->
                           branchType = typesById at: branchId
-                          name = branchType unpack: [it name] or: branchId
+                          branchTypeMaybe = branchType
+                          name = | branchTypeMaybe
+                            | null => branchId
+                            |=> branchTypeMaybe name
                           name]
 
         missing isNotEmpty ifTrue: [
@@ -273,7 +298,7 @@ extend TyperDB [
 
   on checkErrorMatchExhaustiveness(subjectErrors): List(NivaType) branches: List(MatchBranchT) token: Token = [
     | true
-    | subjectErrors isEmpty => Unit
+    | subjectErrors isEmpty => ()
     |=> [
       leaves::mut Set(String) = #()!
       subjectErrors forEach: [err ->
@@ -283,11 +308,11 @@ extend TyperDB [
           (errLeaves count == 0)
             ifTrue: [
               leaves add: err toIdString
-              Unit
+              ()
             ]
             ifFalse: [
               leaves addAll: errLeaves
-              Unit
+              ()
             ]
         ]
         |=> []
@@ -300,8 +325,9 @@ extend TyperDB [
         | TypeT => [
           leaves forEach: [leafId ->
             leafType = typesById at: leafId
-            leafType unpack: [
-              this isAssignable: it toExpected: branchType, ifTrue: [
+            leafTypeMaybe = leafType
+            leafTypeMaybe ifNotNull: [leafTypeValue ->
+              this isAssignable: leafTypeValue toExpected: branchType, ifTrue: [
                 checked add: leafId
               ]
             ]
@@ -310,11 +336,15 @@ extend TyperDB [
         |=> []
       ]
 
-      missing = leaves
+      allLeaves = leaves toList
+      missing = allLeaves
         filter: [leafId -> checked contains: leafId, not],
         map: [leafId ->
           branchType = typesById at: leafId
-          branchType unpack: [it name] or: leafId
+          branchTypeMaybe = branchType
+          | branchTypeMaybe
+          | null => leafId
+          |=> branchTypeMaybe name
         ]
 
       missing isNotEmpty ifTrue: [
@@ -327,128 +357,164 @@ extend TyperDB [
 ]
 
 CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Context expectedType: FuntionT -> CodeBlockT = [
-  c = Context fromParent: upperContext
+  ^ this resolveWithExpectedType: db withContext: upperContext expectedType: expectedType allowNonLocalReturn: false
+]
+
+CodeBlock resolveWithExpectedType(db): TyperDB withContext(upperContext): Context expectedType: FuntionT allowNonLocalReturn: Bool -> CodeBlockT = [
+  c = Context fromParent: upperContext allowsNonLocalReturn: allowNonLocalReturn
 
   expectedFields = expectedType fields
 
-  typeTFields = args isNotEmpty
-    ifTrue: [
-      args map: [
-        {name astType} = it
-        t = astType toNivaTypefromDB: db inPkg: null
-        errorsList = astType toErrorsFromDb: db inPkg: null
-        c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-        TypeTField name: name typeT: t isMut: false
-      ]
-    ]
-    ifFalse: [
-      untypedArgs isNotEmpty
-        ifTrue: [
-          expectedFields count != untypedArgs count ifTrue: [
-            db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Wrong number of block args, expected " + expectedFields count toString)
-          ]
+  typeTFields::List(TypeTField) = | true
+    | args isNotEmpty => c typedBlockArgFields: args fromDB: db
+    | untypedArgs isNotEmpty => [
+        expectedFields count != untypedArgs count ifTrue: [
+          db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Wrong number of block args, expected " + expectedFields count toString)
+        ]
 
-          expectedFields count != untypedArgs count
-            ifTrue: [{}]
-            ifFalse: [
-              untypedArgs mapIndexed: [i, ident ->
-                expectedField = expectedFields at: i
-                c defineVar: ident name withType: expectedField typeT toTypeInfoDefault
-                TypeTField name: ident name typeT: expectedField typeT isMut: expectedField isMut
-              ]
+        expectedFields count != untypedArgs count
+          ifTrue: [
+            noTypeTFields::List(TypeTField) = {}
+            noTypeTFields
+          ]
+          ifFalse: [
+            untypedArgs mapIndexed: [i, ident ->
+              expectedField = expectedFields at: i
+              c defineVar: ident name withType: expectedField typeT toTypeInfoDefault
+              TypeTField name: ident name typeT: expectedField typeT isMut: expectedField isMut
             ]
+          ]
+      ]
+    | expectedFields count == 1 => [
+        expectedField = expectedFields first
+        c defineVar: expectedField name withType: expectedField typeT toTypeInfoDefault
+        { expectedField }
+      ]
+    |=> [
+        expectedFields isNotEmpty ifTrue: [
+          db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Block has no args, but expected " + expectedFields count toString)
         ]
-        ifFalse: [
-          expectedFields count == 1
-            ifTrue: [
-              expectedField = expectedFields first
-              c defineVar: expectedField name withType: expectedField typeT toTypeInfoDefault
-              { expectedField }
-            ]
-            ifFalse: [
-              expectedFields isNotEmpty ifTrue: [
-                db addErrorMessage: (ErrorWrongArgCount tok: token msg: "Block has no args, but expected " + expectedFields count toString)
-              ]
-              {}
-            ]
-        ]
-    ]
+        noTypeTFields::List(TypeTField) = {}
+        noTypeTFields
+      ]
 
   genericList = typeTFields
                   filter: [
-                    {typeT} = it
+                    typeT = it typeT
                     | typeT
                     | UnresolvedGenericT => [true]
                     |=> [false]
                   ],
                   map: [it typeT]
 
-  typedArgs = untypedArgs isNotEmpty
-    ifTrue: [
-      expectedFields count == untypedArgs count
-        ifTrue: [
-          untypedArgs mapIndexed: [i, ident ->
-            expectedField = expectedFields at: i
-            IdentifierT
-              name: ident name
-              path: ident path
-              token: ident token
-              typeInfo: expectedField typeT toTypeInfoDefault
-              isNameOfTheType: false
-          ]
-        ]
-        ifFalse: [
-          untypedArgs map: [ident ->
-            IdentifierT
-              name: ident name
-              path: ident path
-              token: ident token
-              typeInfo: db dtc any toTypeInfoDefault
-              isNameOfTheType: false
-          ]
-        ]
-    ]
-    ifFalse: [{}]
+  typedArgs::List(IdentifierT) = | true
+    | untypedArgs isEmpty => [
+        noTypedArgs::List(IdentifierT) = {}
+        noTypedArgs
+      ]
+    | expectedFields count == untypedArgs count => untypedArgs mapIndexed: [i, ident ->
+        expectedField = expectedFields at: i
+        IdentifierT
+          token: ident token
+          typeInfo: expectedField typeT toTypeInfoDefault
+          name: ident name
+          path: ident path
+          isNameOfTheType: false
+      ]
+    |=> untypedArgs map: [ident ->
+        IdentifierT
+          token: ident token
+          typeInfo: db dtc any toTypeInfoDefault
+          name: ident name
+          path: ident path
+          isNameOfTheType: false
+      ]
 
   expectedReturnType = expectedType returnType
-  typedBody = body resolveBody2: db withContext: c expectedType: expectedReturnType
-  returnType = typedBody t
+  bodyExpectedType = expectedReturnType isContainsUnresolvedGenerics
+    ifTrue: [null]
+    ifFalse: [expectedReturnType]
+  typedBody = body resolveBody2: db withContext: c expectedType: bodyExpectedType
+  returnType = (c allowsNonLocalReturn && typedBody containsNonLocalReturn)
+    ifTrue: [expectedReturnType]
+    ifFalse: [typedBody t]
 
-  name = args isNotEmpty
-    ifTrue: [args joinWith: "__" transform: [it astType name]]
-    ifFalse: [
-      typedArgs isNotEmpty
-        ifTrue: [typedArgs joinWith: "__" transform: [it name]]
-        ifFalse: [expectedType name]
-    ]
+  name = | true
+    | args isNotEmpty => args joinWith: "__" transform: [it astType name]
+    | typedArgs isNotEmpty => typedArgs joinWith: "__" transform: [it name]
+    |=> expectedType name
 
-  CodeBlockT :args typedArgs: typedArgs
-    body: typedBody
-    :token
+  CodeBlockT token: token
     typeInfo: (FuntionT
-                fields: typeTFields toMutableList
-                returnType: returnType
-                returnErrors: typedBody listOfErrors
-                genericArgs: genericList toMutableList
                 name: name
-                pkgName: c currentPkg name) toTypeInfoDefault
+                pkgName: c currentPkg name
+                fields: typeTFields toMutableList
+                genericArgs: genericList toMutableList
+                returnType: returnType
+                returnErrors: typedBody listOfErrors) toTypeInfoDefault
+    args: args
+    typedArgs: typedArgs
+    body: typedBody
 ]
 
 
+/// interpolated string becomes a chain of string concat calls
+/// parts that are not strings get a toString call
+InterpolatedString resolveInterpolatedString(db): TyperDB withContext(c): Context -> TypedExpr2 = [
+  typedParts::mut List::TypedExpr2 = {}!
+  allErrors::mut List::NivaType = {}!
+
+  parts forEach: [part ->
+    typed = part toTypedExprFromDb2: db withContext: c
+    isString = (typed typeInfo t) sameTypeAs: (db dtc str)
+    partExpr = isString ifTrue: [typed] ifFalse: [
+      toStringMethod = db findMsgFromReceiver: typed byName: "toString" currentPkg: c currentPkg
+      UnaryMsgT
+        receiver: typed
+        token: part token
+        typeInfo: toStringMethod returnTypeInfo
+        dbMsg: toStringMethod
+        selector: (Identifier token: part token name: "toString" path: null)
+        kind: toStringMethod kind
+    ]
+    typed typeInfo listOfErrors forEach: [err -> allErrors add: err]
+    typedParts add: partExpr
+  ]
+
+  | true
+  | (typedParts count == 1) => typedParts first
+  |=> [
+    mut acc::TypedExpr2 = typedParts first
+    (typedParts drop: 1) forEach: [next ->
+      plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg
+      partTypeInfo = TypeInfo t: (db dtc str) isMut: false listOfErrors: (allErrors toMutableList)
+      plusArg = NameAndExprT name: (Identifier token: token name: "+" path: null) expr: next
+      acc <- BinaryMsgT
+        receiver: acc
+        token: token
+        typeInfo: partTypeInfo
+        dbMsg: plusMethod
+        args: {plusArg}
+    ]
+    acc
+  ]
+]
+
 Expr toTypedExprFromDb2: TyperDB withContext: Context -> TypedExpr2 =
-  .:toTypedExprFromDb2 :withContext expectedType: null
+  this toTypedExprFromDb2: toTypedExprFromDb2 withContext: withContext expectedType: null
 
 Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaType? -> TypedExpr2 = [
-  result = | this
-  | CharExpr    => CharExprT :token typeInfo: db dtc char toTypeInfoDefault
-  | IntExpr     => IntExprT :token typeInfo: db dtc int toTypeInfoDefault
-  | FloatExpr   => FloatExprT :token typeInfo: db dtc float toTypeInfoDefault
-  | DoubleExpr  => DoubleExprT :token typeInfo: db dtc double toTypeInfoDefault
-  | StringExpr  => StringExprT :token typeInfo: db dtc str toTypeInfoDefault
-  | BooleanExpr => BooleanExprT :token typeInfo: db dtc bool toTypeInfoDefault
-  | NullExpr    => NullExprT :token typeInfo: (NullableT v: db dtc nothing) toTypeInfoDefault
-  | UnitExpr    => UnitExprT :token typeInfo: db dtc unit toTypeInfoDefault
-  | AtomIdentifier => AtomExprT :name :token typeInfo: db dtc str toTypeInfoDefault
+  result::TypedExpr2 = | this
+  | CharExpr    => CharExprT token: token typeInfo: db dtc char toTypeInfoDefault
+  | IntExpr     => IntExprT token: token typeInfo: db dtc int toTypeInfoDefault
+  | FloatExpr   => FloatExprT token: token typeInfo: db dtc float toTypeInfoDefault
+  | DoubleExpr  => DoubleExprT token: token typeInfo: db dtc double toTypeInfoDefault
+  | StringExpr  => StringExprT token: token typeInfo: db dtc str toTypeInfoDefault
+  | InterpolatedString => this resolveInterpolatedString: db withContext: c
+  | BooleanExpr => BooleanExprT token: token typeInfo: db dtc bool toTypeInfoDefault
+  | NullExpr    => NullExprT token: token typeInfo: (NullableT v: db dtc nothing) toTypeInfoDefault
+  | UnitExpr    => UnitExprT token: token typeInfo: db dtc unit toTypeInfoDefault
+  | AtomIdentifier => AtomExprT token: token typeInfo: db dtc str toTypeInfoDefault name: name
   | Identifier   => [
 
     varType = c lookupForVar: this name
@@ -456,8 +522,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     | null => [
       name first isUpperCase ifTrue: [
         q = db findByTypeName: name
-
-        IdentifierT :name :path :token typeInfo: q toTypeInfoDefault isNameOfTheType: true
+        IdentifierT token: token typeInfo: q toTypeInfoDefault name: name path: path isNameOfTheType: true
       ] ifFalse: [
         thisType = c lookupForVar: "this"
         | thisType
@@ -468,10 +533,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         ]
         |=> [
           thisIdent = IdentifierT
-            name: "this"
-            path: null
             token: token
             typeInfo: thisType
+            name: "this"
+            path: null
             isNameOfTheType: false
 
           methodMaybe = db
@@ -489,7 +554,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
               | unionField
               | null => [
                 contextString = c allKnownVars
-                TO DO: "Cant find $this in the current context: \n$contextString"
+                TO DO: "cant find " + name + " on " + thisType t toString + " at " + token toPosition + " in " + contextString
               ]
               |=> [
                 getter = NivaMethod
@@ -504,14 +569,15 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                   decl: null
                   protocolName: "getters"
                   pkgName: thisTypeT pkgName
+                  isInline: false
 
                 UnaryMsgT
-                  selector: (Identifier name: name token: token path: null)
-                  kind: getter kind
                   receiver: thisIdent
                   token: token
                   typeInfo: getter returnTypeInfo
                   dbMsg: getter
+                  selector: (Identifier token: token name: name path: null)
+                  kind: getter kind
               ]
             ]
             |=> [
@@ -526,52 +592,66 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             ]
 
             UnaryMsgT
-              selector: (Identifier name: name token: token path: null)
-              kind: methodMaybe kind
               receiver: thisIdent
               token: token
               typeInfo: methodMaybe returnTypeInfo
               dbMsg: methodMaybe
+              selector: (Identifier token: token name: name path: null)
+              kind: methodMaybe kind
           ]
         ]
       ]
     ]
-    |=> IdentifierT :name :path :token typeInfo: varType isNameOfTheType: false
+    |=> IdentifierT token: token typeInfo: varType name: name path: path isNameOfTheType: false
 
   ]
   | MutableTypeIdentifier => [
     typeIdentifier = identifier
     q = db findByTypeName: typeIdentifier name
     IdentifierT
-      name: typeIdentifier name
-      path: typeIdentifier path
       token: typeIdentifier token
       typeInfo: (TypeInfo t: q isMut: true listOfErrors: {})
+      name: typeIdentifier name
+      path: typeIdentifier path
       isNameOfTheType: true
   ]
   | ExprInBrackets => [
     valueT = value toTypedExprFromDb2: db withContext: c
-    ExprInBracketsT value: valueT :token typeInfo: valueT typeInfo
+    ExprInBracketsT token: token typeInfo: valueT typeInfo value: valueT
   ]
   | MapLiteral     => [
-    this elements unTypedBody count % 2 != 0 ? [
-      db addErrorMessage: (ErrorWrongArgCount tok: this token msg: "Number of arguments for Map should be even")
-    ]
-    this elements unTypedBody isEmpty ? [
-      TO DO: "Can't infer type of the Map collection without elements"
-    ]
-    expectedMap = expectedType unpack: [ et ->
-      unwrapped = et unwrapNullable
+    expectedTypeMaybe = expectedType
+    expectedMap = | expectedTypeMaybe
+      | null => null
+      |=> [
+      unwrapped = expectedTypeMaybe unwrapNullable
       | unwrapped
       | MapT => unwrapped
       |=> null
-    ] or: null
+    ]
+
+    this elements unTypedBody count % 2 != 0 ifTrue: [
+      db addErrorMessage: (ErrorWrongArgCount tok: this token msg: "Number of arguments for Map should be even")
+    ]
+    this elements unTypedBody isEmpty ifTrue: [
+      mapType = expectedMap expect: "Can't infer type of the Map collection without elements at " + token file path + ":" + token line toString
+      typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
+      db addCollectionInstantiationIfAbsent: mapType
+      ^ MapLiteralT
+        token: token
+        elements: typedBody
+        typeInfo: (TypeInfo t: mapType isMut: isMutable listOfErrors: {})
+    ]
 
     typedBody = elements
       resolveCollectionElements: db
       withContext: c
-      expectedEven: (expectedMap unpack: [m -> m k] or: null)
-      expectedOdd: (expectedMap unpack: [m -> m v] or: null)
+      expectedEven: (| expectedMap
+        | null => null
+        |=> expectedMap k)
+      expectedOdd: (| expectedMap
+        | null => null
+        |=> expectedMap v)
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -579,23 +659,38 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     keyTypes::mut List(NivaType) = {}!
     valueTypes::mut List(NivaType) = {}!
     typesOfElems forEachIndexed: [i, it ->
-      i % 2 == 0 ? [keyTypes add: it] ! [valueTypes add: it]
+      i % 2 == 0 ifTrue: [keyTypes add: it] ifFalse: [valueTypes add: it]
     ]
 
     mergedKeyType = db mergeTypesByUnion: keyTypes
     mergedValueType = db mergeTypesByUnion: valueTypes
     first = | mergedKeyType
-            | null => keyTypes first
+            | null => [
+              keyTypes isEmpty ifTrue: [
+                expectedMapMaybe = expectedMap
+                | expectedMapMaybe
+                | null => keyTypes first
+                |=> expectedMapMaybe k
+              ] ifFalse: [keyTypes first]
+            ]
             |=> mergedKeyType
     second = | mergedValueType
-             | null => valueTypes first
+             | null => [
+               valueTypes isEmpty ifTrue: [
+                 expectedMapMaybe = expectedMap
+                 | expectedMapMaybe
+                 | null => valueTypes first
+                 |=> expectedMapMaybe v
+               ] ifFalse: [valueTypes first]
+             ]
              |=> mergedValueType
 
     wrongKeyIndex = | mergedKeyType
                     | null => first sameTypeAsMany: (keyTypes drop: 1)
                     |=> null
-    wrongKeyIndex unpack: [i ->
-      wrongElement = elems at: (i * 2 + 2)
+    wrongKeyIndexMaybe = wrongKeyIndex
+    wrongKeyIndexMaybe ifNotNull: [wrongKeyIndexValue ->
+      wrongElement = elems at: (wrongKeyIndexValue * 2 + 2)
       db addErrorMessage: (ErrorWrongArgType tok: this token
                             msg: "Wrong type of $wrongElement element, $first key type expected")
     ]
@@ -603,8 +698,9 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     wrongValueIndex = | mergedValueType
                       | null => second sameTypeAsMany: (valueTypes drop: 1)
                       |=> null
-    wrongValueIndex unpack: [i ->
-      wrongElement = elems at: (i * 2 + 3)
+    wrongValueIndexMaybe = wrongValueIndex
+    wrongValueIndexMaybe ifNotNull: [wrongValueIndexValue ->
+      wrongElement = elems at: (wrongValueIndexValue * 2 + 3)
       db addErrorMessage: (ErrorWrongArgType tok: this token
                             msg: "Wrong type of $wrongElement element, $second value type expected")
     ]
@@ -613,47 +709,52 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     mapType = db addCollectionInstantiationIfAbsent: (MapT k: first v: second)
 
     MapLiteralT
-      :token
+      token: token
       elements: typedBody
-      typeInfo: mapType toTypeInfoDefault
+      typeInfo: (TypeInfo t: mapType isMut: isMutable listOfErrors: {})
   ]
-  | ListLiteral | SetLiteral => [
-    this elements unTypedBody isEmpty ? [
+  | CollectionLiteral => [
+    this elements unTypedBody isEmpty ifTrue: [
       // if expectedType is null then error, if not then
       //
-      expectedCollectionType =
-        expectedType unpack: [t ->
-          | t
-          | NullableT => t v
+      expectedTypeMaybe = expectedType
+      expectedCollectionType = | expectedTypeMaybe
+        | null => null
+        |=> [
+          | expectedTypeMaybe
+          | NullableT => expectedTypeMaybe v
           | Unknown => null
-          |=> t
-        ] or: null
+          |=> expectedTypeMaybe
+        ]
 
       | expectedCollectionType
-      | null => TO DO: "Can't infer type of the ListLiteral | SetLiteral without elements"
+      | null => TO DO: "Can't infer type of the ListLiteral | SetLiteral without elements at " + token file path + ":" + token line toString
       |=> [
         | expectedCollectionType
         | ListT => [
           typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
           db addCollectionInstantiationIfAbsent: expectedCollectionType
-          ^ ListLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
+          ^ ListLiteralT token: token elements: typedBody typeInfo: (TypeInfo t: expectedCollectionType isMut: isMutable listOfErrors: {})
         ]
         | SetT => [
           typedBody = TypedBody v: {} t: db dtc unit listOfErrors: {}
           db addCollectionInstantiationIfAbsent: expectedCollectionType
-          ^ SetLiteralT :token elements: typedBody typeInfo: expectedCollectionType toTypeInfoDefault
+          ^ SetLiteralT token: token elements: typedBody typeInfo: (TypeInfo t: expectedCollectionType isMut: isMutable listOfErrors: {})
         ]
-        |=> [TO DO: "Expected List|Set for empty collection, got " + expectedCollectionType toString]
+        |=> [TO DO: "Expected List|Set for empty collection, got " + expectedCollectionType toString + " at " + token file path + ":" + token line toString]
 
       ]
     ]
-    expectedElem = expectedType unpack: [ et ->
-      unwrapped = et unwrapNullable
+    expectedTypeMaybe = expectedType
+    expectedElem = | expectedTypeMaybe
+      | null => null
+      |=> [
+      unwrapped = expectedTypeMaybe unwrapNullable
       | unwrapped
       | ListT => unwrapped t
       | SetT => unwrapped t
       |=> null
-    ] or: null
+    ]
 
     typedBody = elements
       resolveCollectionElements: db
@@ -667,54 +768,63 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     // Reuse the same common-union-root merge used for match return types.
     mergedElementType = db mergeTypesByUnion: typesOfElems
     f = | mergedElementType
-        | null => typesOfElems first
+        | null => [
+          typesOfElems isEmpty ifTrue: [
+            expectedElemMaybe = expectedElem
+            | expectedElemMaybe
+            | null => typesOfElems first
+            |=> expectedElemMaybe
+          ] ifFalse: [typesOfElems first]
+        ]
         |=> mergedElementType
     numberOfWrongElementType = | mergedElementType
       | null => f sameTypeAsMany: (typesOfElems drop: 1)
       |=> null
-    numberOfWrongElementType unpack: [
-      wrongElement = elems at: it
+    wrongElementIndex = numberOfWrongElementType
+    wrongElementIndex ifNotNull: [wrongElementIndexValue ->
+      wrongElement = elems at: wrongElementIndexValue
       db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wrong type of $wrongElement element, $f type expected")
     ]
 
-    astType =
-      | this
-      | ListLiteral => [
-        newType = db addCollectionInstantiationIfAbsent: (ListT t: f)
-        ListLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
-      ]
-      | SetLiteral => [
+    astType = token kind == TokenType.OpenParenHash
+      ifTrue: [
         newType = db addCollectionInstantiationIfAbsent: (SetT t: f)
-        SetLiteralT :token elements: typedBody typeInfo: newType toTypeInfoDefault
+        SetLiteralT token: token elements: typedBody typeInfo: (TypeInfo t: newType isMut: isMutable listOfErrors: {})
       ]
-      | MapLiteral => [TO DO:"Impossible, we are inside ListLiteral | SetLiteral, but niva dont shrinc enougth"]
+      ifFalse: [
+        newType = db addCollectionInstantiationIfAbsent: (ListT t: f)
+        ListLiteralT token: token elements: typedBody typeInfo: (TypeInfo t: newType isMut: isMutable listOfErrors: {})
+      ]
 
-      astType
-  ]
+    astType
+    ]
   | UnaryMsg   => [
     isFullInfo = selector name == "infoFull"
     (selector name == "info") || isFullInfo ifTrue: [
       receiverTyped = receiver toTypedExprFromDb2: db withContext: c
       (db compileTimeInfoFor: receiverTyped typeInfo t showSourceLocations: isFullInfo) echo
-      ^ UnitExprT :token typeInfo: db dtc unit toTypeInfoDefault
+      ^ UnitExprT token: token typeInfo: db dtc unit toTypeInfoDefault
     ]
-    ^ .resolveUnaryFromDb2: db withContext: c
+    ^ this resolveUnaryFromDb2: db withContext: c
   ]
   | BinaryMsg  => [
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: binary without args"]
-    ^ .replaceArgsWithTypedfromDb2: db withContext: c
+    ^ this replaceArgsWithTypedfromDb2: db withContext: c
   ]
   | KeywordMsg =>[
     this args isEmpty, ifTrue: [TO DO: "Compiler bug: keyword without args is like a single identifier"]
-    ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: expectedType
+    ^ this resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: expectedType
   ]
 
   | ImmutableCopyUpdate => [
     typedTarget = target resolveUnaryFromDb2: db withContext: c
     invalidGetter = typedTarget firstNonGetterInCopyUpdate
-    invalidGetter unpack: [badToken ->
+    invalidGetterMaybe = invalidGetter
+    | invalidGetterMaybe
+    | null => typedTarget
+    |=> [
       value toTypedExprFromDb2: db withContext: c
-      db addErrorFromTok: badToken withMsg: "Immutable copy update path can contain only unary getters"
+      db addErrorFromTok: invalidGetterMaybe withMsg: "Immutable copy update path can contain only unary getters"
       ^ typedTarget
     ]
 
@@ -726,17 +836,22 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
 
     mut declaredType::NivaType? = null
     mut declaredTypeInfo::TypeInfo? = null
-    this astType unpack: [ declaredAstType ->
-      nivaType = declaredAstType toNivaTypefromDB: db inPkg: null
-      errorsList = declaredAstType toErrorsFromDb: db inPkg: null
+    declaredAstTypeMaybe = this astType
+    | declaredAstTypeMaybe
+    | null => ()
+    |=> [
+      nivaType = declaredAstTypeMaybe toNivaTypefromDB: db inPkg: null
       declaredType <- nivaType
-      declaredTypeInfo <- (TypeInfo t: nivaType isMut: isMut listOfErrors: errorsList)
+      declaredTypeInfo <- declaredAstTypeMaybe toTypeInfoFromDb: db inPkg: null
     ]
 
     typedExpr = this value toTypedExprFromDb2: db withContext: c expectedType: declaredType
 
-    declaredType unpack: [ nivaType ->
-      db isAssignable: typedExpr typeInfo t toExpected: nivaType,
+    declaredTypeMaybe = declaredType
+    | declaredTypeMaybe
+    | null => ()
+    |=> [
+      db isAssignable: typedExpr typeInfo t toExpected: declaredTypeMaybe,
         ifFalse: [
           valName = name
           astTypeName = declaredType toString
@@ -745,7 +860,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         ]
     ]
 
-    varTypeInfo = declaredTypeInfo unpackOrValue: typedExpr typeInfo
+    declaredTypeInfoMaybe = declaredTypeInfo
+    varTypeInfo = | declaredTypeInfoMaybe
+      | null => typedExpr typeInfo
+      |=> declaredTypeInfoMaybe
     untypedValue = this value
     valueIsTry = | untypedValue
                  | UnaryMsg => untypedValue selector name == "try"
@@ -758,13 +876,13 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     isVarUsed = c currentBlockRefNames contains: name
 
     VarDeclarationT
-      :name
-      value: typedExpr
-      :astType
-      :token
-      :isMut
-      isUsed: isVarUsed
+      token: token
       typeInfo: (TypeInfo t: db dtc unit isMut: false listOfErrors: typedExpr typeInfo listOfErrors)
+      name: name
+      value: typedExpr
+      astType: astType
+      isMut: isMut
+      isUsed: isVarUsed
 
   ]
   | Assign => [
@@ -778,7 +896,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                   |=>       AssignKind.TO_THIS_FIELD
               ]
 
-      AssignT :name value: (value toTypedExprFromDb2: db withContext: c) :token typeInfo: db dtc unit toTypeInfoDefault :kind
+    AssignT token: token typeInfo: db dtc unit toTypeInfoDefault name: name value: (value toTypedExprFromDb2: db withContext: c) kind: kind
   ]
   | DestructingAssign => [
     typedValue = value toTypedExprFromDb2: db withContext: c
@@ -807,36 +925,61 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ]
 
     DestructingAssignT
+      token: token
+      typeInfo: db dtc unit toTypeInfoDefault
       bindings: typedBindings
       value: typedValue
-      :token
-      typeInfo: db dtc unit toTypeInfoDefault
   ]
   | ReturnStatement =>[
-    valueT = value unpack: [expr -> expr toTypedExprFromDb2: db withContext: c expectedType: expectedType] or: null
+    valueMaybe = value
+    expectedReturnTypeMaybe = c allowsNonLocalReturn
+      ifTrue: [c currentReturnType]
+      ifFalse: [expectedType]
+    valueT = | valueMaybe
+      | null => null
+      |=> valueMaybe toTypedExprFromDb2: db withContext: c expectedType: expectedReturnTypeMaybe
+    (c hasNonInlineLambdaBoundary && (c allowsNonLocalReturn not)) ifTrue: [
+      nonInlineReturnError::ResolveErrors = LazyError tok: token msg: "non-local return requires an inline function"
+      db addErrorMessage: nonInlineReturnError
+      db addNonInlineReturnError: token error: nonInlineReturnError
+    ]
+    c allowsNonLocalReturn ifTrue: [
+      outerReturnTypeMaybe = c currentReturnType
+      | outerReturnTypeMaybe
+      | null => ()
+      |=> [
+        returnValueType = | valueT
+          | null => db dtc unit
+          |=> valueT typeInfo t
+        db isAssignable: returnValueType toExpected: outerReturnTypeMaybe, ifFalse: [
+          db addErrorMessage: (ErrorWrongArgType
+            tok: token
+            msg: "non-local return expects " + outerReturnTypeMaybe toString + " but got " + returnValueType toString)
+        ]
+      ]
+    ]
     returnInfo =
-      | valueT
-      | null => db dtc unit toTypeInfoDefault
-      |=> valueT typeInfo
+      c allowsNonLocalReturn ifTrue: [
+        expectedReturnTypeMaybe = expectedType
+        | expectedReturnTypeMaybe
+        | null => db dtc unit toTypeInfoDefault
+        |=> expectedReturnTypeMaybe toTypeInfoDefault
+      ] ifFalse: [
+        | valueT
+        | null => db dtc unit toTypeInfoDefault
+        |=> valueT typeInfo
+      ]
 
-    ReturnStatementT value: valueT
-                     :token
+    ReturnStatementT token: token
                      typeInfo: returnInfo
+                     value: valueT
   ]
 
   | CodeBlock => [
-    c = Context fromParent: c
+    c = Context fromParent: c allowsNonLocalReturn: false
 
-    typeTFields = args isNotEmpty
-      ifTrue: [
-        args map: [
-          {name astType} = it
-          t = astType toNivaTypefromDB: db inPkg: null
-          errorsList = astType toErrorsFromDb: db inPkg: null
-          c defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-          TypeTField name: name typeT: t isMut: false
-        ]
-      ]
+    typeTFields::List(TypeTField) = args isNotEmpty
+      ifTrue: [c typedBlockArgFields: args fromDB: db]
       ifFalse: [
         untypedArgs isNotEmpty
           ifTrue: [
@@ -846,31 +989,37 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
               TypeTField name: ident name typeT: unresolvedT isMut: false
             ]
           ]
-          ifFalse: [{}]
+          ifFalse: [
+            noTypeTFields::List(TypeTField) = {}
+            noTypeTFields
+          ]
       ]
 
     genericList = typeTFields
                     filter: [
-                      {typeT} = it
+                      typeT = it typeT
                       | typeT
                       | UnresolvedGenericT => [true]
                       |=> [false]
                     ],
                     map: [it typeT]
 
-    typedUntypedArgs = untypedArgs isNotEmpty
+    typedUntypedArgs::List(IdentifierT) = untypedArgs isNotEmpty
       ifTrue: [
         untypedArgs mapIndexed: [i, ident ->
           typeField = typeTFields at: i
           IdentifierT
-            name: ident name
-            path: ident path
             token: ident token
             typeInfo: typeField typeT toTypeInfoDefault
+            name: ident name
+            path: ident path
             isNameOfTheType: false
         ]
       ]
-      ifFalse: [{}]
+      ifFalse: [
+        noTypedArgs::List(IdentifierT) = {}
+        noTypedArgs
+      ]
 
 
     typedBody = body resolveBody2: db withContext: c
@@ -884,16 +1033,17 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ifFalse: [""]
       ]
 
-    CodeBlockT :args typedArgs: typedUntypedArgs
-      body: typedBody
-      :token
+    CodeBlockT token: token
       typeInfo: (FuntionT
-                  fields: typeTFields toMutableList
-                  returnType: returnType
-                  returnErrors: typedBody listOfErrors
-                  genericArgs: genericList toMutableList
                   name: name
-                  pkgName: c currentPkg name) toTypeInfoDefault
+                  pkgName: c currentPkg name
+                  fields: typeTFields toMutableList
+                  genericArgs: genericList toMutableList
+                  returnType: returnType
+                  returnErrors: typedBody listOfErrors) toTypeInfoDefault
+      args: args
+      typedArgs: typedUntypedArgs
+      body: typedBody
   ]
   | Match     => [
 
@@ -915,8 +1065,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     //// resolve branches ////
 
     // type narrowing to non-nullable inside else branch
-    elseBranchT =
-      rawElseBranch unpack: [elseBody ->
+    rawElseBranchMaybe = rawElseBranch
+    elseBranchT = | rawElseBranchMaybe
+      | null => null
+      |=> [
         mut elseContext = c
         isErrorMatch ifTrue: [
           elseContext <- Context fromParent: c
@@ -935,9 +1087,9 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ]
         ]
         |=> []
-        typedElseBody = elseBody resolveBody2: db withContext: elseContext expectedType: expectedType
+        typedElseBody = rawElseBranchMaybe resolveBody2: db withContext: elseContext expectedType: expectedType
         typedElseBody
-      ] or: null
+      ]
 
 
     returnTypes::mut List(NivaType) = {}!
@@ -959,10 +1111,33 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         |=> false
 
       conditionTypeInfo = conditionT typeInfo
+      // alternatives of this branch share one body so they are resolved
+      // before the subject is narrowed, they all match the original subject
+      conditionsT = br additionalConditions resolveBody2: db withContext: contextIfThisMatching
+      patternsTypeInfo::mut List(TypeInfo) = {conditionTypeInfo}!
+      conditionsT v forEach: [it -> patternsTypeInfo add: (it typeInfo)]
       mut narrowedTypeInfo = conditionTypeInfo
+      mut subjectTypeInfo = conditionTypeInfo
       (isTypeBranch && (isErrorMatch not)) ifTrue: [
         conditionType = conditionTypeInfo t
-        | conditionType
+        // many patterns on one line narrow the subject to the first common
+        // ancestor of all of them, not to the first pattern
+        mut narrowedSubjectType = conditionType
+        (patternsTypeInfo count > 1) ifTrue: [
+          patternsTypeTs = patternsTypeInfo map: [it t]
+          ancestorMaybe = db findFirstCommonUnionAncestor: patternsTypeTs
+          | ancestorMaybe
+          | null => [
+            names = patternsTypeTs joinWith: ", " transform: [it name]
+            db addErrorMessage: (LazyError tok: br condition token msg: ("Cant find common ancestor of " + names))
+          ]
+          |=> [
+            ancestorType::NivaType = ancestorMaybe
+            narrowedSubjectType <- ancestorType
+          ]
+        ]
+        narrowedFrom = narrowedSubjectType
+        | narrowedFrom
         | TypeT => [
           | subjectType
           | TypeT => [
@@ -972,21 +1147,25 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
               conditionType collectGenericMappingsFrom: subjectType into: letterToType db: db
             ] ifFalse: [
               parentMaybe = db findUnionParent: subjectType
-              genericSource = parentMaybe unpackOrValue: subjectType
+              genericSource = parentMaybe orElse: subjectType
               ((genericSource genericArgs count) == (subjectType genericArgs count)) ifTrue: [
                 genericSource genericArgs forEachIndexed: [i, g ->
                   letterToType at: g name put: (subjectType genericArgs at: i)
                 ]
               ]
             ]
-            letterToType isNotEmpty ifTrue: [
+            (letterToType count > 0) ifTrue: [
               narrowed = conditionType replaceGenericsFromTableDeep: letterToType db: db
               narrowedTypeInfo <- TypeInfo t: narrowed isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+              narrowedSubjectType <- narrowedFrom replaceGenericsFromTableDeep: letterToType db: db
             ]
           ]
           |=> []
         ]
         |=> []
+        (narrowedSubjectType sameTypeAs: conditionType) ifFalse: [
+          subjectTypeInfo <- TypeInfo t: narrowedSubjectType isMut: conditionTypeInfo isMut listOfErrors: conditionTypeInfo listOfErrors
+        ]
       ]
       conditionForBranch =
         (isTypeBranch && (isErrorMatch not))
@@ -994,10 +1173,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             | conditionT
             | IdentifierT => [
               IdentifierT
-                name: conditionT name
-                path: conditionT path
                 token: conditionT token
                 typeInfo: narrowedTypeInfo
+                name: conditionT name
+                path: conditionT path
                 isNameOfTheType: conditionT isNameOfTheType
             ]
             |=> conditionT
@@ -1011,12 +1190,12 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             | subjectT
             | IdentifierT => [
               (subjectT isNameOfTheType || (subjectT name == "this")) ifFalse: [
-                newC defineVar: subjectT name withType: narrowedTypeInfo
+                newC defineVar: subjectT name withType: subjectTypeInfo
               ]
             ]
             |=> []
             isMatchingOnThis ifTrue: [
-              newC defineVar: "this" withType: narrowedTypeInfo
+              newC defineVar: "this" withType: subjectTypeInfo
             ]
             newC
           ]
@@ -1031,8 +1210,6 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
           ]
           ifFalse: [contextWithNarrowedSubject]
 
-      conditionsT = br additionalConditions resolveBody2: db withContext: contextWithNarrowedSubject
-
       bodyT = br body resolveBody2: db withContext: contextForBody expectedType: expectedType
       returnTypes add: bodyT t
 
@@ -1041,8 +1218,10 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                    body: bodyT
     ]
 
-    elseBranchT unpack: [
-      returnTypes add: it t
+    elseBranchTMaybe = elseBranchT
+    elseBranchTMaybe ifNotNull: [elseBranchTValue ->
+      returnTypes add: elseBranchTValue t
+      ()
     ]
 
     matchType =
@@ -1067,16 +1246,16 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       branch additionalConditions listOfErrors forEach: [matchErrors add: it]
       branch body listOfErrors forEach: [matchErrors add: it]
     ]
-    elseBranchT unpack: [
-      it listOfErrors forEach: [matchErrors add: it]
-    ]
+    | elseBranchTMaybe
+    | null => []
+    |=> elseBranchTMaybe listOfErrors forEach: [matchErrors add: it]
 
     newAst = MatchT
+      token: token
+      typeInfo: (TypeInfo t: matchType isMut: false listOfErrors: (matchErrors normalizeErrorList))
       subject: subjectT
       branches: branchesT
       elseBranch: elseBranchT
-      token: token
-      typeInfo: (TypeInfo t: matchType isMut: false listOfErrors: (matchErrors normalizeErrorList))
 
     // union exhaustiveness check
     db checkUnionMatchExhaustiveness: (subjectT typeInfo t) branches: branchesT elseBranch: elseBranchT token: token

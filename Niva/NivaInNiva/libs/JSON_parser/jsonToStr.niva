@@ -22,7 +22,7 @@ JArray arrToJson -> String = [
     b = StringBuilder new
     list forEachIndexed: [ i, it ->
       b append: it toJsonStr
-      i + 1 != list count => b append: ", "
+      (i + 1 != list count) ifTrue: [b append: ", "]
     ]
     b toString
   ]
@@ -40,7 +40,7 @@ JObject objectToJson -> String = [
       b append: k packForJson,
         append: ": ",
         append: v toJsonStr
-      i + 1 != map count => b append: ", "
+      (i + 1 != map count) ifTrue: [b append: ", "]
 
       i <- i inc
     ]

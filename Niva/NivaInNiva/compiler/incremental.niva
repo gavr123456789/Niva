@@ -14,8 +14,8 @@ constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revisi
 constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int
     entryPoint(entryPoint): String documentVersions(documentVersions): Map(String, Int)
     -> WorkspaceSnapshot =
-  WorkspaceSnapshot :revision sources: (sources sortedBy: [it moduleId])
-    :documentVersions :entryPoint
+  WorkspaceSnapshot revision: revision sources: (sources sortedBy: [it moduleId])
+    documentVersions: documentVersions entryPoint: entryPoint
 
 WorkspaceSnapshot sourceFor(moduleId): String -> NivaSourceInput? =
   sources find: [it moduleId == moduleId]
@@ -33,18 +33,20 @@ CompilerConfigFingerprint resolutionKey -> String =
   compilerVersion + "|" + irSchema + "|" + coreAbiHash
 
 CompilerConfigFingerprint backendKey -> String =
-  .resolutionKey + "|" + backend + "|" + target + "|" + abiOptions +
+  this resolutionKey + "|" + backend + "|" + target + "|" + abiOptions +
     "|" + (hotReload ifTrue: ["hot-reload"] ifFalse: ["program"])
 
 IrTypeRefKind incrementalStableName -> String =
-  | this
-  | IrTypeRefKind.Builtin => "builtin"
-  | IrTypeRefKind.Custom => "custom"
-  | IrTypeRefKind.Function => "function"
+  this == IrTypeRefKind.Builtin ifTrue: ["builtin"] ifFalse: [
+    this == IrTypeRefKind.Custom ifTrue: ["custom"] ifFalse: ["function"]
+  ]
 
 IrTypeRef canonicalInterfaceString -> String = [
   argsPart = args joinWith: "," transform: [it canonicalInterfaceString]
-  returnPart = returnType unpack: [it canonicalInterfaceString] or: "-"
+  returnTypeMaybe = returnType
+  returnPart = | returnTypeMaybe
+    | null => "-"
+    |=> returnTypeMaybe canonicalInterfaceString
   errorsPart = errors map: [it canonicalInterfaceString], sortedBy: [it], joinWith: ","
   kind incrementalStableName + ":" + ownerPkg + ":" + typeId +
     "<" + argsPart + ">->" + returnPart + "!" + errorsPart +
@@ -92,7 +94,7 @@ IrPackage canonicalInterfaceString -> String = [
   parts joinWith: "\n"
 ]
 
-IrPackage apiHash -> String = Sha256 digest: .canonicalInterfaceString
+IrPackage apiHash -> String = Sha256 digest: (this canonicalInterfaceString)
 
 type IncrementalModuleState
   moduleId: String
@@ -125,14 +127,14 @@ constructor CompilerSession empty -> CompilerSession =
 Map(String, IncrementalDependencyTargets) incrementalReverseGraph -> Map(String, IncrementalDependencyTargets) = [
   reverseLists::mut Map(String, IncrementalDependencyTargets) = #{}!
   this forEach: [moduleId, targets ->
-    (reverseLists at: moduleId) == null ifTrue: [
+    (reverseLists containsKey: moduleId) ifFalse: [
       reverseLists at: moduleId put: (IncrementalDependencyTargets values: {})
     ]
     targets values forEach: [target ->
       dependantsMaybe = reverseLists at: target
       dependants::List(String) =
         | dependantsMaybe
-        | null => {String}
+        | null => {}
         |=> dependantsMaybe values
       newValues = (dependants + {moduleId}) toSet toList sortedBy: [it]
       reverseLists at: target put: (IncrementalDependencyTargets values: newValues)
@@ -148,8 +150,9 @@ Set(String) incrementalTransitiveDependants(reverseGraph): Map(String, Increment
   [index < queue count] whileTrue: [
     current = queue at: index
     index <- index + 1
-    reverseGraph at: current, unpack: [dependants ->
-      dependants values sortedBy: [it], forEach: [dependant ->
+    dependantsMaybe = reverseGraph at: current
+    dependantsMaybe ifNotNull: [dependantsValue ->
+      dependantsValue values sortedBy: [it], forEach: [dependant ->
         result contains: dependant, ifFalse: [
           result add: dependant
           queue add: dependant
@@ -160,12 +163,14 @@ Set(String) incrementalTransitiveDependants(reverseGraph): Map(String, Increment
   result
 ]
 
-Set(String) CompilerSession bodyModulesFor(snapshot): WorkspaceSnapshot apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> Set(String) = [
+CompilerSession bodyModulesFor(snapshot): WorkspaceSnapshot apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> Set(String) = [
   result::mut Set(String) = #()!
 
   apiHashes forEach: [moduleId, newApiHash ->
     source = snapshot sourceFor: moduleId
-    sourceHash = source unpack: [Sha256 digest: it content] or: (Sha256 digest: "")
+    sourceHash = | source
+      | null => Sha256 digest: ""
+      |=> Sha256 digest: source content
     old = modules at: moduleId
     | old
     | null => result add: moduleId
@@ -185,13 +190,16 @@ Set(String) CompilerSession bodyModulesFor(snapshot): WorkspaceSnapshot apiHashe
   changedInterfaces::mut Set(String) = #()!
   apiHashes forEach: [moduleId, newApiHash ->
     old = modules at: moduleId
-    old unpack: [oldState ->
-      oldState apiHash != newApiHash ifTrue: [changedInterfaces add: moduleId]
-    ]
+    | old
+    | null => []
+    |=> old apiHash != newApiHash ifTrue: [changedInterfaces add: moduleId]
   ]
   result addAll: (changedInterfaces incrementalTransitiveDependants: reverseDependencies)
 
-  resolutionChanged = compilerConfig unpack: [it resolutionKey != config resolutionKey] or: true
+  compilerConfigMaybe = compilerConfig
+  resolutionChanged = | compilerConfigMaybe
+    | null => true
+    |=> compilerConfigMaybe resolutionKey != config resolutionKey
   resolutionChanged ifTrue: [apiHashes forEach: [moduleId, ignored -> result add: moduleId]]
   result
 ]
@@ -222,17 +230,20 @@ CompilerCandidate emitBackend -> CompilerBackendArtifact = [
   cljMode = compilerConfig hotReload
     ifTrue: [CljEmitMode.HotReload]
     ifFalse: [CljEmitMode.Program]
-  content =
-    | backend
-    | "clj" => [CljBackend fullFromIrModule: irModule debug: false mode: cljMode]
-    |=> [TO DO: "incremental backend is not available for " + backend]
+  content = backend == "clj" ifTrue: [
+    CljBackend fullFromIrModule: irModule debug: false mode: cljMode
+  ] ifFalse: [
+    TO DO: "incremental backend is not available for " + backend
+    ""
+  ]
   cljTarget = compilerConfig target == "bb"
     ifTrue: [CljTarget.Bb]
     ifFalse: [CljTarget.Jvm]
-  output = backend == "clj"
-    ifTrue: [CljBackend fullOutputFromIrModuleForTarget: irModule
-      debug: false mode: cljMode target: cljTarget]
-    ifFalse: [null]
+  mut output::CljOutput? = null
+  backend == "clj" ifTrue: [
+    output <- CljBackend fullOutputFromIrModuleForTarget: irModule
+      debug: false mode: cljMode target: cljTarget
+  ]
   CompilerBackendArtifact
     backend: backend
     target: compilerConfig target
@@ -240,7 +251,7 @@ CompilerCandidate emitBackend -> CompilerBackendArtifact = [
     cljOutput: output
 ]
 
-CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(specializationUses): Map(String, Set(String)) apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(candidateSpecializationUses): Map(String, Set(String)) apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   newDependencies::mut Map(String, IncrementalDependencyTargets) = #{}!
   ir packages forEach: [pkg ->
     newDependencies at: pkg name put: (IncrementalDependencyTargets values: pkg dependencyPackageNames)
@@ -253,13 +264,19 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
   interfaceInvalidated::mut Set(String) = #()!
   specializationInvalidated::mut Set(String) = #()!
 
-  configResolutionChanged = compilerConfig unpack: [it resolutionKey != config resolutionKey] or: true
-  configBackendChanged = compilerConfig unpack: [it backendKey != config backendKey] or: true
+  compilerConfigMaybe = compilerConfig
+  configResolutionChanged = | compilerConfigMaybe
+    | null => true
+    |=> compilerConfigMaybe resolutionKey != config resolutionKey
+  configBackendChanged = | compilerConfigMaybe
+    | null => true
+    |=> compilerConfigMaybe backendKey != config backendKey
 
   ir packages forEach: [pkg ->
-    sourceHash = snapshot sourceFor: pkg name,
-      unpack: [Sha256 digest: it content]
-      or: (Sha256 digest: "")
+    sourceMaybe = snapshot sourceFor: pkg name
+    sourceHash = | sourceMaybe
+      | null => Sha256 digest: ""
+      |=> Sha256 digest: sourceMaybe content
     oldState = modules at: pkg name
     | oldState
     | null => [
@@ -268,7 +285,14 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
       ]
     |=> [
       oldState sourceHash != sourceHash ifTrue: [sourceInvalidated add: pkg name]
-      oldState apiHash != (newApiHashes at: pkg name, unpackOrPANIC) ifTrue: [interfaceInvalidated add: pkg name]
+      currentApiMaybe = newApiHashes at: pkg name
+      currentApi = | currentApiMaybe
+        | null => [
+          TO DO: "Missing API hash for $pkg name"
+          ""
+        ]
+        |=> currentApiMaybe
+      oldState apiHash != currentApi ifTrue: [interfaceInvalidated add: pkg name]
     ]
   ]
 
@@ -280,12 +304,18 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
   ]
 
   specializationKeys::mut Set(String) = #()!
-  specializationUses forEach: [key, contributors -> specializationKeys add: key]
+  candidateSpecializationUses forEach: [key, contributors -> specializationKeys add: key]
   this specializationUses forEach: [key, contributors -> specializationKeys add: key]
   specializationKeys forEach: [key ->
-    oldContributors = this specializationUses at: key, unpack: [it toList sortedBy: [it]] or: {}
-    newContributors = specializationUses at: key, unpack: [it toList sortedBy: [it]] or: {}
-    oldContributors != newContributors ifTrue: [
+    oldContributorsMaybe = this specializationUses at: key
+    oldContributors::List(String) = | oldContributorsMaybe
+      | null => {}
+      |=> oldContributorsMaybe toList sortedBy: [it]
+    newContributorsMaybe = candidateSpecializationUses at: key
+    newContributors::List(String) = | newContributorsMaybe
+      | null => {}
+      |=> newContributorsMaybe toList sortedBy: [it]
+    (oldContributors toString) != (newContributors toString) ifTrue: [
       owner = key substringBefore: "|"
       specializationInvalidated add: owner
     ]
@@ -297,7 +327,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
     combinedMaybe = allReverse at: key
     combined::List(String) =
       | combinedMaybe
-      | null => {String}
+      | null => {}
       |=> combinedMaybe values
     allReverse at: key put: (IncrementalDependencyTargets
       values: ((combined + values values) toSet toList sortedBy: [it]))
@@ -316,14 +346,23 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
 
   newModules::mut Map(String, IncrementalModuleState) = #{}!
   ir packages forEach: [pkg ->
-    sourceHash = snapshot sourceFor: pkg name,
-      unpack: [Sha256 digest: it content]
-      or: (Sha256 digest: "")
+    sourceMaybe = snapshot sourceFor: pkg name
+    sourceHash = | sourceMaybe
+      | null => Sha256 digest: ""
+      |=> Sha256 digest: sourceMaybe content
     depApi = pkg dependencyPackageNames map: [dep ->
-      newApiHashes at: dep, unpackOrValue: "<missing>"
+      depApiMaybe = newApiHashes at: dep
+      depApiMaybe orElse: "<missing>"
     ], joinWith: "|"
+    currentApiMaybe = newApiHashes at: pkg name
+    currentApi = | currentApiMaybe
+      | null => [
+        TO DO: "Missing API hash for $pkg name"
+        ""
+      ]
+      |=> currentApiMaybe
     specializationParts::mut List(String) = {}!
-    specializationUses forEach: [key, contributors ->
+    candidateSpecializationUses forEach: [key, contributors ->
       key startsWith: (pkg name + "|"), ifTrue: [
         specializationParts add: (key + "=" + (contributors toList sortedBy: [it], joinWith: ","))
       ]
@@ -331,7 +370,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
     state = IncrementalModuleState
       moduleId: pkg name
       sourceHash: sourceHash
-      apiHash: (newApiHashes at: pkg name, unpackOrPANIC)
+      apiHash: currentApi
       dependencyApiHash: (Sha256 digest: depApi)
       dependencies: pkg dependencyPackageNames
       specializationHash: (Sha256 digest: (specializationParts sortedBy: [it], joinWith: "|"))
@@ -339,19 +378,30 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule s
     oldState = modules at: pkg name
     canReuse = (outputInvalidated contains: pkg name, not) && (oldState != null)
     canReuse
-      ifTrue: [newModules at: pkg name put: oldState unpackOrPANIC]
+      ifTrue: [
+        oldStateMaybe = oldState
+        | oldStateMaybe
+        | null => [
+          TO DO: "Missing prior module state for $pkg name"
+          ()
+        ]
+        |=> newModules at: pkg name put: oldStateMaybe
+      ]
       ifFalse: [newModules at: pkg name put: state]
+  ]
+
+  mut cljManifestMaybe::CljManifest? = null
+  config backend == "clj" ifTrue: [
+    cljManifestMaybe <- CljBackend manifestFromIrModule: ir
   ]
 
   CompilerCandidate
     baseRevision: revision snapshot: snapshot modules: newModules irModule: ir
     dependencies: newDependencies reverseDependencies: newReverse
-    specializationUses: specializationUses compilerConfig: config
+    specializationUses: candidateSpecializationUses compilerConfig: config
     sourceInvalidated: sourceInvalidated interfaceInvalidated: interfaceInvalidated
     bodyInvalidated: bodyInvalidated outputInvalidated: outputInvalidated
-    cljManifest: (config backend == "clj"
-      ifTrue: [CljBackend manifestFromIrModule: ir]
-      ifFalse: [null])
+    cljManifest: cljManifestMaybe
 ]
 
 CompilerSession commit(candidate): CompilerCandidate -> CompilerSession =
@@ -391,20 +441,40 @@ CompilerSession compilationFailure(requestVersion): Int diagnostics: List(Compil
     requestVersion: requestVersion candidate: null backendArtifact: null
     diagnostics: diagnostics cancelled: false
 
-CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container -> CljGenerationResult = [
+CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container hotReload(hotReload): Bool -> CljGenerationResult = [
   | true
-  | .commitReady not => CljGenerationResult notPublished
+  | this commitReady not => CljGenerationResult notPublished
   |=> [
-    artifact = backendArtifact unpackOrPANIC
-    output = artifact cljOutput unpackOrPANIC
-    output publishTo: root withIO: io
+    artifactMaybe = backendArtifact
+    | artifactMaybe
+    | null => [
+      TO DO: "Clj compilation result has no backend artifact"
+      CljGenerationResult notPublished
+    ]
+    |=> [
+      cljOutputMaybe = artifactMaybe cljOutput
+      | cljOutputMaybe
+      | null => [
+        TO DO: "Clj backend artifact has no output"
+        CljGenerationResult notPublished
+      ]
+      |=> cljOutputMaybe publishTo: root withIO: io hotReload: hotReload
+    ]
   ]
 ]
 
 CompilerSession commitResult(result): CompilerCompilationResult -> CompilerSession =
   | true
   | result commitReady not => this
-  |=> this commit: result candidate unpackOrPANIC
+  |=> [
+    candidateMaybe = result candidate
+    | candidateMaybe
+    | null => [
+      TO DO: "Ready compiler result has no candidate"
+      this
+    ]
+    |=> this commit: candidateMaybe
+  ]
 
 CompilerSession commitResult(result): CompilerCompilationResult incremental(incremental): Bool -> CompilerSession =
   | true
@@ -419,14 +489,12 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver)
     isGeneric = genericFunctionIds any: [key contains: ("|" + it + "|")]
     isGeneric ifTrue: [genericUses at: key put: contributors]
   ]
-  .prepareCandidate: snapshot ir: ir specializationUses: genericUses
+  this prepareCandidate: snapshot ir: ir specializationUses: genericUses
       apiHashes: resolver interfaceApiHashes config: config
 ]
 
 CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot bodyResolver(bodyResolver): ResolverHelper bodyModules(bodyModules): Set(String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
   apiHashes = interfaceSnapshot interfaceApiHashes
-  bodyModules = this bodyModulesFor: snapshot apiHashes: apiHashes config: config
-  bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
   bodyIr = bodyResolver toIrModule
 
   // Keep the last typed/IR result for modules outside the body frontier.  The
@@ -499,15 +567,19 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
       candidate = this prepareCandidate: snapshot interfaceSnapshot: interfaceSnapshot
         bodyResolver: bodyResolver bodyModules: bodyModules config: config
       artifact = candidate emitBackend
-      shapeChanges = config backend == "clj"
-        ifTrue: [
-          candidate cljManifest unpack: [currentManifest ->
-            cljManifest unpack: [previousManifest ->
-              currentManifest incompatibleChanges: previousManifest
-            ] or: {String}
-          ] or: {String}
+      currentManifestMaybe = candidate cljManifest
+      previousManifestMaybe = cljManifest
+      shapeChanges::mut List(String) = {}!
+      config backend == "clj" ifTrue: [
+        currentManifestMaybe ifNotNull: [currentManifestValue ->
+          | previousManifestMaybe
+          | null => []
+          |=> [
+            shapeChanges addAll: (currentManifestValue incompatibleChanges: previousManifestMaybe)
+            ()
+          ]
         ]
-        ifFalse: [{String}]
+      ]
       shapeChanges forEach: [change ->
         diagnostics add: (CompilerDiagnostic requestVersion: requestVersion
           path: snapshot entryPoint + ".niva"

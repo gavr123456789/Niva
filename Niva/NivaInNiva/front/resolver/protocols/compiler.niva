@@ -1,0 +1,15 @@
+constructor NivaProtocol compilerFromDefaultTypes(dtc): DefaultTypesContainer -> mut Map(String, NivaMethod) = [
+  {str int compiler} = dtc
+  compilerProto = NivaProtocol name: "constructors"
+  compilerProto addMethod: (NivaMethod
+    name: "cliArgs"
+    receiverType: compiler
+    args: {}
+    returnType: (ListT t: str)
+    forMut: false
+    protocolName: "constructors"
+    pkgName: "core")
+  compilerProto addMethod: (NivaMethod unary: "getPlace" receiverType: compiler returnT: str)
+  compilerProto addMethod: (NivaMethod singleArgKw: "getName" receiverType: compiler argT: int returnT: str)
+  ^ compilerProto methods
+]

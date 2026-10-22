@@ -1,0 +1,365 @@
+// generic inline expansion at the ir level
+//
+// a method declared with ^= is expanded at every call site the callee body
+// is spliced into the caller as a block expression the receiver and arguments
+// are bound to fresh locals and every name the callee body introduces is
+// renamed so it can neither capture nor be captured by the caller scope
+// this is a hygienic macro the spliced body becomes a plain block statement
+// so ^ inside it including inside callbacks passed at the call site becomes
+// a real return from the caller
+
+type InlineCtx
+  functions: Map(String, IrFunction)
+  active: mut List(String)
+  generated: mut List(String)
+  lambdas: mut Map(String, IrLambda)
+
+constructor InlineCtx functions: Map(String, IrFunction) =
+  InlineCtx functions: functions active: {}! generated: {}! lambdas: #{}!
+
+extend InlineCtx [
+  on nextFresh -> Int = [
+    generated add: ""
+    ^ generated count
+  ]
+
+  on functionFor(id): String -> IrFunction? =
+    functions at: id
+
+  on lambdaFor(name): String -> IrLambda? =
+    lambdas at: name
+
+  on isActive(id): String -> Bool = [
+    mut found = false
+    mut i = 0
+    n = active count
+    [i < n] whileTrue: [
+      ((active at: i) == id) ifTrue: [found <- true]
+      i <- i + 1
+    ]
+    found
+  ]
+
+  on pushActive(id): String -> Unit = [
+    active add: id
+    ()
+  ]
+
+  on popActive -> Unit = [
+    active removeAt: (active count - 1)
+    ()
+  ]
+
+  // splice the callee body into the call site
+  on spliceCall(call): IrCall -> IrExpr = [
+    fidMaybe = call funcId
+    fid = fidMaybe expect: "inline call without funcId"
+    fnMaybe = functions at: fid
+    calleeFn = fnMaybe expect: "inline call to unknown function"
+    fnArgs = calleeFn args
+    actualArgs = call args
+    paramLets::mut List(IrStmt) = {}!
+    frame::mut Map(String, String) = #{}!
+    thisVar = "this" inlineFreshName: this
+
+    fnArgs forEachIndexed: [i, fnArg ->
+      isReceiver = i == 0
+      bindName = isReceiver ifTrue: [thisVar] ifFalse: [(fnArg name) inlineFreshName: this]
+      actual = actualArgs at: i
+      | actual
+      | IrLambda => [lambdas at: bindName put: actual]
+      | IrVarRef => [
+          aliasMaybe = lambdas at: (actual name)
+          | aliasMaybe
+          | null => ()
+          |=> [lambdas at: bindName put: aliasMaybe]
+        ]
+      |=> ()
+      paramLets add: (IrLet
+        token: (call token)
+        name: bindName
+        typeRef: (fnArg typeRef)
+        value: actual
+        isMut: false
+        isUsed: false)
+      frame at: (fnArg name) put: bindName
+    ]
+
+    emptyRenames::Map(String, String) = #{}
+    renames = emptyRenames withBindings: frame
+    calleeBody = calleeFn body
+    newBody = calleeBody inlineRewriteBlock: renames thisVar: thisVar doRename: true ctx: this
+
+    splicedBlock = newBody stmts: (paramLets toList + newBody stmts)
+    IrBlockExpr typeRef: (call typeRef) token: (call token) block: splicedBlock
+  ]
+]
+
+// fresh collision free name derived from an original binder name
+String inlineFreshName(ctx): InlineCtx -> String = [
+  n = ctx nextFresh
+  ^ "__niva_inline_" + (n toString) + "_" + this
+]
+
+// extend the rename environment for a nested scope the caller keeps its own
+// copy so that bindings introduced inside the scope never leak outside
+Map(String, String) withBindings(frame): Map(String, String) -> Map(String, String) =
+  this + frame
+
+IrMatchCase inlineRewriteCase(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrMatchCase = [
+  s1 = this condition: (condition inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  s2 = s1 additionalConditions: (additionalConditions map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx])
+  ^ s2 body: (body inlineRewriteBlock: renames thisVar: thisVar doRename: doRename ctx: ctx)
+]
+
+IrStmt inlineRewriteStmt(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrStmt =
+  | this
+  | IrLet | IrDestructure => this
+  | IrSetLocal => [
+      s1 = this name: ((renames at: name) orElse: name)
+      ^ s1 value: (value inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+    ]
+  | IrSetField => [
+      s1 = this receiver: (receiver inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      ^ s1 value: (value inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+    ]
+  | IrExprStmt => this expr: (expr inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrReturn => [
+      exprMaybe = expr
+      newExpr::IrExpr? = | exprMaybe
+        | null => null
+        |=> exprMaybe inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx
+      this expr: newExpr
+    ]
+  | IrWhile => [
+      s1 = this cond: (cond inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      ^ s1 body: (body inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+    ]
+  | IrThrow => this errExpr: (errExpr inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+
+IrExpr inlineRewriteExpr(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrExpr =
+  | this
+  | IrVarRef => [
+      renamed = renames at: name
+      | renamed
+      | null => this
+      |=> this name: renamed
+    ]
+  | IrThisRef => thisVar == "" ifTrue: [this] ifFalse: [IrVarRef typeRef: typeRef token: token name: thisVar]
+  | IrLiteralExpr => this
+  | IrTypeRefExpr => this
+  | IrFieldGet => this receiver: (receiver inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrCall => [
+      newArgs = args map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx]
+      calleeMaybe = callee
+      newCallee::IrExpr? = | calleeMaybe
+        | null => null
+        |=> calleeMaybe inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx
+      s1 = this args: newArgs
+      s2 = s1 callee: newCallee
+      ^ s2 inlineMaybeInline: ctx
+    ]
+  | IrLambda => [
+      newArgs::mut List(IrArg) = {}!
+      frame::mut Map(String, String) = #{}!
+      args forEach: [a ->
+        fresh = doRename ifTrue: [(a name) inlineFreshName: ctx] ifFalse: [a name]
+        newArgs add: (a name: fresh)
+        doRename ifTrue: [frame at: (a name) put: fresh]
+      ]
+      inner = doRename ifTrue: [renames withBindings: frame] ifFalse: [renames]
+      s1 = this args: newArgs toList
+      ^ s1 body: (body inlineRewriteBlock: inner thisVar: thisVar doRename: doRename ctx: ctx)
+    ]
+  | IrBlockExpr => this block: (block inlineRewriteBlock: renames thisVar: thisVar doRename: doRename ctx: ctx)
+  | IrMatchExpr => [
+      aliasName = typeAlias orElse: "it"
+      freshAlias = doRename ifTrue: [aliasName inlineFreshName: ctx] ifFalse: [aliasName]
+      frame::mut Map(String, String) = #{}!
+      doRename ifTrue: [frame at: aliasName put: freshAlias]
+      inner = doRename ifTrue: [renames withBindings: frame] ifFalse: [renames]
+      elseBranchMaybe = elseBranch
+      newElse::IrBlock? = | elseBranchMaybe
+        | null => null
+        |=> elseBranchMaybe inlineRewriteBlock: inner thisVar: thisVar doRename: doRename ctx: ctx
+      mut newAlias::String? = typeAlias
+      doRename ifTrue: [newAlias <- freshAlias]
+      s1 = this subject: (subject inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      s2 = s1 cases: (cases map: [c -> c inlineRewriteCase: inner thisVar: thisVar doRename: doRename ctx: ctx])
+      s3 = s2 elseBranch: newElse
+      s4 = s3 typeAlias: newAlias
+      ^ s4 subjectIsUnit: subjectIsUnit
+    ]
+  | IrNewExpr => this args: (args map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx])
+  | IrCollectionLiteral => this items: (items map: [it inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx])
+  | IrOpBin => [
+      s1 = this left: (left inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+      ^ s1 right: (right inlineRewriteExpr: renames thisVar: thisVar doRename: doRename ctx: ctx)
+    ]
+
+// statements to splice in place of a statement position call of a captured
+// lambda parameter returns null when the call is not such a call
+IrExpr spliceLambdaStatements(renames): Map(String, String) thisVar: String ctx: InlineCtx -> List(IrStmt)? =
+  | this
+  | IrCall => [
+      calleeMaybe = callee
+      mut out::List(IrStmt)? = null
+      | calleeMaybe
+      | IrVarRef => [
+          lambdaMaybe = ctx lambdaFor: (calleeMaybe name)
+          | lambdaMaybe
+          | null => ()
+          |=> [
+              lambdaArgs = lambdaMaybe args
+              lambdaActuals = args
+              ((lambdaArgs count) == (lambdaActuals count)) ifTrue: [
+                frame::mut Map(String, String) = #{}!
+                spliced::mut List(IrStmt) = {}!
+                lambdaArgs forEachIndexed: [i, lambdaArg ->
+                  fresh = (lambdaArg name) inlineFreshName: ctx
+                  spliced add: (IrLet
+                    token: token
+                    name: fresh
+                    typeRef: (lambdaArg typeRef)
+                    value: (lambdaActuals at: i)
+                    isMut: false
+                    isUsed: false)
+                  frame at: (lambdaArg name) put: fresh
+                ]
+                inner = renames withBindings: frame
+                newBody = (lambdaMaybe body) inlineRewriteBlock: inner thisVar: thisVar doRename: true ctx: ctx
+                (newBody stmts) forEach: [s ->
+                  spliced add: s
+                  ()
+                ]
+                resultMaybe = newBody result
+                | resultMaybe
+                | null => ()
+                |=> [
+                  spliced add: (IrExprStmt token: token expr: resultMaybe)
+                  ()
+                ]
+                out <- spliced toList
+              ]
+            ]
+        ]
+      |=> ()
+      out
+    ]
+  |=> null
+
+IrBlock inlineRewriteBlock(renames): Map(String, String) thisVar: String doRename: Bool ctx: InlineCtx -> IrBlock = [
+  mut current = renames
+  newStmts::mut List(IrStmt) = {}!
+  stmts forEach: [st ->
+    | st
+    | IrLet => [
+        valueMaybe = st value
+        newValue::IrExpr? = | valueMaybe
+          | null => null
+          |=> valueMaybe inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
+        fresh = doRename ifTrue: [(st name) inlineFreshName: ctx] ifFalse: [st name]
+        s1 = st name: fresh
+        newStmts add: (s1 value: newValue)
+        doRename ifTrue: [
+          frame::mut Map(String, String) = #{}!
+          frame at: (st name) put: fresh
+          current <- (current withBindings: frame)
+        ]
+      ]
+    | IrDestructure => [
+        bindingsLocal = st bindings
+        newBindings::mut List(IrDestructureBinding) = {}!
+        frame::mut Map(String, String) = #{}!
+        bindingsLocal forEach: [b ->
+          fresh = doRename ifTrue: [(b name) inlineFreshName: ctx] ifFalse: [b name]
+          newBindings add: (b name: fresh)
+          doRename ifTrue: [frame at: (b name) put: fresh]
+        ]
+        newValue = (st value) inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
+        s1 = st bindings: newBindings toList
+        newStmts add: (s1 value: newValue)
+        doRename ifTrue: [current <- (current withBindings: frame)]
+      ]
+    | IrExprStmt => [
+        newCall = (st expr) inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
+        splicedMaybe = newCall spliceLambdaStatements: current thisVar: thisVar ctx: ctx
+        | splicedMaybe
+        | null => [
+            newStmts add: (st expr: newCall)
+            ()
+          ]
+        |=> splicedMaybe forEach: [s ->
+              newStmts add: s
+              ()
+            ]
+      ]
+    |=> [
+      newStmts add: (st inlineRewriteStmt: current thisVar: thisVar doRename: doRename ctx: ctx)
+      ()
+    ]
+  ]
+  resultMaybe = result
+  newResult::IrExpr? = | resultMaybe
+    | null => null
+    |=> resultMaybe inlineRewriteExpr: current thisVar: thisVar doRename: doRename ctx: ctx
+  IrBlock stmts: newStmts toList result: newResult resultType: resultType
+]
+
+// inline one call if it targets an inline method that is not already being
+// expanded the active guard breaks recursive inline methods
+IrExpr inlineMaybeInline(ctx): InlineCtx -> IrExpr =
+  | this
+  | IrCall => [
+      mut result::IrExpr = this
+      isInline ifTrue: [
+        fidMaybe = funcId
+        | fidMaybe
+        | null => ()
+        |=> [
+          (ctx isActive: fidMaybe) ifFalse: [
+            fnMaybe = ctx functionFor: fidMaybe
+            | fnMaybe
+            | null => ()
+            |=> [
+              countsMatch = (fnMaybe args count) == (this args count)
+              countsMatch ifTrue: [
+                ctx pushActive: fidMaybe
+                result <- (ctx spliceCall: this)
+                ctx popActive
+              ]
+            ]
+          ]
+        ]
+      ]
+      result
+    ]
+  |=> this
+
+IrFunction inlineExpandFunction(ctx): InlineCtx -> IrFunction =
+  this body: (body inlineRewriteBlock: #{} thisVar: "" doRename: false ctx: ctx)
+
+IrPackage inlineExpandPackage -> IrPackage = [
+  functionsById::mut Map(String, IrFunction) = #{}!
+  functions forEach: [f -> functionsById at: (f id) put: f]
+  ctx = InlineCtx functions: (functionsById toMap)
+  this functions: (functions map: [f -> f inlineExpandFunction: ctx])
+]
+
+IrModule inlineExpandModule -> IrModule = [
+  entryFunctionsById::mut Map(String, IrFunction) = #{}!
+  packages forEach: [aPkg ->
+    (aPkg name) == pkg ifTrue: [
+      aPkg functions forEach: [f -> entryFunctionsById at: (f id) put: f]
+    ]
+  ]
+  entryCtx = InlineCtx functions: (entryFunctionsById toMap)
+
+  entryMaybe = entry
+  newEntry::IrBlock? = | entryMaybe
+    | null => null
+    |=> entryMaybe inlineRewriteBlock: #{} thisVar: "" doRename: false ctx: entryCtx
+
+  s1 = this packages: (packages map: [it inlineExpandPackage])
+  s1 entry: newEntry
+]

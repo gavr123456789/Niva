@@ -1,11 +1,9 @@
-static GO_KEYWORDS = #("break" "default" "func" "interface" "select"
-                        "case" "defer" "go" "map" "struct"
-                        "chan" "else" "goto" "package" "switch"
-                        "const" "fallthrough" "if" "range" "type"
-                        "continue" "for" "import" "return" "var")
-
 extend String [
-  on isGoKeyword -> Bool = GO_KEYWORDS contains: this
+  on isGoKeyword -> Bool = #("break" "default" "func" "interface" "select"
+                              "case" "defer" "go" "map" "struct"
+                              "chan" "else" "goto" "package" "switch"
+                              "const" "fallthrough" "if" "range" "type"
+                              "continue" "for" "import" "return" "var") contains: this
 
   // Go package qualifier used at call sites: last path segment of an import path
   // "net/http" -> "http", "os" -> "os"
@@ -13,7 +11,8 @@ extend String [
 
   // verrry badd, need iterate over symbols
   on goSanitizeIdent -> String =
-        .replace: ".." with: "rangeTo"
+        this replace: "..<" with: "rangeUntil"
+        ,replace: ".." with: "rangeTo"
         ,replace: "==" with: "equals"
         ,replace: "!=" with: "notEquals"
         ,replace: ">=" with: "gte"
@@ -44,26 +43,24 @@ extend String [
     ]
     s isGoKeyword ifTrue: [s <- s + "_"]
 
-    areEqual = . == s
-    areEqual ifTrue: [
-      "toSafeGoIdent: before = $this after = $s" //debug
-    ]
     ^ s
   ]
 
   on uniqueName(used): mut Set(String) -> String = [
     base = this
-    used contains: base, ifFalse: [
+    isUsed = used contains: base
+    ^ isUsed ifTrue: [
+      mut i = 1
+      mut candidate = base + "_" + i toString
+      [used contains: candidate] whileTrue: [
+        i <- i + 1
+        candidate <- base + "_" + i toString
+      ]
+      used add: candidate
+      candidate
+    ] ifFalse: [
       used add: base
-      ^ base
+      base
     ]
-    mut i = 1
-    mut candidate = base + "_" + i toString
-    [used contains: candidate] whileTrue: [
-      i <- i + 1
-      candidate <- base + "_" + i toString
-    ]
-    used add: candidate
-    ^ candidate
   ]
 ]

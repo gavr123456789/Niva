@@ -464,13 +464,23 @@ fun GeneratorKt.generatePackages(
     val testPackages = mutableMapOf<String, Package>()
 
 
-    val addIfAbsent = { pkgName: String, statement: Declaration, imports: MutableSet<String> ->
+    val addIfAbsent = { sourcePackage: Package, statement: Declaration ->
+        val pkgName = sourcePackage.packageName
         val q = testPackages[pkgName]
         if (q != null) {
             q.declarations.add(statement)
+            q.imports.addAll(sourcePackage.imports)
+            q.importsFromUse.addAll(sourcePackage.importsFromUse)
+            q.concreteImports.addAll(sourcePackage.concreteImports)
         } else {
             testPackages[pkgName] =
-                Package(pkgName, declarations = mutableListOf(statement), imports = imports) // + "Test"
+                Package(
+                    pkgName,
+                    declarations = mutableListOf(statement),
+                    imports = sourcePackage.imports.toMutableSet(),
+                    importsFromUse = sourcePackage.importsFromUse.toMutableSet(),
+                    concreteImports = sourcePackage.concreteImports.toMutableSet()
+                ) // + "Test"
         }
     }
 
@@ -482,7 +492,7 @@ fun GeneratorKt.generatePackages(
             val q = iter.next()
             if (q is MessageDeclarationUnary && q.forType == testType) {
                 if (isTestsRun)
-                    addIfAbsent(it.packageName, q, it.imports)
+                    addIfAbsent(it, q)
                 iter.remove()
             }
         }
@@ -584,6 +594,8 @@ fun GeneratorKt.generateKtProject(
             val pkgsWithNeededImportsInCurrentImports = pkg.imports.intersect(bindPackagesWithNeededImport)
             pkgsWithNeededImportsInCurrentImports.forEach {
                 pkg.concreteImports.addAll(pkgNameToNeededImports[it]!!)
+                pkg.imports -= it
+                pkg.importsFromUse -= it
             }
         }
     }

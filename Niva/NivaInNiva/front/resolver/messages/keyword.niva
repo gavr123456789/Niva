@@ -1,21 +1,41 @@
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context  -> KeywordMsgT = [
-  ^ .resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: null
+  ^ this resolveKeywordFromDb2: db withContext: c nameOverride: null expectedType: null
 ]
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
-  receiverTypedExpr = receiver toTypedExprFromDb2: db withContext: c
-  ^ .resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride expectedType: expectedType
+  msgName = | nameOverride
+    | null => this getNameFromArgs
+    |=> nameOverride
+  receiverTypedExpr = this resolveReceiverForInlineMethod: db withContext: c methodName: msgName
+  ^ this resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr nameOverride: nameOverride expectedType: expectedType
+]
+
+KeywordMsg resolveReceiverForInlineMethod(db): TyperDB withContext(c): Context methodName: String -> TypedExpr2 = [
+  receiverExpr = receiver
+  | receiverExpr
+  | CodeBlock => [
+    ((methodName == "whileTrue") || (methodName == "whileTrue:")) ifTrue: [
+      condType = FuntionT
+        fields: {}!
+        name: "whileTrueCond"
+        genericArgs: {}!
+        pkgName: "core"
+        returnType: db dtc bool
+      receiverExpr resolveWithExpectedType: db withContext: c expectedType: condType allowNonLocalReturn: true
+    ] ifFalse: [receiverExpr toTypedExprFromDb2: db withContext: c]
+  ]
+  |=> receiverExpr toTypedExprFromDb2: db withContext: c
 ]
 
 KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
   receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType
-  argTypesAndExprs :: mut List(CheckMethodArg) = {}!
+  argTypesAndExprs::mut List(CheckMethodArg) = {}!
 
   msgName = | nameOverride
-  | null => .getNameFromArgs
+  | null => this getNameFromArgs
   |=> nameOverride
 
   mut shadowCopy::KeywordMsgT? = null
@@ -46,11 +66,14 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         shadowLetterToType::mut Map(String, NivaType) = #{}!
 
         typedShadowArgs = args map: [kwArg ->
-          {name expr} = kwArg
-          field = receiverType findField: name name
-          fieldType = field unpack: [it typeT] or: (Unknown new)
+          expr = kwArg expr
+          field = receiverType findField: (kwArg name name)
+          fieldMaybe = field
+          fieldType = | fieldMaybe
+            | null => Unknown new
+            |=> fieldMaybe typeT
           expectedArgType =
-            (shadowLetterToType isNotEmpty && fieldType isContainsUnresolvedGenerics)
+            ((shadowLetterToType count > 0) && fieldType isContainsUnresolvedGenerics)
               ifTrue: [fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db]
               ifFalse: [fieldType]
 
@@ -58,7 +81,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
             | expr
             | CodeBlock => [
               | expectedArgType
-              | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType
+              | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType allowNonLocalReturn: false
               |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
             ]
             |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
@@ -70,36 +93,32 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           fieldType isContainsUnresolvedGenerics
             ifTrue: [
               expectedResolved = fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db
-              expectedResolved isContainsUnresolvedGenerics ifFalse: [
-                db isAssignable: realType toExpected: expectedResolved, ifFalse: [
-                  db addErrorMessage: (ErrorWrongArgType
-                                        tok: expr token
-                                        msg: "Expected " + expectedResolved toString + " but got " + realType toString)
-                ]
-              ]
+              db rejectWrongGenericArg: expectedResolved real: realType tok: (expr token)
             ]
             ifFalse: [
               db isAssignable: realType toExpected: fieldType, ifFalse: [
-                kwName = kwArg name
                 db addErrorMessage: (ErrorWrongArgType
                                       tok: expr token
-                                      msg: "wrong arg type for $kwName expected " + fieldType toString cyan + " but got "red + realType toString cyan)
+                                      msg: "wrong arg type for " + (kwArg name name) + " expected " + fieldType toString cyan + " but got "red + realType toString cyan)
               ]
             ]
 
-          NameAndExprT name: name expr: typedExpr
+          NameAndExprT name: (kwArg name) expr: typedExpr
         ]
 
         resolvedReceiverType =
-          (shadowLetterToType isNotEmpty && receiverType isContainsUnresolvedGenerics)
+          ((shadowLetterToType count > 0) && receiverType isContainsUnresolvedGenerics)
             ifTrue: [receiverType replaceGenericsFromTableDeep: shadowLetterToType db: db]
             ifFalse: [receiverType]
 
         shadowMsgArgs = typedShadowArgs map: [kwArg ->
           field = receiverType findField: kwArg name name
-          fieldType = field unpack: [it typeT] or: (Unknown new)
+          fieldMaybe = field
+          fieldType = | fieldMaybe
+            | null => Unknown new
+            |=> fieldMaybe typeT
           resolvedFieldType =
-            (shadowLetterToType isNotEmpty && fieldType isContainsUnresolvedGenerics)
+            ((shadowLetterToType count > 0) && fieldType isContainsUnresolvedGenerics)
               ifTrue: [fieldType replaceGenericsFromTableDeep: shadowLetterToType db: db]
               ifFalse: [fieldType]
           TypeTField name: (kwArg name name) typeT: resolvedFieldType isMut: false
@@ -117,10 +136,9 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           decl: null
           protocolName: "shadowCopy"
           pkgName: receiverType pkgName
+          isInline: false
 
         shadowCopy <- KeywordMsgT
-          args: typedShadowArgs
-          kind: MessageSendKind.ShadowCopy
           receiver: receiverTypedExpr
           token: token
           typeInfo: (TypeInfo
@@ -128,28 +146,51 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
                         isMut: false
                         listOfErrors: {}!)
           dbMsg: shadowMsg
+          args: typedShadowArgs
+          kind: MessageSendKind.ShadowCopy
       ]
     ]
   ]
   |=> []
 
-  shadowCopy != null ifTrue: [^ shadowCopy unpackOrPANIC]
-  mut kwMsgDB = db
-    findMsgFromReceiver: receiverTypedExpr
-    byName: msgName
-    currentPkg: c currentPkg
+  shadowCopyMaybe = shadowCopy
+  ^ | shadowCopyMaybe
+    | null => [
+  constructorTableMaybe = db constructorsTypeToMethodNameToMethod at: (receiverType toMangledName)
+  constructorMaybe = | constructorTableMaybe
+    | null => null
+    |=> [
+      constructorTable::mut Map(String, NivaMethod) = constructorTableMaybe
+      constructorTable at: msgName
+    ]
+  typedConstructorMaybe = | constructorMaybe
+    | null => null
+    |=> [
+      constructorMethod = constructorMaybe
+      | constructorMethod returnType
+      | Unknown => null
+      |=> constructorMethod
+    ]
+  mut kwMsgDB = isTypeReceiver ifTrue: [
+    | typedConstructorMaybe
+    | null => db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg
+    |=> typedConstructorMaybe
+  ] ifFalse: [
+    db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg
+  ]
 
   // unary and keyword can share the same name, so if current not match, there might be generic kinda overloading
   kwMsgDB args count != args count ifTrue: [
-    genericCandidate = db findGenericReceiverMethod: msgName forType: receiverType
-    genericCandidate unpack: [candidate ->
-      candidate args count == args count ifTrue: [kwMsgDB <- candidate]
-    ]
+    genericCandidateMaybe = db findGenericReceiverMethod: msgName forType: receiverType
+    | genericCandidateMaybe
+    | null => []
+    |=> genericCandidateMaybe args count == args count ifTrue: [kwMsgDB <- genericCandidateMaybe]
   ]
 
 
-  Assert that: kwMsgDB args count equals: args count
-         andSay: (receiverTyped token toPosition + " " + kwMsgDB toString + " has different amount of arguments ")
+  kwMsgDB args count != args count ifTrue: [
+    TO DO: "keyword " + msgName + " at " + receiverTyped token toPosition + " on " + receiverType toString + " expects " + kwMsgDB args count toString + " arguments but got " + args count toString
+  ]
 
 
 
@@ -158,23 +199,28 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
   letterToType::mut Map(String, NivaType) = #{}!
 
+  // seed generics from the receiver first so block args resolve with concrete types
+  kwMsgDB receiverType collectGenericMappingsFrom: receiverType into: letterToType db: db
+
   // `Bind emit:` returns T to make `Sas sus -> String = Bind emit: "..."` possible
-  expectedType unpack: [expectedReturnType ->
-    kwMsgDB returnType collectGenericMappingsFrom: expectedReturnType into: letterToType db: db
-  ]
+  expectedReturnTypeMaybe = expectedType
+  | expectedReturnTypeMaybe
+  | null => []
+  |=> kwMsgDB returnType collectGenericMappingsFrom: expectedReturnTypeMaybe into: letterToType db: db
 
   typedArgs = args mapIndexed: [ i, kwArg ->
-    {name expr} = kwArg
+    name = kwArg name
+    expr = kwArg expr
     argTypeFromDb = kwMsgDB args at: i, typeT
     expectedArgType =
-      (letterToType isNotEmpty && argTypeFromDb isContainsUnresolvedGenerics)
+      ((letterToType count > 0) && argTypeFromDb isContainsUnresolvedGenerics)
         ifTrue: [argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db]
         ifFalse: [argTypeFromDb]
     typedExpr =
       | expr
       | CodeBlock => [
         | expectedArgType
-        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType
+        | FuntionT => expr resolveWithExpectedType: db withContext: c expectedType: expectedArgType allowNonLocalReturn: kwMsgDB isInline
         |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
       ]
       |=> expr toTypedExprFromDb2: db withContext: c expectedType: expectedArgType
@@ -185,19 +231,12 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
                             expr: expr
                             argName: name name)
 
-    // infer generics from nested types
     argTypeFromDb collectGenericMappingsFrom: realType into: letterToType db: db
 
     argTypeFromDb isContainsUnresolvedGenerics
       ifTrue: [
         expectedResolved = argTypeFromDb replaceGenericsFromTableDeep: letterToType db: db
-        expectedResolved isContainsUnresolvedGenerics ifFalse: [
-          db isAssignable: realType toExpected: expectedResolved, ifFalse: [
-            db addErrorMessage: (ErrorWrongArgType
-                                  tok: expr token
-                                  msg: "Expected " + expectedResolved toString + " but got " + realType toString)
-          ]
-        ]
+        db rejectWrongGenericArg: expectedResolved real: realType tok: (expr token)
       ]
       ifFalse: [
         // вот, если это не женерик то сравниваем с тем шо в дб
@@ -205,17 +244,17 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           kwName = kwArg name
           db addErrorMessage: (ErrorWrongArgType
                                 tok: expr token
-                                msg: "wrong arg type for $kwName expected " + argTypeFromDb toString cyan + " but got "red + realType toString cyan)
+                                msg: "wrong arg type for " + kwName name + " expected " + argTypeFromDb toString cyan + " but got "red + realType toString cyan)
         ]
       ]
 
-    NameAndExprT name: name expr: typedExpr
+          NameAndExprT name: name expr: typedExpr
   ]
 
-  letterToType isNotEmpty ifTrue: [
-    dontMangle = | receiverType
+  (letterToType count > 0) ifTrue: [
+    dontMangle::Set(String) = | receiverType
                  | TypeT => (receiverType collectGenerics map: [t::NivaType -> t name]) toSet
-                 |=> #(String)!
+                 |=> #()!
 
     newMethod = kwMsgDB replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: true db: db
 
@@ -238,20 +277,21 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
           newBody = Body unTypedBody: (originalDecl body unTypedBody toMutableList)
 
           // create args
-          // we need to update types to mangled names of resolved types
+          // fake asts carry the resolved types so lambda args resolve too
           newArgs = originalDecl args mapIndexed: [ i, arg ->
              resolvedArgType = newMethod args at: i, typeT
-             NameAndAstType name: arg name astType: (AstType name: resolvedArgType toMangledName tok: FAKE_TOKEN)
+             NameAndAstType name: arg name astType: (resolvedArgType toFakeAstType)
           ]
           newDecl = MessageDecl
-            receiver: (AstType name: instReceiverType toMangledName tok: FAKE_TOKEN)
+            token: originalDecl token
+            receiver: (instReceiverType toFakeAstType)
             name: newMethod name // mangled name if method was generic
             args: newArgs
-            returnType: (AstType name: newMethod returnType toMangledName tok: FAKE_TOKEN)
+            returnType: (newMethod returnType toFakeAstType)
             body: newBody
             isSingleExpr: originalDecl isSingleExpr
             isConstructor: originalDecl isConstructor
-            token: originalDecl token
+            isInline: originalDecl isInline
           newDecl resolveBodyWithDb: db pkg: c currentPkg extraTypes: letterToType
 
           db addGeneratedMessageDecl: newDecl
@@ -274,9 +314,12 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         |=> [false]
       ]
 
-      isThereUnresolvedGenerics unpack: [
+      unresolvedGenericMaybe = isThereUnresolvedGenerics
+      | unresolvedGenericMaybe
+      | null => ()
+      |=> [
         db addFatalErrorFromTok: receiver token
-           withMsg: "Receiver has generic param " + it toString + " but I can't infer it via message arguments"
+           withMsg: "Receiver has generic param " + unresolvedGenericMaybe toString + " but I can't infer it via message arguments"
       ]
     ] |=> []
 
@@ -289,11 +332,16 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
   callErrors::mut List(NivaType) = {}!
   kwMsgDB returnErrors forEach: [callErrors add: it]
 
-  receiverTypedExpr typeInfo listOfErrors forEach: [callErrors add: it]
+  isOrPanic = msgName == "orPANIC"
+  isOrPanic ifFalse: [
+    receiverTypedExpr typeInfo listOfErrors forEach: [callErrors add: it]
+  ]
   receiverEffectType = receiverTypedExpr typeInfo t
-  | receiverEffectType
-  | FuntionT => receiverEffectType returnErrors forEach: [callErrors add: it]
-  |=> []
+  isOrPanic ifFalse: [
+    | receiverEffectType
+    | FuntionT => receiverEffectType returnErrors forEach: [callErrors add: it]
+    |=> []
+  ]
 
   typedArgs forEach: [arg ->
     arg expr typeInfo listOfErrors forEach: [callErrors add: it]
@@ -303,15 +351,27 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     |=> []
   ]
 
-  ^ KeywordMsgT
-    args: typedArgs
-    kind: kwMsgDB kind
+  KeywordMsgT
     receiver: receiverTypedExpr
     token: token
     typeInfo: (TypeInfo
                   t: canonicalReturnType
-                  isMut: kwMsgDB forMut || (isTypeReceiver && receiverTypedExpr typeInfo isMut)
+                  isMut: (kwMsgDB returnTypeInfo isMut) || (isTypeReceiver && receiverTypedExpr typeInfo isMut)
                   listOfErrors: (callErrors normalizeErrorList))
     dbMsg: kwMsgDB
+    args: typedArgs
+    kind: kwMsgDB kind
+    ]
+    |=> shadowCopyMaybe
+]
 
+// add arg type error when resolved generic arg type still mismatches
+TyperDB rejectWrongGenericArg(expected): NivaType real: NivaType tok: Token = [
+  expected isContainsUnresolvedGenerics ifFalse: [
+    this isAssignable: real toExpected: expected, ifFalse: [
+      this addErrorMessage: (ErrorWrongArgType
+                                tok: tok
+                                msg: "Expected " + expected toString + " but got " + real toString)
+    ]
+  ]
 ]

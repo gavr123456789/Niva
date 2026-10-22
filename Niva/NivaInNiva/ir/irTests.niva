@@ -95,7 +95,8 @@ Test irDependenciesCoverCrossPackageTypesCallsConstructorsAndGenerics = [
   } entryPoint: "main"
   ir = result toIrModule
 
-  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+  mainPkgMaybe = ir packages find: [it name == "main"]
+  mainPkg = mainPkgMaybe expect: "Missing main package"
   Assert that: mainPkg dependencyPackageNames equals: {"box" "envelope" "person"}
 
   personCall = mainPkg dependencies find: [
@@ -113,21 +114,24 @@ Test irDependenciesCoverCrossPackageTypesCallsConstructorsAndGenerics = [
   ]
   Assert that: (personConstructor != null) equals: true
 
-  envelopePkg = ir packages find: [it name == "envelope"], unpackOrPANIC
+  envelopePkgMaybe = ir packages find: [it name == "envelope"]
+  envelopePkg = envelopePkgMaybe expect: "Missing envelope package"
   Assert that: envelopePkg dependencyPackageNames equals: {"box" "person"}
   genericPersonType = envelopePkg dependencies find: [
     (it toPkg == "person") && (it kind == IrDependencyKind.Type)
   ]
   Assert that: (genericPersonType != null) equals: true
 
-  boxPkg = ir packages find: [it name == "box"], unpackOrPANIC
+  boxPkgMaybe = ir packages find: [it name == "box"]
+  boxPkg = boxPkgMaybe expect: "Missing box package"
   Assert that: boxPkg dependencyPackageNames equals: {"person"}
   genericInstantiationType = boxPkg dependencies find: [
     (it toPkg == "person") && (it kind == IrDependencyKind.Type)
   ]
   Assert that: (genericInstantiationType != null) equals: true
 
-  personPkg = ir packages find: [it name == "person"], unpackOrPANIC
+  personPkgMaybe = ir packages find: [it name == "person"]
+  personPkg = personPkgMaybe expect: "Missing person package"
   Assert that: personPkg dependencyPackageNames isEmpty equals: true
 ]
 
@@ -147,7 +151,8 @@ Test irDependenciesCoverTypeMatchAndKeepProvenance = [
 
   result = ResolverHelper resolve: #{"main" mainFile "shapes" shapeFile} entryPoint: "main"
   ir = result toIrModule
-  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+  mainPkgMaybe = ir packages find: [it name == "main"]
+  mainPkg = mainPkgMaybe expect: "Missing main package"
 
   Assert that: mainPkg dependencyPackageNames equals: {"shapes"}
   matchType = mainPkg dependencies find: [
@@ -175,7 +180,8 @@ Test irDependenciesExcludeExternalBindPackages = [
   result = ResolverHelper resolve: #{"main" mainFile "java.time.bind" bindFile}
     entryPoint: "main" backend: "clj"
   ir = result toIrModule
-  mainPkg = ir packages find: [it name == "main"], unpackOrPANIC
+  mainPkgMaybe = ir packages find: [it name == "main"]
+  mainPkg = mainPkgMaybe expect: "Missing main package"
 
   Assert that: mainPkg dependencyPackageNames isEmpty equals: true
 ]

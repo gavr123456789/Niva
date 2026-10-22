@@ -1,0 +1,9 @@
+Bind package: "java.lang" content: [
+  type System
+  constructor System currentTimeMillis -> Long
+  constructor System nanoTime -> Long
+  @emit: """System.getProperty("user.dir")"""
+  constructor System currentDir -> String
+  @emit: "System.exit($1)"
+  constructor System exitWith::Int -> Unit
+]

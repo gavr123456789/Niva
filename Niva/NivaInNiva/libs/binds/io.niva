@@ -1,0 +1,25 @@
+type Path
+  value: String
+
+type FileMetadata
+  isRegularFile: Bool
+  isDirectory: Bool
+  symlinkTarget: Path?
+  size: Int?
+  createdAtMillis: Int?
+  lastModifiedAtMillis: Int?
+  lastAccessedAtMillis: Int?
+
+type FileSystem
+type ProcessRunner
+
+String toPath -> Path = [Path value: this]
+
+Path toString -> String = value
+
+Path == x: Path -> Bool = value == x value
+Path != x: Path -> Bool = value != x value
+
+Path renameTo::String = [
+  FileSystem moveFrom: this to: renameTo toPath
+]

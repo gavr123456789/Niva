@@ -138,9 +138,9 @@ union IrStmt token: Token =
 // IrBindEmit:   single `Bind emit:` body -> template inlined at each call site.
 //               ($0 = receiver(this), $1 = first keyword arg)
 union IrBind =
-| IrBindByName goPkg: String goName: String isStatic: Bool
+| IrBindByName goPkg: String goName: String isStatic: Bool isGoNameExplicit: Bool
 // goPkg is the package from the `.bind` file and is auto-imported at the call site
-| IrBindEmit template: String goPkg: String?
+| IrBindEmit template: String goPkg: String? isGoSpecific: Bool
 
 // Backend-specific constructor emit for external types.
 union IrConstructorBind =
@@ -151,7 +151,7 @@ union IrExpr typeRef: IrTypeRef token: Token =
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool isInline: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
 // typeAlias is for making `this` or `it` inside branches
@@ -161,6 +161,11 @@ union IrExpr typeRef: IrTypeRef token: Token =
 | IrCollectionLiteral kind: IrCollectionKind items: List(IrExpr)
 | IrOpBin op: String left: IrExpr right: IrExpr
 | IrTypeRefExpr ref: IrTypeRef
+
+IrCall msgNameOrEmpty -> String = [
+  n = this msgName
+  ^ n orElse: ""
+]
 
 type IrPackage
   name: String
@@ -179,17 +184,20 @@ type IrModule
   entry: IrBlock?
 
 extend IrTypeRef [
-  on isGoRefLike -> Bool =
-    | kind
-    | IrTypeRefKind.Function => true
-    | IrTypeRefKind.Builtin  => (typeId == "core_List") || (typeId == "core_Set") || (typeId == "core_Map")
-    |=> false
+  on isGoRefLike -> Bool = [
+    baseTypeId = typeId goNormalizeTypeId
+    (kind == IrTypeRefKind.Function) ||
+      ((kind == IrTypeRefKind.Builtin) && ((baseTypeId == "core_List") || (baseTypeId == "core_Set") || (baseTypeId == "core_Map") || (baseTypeId == "core_StringBuilder")))
+  ]
 
   on isGoPointerParam -> Bool =
-    isMut && (kind == IrTypeRefKind.Custom) && (.isGoRefLike not)
+    isMut && (
+      ((kind == IrTypeRefKind.Builtin) && (typeId goNormalizeTypeId == "core_List")) ||
+      ((kind == IrTypeRefKind.Custom) && (this isGoRefLike not))
+    )
 
   on needsGoAddressAtCall -> Bool =
-    .isGoPointerParam && (nullable not)
+    this isGoPointerParam && ((nullable not) || (typeId goNormalizeTypeId == "core_List"))
 ]
 
 IrModule imports -> List(IrImport) = [
@@ -199,19 +207,17 @@ IrModule imports -> List(IrImport) = [
 
   packages forEach: [pkg ->
     pkg imports forEach: [imp ->
-      | imp kind
-      | IrImportKind.Local => [
+      (imp kind == IrImportKind.Local) ifTrue: [
           seenLocalImports contains: imp name, ifFalse: [
             seenLocalImports add: imp name
             imports add: imp
           ]
-        ]
-      | IrImportKind.Package => [
+        ] ifFalse: [(imp kind == IrImportKind.Package) ifTrue: [
           seenPackageImports contains: imp name, ifFalse: [
             seenPackageImports add: imp name
             imports add: imp
           ]
-      ]
+        ] ifFalse: [()]]
     ]
   ]
 
@@ -243,4 +249,11 @@ IrModule functions -> List(IrFunction) = [
   result::mut List::IrFunction = {}!
   packages forEach: [pkg -> result addAll: pkg functions]
   ^ result toList
+]
+
+IrModule entries -> List(IrBlock) = [
+  e = entry
+  ^ | e
+    | null => {}
+    |=> {e}
 ]
