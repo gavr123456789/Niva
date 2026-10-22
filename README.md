@@ -399,7 +399,8 @@ p = Point new
 - [niva in niva](https://github.com/gavr123456789/Niva/tree/main/Niva/NivaInNiva) (self hosted niva)
 - [JSON](https://github.com/gavr123456789/bazar/tree/main/LittleLibs/JSON_parser) - naive parser
 - [writing interpreter in go](https://github.com/gavr123456789/writing-an-interpreter-in-niva) (not finished)
-- [tons of small stupid things](https://github.com/gavr123456789/bazar) bazar
+- [tons of small stupid things](https://github.com/gavr123456789/bazar) bazar  
+
 Not mine: 
 - [Extended Brainfuck implementation](https://github.com/Nadelio/eBF) by Nadelio
 - [Rust like type system with W algo](https://codeberg.org/FishingHacks/mira-type-system) by FishingHacks
