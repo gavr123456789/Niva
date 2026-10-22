@@ -811,6 +811,20 @@ Test nestedInlineReturnInsideNonInlineMapIsRejected = [
 
 ]
 
+Test returnWithExprInBracketsKeepsDeclaredReturnType = [
+  fileMain = """
+    Int sas -> Int = [
+      x = 42 + 12
+      ^ (x inc) + 1
+    ]
+
+    1 sas
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
 Test codeblockReturnType = [
   fileMain = """
     [
@@ -1488,6 +1502,23 @@ Test compileTimeInfoMessage = [
   (personInfo contains: "type Person ( main.niva:2 )") assertTrue
   (personInfo contains: "    name: String") assertTrue
   (personInfo contains: "- `greet -> String` ( main.niva:3 )") assertTrue
+]
+
+Test compileTimeInfoOnBuiltinType = [
+  fileMain = """
+    n = 1
+    n info
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+
+  infoExpr = result entryPointExpressions last asUnitExprT
+  Assert that: (infoExpr typeInfo t name) equals: "Unit"
+
+  intInfo = result db compileTimeInfoFor: (result db dtc int)
+  (intInfo contains: "type Int") assertTrue
+  (intInfo contains: "#### Methods") assertTrue
 ]
 
 /// dollars and quotes here are built by concatenation

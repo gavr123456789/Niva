@@ -801,7 +801,8 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
   | UnaryMsg   => [
     isFullInfo = selector name == "infoFull"
     (selector name == "info") || isFullInfo ifTrue: [
-      "COMPILE TIME REFLECTION TODO", echo
+      receiverTyped = receiver toTypedExprFromDb2: db withContext: c
+      (db compileTimeInfoFor: receiverTyped typeInfo t showSourceLocations: isFullInfo) echo
       ^ UnitExprT token: token typeInfo: db dtc unit toTypeInfoDefault
     ]
     ^ this resolveUnaryFromDb2: db withContext: c

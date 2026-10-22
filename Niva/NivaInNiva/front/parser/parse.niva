@@ -37,13 +37,12 @@ extend mut Parser [
 
     savePosition = current
     nextKind = this peek kind
-    isThereAValue = nextKind == TokenType.If
+    startsExprDirectly = (nextKind == TokenType.If) ||
+      (nextKind == TokenType.Dot) ||
+      (nextKind == TokenType.OpenParen)
+    isThereAValue = startsExprDirectly
       ifTrue: [true]
-      ifFalse: [
-        nextKind == TokenType.Dot
-          ifTrue: [true]
-          ifFalse: [((this primary: this step) != null)]
-      ]
+      ifFalse: [((this primary: this step) != null)]
     this restoreFrom: savePosition
 
     value = isThereAValue ifTrue: [this nextExpression: this step] ifFalse: [null]
