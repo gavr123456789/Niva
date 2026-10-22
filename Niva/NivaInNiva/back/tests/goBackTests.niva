@@ -713,6 +713,40 @@ Test goErrorDomainMatchByCoreErrorCodegen = [
   go contains: "it := __matchErr.(error)", assertTrue
 ]
 
+Test goErrorMatchStatementAliasAndElse = [
+  fileMain = """
+    errordomain E =
+    | Bad text: String
+
+    Int parse -> Int!{Bad} = [
+      this >= 0 ifTrue: [^ this * 10]
+      (Bad text: "negative") throw
+      ^ 0
+    ]
+
+    Int show -> String = [
+      | this parse
+      | Bad => "bad" echo
+      |=> it toString echo
+      | (this + 1) parse
+      | Bad => it text echo
+      |=> "ok" echo
+      "done"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // an alias a branch doesn't use would stop the go build
+  go contains: "it := __matchErr.(main_Bad)\n            _ = it", assertTrue
+  go contains: "it := __matchValue_1\n        _ = it", assertTrue
+  // the else branch runs only without an error, and its alias is in a block
+  go contains: "} else {\n        it := __matchValue\n", assertTrue
+  go contains: "__matchValue_1, __matchErr_1 := main__core_Int__parse((this + 1))", assertTrue
+]
+
 Test goTryRethrowsError = [
   fileMain = """
     errordomain MyError =
