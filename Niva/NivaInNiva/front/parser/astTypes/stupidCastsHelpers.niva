@@ -61,3 +61,55 @@ TypedStatement asUnitExprT -> UnitExprT = | this
 ResolveErrors asErrorInvalidTry -> ErrorInvalidTry = | this
   | ErrorInvalidTry => this
   |=> TO DO: "Its not ErrorInvalidTry, its $this"
+
+Statement asTypeDecl -> TypeDecl = | this | TypeDecl => this |=> TO DO: "Its not TypeDecl, its $this"
+
+Statement asEnumDecl -> EnumDecl = | this | EnumDecl => this |=> TO DO: "Its not EnumDecl, its $this"
+
+Statement asUnionDecl -> UnionDecl = | this | UnionDecl => this |=> TO DO: "Its not UnionDecl, its $this"
+
+Statement asExtendDecl -> ExtendDecl = | this | ExtendDecl => this |=> TO DO: "Its not ExtendDecl, its $this"
+
+Statement asMessageDecl -> MessageDecl = | this | MessageDecl => this |=> TO DO: "Its not MessageDecl, its $this"
+
+Statement asVarDeclaration -> VarDeclaration = | this | VarDeclaration => this |=> TO DO: "Its not VarDeclaration, its $this"
+
+Statement asAssign -> Assign = | this | Assign => this |=> TO DO: "Its not Assign, its $this"
+
+Statement asDestructingAssign -> DestructingAssign = | this | DestructingAssign => this |=> TO DO: "Its not DestructingAssign, its $this"
+
+Statement asImmutableCopyUpdate -> ImmutableCopyUpdate = | this | ImmutableCopyUpdate => this |=> TO DO: "Its not ImmutableCopyUpdate, its $this"
+
+Statement asIdentifier -> Identifier = | this | Identifier => this |=> TO DO: "Its not Identifier, its $this"
+
+Statement asAtomIdentifier -> AtomIdentifier = | this | AtomIdentifier => this |=> TO DO: "Its not AtomIdentifier, its $this"
+
+Statement asInterpolatedString -> InterpolatedString = | this | InterpolatedString => this |=> TO DO: "Its not InterpolatedString, its $this"
+
+Statement asExprInBrackets -> ExprInBrackets = | this | ExprInBrackets => this |=> TO DO: "Its not ExprInBrackets, its $this"
+
+Statement asCodeBlock -> CodeBlock = | this | CodeBlock => this |=> TO DO: "Its not CodeBlock, its $this"
+
+Statement asMatch -> Match = | this | Match => this |=> TO DO: "Its not Match, its $this"
+
+Statement asReturnStatement -> ReturnStatement = | this | ReturnStatement => this |=> TO DO: "Its not ReturnStatement, its $this"
+
+Statement asListLiteral -> ListLiteral = | this | ListLiteral => this |=> TO DO: "Its not ListLiteral, its $this"
+
+Statement asSetLiteral -> SetLiteral = | this | SetLiteral => this |=> TO DO: "Its not SetLiteral, its $this"
+
+Statement asMapLiteral -> MapLiteral = | this | MapLiteral => this |=> TO DO: "Its not MapLiteral, its $this"
+
+Statement asUnaryMsg -> UnaryMsg = | this | UnaryMsg => this |=> TO DO: "Its not UnaryMsg, its $this"
+
+Statement asBinaryMsg -> BinaryMsg = | this | BinaryMsg => this |=> TO DO: "Its not BinaryMsg, its $this"
+
+Statement asKeywordMsg -> KeywordMsg = | this | KeywordMsg => this |=> TO DO: "Its not KeywordMsg, its $this"
+
+Statement asIntExpr -> IntExpr = | this | IntExpr => this |=> TO DO: "Its not IntExpr, its $this"
+
+Statement asStringExpr -> StringExpr = | this | StringExpr => this |=> TO DO: "Its not StringExpr, its $this"
+
+AstType2 asAstType -> AstType = | this | AstType => this |=> TO DO: "Its not AstType, its $this"
+
+AstType2 asAstLambdaType -> AstLambdaType = | this | AstLambdaType => this |=> TO DO: "Its not AstLambdaType, its $this"

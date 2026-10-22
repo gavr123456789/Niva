@@ -40,30 +40,15 @@ Test pipes = [
   """ trimIndent
 
   statements = TestParse withInput: input expectedCount: 1
-  statements at: 0
-  first = statements at: 0
-  | first
-  | UnaryMsg => [
-    receiver = first receiver
-    | receiver
-    | UnaryMsg => [
-      expr = receiver receiver
-      | expr
-      | ExprInBrackets => [
-        expr = expr value
-        | expr
-        | KeywordMsg => [
-          Assert that: expr args count equals: 1
-          first = expr args at: 0
-          Assert that: first name token lexeme equals: "to"
-          Assert that: first expr token lexeme equals: "2"
-        ] |=> [TO DO: "It should be KeywordMsg, but it " + expr toString]
-      ] |=> TO DO: "It should be ExprInBrackets, but it"
-    ] |=> [TO DO: "It should be UnaryMsg, but it " + receiver toString]
-    Assert
-      that: first selector name
-      equals: "echo"
-  ] |=> [TO DO: "It should be UnaryMsg, but it " + first toString]
+  first = statements at: 0, asUnaryMsg
+  Assert that: first selector name equals: "echo"
+
+  receiver = first receiver asUnaryMsg
+  keyword = (receiver receiver asExprInBrackets) value asKeywordMsg
+  Assert that: keyword args count equals: 1
+  arg = keyword args at: 0
+  Assert that: arg name token lexeme equals: "to"
+  Assert that: arg expr token lexeme equals: "2"
 ]
 
 Test pipesMany -> Unit = [
@@ -93,56 +78,23 @@ Test pipedUnaryOnNewLine = [
 ]
 
 Test parseSimbleBinaryMsg -> Unit = [
-  msgSend = TestParse expression: "a + b"
+  msgSend = (TestParse expression: "a + b") asBinaryMsg
+  Assert that: msgSend args count equals: 1
 
-  | msgSend
-  | BinaryMsg => [
-    Assert
-      that: msgSend args count
-      equals: 1
-
-    first = msgSend args at: 0
-    Assert that: first name token lexeme equals: "+"
-    expr = first expr
-    | expr
-    | Identifier => [
-      name = expr name
-      Assert that: name equals: "b"
-    ]
-    |=> TO DO: "It should be UnaryMsg, but it " + expr toString
-
-    receiver = msgSend receiver
-    | receiver
-    | Identifier => [
-      name = receiver name
-      Assert that: name equals: "a"
-    ]
-    |=> TO DO: "It should be Identifier, but it " + receiver toString
-  ]
-  |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+  first = msgSend args at: 0
+  Assert that: first name token lexeme equals: "+"
+  Assert that: (first expr asIdentifier) name equals: "b"
+  Assert that: (msgSend receiver asIdentifier) name equals: "a"
 ]
 
 Test parseRangeToExclusiveMsg -> Unit = [
-  msgSend = TestParse expression: "1..<3"
+  msgSend = (TestParse expression: "1..<3") asBinaryMsg
+  Assert that: msgSend args count equals: 1
 
-  | msgSend
-  | BinaryMsg => [
-    Assert that: msgSend args count equals: 1
-
-    first = msgSend args at: 0
-    Assert that: first name token lexeme equals: "..<"
-
-    expr = first expr
-    | expr
-    | IntExpr => Assert that: expr num equals: 3
-    |=> TO DO: "It should be IntExpr, but it " + expr toString
-
-    receiver = msgSend receiver
-    | receiver
-    | IntExpr => Assert that: receiver num equals: 1
-    |=> TO DO: "It should be IntExpr, but it " + receiver toString
-  ]
-  |=> TO DO: "It should be BinaryMsg, but it " + msgSend toString
+  first = msgSend args at: 0
+  Assert that: first name token lexeme equals: "..<"
+  Assert that: (first expr asIntExpr) num equals: 3
+  Assert that: (msgSend receiver asIntExpr) num equals: 1
 ]
 
 Test parseBinaryMsgWithUnary -> Unit = [
@@ -151,38 +103,19 @@ Test parseBinaryMsgWithUnary -> Unit = [
 ]
 
 Test parseBinaryMsgWithUnary2 -> Unit = [
-  msgSend = TestParse expression: "1 inc + 2"
+  msgSend = (TestParse expression: "1 inc + 2") asBinaryMsg
+  Assert that: msgSend args count equals: 1
 
-  | msgSend
-  | BinaryMsg => [
-    Assert
-      that: msgSend args count
-      equals: 1
+  first = msgSend args at: 0
+  Assert that: first name token lexeme equals: "+"
 
-    first = msgSend args at: 0
-    Assert
-      that: first name token lexeme
-      equals: "+"
+  // "+ 2" arg
+  Assert that: (first expr asIntExpr) num equals: 2
 
-    // "+ 2" arg
-    expr = first expr
-    | expr
-    | IntExpr => [
-      Assert that: expr num  equals: 2
-    ]
-    |=> TO DO: "It should be UnaryMsg, but it " + expr toString
-
-    // "1 inc" receiver
-    receiver = msgSend receiver
-    | receiver
-    | UnaryMsg => [
-      Assert that: receiver selector name  equals: "inc"
-      receiver = receiver receiver
-      | receiver
-      | IntExpr => Assert that: receiver num  equals: 1
-      |=> TO DO: "It should be IntExpr, but it " + receiver toString
-    ] |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
-  ] |=> TO DO: "It should be MessageSend, but it " + msgSend toString
+  // "1 inc" receiver
+  receiver = msgSend receiver asUnaryMsg
+  Assert that: receiver selector name equals: "inc"
+  Assert that: (receiver receiver asIntExpr) num equals: 1
 ]
 
 /// a msg after a multiline primary belongs to it, and is not a new statement
@@ -196,15 +129,9 @@ Test parseUnaryAfterMultilineCodeblock -> Unit = [
 
   statements = TestParse withInput: input expectedCount: 1
 
-  first = statements at: 0
-  | first
-  | UnaryMsg => [
-    Assert that: first selector name equals: "do"
-    receiver = first receiver
-    | receiver
-    | CodeBlock => Assert that: receiver body unTypedBody count equals: 2
-    |=> TO DO: "It should be CodeBlock, but it " + receiver toString
-  ] |=> TO DO: "It should be UnaryMsg, but it " + first toString
+  first = statements at: 0, asUnaryMsg
+  Assert that: first selector name equals: "do"
+  Assert that: ((first receiver asCodeBlock) body unTypedBody) count equals: 2
 ]
 
 Test parseBinaryAfterMultilineCodeblock -> Unit = [
@@ -216,15 +143,9 @@ Test parseBinaryAfterMultilineCodeblock -> Unit = [
 
   statements = TestParse withInput: input expectedCount: 1
 
-  first = statements at: 0
-  | first
-  | BinaryMsg => [
-    Assert that: first args count equals: 1
-    receiver = first receiver
-    | receiver
-    | UnaryMsg => Assert that: receiver selector name equals: "do"
-    |=> TO DO: "It should be UnaryMsg, but it " + receiver toString
-  ] |=> TO DO: "It should be BinaryMsg, but it " + first toString
+  first = statements at: 0, asBinaryMsg
+  Assert that: first args count equals: 1
+  Assert that: (first receiver asUnaryMsg) selector name equals: "do"
 ]
 
 Test parseUnaryAfterMultilineCollection -> Unit = [
@@ -235,13 +156,7 @@ Test parseUnaryAfterMultilineCollection -> Unit = [
 
   statements = TestParse withInput: input expectedCount: 1
 
-  first = statements at: 0
-  | first
-  | UnaryMsg => [
-    Assert that: first selector name equals: "count"
-    receiver = first receiver
-    | receiver
-    | ListLiteral => Assert that: receiver elements unTypedBody count equals: 3
-    |=> TO DO: "It should be ListLiteral, but it " + receiver toString
-  ] |=> TO DO: "It should be UnaryMsg, but it " + first toString
+  first = statements at: 0, asUnaryMsg
+  Assert that: first selector name equals: "count"
+  Assert that: ((first receiver asListLiteral) elements unTypedBody) count equals: 3
 ]

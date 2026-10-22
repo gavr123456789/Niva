@@ -46,17 +46,12 @@ Test varDeclarationWithAstType  = [
     x::Int = 42
   """
   statements = TestParse withInput: input expectedCount: 1
-  vardecl = statements at: 0
-  | vardecl
-  | VarDeclaration => [
-    astTypeMaybe = vardecl astType
-    astType = astTypeMaybe expect: "Missing variable type"
-    Assert that: astType name equals: "Int"
-    Assert that: vardecl name equals: "x"
-  ]
-  |=> [TO DO: "VarDeclaration expected"]
-
+  vardecl = statements at: 0, asVarDeclaration
+  astType = (vardecl astType) expect: "Missing variable type"
+  Assert that: astType name equals: "Int"
+  Assert that: vardecl name equals: "x"
 ]
+
 Test varDeclarationWithAstType2 = [
 
   input = """
@@ -90,13 +85,8 @@ Test parseNumber = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   intExprMaybe = parser literalExprFrom: tokens first
-  intExpr = intExprMaybe expect: "Missing integer expression"
-  | intExpr
-  | IntExpr =>
-    Assert
-      that: intExpr num
-      equals: 123
-  |=> [TO DO: "It should be int, but it $intExpr"]
+  intExpr = (intExprMaybe expect: "Missing integer expression") asIntExpr
+  Assert that: intExpr num equals: 123
 ]
 
 Test parseNumberWithUnderscore = [
@@ -108,13 +98,8 @@ Test parseNumberWithUnderscore = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   intExprMaybe = parser literalExprFrom: tokens first
-  intExpr = intExprMaybe expect: "Missing integer expression"
-  | intExpr
-  | IntExpr =>
-    Assert
-      that: intExpr num
-      equals: 1000000
-  |=> [TO DO: "It should be int, but it $intExpr"]
+  intExpr = (intExprMaybe expect: "Missing integer expression") asIntExpr
+  Assert that: intExpr num equals: 1000000
 ]
 
 Test parseString = [
@@ -122,15 +107,9 @@ Test parseString = [
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
   stringExprMaybe = parser literalExprFrom: tokens first
-  stringExpr = stringExprMaybe expect: "Missing string expression"
-  | stringExpr
-  | StringExpr =>
-    Assert
-      that: stringExpr token lexeme
-      equals: "\"sas\""
-  |=> [TO DO: "It should be int, but it " + stringExpr toString]
+  stringExpr = (stringExprMaybe expect: "Missing string expression") asStringExpr
+  Assert that: stringExpr token lexeme equals: "\"sas\""
 ]
-
 
 
 
@@ -143,17 +122,10 @@ Test parseAstTypeList = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  astType = parser parseType
-  | astType
-  | AstType => [
-    Assert that: astType genericParams count equals: 1
-    list = astType genericParams at: 0
-    | list
-    | AstType => Assert that: list name equals: "List"
-    |=> TO DO: "Wrong type"
-  ]
-  |=> [TO DO: "It should be List, but it " + astType toString]
-
+  astType = (parser parseType) asAstType
+  Assert that: astType genericParams count equals: 1
+  list = (astType genericParams at: 0) asAstType
+  Assert that: list name equals: "List"
 ]
 
 Test parseAstTypeMap = [
@@ -164,23 +136,10 @@ Test parseAstTypeMap = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  astType = parser parseType
-
-  | astType
-  | AstType => [
-    Assert that: astType genericParams count equals: 2
-    int = astType genericParams at: 0
-    | int
-    | AstType => Assert that: int name equals: "Int"
-    |=> TO DO: "Wrong type"
-
-    string = astType genericParams at: 1
-    | string
-    | AstType => Assert that: string name equals: "String"
-    |=> TO DO: "Wrong type"
-  ]
-  |=> [TO DO: "It should be Map, but it " + astType toString]
-
+  astType = (parser parseType) asAstType
+  Assert that: astType genericParams count equals: 2
+  Assert that: ((astType genericParams at: 0) asAstType) name equals: "Int"
+  Assert that: ((astType genericParams at: 1) asAstType) name equals: "String"
 ]
 
 Test parseAstTypeErrorAny = [
@@ -191,14 +150,10 @@ Test parseAstTypeErrorAny = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  astType = parser parseType
-
-  | astType | AstType => [
-    errorsMaybe = astType errors
-    errors = errorsMaybe expect: "Missing type errors"
-    Assert that: errors kind equals: AstTypeErrorsKind.Any
-    Assert that: errors names count equals: 0
-  ] |=> [TO DO: "It should be AstType, but it " + astType toString]
+  astType = (parser parseType) asAstType
+  errors = (astType errors) expect: "Missing type errors"
+  Assert that: errors kind equals: AstTypeErrorsKind.Any
+  Assert that: errors names count equals: 0
 ]
 
 Test parseAstTypeErrorSingle = [
@@ -209,15 +164,11 @@ Test parseAstTypeErrorSingle = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  astType = parser parseType
-
-  | astType | AstType => [
-    errorsMaybe = astType errors
-    errors = errorsMaybe expect: "Missing type errors"
-    Assert that: errors kind equals: AstTypeErrorsKind.Single
-    Assert that: errors names count equals: 1
-    Assert that: errors names first equals: "OutOfMemory"
-  ] |=> [TO DO: "It should be AstType, but it " + astType toString]
+  astType = (parser parseType) asAstType
+  errors = (astType errors) expect: "Missing type errors"
+  Assert that: errors kind equals: AstTypeErrorsKind.Single
+  Assert that: errors names count equals: 1
+  Assert that: errors names first equals: "OutOfMemory"
 ]
 
 Test parseAstTypeErrorList = [
@@ -228,17 +179,13 @@ Test parseAstTypeErrorList = [
   tokens = Lexer get-tokens: input
   statements::mut List::Statement = {}!
   parser:: mut Parser = Parser tokens: tokens current: 0 statements: statements
-  astType = parser parseType
-
-  | astType | AstType => [
-    errorsMaybe = astType errors
-    errors = errorsMaybe expect: "Missing type errors"
-    Assert that: errors kind equals: AstTypeErrorsKind.List
-    Assert that: errors names count equals: 3
-    Assert that: (errors names at: 0) equals: "Error1"
-    Assert that: (errors names at: 1) equals: "Error2"
-    Assert that: (errors names at: 2) equals: "Error3"
-  ] |=> [TO DO: "It should be AstType, but it " + astType toString]
+  astType = (parser parseType) asAstType
+  errors = (astType errors) expect: "Missing type errors"
+  Assert that: errors kind equals: AstTypeErrorsKind.List
+  Assert that: errors names count equals: 3
+  Assert that: (errors names at: 0) equals: "Error1"
+  Assert that: (errors names at: 1) equals: "Error2"
+  Assert that: (errors names at: 2) equals: "Error3"
 ]
 
 Test parseExtendMessageDeclarations = [
@@ -251,25 +198,20 @@ Test parseExtendMessageDeclarations = [
   """
 
   statements = TestParse withInput: input expectedCount: 1
-  extendDecl = statements at: 0
+  extendDecl = statements at: 0, asExtendDecl
+  Assert that: extendDecl receiver name equals: "FooBar"
+  Assert that: extendDecl messages count equals: 3
 
-  | extendDecl
-  | ExtendDecl => [
-    Assert that: extendDecl receiver name equals: "FooBar"
-    Assert that: extendDecl messages count equals: 3
+  first = extendDecl messages at: 0
+  second = extendDecl messages at: 1
+  third = extendDecl messages at: 2
 
-    first = extendDecl messages at: 0
-    second = extendDecl messages at: 1
-    third = extendDecl messages at: 2
-
-    Assert that: first receiver name equals: "FooBar"
-    Assert that: first name equals: "foo__bar"
-    Assert that: second receiver name equals: "FooBar"
-    Assert that: second name equals: "foo"
-    Assert that: third receiver name equals: "FooBar"
-    Assert that: third name equals: "+"
-  ]
-  |=> [TO DO: "ExtendDecl expected"]
+  Assert that: first receiver name equals: "FooBar"
+  Assert that: first name equals: "foo__bar"
+  Assert that: second receiver name equals: "FooBar"
+  Assert that: second name equals: "foo"
+  Assert that: third receiver name equals: "FooBar"
+  Assert that: third name equals: "+"
 ]
 
 Test parseNullableReceiverMessageDeclarations = [
@@ -280,32 +222,16 @@ Test parseNullableReceiverMessageDeclarations = [
 
   statements = TestParse withInput: input expectedCount: 2
 
-  unary = statements at: 0
-  | unary
-  | MessageDecl => [
-    Assert that: unary name equals: "ensure"
-    receiver = unary receiver
-    | receiver
-    | AstType => [
-      Assert that: receiver name equals: "T"
-      Assert that: receiver isNullable equals: true
-    ]
-    |=> [TO DO: "AstType receiver expected"]
-  ]
-  |=> [TO DO: "MessageDecl expected"]
+  unary = statements at: 0, asMessageDecl
+  Assert that: unary name equals: "ensure"
+  receiver = (unary receiver) asAstType
+  Assert that: receiver name equals: "T"
+  Assert that: receiver isNullable equals: true
 
-  kw = statements at: 1
-  | kw
-  | MessageDecl => [
-    Assert that: kw name equals: "orZero"
-    Assert that: kw args count equals: 1
-    receiver = kw receiver
-    | receiver
-    | AstType => [
-      Assert that: receiver name equals: "Int"
-      Assert that: receiver isNullable equals: true
-    ]
-    |=> [TO DO: "AstType receiver expected"]
-  ]
-  |=> [TO DO: "MessageDecl expected"]
+  kw = statements at: 1, asMessageDecl
+  Assert that: kw name equals: "orZero"
+  Assert that: kw args count equals: 1
+  kwReceiver = (kw receiver) asAstType
+  Assert that: kwReceiver name equals: "Int"
+  Assert that: kwReceiver isNullable equals: true
 ]

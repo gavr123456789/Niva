@@ -2,93 +2,52 @@
 /// so that the kotlin bootstrap compiler does not interpolate them
 Test interpolatedNameParts = [
   dollar = "$"
-  expr = TestParse expression: "\"" + dollar + "name\""
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 1
-    part = expr parts first
-    | part
-    | Identifier => Assert that: part name equals: "name"
-    |=> [TO DO: "identifier part expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: "\"" + dollar + "name\"") asInterpolatedString
+  Assert that: expr parts count equals: 1
+  Assert that: (expr parts first asIdentifier) name equals: "name"
 ]
 
 Test interpolatedBracketsWithText = [
   dollar = "$"
   src = "\"" + dollar + "[1 + 2] items\""
-  expr = TestParse expression: src
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 2
-    first = expr parts at: 0
-    | first
-    | BinaryMsg => []
-    |=> [TO DO: "binary expr part expected"]
-    last = expr parts at: 1
-    | last
-    | StringExpr => Assert that: last token lexeme equals: "\" items\""
-    |=> [TO DO: "literal part expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: src) asInterpolatedString
+  Assert that: expr parts count equals: 2
+  Assert that: ((expr parts at: 0) asBinaryMsg) args count equals: 1
+  Assert that: ((expr parts at: 1) asStringExpr) token lexeme equals: "\" items\""
 ]
 
 Test dollarWithoutNameStaysPlainLiteral = [
   dollar = "$"
-  expr = TestParse expression: "\"" + dollar + "0 and 100" + dollar + "\""
-  | expr
-  | StringExpr => Assert that: expr token lexeme equals: "\"$0 and 100$\""
-  |=> [TO DO: "plain string literal expected"]
+  expr = (TestParse expression: "\"" + dollar + "0 and 100" + dollar + "\"") asStringExpr
+  Assert that: expr token lexeme equals: "\"$0 and 100$\""
 ]
 
 Test interpolatedRawString = [
   dollar = "$"
   quote = "\""
   triple = quote + quote + quote
-  expr = TestParse expression: triple + "a" + dollar + "x" + triple
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 2
-    first = expr parts at: 0
-    | first
-    | StringExpr => Assert that: first token lexeme equals: triple + "a" + triple
-    |=> [TO DO: "raw literal part expected"]
-    last = expr parts at: 1
-    | last
-    | Identifier => []
-    |=> [TO DO: "identifier part expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: triple + "a" + dollar + "x" + triple) asInterpolatedString
+  Assert that: expr parts count equals: 2
+  Assert that: ((expr parts at: 0) asStringExpr) token lexeme equals: triple + "a" + triple
+  Assert that: ((expr parts at: 1) asIdentifier) name equals: "x"
 ]
 
 Test nestedStringInsideInterpolation = [
   dollar = "$"
   escapedQuote = "\\\""
   src = "\"" + dollar + "[ " + escapedQuote + "ab]c" + escapedQuote + " ] x\""
-  expr = TestParse expression: src
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 2
-    first = expr parts at: 0
-    | first
-    | StringExpr => []
-    |=> [TO DO: "string part from nested literal expected"]
-    last = expr parts at: 1
-    | last
-    | StringExpr => Assert that: last token lexeme equals: "\" x\""
-    |=> [TO DO: "literal part expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: src) asInterpolatedString
+  Assert that: expr parts count equals: 2
+  (expr parts at: 0) asStringExpr
+  Assert that: ((expr parts at: 1) asStringExpr) token lexeme equals: "\" x\""
 ]
 
 
 
 Test unclosedBracketStaysPlainLiteral = [
   dollar = "$"
-  expr = TestParse expression: "\"" + dollar + "[1 + 2" + "\""
-  | expr
-  | StringExpr => Assert that: expr token lexeme equals: "\"" + dollar + "[1 + 2" + "\""
-  |=> [TO DO: "plain string literal expected"]
+  expr = (TestParse expression: "\"" + dollar + "[1 + 2" + "\"") asStringExpr
+  Assert that: expr token lexeme equals: "\"" + dollar + "[1 + 2" + "\""
 ]
 
 
@@ -98,16 +57,9 @@ Test unclosedBracketStaysPlainLiteral = [
 Test backslashEscapesDollar = [
   dollar = "$"
   bs = "\\"
-  expr = TestParse expression: "\"" + bs + dollar + "x" + "\""
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 1
-    part = expr parts first
-    | part
-    | StringExpr => Assert that: part token lexeme equals: "\"" + dollar + "x\""
-    |=> [TO DO: "literal part with a plain dollar expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: "\"" + bs + dollar + "x" + "\"") asInterpolatedString
+  Assert that: expr parts count equals: 1
+  Assert that: (expr parts first asStringExpr) token lexeme equals: "\"" + dollar + "x\""
 ]
 
 /// an escaped dollar stays text while a real dollar still interpolates
@@ -115,20 +67,10 @@ Test backslashEscapesDollarBeforeInterpolation = [
   dollar = "$"
   bs = "\\"
   src = "\"" + bs + dollar + "x " + dollar + "y\""
-  expr = TestParse expression: src
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 2
-    first = expr parts at: 0
-    | first
-    | StringExpr => Assert that: first token lexeme equals: "\"" + dollar + "x \""
-    |=> [TO DO: "literal part with a plain dollar expected"]
-    last = expr parts at: 1
-    | last
-    | Identifier => Assert that: last name equals: "y"
-    |=> [TO DO: "identifier part expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: src) asInterpolatedString
+  Assert that: expr parts count equals: 2
+  Assert that: ((expr parts at: 0) asStringExpr) token lexeme equals: "\"" + dollar + "x \""
+  Assert that: ((expr parts at: 1) asIdentifier) name equals: "y"
 ]
 
 /// a raw literal keeps a backslash as a plain char, the dollar still interpolates
@@ -137,18 +79,8 @@ Test rawBackslashDoesNotEscapeDollar = [
   bs = "\\"
   quote = "\""
   triple = quote + quote + quote
-  expr = TestParse expression: triple + bs + dollar + "x" + triple
-  | expr
-  | InterpolatedString => [
-    Assert that: expr parts count equals: 2
-    first = expr parts at: 0
-    | first
-    | StringExpr => Assert that: first token lexeme equals: triple + bs + triple
-    |=> [TO DO: "raw literal part with a backslash expected"]
-    last = expr parts at: 1
-    | last
-    | Identifier => Assert that: last name equals: "x"
-    |=> [TO DO: "identifier part expected"]
-  ]
-  |=> [TO DO: "interpolated string expected"]
+  expr = (TestParse expression: triple + bs + dollar + "x" + triple) asInterpolatedString
+  Assert that: expr parts count equals: 2
+  Assert that: ((expr parts at: 0) asStringExpr) token lexeme equals: triple + bs + triple
+  Assert that: ((expr parts at: 1) asIdentifier) name equals: "x"
 ]
