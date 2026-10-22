@@ -30,7 +30,7 @@ constructor NivaProtocol rangeFromDefaultTypes(dtc): DefaultTypesContainer range
        genericArgs: {}!
            pkgName: "core"
         returnType: t
-  rangeProto addMethod: (NivaMethod singleArgKw: "map" receiverType: rangeType argT: mapBlock returnT: (ListT t: t))
+  rangeProto addMethod: (NivaMethod singleArgKw: "map" receiverType: rangeType argT: mapBlock returnT: (ListT :t))
 
   rangeProto addMethod: (NivaMethod singleArgKw: "contains" receiverType: rangeType argT: itemType returnT: bool)
   rangeProto addMethod: (NivaMethod unary: "isEmpty" receiverType: rangeType returnT: bool)

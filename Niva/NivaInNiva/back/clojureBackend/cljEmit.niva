@@ -17,27 +17,27 @@ extend IrExpr [
       ]
     | IrThisRef  => "this"
     | IrFieldGet => [
-        recv = receiver toCljSnapshotExpr: ctx scope: scope
+        recv = receiver toCljSnapshotExpr: ctx :scope
         "(:" + (field cljSanitizeIdent) + " " + recv + ")"
       ]
     | IrTypeRefExpr => ref cljQualifiedTypeName: ctx
     | IrOpBin => [
-        l = left  toCljExpr: ctx scope: scope
-        r = right toCljExpr: ctx scope: scope
+        l = left  toCljExpr: ctx :scope
+        r = right toCljExpr: ctx :scope
         // replace + for Strings to str, its not possible to overload + for str natively
         isStrPlus = (op == "+") && ((left cljExprTypeRef typeId cljNormalizeTypeId) == "core_String")
         isStrPlus
           ifTrue:  ["(str " + l + " " + r + ")"]
           ifFalse: ["(" + (op cljOperator) + " " + l + " " + r + ")"]
       ]
-    | IrCall     => this callToCljExpr:  ctx scope: scope
-    | IrLambda   => this lambdaToCljExpr: ctx scope: scope
-    | IrBlockExpr => block toCljBlockExpr: ctx scope: scope
-    | IrMatchExpr => this matchToCljExpr: ctx scope: scope
+    | IrCall     => this callToCljExpr:  ctx :scope
+    | IrLambda   => this lambdaToCljExpr: ctx :scope
+    | IrBlockExpr => block toCljBlockExpr: ctx :scope
+    | IrMatchExpr => this matchToCljExpr: ctx :scope
     | IrNewExpr   => [
         argsLocal = this args
         argsStr = argsLocal isNotEmpty
-          ifTrue: [" " + (argsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope])]
+          ifTrue: [" " + (argsLocal joinWith: " " transform: [it toCljExpr: ctx :scope])]
           ifFalse: [""]
         constructorBindMaybe = this constructorBind
         constructorOutput = | constructorBindMaybe
@@ -47,7 +47,7 @@ extend IrExpr [
             | constructorBindValue
             | IrConstructorBindEmit => [
               constructorBindValue backend == "clojure" ifTrue: [
-                boundExpr = constructorBindValue template bindApply0: (argsLocal map: [it toCljExpr: ctx scope: scope])
+                boundExpr = constructorBindValue template bindApply0: (argsLocal map: [it toCljExpr: ctx :scope])
                 (this typeRef) toCljCellExpr: boundExpr
               ] ifFalse: [""]
             ]
@@ -64,7 +64,7 @@ extend IrExpr [
         recordOutput = (this typeRef isMut) ifTrue: ["(atom " + recordExpr + ")"] ifFalse: [recordExpr]
         constructorOutput != "" ifTrue: [constructorOutput] ifFalse: [recordOutput]
       ]
-    | IrCollectionLiteral => this collectionToCljExpr: ctx scope: scope
+    | IrCollectionLiteral => this collectionToCljExpr: ctx :scope
 
 ]
 
@@ -83,7 +83,7 @@ IrTypeRef cljSameRecordTypeAs(other): IrTypeRef -> Bool =
   (this kind == IrTypeRefKind.Custom) && (other kind == IrTypeRefKind.Custom) && (this typeId == other typeId)
 
 IrExpr toCljCollectionCellExpr(ctx): CljContext scope: CljScope -> String = [
-  this toCljExpr: ctx scope: scope
+  this toCljExpr: ctx :scope
 ]
 
 IrTypeRef toCljCellExpr(expr): String -> String = [
@@ -92,16 +92,16 @@ IrTypeRef toCljCellExpr(expr): String -> String = [
 
 IrExpr toCljCollectionExpectedExpr(expected): IrTypeRef
     ctx(ctx): CljContext scope(scope): CljScope -> String = [
-  cell = this toCljCollectionCellExpr: ctx scope: scope
+  cell = this toCljCollectionCellExpr: ctx :scope
   expected isMut ifTrue: [cell] ifFalse: ["(deref " + cell + ")"]
 ]
 
 IrExpr toCljSnapshotExpr(ctx): CljContext scope: CljScope -> String = [
   exprType = this cljExprTypeRef
   (exprType isMut) && (exprType isCljCollectionType)
-    ifTrue: ["(deref " + (this toCljCollectionCellExpr: ctx scope: scope) + ")"]
+    ifTrue: ["(deref " + (this toCljCollectionCellExpr: ctx :scope) + ")"]
     ifFalse: [
-      raw = this toCljExpr: ctx scope: scope
+      raw = this toCljExpr: ctx :scope
       isMutableRecord = (exprType isMut) && (exprType kind == IrTypeRefKind.Custom)
       isMutableRecord ifTrue: ["(deref " + raw + ")"] ifFalse: [raw]
     ]
@@ -111,7 +111,7 @@ IrExpr toCljSnapshotExpr(ctx): CljContext scope: CljScope -> String = [
 // keep the cell when the caller can change the value
 IrExpr toCljExprForExpected(expected): IrTypeRef ctx(ctx): CljContext
     scope(scope): CljScope -> String = [
-  raw = this toCljExpr: ctx scope: scope
+  raw = this toCljExpr: ctx :scope
   sourceType = this cljExprTypeRef
   sourceIsMut = sourceType isMut
   expectedIsMut = expected isMut
@@ -121,7 +121,7 @@ IrExpr toCljExprForExpected(expected): IrTypeRef ctx(ctx): CljContext
   needsCell = (sourceIsMut not) && expectedIsMut && (sameCollection || sameRecord)
   needsPlainValue = sourceIsMut && (expectedIsMut not) && sameRecord
   ^ keepCell ifTrue: [
-    this toCljCollectionExpectedExpr: expected ctx: ctx scope: scope
+    this toCljCollectionExpectedExpr: expected :ctx :scope
   ] ifFalse: [
     needsCell ifTrue: ["(atom " + raw + ")"] ifFalse: [
       needsPlainValue ifTrue: ["(deref " + raw + ")"] ifFalse: [raw]
@@ -147,7 +147,7 @@ IrCall tryCljBindExpr(ctx): CljContext scope: CljScope -> String = [
     templateExpr = this args first
     templateMaybe = templateExpr irStringLiteralValue
     | templateMaybe
-      | null => templateExpr toCljExpr: ctx scope: scope
+      | null => templateExpr toCljExpr: ctx :scope
       |=> templateMaybe
   ] ifFalse: [""]
 ]
@@ -156,8 +156,8 @@ IrCall cljArgValues(ctx): CljContext scope: CljScope -> List(String) = [
   values::mut List(String) = {}!
   this args forEachIndexed: [i, arg ->
     value = i < (this paramTypes count)
-      ifTrue: [arg toCljExprForExpected: ((this paramTypes) at: i) ctx: ctx scope: scope]
-      ifFalse: [arg toCljExpr: ctx scope: scope]
+      ifTrue: [arg toCljExprForExpected: ((this paramTypes) at: i) :ctx :scope]
+      ifFalse: [arg toCljExpr: ctx :scope]
     values add: value
     ()
   ]
@@ -165,15 +165,15 @@ IrCall cljArgValues(ctx): CljContext scope: CljScope -> List(String) = [
 ]
 
 IrCall callToCljExpr(ctx): CljContext scope: CljScope -> String = [
-  tryOutput = this cljTryOutput: ctx scope: scope
+  tryOutput = this cljTryOutput: ctx :scope
   tryOutput != "" ifTrue: [tryOutput] ifFalse: [
-      bindOutput = this cljAttachedBindOutput: ctx scope: scope
+      bindOutput = this cljAttachedBindOutput: ctx :scope
       bindOutput != "" ifTrue: [bindOutput] ifFalse: [
-          inlineOutput = this tryCljBindExpr: ctx scope: scope
+          inlineOutput = this tryCljBindExpr: ctx :scope
           inlineOutput != "" ifTrue: [inlineOutput] ifFalse: [
-              specialOutput = this cljSpecialCallOutput: ctx scope: scope
+              specialOutput = this cljSpecialCallOutput: ctx :scope
               specialOutput != "" ifTrue: [specialOutput] ifFalse: [
-                this cljOrdinaryCallOutput: ctx scope: scope
+                this cljOrdinaryCallOutput: ctx :scope
               ]
             ]
         ]
@@ -184,7 +184,7 @@ IrCall cljTryOutput(ctx): CljContext scope: CljScope -> String = [
   msgNameLocal = this msgNameOrEmpty
   (msgNameLocal == "try") || (msgNameLocal == "orPANIC") ifTrue: [
     input = this args first
-    inputStr = input toCljExpr: ctx scope: scope
+    inputStr = input toCljExpr: ctx :scope
     (input cljExprTypeRef nullable)
       ifTrue: ["(let [__tryValue " + inputStr + "] (if (nil? __tryValue) (throw (ex-info \"try on null\" {})) __tryValue))"]
       ifFalse: [inputStr]
@@ -199,14 +199,14 @@ IrCall cljAttachedBindOutput(ctx): CljContext scope: CljScope -> String = [
       bindValue = bindMaybe
       | bindValue
       | IrBindByName => [
-          argsStr = (this cljArgValues: ctx scope: scope) joinWith: " "
+          argsStr = (this cljArgValues: ctx :scope) joinWith: " "
           namespace = bindValue goPkg cljBindNamespace
           namespace != "" ifTrue: [ctx addImport: namespace]
           argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
           "(" + namespace + "/" + (bindValue goName cljSanitizeIdent) + argsPart + ")"
         ]
       | IrBindEmit => [
-          emitArgVals = this cljArgValues: ctx scope: scope
+          emitArgVals = this cljArgValues: ctx :scope
           bindValue template bindApply0: emitArgVals
         ]
       |=> ""
@@ -228,7 +228,7 @@ IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
   functionIsCompiler = funcIdLocal contains: "Compiler"
   compilerCliArgsCall = (msgNameLocal == "cliArgs") && (receiverIsCompiler || functionIsCompiler)
   jvmHostCall = funcIdLocal contains: "JvmReloadHost"
-  argsStr = (this cljArgValues: ctx scope: scope) joinWith: " "
+  argsStr = (this cljArgValues: ctx :scope) joinWith: " "
   argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
   compilerCliArgsCall ifTrue: [
     "(or (some-> (System/getProperty \"niva.cli.args\") read-string vec) [])"
@@ -243,7 +243,7 @@ IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
 ]
 
 IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
-  argsStr = (this cljArgValues: ctx scope: scope) joinWith: " "
+  argsStr = (this cljArgValues: ctx :scope) joinWith: " "
   argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
   funcIdMaybe = this funcId
   | funcIdMaybe
@@ -253,7 +253,7 @@ IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
       | null => ""
       |=> [
         calleeValue = calleeMaybe
-        calleeExpr = calleeValue toCljExpr: ctx scope: scope
+        calleeExpr = calleeValue toCljExpr: ctx :scope
         "(" + calleeExpr + argsPart + ")"
       ]
     ]
@@ -309,9 +309,9 @@ IrExpr lambdaToCljExpr(ctx): CljContext scope: CljScope -> String = [
 IrCollectionLiteral collectionToCljExpr(ctx): CljContext scope: CljScope -> String = [
   itemsLocal = this items
   kindLocal = this kind
-  listExpr = "[" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "]"
-  setExpr = "#{" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
-  mapExpr = "{" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx scope: scope]) + "}"
+  listExpr = "[" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx :scope]) + "]"
+  setExpr = "#{" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx :scope]) + "}"
+  mapExpr = "{" + (itemsLocal joinWith: " " transform: [it toCljExpr: ctx :scope]) + "}"
   value = | kindLocal
     | IrCollectionKind.List => listExpr
     | IrCollectionKind.Set => setExpr
@@ -355,7 +355,7 @@ String cljWrapInLet(bindings): List(CljBinding) -> String = [
 IrMatchCase cljCaseTypeStrs(ctx): CljContext scope: CljScope -> List(String) = [
   assertedTypeMaybe = this assertedTypeRef
   firstTypeStr = | assertedTypeMaybe
-    | null => condition toCljExpr: ctx scope: scope
+    | null => condition toCljExpr: ctx :scope
     |=> assertedTypeMaybe cljQualifiedTypeName: ctx
   typeStrs::mut List(String) = {firstTypeStr}!
   additionalConditions forEach: [alt ->
@@ -370,7 +370,7 @@ IrMatchCase cljCaseTypeStrs(ctx): CljContext scope: CljScope -> List(String) = [
 ]
 
 IrMatchExpr matchToCljExpr(ctx): CljContext scope: CljScope -> String = [
-  subjectExpr = this subject toCljExpr: ctx scope: scope
+  subjectExpr = this subject toCljExpr: ctx :scope
   subjectName = "__cljSubject"
   innerScope = scope copy
 
@@ -535,7 +535,7 @@ extend IrBlock [
   // statements collected into the bindings vector. Non-binding statements use
   // `_` as their symbol.
   on toCljBlockBody(ctx): CljContext scope: CljScope -> String =
-    this toCljBlockBodyWithBind: ctx scope: scope bindName: "" bindValue: ""
+    this toCljBlockBodyWithBind: ctx :scope bindName: "" bindValue: ""
 
   // Same as `toCljBlockBody` but injects an extra binding at the top. Used by
   // match cases to alias the subject inside a type-cast branch.
@@ -570,7 +570,7 @@ extend IrBlock [
       injectedBinding add: binding
       ()
     ]
-    bindings = injectedBinding + (stmtsToEmit map: [it toCljStmtBinding: ctx scope: scope])
+    bindings = injectedBinding + (stmtsToEmit map: [it toCljStmtBinding: ctx :scope])
 
     // trailing IrReturn or block result
     resultExpr::IrExpr? = | trailingReturnExpr
@@ -579,7 +579,7 @@ extend IrBlock [
 
     resultStr = | resultExpr
                 | null => [this resultType isCljUnitType ifTrue: [":unit"] ifFalse: ["nil"]]
-                |=> resultExpr toCljExprForExpected: (this resultType) ctx: ctx scope: scope
+                |=> resultExpr toCljExprForExpected: (this resultType) :ctx :scope
 
     ^ bindings isNotEmpty
       ifTrue: [resultStr cljWrapInLet: bindings]
@@ -587,7 +587,7 @@ extend IrBlock [
   ]
 
   on toCljBlockExpr(ctx): CljContext scope: CljScope -> String =
-    this toCljBlockBody: ctx scope: scope
+    this toCljBlockBody: ctx :scope
 ]
 
 // ---------------------------------------------------------------------------
@@ -603,7 +603,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
           persistentValueMaybe = value
           raw = | persistentValueMaybe
             | null => "nil"
-            |=> persistentValueMaybe toCljExprForExpected: typeRef ctx: ctx scope: scope
+            |=> persistentValueMaybe toCljExprForExpected: typeRef :ctx :scope
           init = "(if (identical? @" + goName + " __niva_state_uninitialized) (reset! " +
             goName + " " + raw + ") nil)"
           CljBinding name: "_" value: init
@@ -613,7 +613,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
           valueMaybe = value
           raw = | valueMaybe
             | null => "nil"
-            |=> valueMaybe toCljExprForExpected: typeRef ctx: ctx scope: scope
+            |=> valueMaybe toCljExprForExpected: typeRef :ctx :scope
           valStr = isMut ifTrue: ["(atom " + raw + ")"] ifFalse: [raw]
           CljBinding name: goName value: valStr
         ]
@@ -624,7 +624,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
           TO DO: "Clojure backend: assignment to non-mut var: " + name
           ()
         ]
-        valStr = value toCljExpr: ctx scope: scope
+        valStr = value toCljExpr: ctx :scope
         CljBinding name: "_" value: ("(reset! " + goName + " " + valStr + ")")
       ]
     | IrSetField => [
@@ -634,13 +634,13 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
           TO DO: "Clojure backend: field assignment requires a mutable record receiver"
           ()
         ]
-        receiverStr = receiver toCljExpr: ctx scope: scope
-        valueStr = value toCljExpr: ctx scope: scope
+        receiverStr = receiver toCljExpr: ctx :scope
+        valueStr = value toCljExpr: ctx :scope
         CljBinding name: "_"
           value: ("(swap! " + receiverStr + " assoc :" + (field cljSanitizeIdent) + " " + valueStr + ")")
       ]
     | IrDestructure => [
-        valStr = value toCljSnapshotExpr: ctx scope: scope
+        valStr = value toCljSnapshotExpr: ctx :scope
         // build {a :field b :field2 ...} destructure map
         parts = bindings joinWith: " " transform: [b ->
           scope mutLocals remove: b name
@@ -652,17 +652,17 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         // Error propagation is automatic here: a call with propagatingErrVar just
         // throws on failure, and the exception unwinds the stack until a ByError
         // match (try/catch) handles it — so no special emission is needed.
-        CljBinding name: "_" value: (expr toCljExpr: ctx scope: scope)
+        CljBinding name: "_" value: (expr toCljExpr: ctx :scope)
       ]
     | IrReturn => CljBinding name: "_" value: ""
     | IrWhile => [
         // the plain condition is already one form so extra parens would call it
         condStr = cond isIrLambda
-          ifTrue:  [cond cljUnwrapLambdaBody: ctx scope: scope]
-          ifFalse: [cond toCljExpr: ctx scope: scope]
+          ifTrue:  [cond cljUnwrapLambdaBody: ctx :scope]
+          ifFalse: [cond toCljExpr: ctx :scope]
         bodyStr = body isIrLambda
-          ifTrue:  [body cljUnwrapLambdaBody: ctx scope: scope]
-          ifFalse: [body toCljExpr: ctx scope: scope]
+          ifTrue:  [body cljUnwrapLambdaBody: ctx :scope]
+          ifFalse: [body toCljExpr: ctx :scope]
         CljBinding name: "_" value: ("(while " + condStr + " " + bodyStr + ")")
       ]
     | IrThrow => [
@@ -672,7 +672,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         throwErrExpr = errExpr
         errRecordStr = | throwErrExpr
           | IrTypeRefExpr => "(->" + (throwErrExpr ref typeId cljNormalizeTypeId cljSanitizeIdent) + ")"
-          |=> throwErrExpr toCljExpr: ctx scope: scope
+          |=> throwErrExpr toCljExpr: ctx :scope
         CljBinding name: "_"
           value: ("(let [__cljErr " + errRecordStr + "] (throw (ex-info (str __cljErr) {:value __cljErr})))")
       ]
@@ -681,7 +681,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
 // Unwrap the body of an IrLambda: expose its statements + result inline so that
 // (while (fn [] cond)) becomes (while cond) instead of paying the closure cost.
 IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String =
-  | this | IrLambda => body toCljBlockBody: ctx scope: scope
+  | this | IrLambda => body toCljBlockBody: ctx :scope
   |=> ""
 
 // ---------------------------------------------------------------------------
@@ -735,7 +735,7 @@ constructor CljBackend [
   ]
 
   on emitFunction(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
-    CljBackend emitFunctionNamed: (fn cljFuncNameFromIr) fn: fn ctx: ctx sb: sb
+    CljBackend emitFunctionNamed: (fn cljFuncNameFromIr) :fn :ctx :sb
     ()
   ]
 
@@ -749,7 +749,7 @@ constructor CljBackend [
 
     scope = CljScope new
     ctx stateNames forEach: [it -> scope mutLocals add: it]
-    body = fn body toCljBlockBody: ctx scope: scope
+    body = fn body toCljBlockBody: ctx :scope
 
     (body contains: "\n")
       ifTrue: [
@@ -789,7 +789,7 @@ constructor CljBackend [
     stateDefs forEach: [it ->
       (ctx isStateName: it name) ifTrue: [scope mutLocals add: it name]
     ]
-    body = entry toCljBlockBody: ctx scope: scope
+    body = entry toCljBlockBody: ctx :scope
     indented = body replace: "\n" with: "\n  "
     sb appendLine: "(defn __niva_entry! []"
     ctx debug
@@ -823,12 +823,12 @@ constructor CljBackend [
         valueMaybe = stmt value
         value = | valueMaybe
           | null => "nil"
-          |=> valueMaybe toCljExpr: ctx scope: scope
+          |=> valueMaybe toCljExpr: ctx :scope
         sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")
         ()
       ]
       | IrSetLocal => [
-        value = stmt value toCljExpr: ctx scope: scope
+        value = stmt value toCljExpr: ctx :scope
         isPersistent = scope isMut: stmt name
         isPersistent
           ifTrue: [sb appendLine: ("(reset! " + (stmt name cljSanitizeIdent) + " " + value + ")")]
@@ -836,11 +836,11 @@ constructor CljBackend [
         ()
       ]
       | IrExprStmt => [
-        sb appendLine: (stmt expr toCljExpr: ctx scope: scope)
+        sb appendLine: (stmt expr toCljExpr: ctx :scope)
         ()
       ]
       |=> [
-        binding = stmt toCljStmtBinding: ctx scope: scope
+        binding = stmt toCljStmtBinding: ctx :scope
         wrapped = ":unit" cljWrapInLet: {binding}
         sb appendLine: wrapped
         ()
@@ -849,7 +849,7 @@ constructor CljBackend [
     entryResultMaybe = entry result
     resultValue = | entryResultMaybe
       | null => ":unit"
-      |=> entryResultMaybe toCljExpr: ctx scope: scope
+      |=> entryResultMaybe toCljExpr: ctx :scope
     sb appendLine: resultValue
     sb appendLine: ""
     ()
@@ -882,7 +882,7 @@ constructor CljBackend [
       mut packageEntry::IrBlock? = null
       (pkg name == ir pkg) ifTrue: [packageEntry <- ir entry]
       packageIr = IrModule version: ir version pkg: pkg name packages: {pkg} entry: packageEntry
-      content = CljBackend fullFromIrModule: packageIr debug: debug mode: mode
+      content = CljBackend fullFromIrModule: packageIr :debug :mode
         namespace: (pkg cljGeneratedNamespace) initialImports: localImports
         mainClass: ((pkg name == ir pkg) && (target == CljTarget.Jvm))
       files at: (pkg cljGeneratedPath) put: content
@@ -939,11 +939,11 @@ constructor CljBackend [
 
     ^ CljOutput files: files toMap
       entryNamespace: (ir pkg cljGeneratedNamespace)
-      manifest: manifest target: target
+      :manifest :target
   ]
 
   on fullOutputFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> CljOutput = [
-    ^ CljBackend fullOutputFromIrModuleForTarget: ir debug: debug mode: mode
+    ^ CljBackend fullOutputFromIrModuleForTarget: ir :debug :mode
       target: CljTarget.Jvm
   ]
 
@@ -976,23 +976,23 @@ constructor CljBackend [
       pkg stateDefs forEach: [state ->
         isHotReload ifTrue: [
           ctx addStateName: state name
-          CljBackend emitStateDef: state ctx: ctx sb: body
+          CljBackend emitStateDef: state :ctx sb: body
           ()
         ]
       ]
-      pkg types  forEach: [CljBackend emitTypeDef:  it ctx: ctx sb: body]
-      pkg unions forEach: [CljBackend emitUnionDef: it ctx: ctx sb: body]
-      pkg enums  forEach: [CljBackend emitEnumDef:  it ctx: ctx sb: body]
+      pkg types  forEach: [CljBackend emitTypeDef:  it :ctx sb: body]
+      pkg unions forEach: [CljBackend emitUnionDef: it :ctx sb: body]
+      pkg enums  forEach: [CljBackend emitEnumDef:  it :ctx sb: body]
       pkg functions forEach: [fn ->
         baseName = fn cljFuncNameFromIr
         functionNames add: baseName
-        CljBackend emitFunction: fn ctx: ctx sb: body
+        CljBackend emitFunction: fn :ctx sb: body
         fn instantiations forEach: [inst ->
           specializedId = (fn id replace: (fn receiverType typeId) with: (inst receiverType typeId))
           specializedName = specializedId cljFuncIdToName
           functionNames add: specializedName
           specializedName == baseName ifFalse: [
-            CljBackend emitFunctionNamed: specializedName fn: fn ctx: ctx sb: body
+            CljBackend emitFunctionNamed: specializedName :fn :ctx sb: body
             ()
           ]
         ]
@@ -1001,7 +1001,7 @@ constructor CljBackend [
     entryMaybe = ir entry
     entryMaybe ifNotNull: [entryValue ->
       isRepl ifTrue: [
-        CljBackend emitEntryRepl: entryValue ctx: ctx sb: body
+        CljBackend emitEntryRepl: entryValue :ctx sb: body
         ()
       ]
       isRepl ifFalse: [
@@ -1012,7 +1012,7 @@ constructor CljBackend [
             ()
           ]
         ]
-        CljBackend emitEntry: entryValue stateDefs: entryStates ctx: ctx sb: body
+        CljBackend emitEntry: entryValue stateDefs: entryStates :ctx sb: body
         ()
       ]
     ]
@@ -1090,12 +1090,12 @@ constructor CljBackend [
     nsName = mode == CljEmitMode.Repl
       ifTrue: [CompilerConstants cljReplNamespace]
       ifFalse: ["main"]
-    ^ CljBackend fullFromIrModule: ir debug: debug mode: mode
+    ^ CljBackend fullFromIrModule: ir :debug :mode
       namespace: nsName initialImports: #() mainClass: (mode == CljEmitMode.Program)
   ]
 
   on fullFromIrModule(ir): IrModule debug: Bool -> String =
-    CljBackend fullFromIrModule: ir debug: debug mode: CljEmitMode.Program
+    CljBackend fullFromIrModule: ir :debug mode: CljEmitMode.Program
 
   on fullFromIrModule(ir): IrModule -> String =
     CljBackend fullFromIrModule: ir debug: false

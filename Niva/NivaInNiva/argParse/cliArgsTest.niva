@@ -1,6 +1,6 @@
 Test cliArgs = [
   args = {"run" "--verbose"} toList
-  result = ArgParser args: args
+  result = ArgParser :args
   Assert that: (result option) equals: CompilerOption.Run
   Assert that: (result verbose) equals: true
   Assert that: result backend equals: CompilerBackend.Clj
@@ -15,13 +15,13 @@ Test cliArgsEmptyMeansRunMain = [
 
 Test cliArgsHelp = [
   args = {"--help"} toList
-  result = ArgParser args: args
+  result = ArgParser :args
   Assert that: result option equals: CompilerOption.Help
 ]
 
 Test cliArgsRunGoBackend = [
   args = {"run" ".niva_go/testss.niva" "--backend=go"} toList
-  result = ArgParser args: args
+  result = ArgParser :args
   Assert that: result option equals: CompilerOption.Run
   Assert that: result path equals: ".niva_go/testss.niva"
   Assert that: result backend equals: CompilerBackend.Go
@@ -61,7 +61,7 @@ Test cliArgsCljTargetKeepsCljBackend = [
 
 Test cliArgsReplEmission = [
   args = {"build" "main.niva" "--backend=clojure" "--repl" "--repl-line=7"} toList
-  result = ArgParser args: args
+  result = ArgParser :args
   Assert that: result option equals: CompilerOption.Build
   Assert that: result backend equals: CompilerBackend.Clj
   Assert that: result repl equals: true
@@ -70,7 +70,7 @@ Test cliArgsReplEmission = [
 
 Test cliArgsNativeCljBuild = [
   args = {"build" "main.niva" "--backend=clj" "--native"} toList
-  result = ArgParser args: args
+  result = ArgParser :args
   Assert that: result option equals: CompilerOption.Build
   Assert that: result backend equals: CompilerBackend.Clj
   Assert that: result nativeBuild equals: true

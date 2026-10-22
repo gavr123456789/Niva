@@ -201,7 +201,7 @@ constructor CompilerConfigFingerprint incrementalTest -> CompilerConfigFingerpri
     abiOptions: "" hotReload: false coreAbiHash: "test-core"
 
 Map(String, String) incrementalTestSnapshot(revision): Int -> WorkspaceSnapshot =
-  WorkspaceSnapshot fromSources: (this toNivaSourceInputs) revision: revision
+  WorkspaceSnapshot fromSources: (this toNivaSourceInputs) :revision
 
 Test sha256BindingIsDeterministic = [
   Assert that: (Sha256 digest: "abc") equals:
@@ -327,7 +327,7 @@ Test specializationUseIndexTracksContributingModule = [
   resolver = ResolverHelper resolve: sources entryPoint: "main"
   empty = CompilerSession empty
   candidate = empty prepareCandidate: (sources incrementalTestSnapshot: 1)
-    resolver: resolver config: CompilerConfigFingerprint incrementalTest
+    :resolver config: CompilerConfigFingerprint incrementalTest
   uses = candidate specializationUses
   mut found = false
   uses forEach: [key, contributors ->
@@ -433,13 +433,13 @@ Test sessionResolvesOnlyInvalidatedBodyFrontier = [
     collectSources: initialSources toNivaSourceInputs entryPoint: "main" backend: "clj"
   empty = CompilerSession empty
   initial = empty prepareCandidate: (initialSources incrementalTestSnapshot: 1)
-    interfaceSnapshot: firstInterface config: config
+    interfaceSnapshot: firstInterface :config
   committed = empty commit: initial
 
   changedInterface = ResolverInterfaceSnapshot
     collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
   candidate = committed prepareCandidate: (changedSources incrementalTestSnapshot: 2)
-    interfaceSnapshot: changedInterface config: config
+    interfaceSnapshot: changedInterface :config
 
   Assert that: candidate sourceInvalidated equals: #( "model" )
   Assert that: candidate interfaceInvalidated count equals: 0
@@ -460,7 +460,7 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
 
   empty = CompilerSession empty
   good = empty compileCandidate: (goodSources incrementalTestSnapshot: 1)
-    interfaceSnapshot: goodInterface config: config requestVersion: 11 cancelled: false
+    interfaceSnapshot: goodInterface :config requestVersion: 11 cancelled: false
   Assert that: good cancelled equals: false
   Assert that: good diagnostics count equals: 0
   candidateMaybe = good candidate
@@ -468,7 +468,7 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
   committed = empty commit: goodCandidate
 
   failed = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
-    interfaceSnapshot: badInterface config: config requestVersion: 12 cancelled: false
+    interfaceSnapshot: badInterface :config requestVersion: 12 cancelled: false
   Assert that: failed candidate equals: null
   Assert that: failed diagnostics count > 0 equals: true
   diagnostic = failed diagnostics first
@@ -476,7 +476,7 @@ Test compilationResultVersionsDiagnosticsAndCancellation = [
   Assert that: committed revision equals: 1
 
   cancelled = committed compileCandidate: (badSources incrementalTestSnapshot: 2)
-    interfaceSnapshot: badInterface config: config requestVersion: 13 cancelled: true
+    interfaceSnapshot: badInterface :config requestVersion: 13 cancelled: true
   Assert that: cancelled cancelled equals: true
   Assert that: cancelled candidate equals: null
   Assert that: cancelled diagnostics count equals: 0
@@ -492,10 +492,10 @@ Test incompatibleReloadShapeRequiresHardRestart = [
     revision: 2 entryPoint: "main" documentVersions: #{}
 
   session = CompilerSession empty
-  initial = session compileSnapshot: initialSnapshot config: config
+  initial = session compileSnapshot: initialSnapshot :config
     requestVersion: 1 cancelled: false incremental: true
   committed = session commitResult: initial incremental: true
-  changed = committed compileSnapshot: changedSnapshot config: config
+  changed = committed compileSnapshot: changedSnapshot :config
     requestVersion: 2 cancelled: false incremental: true
 
   Assert that: changed candidate equals: null
@@ -515,7 +515,7 @@ Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   config = CompilerConfigFingerprint incrementalTest
   session = CompilerSession empty
 
-  result = session compileSnapshot: snapshot config: config requestVersion: 31 cancelled: false
+  result = session compileSnapshot: snapshot :config requestVersion: 31 cancelled: false
   Assert that: result requestVersion equals: 31
   Assert that: result diagnostics count equals: 0
   candidateMaybe = result candidate
@@ -529,7 +529,7 @@ Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   committedSnapshot = committedSnapshotMaybe expect: "Missing committed snapshot"
   Assert that: committedSnapshot entryPoint equals: "app.main"
 
-  cancelled = committed compileSnapshot: snapshot config: config requestVersion: 32 cancelled: true
+  cancelled = committed compileSnapshot: snapshot :config requestVersion: 32 cancelled: true
   Assert that: cancelled cancelled equals: true
   Assert that: cancelled candidate equals: null
   Assert that: (committed commitResult: cancelled) revision equals: committed revision
@@ -540,7 +540,7 @@ Test sessionCompileSnapshotIsEntryPointAwareAndTransactional = [
   failedInterface = ResolverInterfaceSnapshot
     collectSources: failedSnapshot sources entryPoint: failedSnapshot entryPoint backend: config backend
   failed = committed compileCandidate: failedSnapshot interfaceSnapshot: failedInterface
-    config: config requestVersion: 33 cancelled: false
+    :config requestVersion: 33 cancelled: false
   afterFailed = committed commitResult: failed
   Assert that: afterFailed revision equals: committed revision
 ]
@@ -558,15 +558,15 @@ Test compileSnapshotFlagSelectsPersistentOrCleanSession = [
   empty = CompilerSession empty
   initialSnapshot = WorkspaceSnapshot fromSources: (initialSources toNivaSourceInputs)
     revision: 1 entryPoint: "main" documentVersions: #{}
-  initial = empty compileSnapshot: initialSnapshot config: config
+  initial = empty compileSnapshot: initialSnapshot :config
     requestVersion: 1 cancelled: false incremental: true
   committed = empty commitResult: initial
   changedSnapshot = WorkspaceSnapshot fromSources: (changedSources toNivaSourceInputs)
     revision: 2 entryPoint: "main" documentVersions: #{}
 
-  incremental = committed compileSnapshot: changedSnapshot config: config
+  incremental = committed compileSnapshot: changedSnapshot :config
     requestVersion: 2 cancelled: false incremental: true
-  clean = committed compileSnapshot: changedSnapshot config: config
+  clean = committed compileSnapshot: changedSnapshot :config
     requestVersion: 2 cancelled: false incremental: false
   incrementalCandidateMaybe = incremental candidate
   incrementalCandidate = incrementalCandidateMaybe expect: "Missing incremental candidate"
@@ -618,7 +618,7 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
     collectSources: initialSources toNivaSourceInputs entryPoint: "main" backend: "clj"
   empty = CompilerSession empty
   initialResult = empty compileCandidate: (initialSources incrementalTestSnapshot: 1)
-    interfaceSnapshot: initialInterface config: config requestVersion: 1 cancelled: false
+    interfaceSnapshot: initialInterface :config requestVersion: 1 cancelled: false
   initialArtifactMaybe = initialResult backendArtifact
   initialArtifact = initialArtifactMaybe expect: "Missing initial backend artifact"
   Assert that: initialArtifact content equals: initialCleanOutput
@@ -631,7 +631,7 @@ Test incrementalBackendOutputMatchesCleanCompilation = [
   changedInterface = ResolverInterfaceSnapshot
     collectSources: changedSources toNivaSourceInputs entryPoint: "main" backend: "clj"
   changedResult = committed compileCandidate: (changedSources incrementalTestSnapshot: 2)
-    interfaceSnapshot: changedInterface config: config requestVersion: 2 cancelled: false
+    interfaceSnapshot: changedInterface :config requestVersion: 2 cancelled: false
   changedCandidateMaybe = changedResult candidate
   changedCandidate = changedCandidateMaybe expect: "Missing changed candidate"
   changedArtifactMaybe = changedResult backendArtifact

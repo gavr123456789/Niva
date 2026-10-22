@@ -1017,11 +1017,11 @@ Test resolveAFewDeclarations = [
   listOfFilesContents = #{"main" statements}
   db = TyperDB new
 
-  msgDecls = TypeDeclVisitor db: db,
+  msgDecls = TypeDeclVisitor :db,
     visitAllTypesThenTypesAndMethods: listOfFilesContents
     entryPointStatements: statements
 
-  MsgDeclVisitor new processBodyes: msgDecls db: db
+  MsgDeclVisitor new processBodyes: msgDecls :db
 
   typesWereRegistered = [
     mainPkgMaybe = db packages at: "main"

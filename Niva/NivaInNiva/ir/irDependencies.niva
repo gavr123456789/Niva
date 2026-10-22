@@ -5,7 +5,7 @@ type IrDependencyCollector
   seen: mut Set(String)
 
 constructor IrDependencyCollector forPackage(pkg): String localPackages: Set(String) -> IrDependencyCollector =
-  IrDependencyCollector currentPkg: pkg localPackages: localPackages dependencies: {}! seen: #()!
+  IrDependencyCollector currentPkg: pkg :localPackages dependencies: {}! seen: #()!
 
 IrDependencyKind stableName -> String =
   | this
@@ -21,7 +21,7 @@ IrDependency stableKey -> String =
 IrDependencyCollector addDependencyTo(targetPkg): String kind(kind): IrDependencyKind token(token): Token symbol(symbol): String -> Unit = [
   shouldAdd = (targetPkg != currentPkg) && (localPackages contains: targetPkg)
   shouldAdd ifTrue: [
-    dependency = IrDependency fromPkg: currentPkg toPkg: targetPkg kind: kind token: token symbol: symbol
+    dependency = IrDependency fromPkg: currentPkg toPkg: targetPkg :kind :token :symbol
     key = dependency stableKey
     seen contains: key, ifFalse: [
       seen add: key
@@ -31,7 +31,7 @@ IrDependencyCollector addDependencyTo(targetPkg): String kind(kind): IrDependenc
 ]
 
 IrTypeRef collectDependenciesInto(collector): IrDependencyCollector at(token): Token -> Unit = [
-  collector addDependencyTo: ownerPkg kind: IrDependencyKind.Type token: token symbol: typeId
+  collector addDependencyTo: ownerPkg kind: IrDependencyKind.Type :token symbol: typeId
   args forEach: [it collectDependenciesInto: collector at: token]
   returnTypeMaybe = returnType
   | returnTypeMaybe
@@ -96,7 +96,7 @@ IrExpr collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
       declPkgMaybe = declPkg
       | declPkgMaybe
       | null => []
-      |=> collector addDependencyTo: declPkgMaybe kind: callKind token: token symbol: callSymbol
+      |=> collector addDependencyTo: declPkgMaybe kind: callKind :token symbol: callSymbol
       paramTypes forEach: [it collectDependenciesInto: collector at: token]
       receiverTypeMaybe = receiverType
       | receiverTypeMaybe
@@ -131,7 +131,7 @@ IrExpr collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
     ]
   | IrNewExpr => [
       collector addDependencyTo: typeRef ownerPkg
-        kind: IrDependencyKind.Constructor token: token symbol: typeId
+        kind: IrDependencyKind.Constructor :token symbol: typeId
       args forEach: [it collectDependenciesInto: collector]
     ]
   | IrCollectionLiteral => [items forEach: [it collectDependenciesInto: collector]]
@@ -155,7 +155,7 @@ IrFunction collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
 ]
 
 IrPackage collectDependencyEvidence(localPackages): Set(String) entry(entry): IrBlock? -> List(IrDependency) = [
-  collector = IrDependencyCollector forPackage: name localPackages: localPackages
+  collector = IrDependencyCollector forPackage: name :localPackages
 
   imports forEach: [import ->
     import kind == IrImportKind.Local ifTrue: [
@@ -205,7 +205,7 @@ IrModule withNormalizedDependencies -> IrModule = [
       functions: modulePkg functions
   ]
 
-  ^ IrModule version: version pkg: pkg packages: normalizedPackages entry: entry
+  ^ IrModule :version :pkg packages: normalizedPackages :entry
 ]
 
 type IrTarjanState
@@ -220,7 +220,7 @@ type IrTarjanState
 constructor IrTarjanState forPackages(packages): List(IrPackage) -> IrTarjanState = [
   packagesByName::mut Map(String, IrPackage) = #{}!
   packages forEach: [packagesByName at: it name put: it]
-  ^ IrTarjanState nextIndex: 0 indices: #{}! lowLinks: #{}! stack: {}! onStack: #()! components: {}! packagesByName: packagesByName
+  ^ IrTarjanState nextIndex: 0 indices: #{}! lowLinks: #{}! stack: {}! onStack: #()! components: {}! :packagesByName
 ]
 
 mut IrTarjanState strongConnect(node): String -> Unit = [

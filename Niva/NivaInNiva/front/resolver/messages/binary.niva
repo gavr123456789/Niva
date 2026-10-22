@@ -14,7 +14,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
   args forEach: [ binary ->
     kw = KeywordMsg
       receiver: lastReceiverExpr
-      token: token
+      :token
       args: {binary}
       kind: MessageSendKind.Call
 
@@ -33,8 +33,8 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
   dbMsg = dbMsgMaybe expect: "Binary message did not resolve to a method"
   ^ BinaryMsgT
     receiver: receiverTypedExpr
-    token: token
+    :token
     typeInfo: lastTypeInfo
-    dbMsg: dbMsg
+    :dbMsg
     args: typedArgs toList
 ]

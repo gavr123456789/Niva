@@ -72,7 +72,7 @@ constructor TyperDB new -> TyperDB = [
   errorProtocol   = NivaProtocol errorFromDefaultTypes: dtc errorType: errorT
   intRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: intRangeT itemType: intT
   charRangeProtocol = NivaProtocol rangeFromDefaultTypes: dtc rangeType: charRangeT itemType: charT
-  stringBuilderProtocol = NivaProtocol stringBuilderFromDefaultTypes: dtc sb: sb
+  stringBuilderProtocol = NivaProtocol stringBuilderFromDefaultTypes: dtc :sb
 
   emptyFloatMethods::mut Map(String, NivaMethod) = #{}!
   emptyUnitMethods::mut Map(String, NivaMethod) = #{}!
@@ -145,14 +145,14 @@ constructor TyperDB new -> TyperDB = [
     nonInlineReturnErrors: #{}!
     packages: #{"core" corePkg}!
     internalTypesCache: corePkg types
-    typesWithSameNames: typesWithSameNames
+    :typesWithSameNames
     typeDeclarationTokens: #{}!
     methodDeclarationTokens: #{}!
     unionRootToBranches: #{}!
     branchIdToParentId: #{}!
-    typesById: typesById
-    dtc: dtc
-    typeToMethodNameToMethod: typeToMethodNameToMethod
+    :typesById
+    :dtc
+    :typeToMethodNameToMethod
     genericReceiverMethods: #{}!
     nullableMethods: #{}!
     constructorsTypeToMethodNameToMethod: constructorsCache
@@ -198,12 +198,12 @@ NivaType toFakeAstType -> AstType2 = [
 
   // lambda types need a lambda ast or the fake name cannot be resolved
   ^ | nivaType
-    | FuntionT => AstLambdaType tok: (Token fake) name: name
+    | FuntionT => AstLambdaType tok: (Token fake) :name
         args: (nivaType fields map: [it typeT toFakeAstType])
         returnType: (nivaType returnType toFakeAstType)
     |=> AstType tok: (Token fake) name: astName
       isNullable: this isNullableType
-      genericParams: genericParams
+      :genericParams
       isMut: false errors: null
 ]
 
@@ -294,7 +294,7 @@ extend TyperDB [
 
   on unionBranchesDeep(root): TypeT -> Set::String = [
     visited::mut Set::String = #()!
-    this unionBranchesDeepById: root toIdString visited: visited
+    this unionBranchesDeepById: root toIdString :visited
   ]
 
   on expandUnionBranches(rootId): String visited: mut Set::String -> Set::String = [
@@ -306,7 +306,7 @@ extend TyperDB [
       expanded::mut Set(String) = #()!
       directMaybe forEach: [branchId ->
         expanded add: branchId
-        expanded addAll: (this unionBranchesDeepById: branchId visited: visited)
+        expanded addAll: (this unionBranchesDeepById: branchId :visited)
       ]
       expanded
     ]
@@ -316,13 +316,13 @@ extend TyperDB [
     alreadyVisited = visited contains: rootId
     alreadyVisited ifTrue: [#()!] ifFalse: [
       visited add: rootId
-      this expandUnionBranches: rootId visited: visited
+      this expandUnionBranches: rootId :visited
     ]
   ]
 
   on unionLeaves(root): TypeT -> Set::String = [
     visited::mut Set::String = #()!
-    this unionLeavesById: root toIdString visited: visited
+    this unionLeavesById: root toIdString :visited
   ]
 
   on expandUnionLeaves(rootId): String visited: mut Set::String -> Set::String = [
@@ -337,7 +337,7 @@ extend TyperDB [
         | sub
         | null => leaves add: branchId
         |=> [
-          nestedLeaves = this unionLeavesById: branchId visited: visited
+          nestedLeaves = this unionLeavesById: branchId :visited
           leaves addAll: nestedLeaves
           ()
         ]
@@ -350,7 +350,7 @@ extend TyperDB [
     alreadyVisited = visited contains: rootId
     alreadyVisited ifTrue: [#()!] ifFalse: [
       visited add: rootId
-      this expandUnionLeaves: rootId visited: visited
+      this expandUnionLeaves: rootId :visited
     ]
   ]
 
@@ -524,11 +524,11 @@ extend TyperDB [
       | NullableT => true
       |=> false
     (forType isContainsUnresolvedGenerics) && (isNullableReceiver not)
-      ifTrue: [this registerGenericReceiverMethod: m forType: forType]
+      ifTrue: [this registerGenericReceiverMethod: m :forType]
       ifFalse: [
         this
           addMethod: m
-          forType: forType
+          :forType
       ]
 
     declMaybe = m decl
@@ -717,12 +717,12 @@ extend TyperDB [
   ]
 
   on addErrorFromTok(tok): Token withMsg(msg): String = [
-    resolveError::ResolveErrors = LazyError tok: tok msg: msg
+    resolveError::ResolveErrors = LazyError :tok :msg
     listOfErrors add: resolveError
   ]
 
   on addFatalErrorFromTok(tok): Token withMsg(msg): String = [
-    resolveError::ResolveErrors = LazyError tok: tok msg: msg
+    resolveError::ResolveErrors = LazyError :tok :msg
     listOfErrors add: resolveError
     TO DO: "FATAL"
   ]
@@ -890,7 +890,7 @@ extend TyperDB [
     | null => ()
     |=> [
        methodsOfGeneric values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          newM = m replaceGenericsFromTable: letterToType :dontMangle mangle: false db: this
           instMethods at: newM name put: newM
        ]
     ]
@@ -901,7 +901,7 @@ extend TyperDB [
     | null => ()
     |=> [
        constructorsOfGeneric values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          newM = m replaceGenericsFromTable: letterToType :dontMangle mangle: false db: this
           instConstructors at: newM name put: newM
        ]
     ]
@@ -927,7 +927,7 @@ extend TyperDB [
         dontMangle = letterToType keys toSet
 
         baseMethods values forEach: [ m ->
-          newM = m replaceGenericsFromTable: letterToType dontMangle: dontMangle mangle: false db: this
+          newM = m replaceGenericsFromTable: letterToType :dontMangle mangle: false db: this
           instMethods at: newM name put: newM
         ]
 
@@ -943,18 +943,18 @@ extend TyperDB [
       | ListT => [
         letterToType::mut Map(String, NivaType) = #{}!
         letterToType at: "T" put: collectionType t
-        this instantiateCollection: ("List_" + (collectionType t toMangledName)) coreBase: dtc list letterToType: letterToType collectionType: collectionType errMsg: "Missing List protocol methods"
+        this instantiateCollection: ("List_" + (collectionType t toMangledName)) coreBase: dtc list :letterToType :collectionType errMsg: "Missing List protocol methods"
       ]
       | SetT => [
         letterToType::mut Map(String, NivaType) = #{}!
         letterToType at: "T" put: collectionType t
-        this instantiateCollection: ("Set_" + (collectionType t toMangledName)) coreBase: dtc set letterToType: letterToType collectionType: collectionType errMsg: "Missing Set protocol methods"
+        this instantiateCollection: ("Set_" + (collectionType t toMangledName)) coreBase: dtc set :letterToType :collectionType errMsg: "Missing Set protocol methods"
       ]
       | MapT => [
         letterToType::mut Map(String, NivaType) = #{}!
         letterToType at: "T" put: collectionType k
         letterToType at: "G" put: collectionType v
-        this instantiateCollection: ("Map_" + (collectionType k toMangledName) + "_" + (collectionType v toMangledName)) coreBase: dtc map letterToType: letterToType collectionType: collectionType errMsg: "Missing Map protocol methods"
+        this instantiateCollection: ("Map_" + (collectionType k toMangledName) + "_" + (collectionType v toMangledName)) coreBase: dtc map :letterToType :collectionType errMsg: "Missing Map protocol methods"
       ]
       |=> collectionType
   ]
@@ -1013,8 +1013,8 @@ extend TyperDB [
         null
       ]
     |=> NivaMethod
-        name: name
-        receiverType: receiverType
+        :name
+        :receiverType
         args: {}
         returnType: receiverType unwrapNullable
         returnErrors: {}!
@@ -1166,8 +1166,8 @@ extend TyperDB [
         |=> [
           field = fieldMaybe
           NivaMethod
-            name: name
-            receiverType: receiverType
+            :name
+            :receiverType
             args: {}
             returnType: field typeT
             returnErrors: {}!
@@ -1200,7 +1200,7 @@ extend TyperDB [
     |=> [
       | true
       | name == "try" => [
-          recoveryMethodMaybe = this findMethodInAllProtocols: "toString" forType: dtc any receiver: receiver
+          recoveryMethodMaybe = this findMethodInAllProtocols: "toString" forType: dtc any :receiver
           recoveryMethodMaybe expect: "Missing toString method for error recovery"
         ]
       |=> [
@@ -1223,10 +1223,10 @@ extend TyperDB [
               whileTrueMethod = whileTrueMethodMaybe expect: "Missing whileTrue protocol method"
               bodyArgType = whileTrueMethod args first typeT
 
-              (NivaMethod singleArgKw: "whileTrue" receiverType: receiverType argT: bodyArgType returnT: unit) markedInline
+              (NivaMethod singleArgKw: "whileTrue" :receiverType argT: bodyArgType returnT: unit) markedInline
             ]
-            | "do" => NivaMethod unary: "do" receiverType: receiverType returnT: receiverType returnType
-            |=> NivaMethod manyArgKw: receiverType fields receiverType: receiverType returnT: receiverType returnType
+            | "do" => NivaMethod unary: "do" :receiverType returnT: receiverType returnType
+            |=> NivaMethod manyArgKw: receiverType fields :receiverType returnT: receiverType returnType
           ]
           |=> null
         ]
@@ -1239,8 +1239,8 @@ extend TyperDB [
           pkgMaybe = packages at: lookupType pkgName
           pkg = pkgMaybe expect: "Missing package for type $lookupType"
 
-          methodMaybe = this findMethodInAllProtocols: name forType: lookupType receiver: receiver
-          unionFieldGetterMaybe = this findUnionFieldGetter: name receiver: receiver
+          methodMaybe = this findMethodInAllProtocols: name forType: lookupType :receiver
+          unionFieldGetterMaybe = this findUnionFieldGetter: name :receiver
           | true
           | unionFieldGetterMaybe != null => unionFieldGetterMaybe expect: "Union field getter disappeared during lookup"
           |=> [
@@ -1249,7 +1249,7 @@ extend TyperDB [
             | null => [
                 receiverHasErrors
                   ifTrue: [
-                    forbiddenMethod = this findMethodInAllProtocols: name forType: receiverType receiver: receiver
+                    forbiddenMethod = this findMethodInAllProtocols: name forType: receiverType :receiver
                     | forbiddenMethod
                     | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
                     |=> [
@@ -1259,7 +1259,7 @@ extend TyperDB [
                   ]
                   ifFalse: [
                     anyType = dtc any
-                    foundInAnyMaybe = this findMethodInAllProtocols: name forType: anyType receiver: receiver
+                    foundInAnyMaybe = this findMethodInAllProtocols: name forType: anyType :receiver
                     | foundInAnyMaybe
                     | null => [
                                 TO DO: "Searching for " + name + " method but its not found for type " + receiverType toString + " at " + receiver token toPosition]
@@ -1283,7 +1283,7 @@ extend TyperDB [
               nonNullDecl::MessageDecl = declMaybe expect: "Expected a declaration for an inferred method"
               Assert that: nonNullDecl isSingleExpr equals: true
 
-              typedBody = nonNullDecl resolveBodyWithDb: this pkg: pkg extraTypes: #{}!
+              typedBody = nonNullDecl resolveBodyWithDb: this :pkg extraTypes: #{}!
 
               Assert that: typedBody v isNotEmpty equals: true
 
@@ -1550,7 +1550,7 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
   packagesSnapshot::mut Map(String, ResolverPackageInterface) = #{}!
   packages forEach: [name, pkg ->
     packagesSnapshot at: name put: (ResolverPackageInterface
-      name: name types: pkg types toMap constructors: pkg constructorsProtocol methods toMap
+      :name types: pkg types toMap constructors: pkg constructorsProtocol methods toMap
       imports: pkg imports toSet packageImports: pkg packageImports toSet)
   ]
 
@@ -1586,7 +1586,7 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
     unionRootToBranches: unionBranches toMap
     branchIdToParentId: branchIdToParentId toMap
     typesById: typesById toMap
-    dtc: dtc
+    :dtc
     typeToMethodNameToMethod: methods toMap
     genericReceiverMethods: genericReceiverMethods toMap
     nullableMethods: nullable toMap
@@ -1607,7 +1607,7 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
 ResolverLookupEnvironment newTyperDB -> TyperDB = [
   packagesMutable::mut Map(String, NivaPkg) = #{}!
   packages forEach: [name, pkg ->
-    packagesMutable at: name put: (NivaPkg name: name types: pkg types toMutableMap
+    packagesMutable at: name put: (NivaPkg :name types: pkg types toMutableMap
       constructorsProtocol: (NivaProtocol name: "constructors" methods: pkg constructors toMutableMap)
       imports: (pkg imports toMutableSet) packageImports: (pkg packageImports toMutableSet))
   ]
@@ -1660,15 +1660,15 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
     internalTypesCache: internalTypes typesWithSameNames: copyStringTypeSets
     typeDeclarationTokens: typeTokens methodDeclarationTokens: methodTokens
     unionRootToBranches: copyUnionBranches branchIdToParentId: parents
-    typesById: typesByIdMutable dtc: dtc
+    typesById: typesByIdMutable :dtc
     typeToMethodNameToMethod: copyMethods
     genericReceiverMethods: genericTemplates nullableMethods: copyNullable
     constructorsTypeToMethodNameToMethod: copyConstructors
     instantiatedCache: copyInstantiations canonicalCollectionInstances: canonical
     generatedMessageDecls: {}! typedBodiesCache: #{}! declToMethod: declMethods
     localGenericScope: localGenerics
-    bindMeta: (BindMeta bindFiles: bindFiles bindFileToPkg: bindFileToPkg
-      bindStatements: bindStatements bindMessageDecls: bindMessages bindTypeIds: bindTypes)
+    bindMeta: (BindMeta :bindFiles :bindFileToPkg
+      :bindStatements bindMessageDecls: bindMessages bindTypeIds: bindTypes)
 ]
 
 ResolverLookupEnvironment findByTypeName(typeName): String inPkg(pkgName): String? -> NivaType = [
@@ -1795,7 +1795,7 @@ ResolverInterfaceSnapshot interfaceApiHashes -> Map(String, String) = [
 ]
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String -> ResolverHelper  = [
-  ^ ResolverHelper resolve: fileToContent entryPoint: entryPoint backend: "js"
+  ^ ResolverHelper resolve: fileToContent :entryPoint backend: "js"
 ]
 
 Map(String, String) toNivaSourceInputs -> List(NivaSourceInput) = [
@@ -1803,10 +1803,10 @@ Map(String, String) toNivaSourceInputs -> List(NivaSourceInput) = [
   this forEach: [moduleId, content ->
     relativePath = moduleId + ".niva"
     sources add: (NivaSourceInput
-      moduleId: moduleId
-      relativePath: relativePath
+      :moduleId
+      :relativePath
       path: relativePath
-      content: content)
+      :content)
   ]
   ^ sources toList
 ]
@@ -1823,7 +1823,7 @@ String parseBindFileName -> String? = [
 
 constructor ResolverHelper resolve(fileToContent): Map(String, String) entryPoint: String backend: String -> ResolverHelper  = [
   ^ ResolverHelper resolveSources: (fileToContent toNivaSourceInputs)
-      entryPoint: entryPoint backend: backend
+      :entryPoint :backend
 ]
 
 constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverInterfaceSnapshot = [
@@ -1848,12 +1848,12 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
     pkgNameMaybe = file parseBindFileName
     pkgNameMaybe ifNotNull: [pkgNameValue ->
       pkgName = pkgNameValue
-      db addBindFile: file pkgName: pkgName
+      db addBindFile: file :pkgName
       sourceFile = SourceFile path: source path
       tokens = Lexer get-tokens: content file: sourceFile
       parser = Parser newParseTokens: tokens
       statements = parser statements
-      list::mut List::Statement = getStatementsList pkgName: pkgName
+      list::mut List::Statement = getStatementsList :pkgName
       statements forEach: [
         | it
         | Expr => [TO DO: "no top level expressions allowed in a .bind.niva file"]
@@ -1894,14 +1894,14 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
     | null => [TO DO: "trying to find entryPoint: " + entryPoint + " but not found in " + fileToStatements toString]
     |=> [ entryPointStatementsMaybe ]
 
-  msgDecls = TypeDeclVisitor db: db,
+  msgDecls = TypeDeclVisitor :db,
     visitAllTypesThenTypesAndMethods: fileToStatements
-    entryPointStatements: entryPointStatements
+    :entryPointStatements
 
   ^ ResolverInterfaceSnapshot
-    fileToStatements: fileToStatements
+    :fileToStatements
     lookupEnvironment: db toResolverLookupEnvironment
-    entryPointStatements: entryPointStatements
+    :entryPointStatements
     messageDeclarations: msgDecls
     entryPointName: entryPoint
 ]
@@ -1925,7 +1925,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
 
   MsgDeclVisitor new
     processBodyes: msgDecls
-    db: db
+    :db
 
   // resolve entry point expressions
   entryPointExprs::mut List::Expr = {}!
@@ -2006,7 +2006,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
           ]
         ]
         |=> []
-        msgDecl resolveBodyWithDb: db pkg: pkg extraTypes: extraTypes
+        msgDecl resolveBodyWithDb: db :pkg :extraTypes
       ]
       |=> typedBodyMaybe
     fallbackReturnInfo = [
@@ -2104,7 +2104,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
               (db isBindMessageDecl: it) not ||
                 ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
             ],
-            map: [m -> toTypedMessageDecl msgDecl: m pkg: pkg]
+            map: [m -> toTypedMessageDecl msgDecl: m :pkg]
           typedMsgs isNotEmpty ifTrue: [
             typedExtendDecl::TypedStatement = ExtendDeclT
                               token: it token
@@ -2115,7 +2115,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
           ()
         ]
         | MessageDecl => [
-          typedMessageDecl::TypedStatement = toTypedMessageDecl msgDecl: it pkg: pkg
+          typedMessageDecl::TypedStatement = toTypedMessageDecl msgDecl: it :pkg
           typedList add: typedMessageDecl
           ()
         ]
@@ -2127,7 +2127,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
 
   ^ ResolverHelper
     fileToStatements: fileToTypedStatements
-    db: db
+    :db
     entryPointExpressions: typedMain v
     entryPointName: entryPoint
     interfaceApiHashes: (this interfaceApiHashes)
@@ -2138,21 +2138,21 @@ ResolverInterfaceSnapshot resolveBodies -> ResolverHelper = [
 ]
 
 constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryPoint: String backend: String -> ResolverHelper =
-  ResolverInterfaceSnapshot collectSources: sources entryPoint: entryPoint backend: backend,
+  ResolverInterfaceSnapshot collectSources: sources :entryPoint :backend,
     resolveBodies
 
 TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db(db): TyperDB -> TypeT = [
   newFields = fields map: [
     TypeTField name: it name
-              typeT: (it typeT replaceGenericsFromTableDeep: letterToType db: db)
+              typeT: (it typeT replaceGenericsFromTableDeep: letterToType :db)
               isMut: it isMut
   ]
 
   newGenericArgs = genericArgs map: [
-    it replaceGenericsFromTableDeep: letterToType db: db
+    it replaceGenericsFromTableDeep: letterToType :db
   ]
 
-  ^TypeT name: name pkgName: pkgName
+  ^TypeT :name :pkgName
         fields: newFields toMutableList
         genericArgs: newGenericArgs toMutableList
 ]

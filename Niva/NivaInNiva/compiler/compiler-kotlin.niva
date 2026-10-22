@@ -8,7 +8,7 @@ static JvmReloadHost start(projectRoot): String generatedDir: String
     ifTrue: [{"bb" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace}]
     ifFalse: [{"clojure" "-M" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace}]
   // the session keeps its stdin pipe open so it exits when this compiler dies
-  (ProcessBuilder command: command dir: sessionRoot) redirectOutput start
+  (ProcessBuilder :command dir: sessionRoot) redirectOutput start
   "Watching for niva changes" echo
   mut last = JvmReloadHost sourcesFingerprint: root
   mut running = true

@@ -14,10 +14,10 @@ type Context
 constructor Context [
   /// no parents no vars(yet)
   on rootWithPkg(currentPkg): NivaPkg = Context
-    parent: null vars: #{}! currentPkg: currentPkg currentBlockRefNames: #()!
+    parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
     currentReturnType: null allowsNonLocalReturn: false hasNonInlineLambdaBoundary: false
   on rootWithPkg(currentPkg): NivaPkg returnType(returnType): NivaType? = Context
-    parent: null vars: #{}! currentPkg: currentPkg currentBlockRefNames: #()!
+    parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
     currentReturnType: returnType allowsNonLocalReturn: false hasNonInlineLambdaBoundary: false
   on fromParent::Context =
     Context
@@ -42,8 +42,8 @@ extend Context [
       astType = it astType
       t = astType toNivaTypefromDB: db inPkg: null
       errorsList = astType toErrorsFromDb: db inPkg: null
-      this defineVar: name withType: (TypeInfo t: t isMut: false listOfErrors: errorsList)
-      TypeTField name: name typeT: t isMut: false
+      this defineVar: name withType: (TypeInfo :t isMut: false listOfErrors: errorsList)
+      TypeTField :name typeT: t isMut: false
     ]
   ]
 

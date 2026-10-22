@@ -35,12 +35,12 @@ constructor CljContext newDebug(debug): Bool -> CljContext =
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String hotReload(hotReload): Bool -> CljContext =
-  CljContext imports: (imports toMutableSet) stateNames: #()! debug: debug
-    hotReload: hotReload debugEntries: #{}! currentPackage: pkg
+  CljContext imports: (imports toMutableSet) stateNames: #()! :debug
+    :hotReload debugEntries: #{}! currentPackage: pkg
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
-  CljContext newDebug: debug imports: imports pkg: pkg hotReload: false
+  CljContext newDebug: debug :imports :pkg hotReload: false
 
 CljContext addImport(name): String -> Unit = [
   imports add: name
@@ -60,7 +60,7 @@ String cljDebugQuoted -> String =
 CljContext addDebugEntry(generatedLine): Int endLine: Int token: Token method: String -> Unit = [
   file = token file path
   (debug && (file != "")) ifTrue: [
-    this debugEntries at: generatedLine put: (CljDebugEntry generatedLine: generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line method: method)
+    this debugEntries at: generatedLine put: (CljDebugEntry :generatedLine generatedEndLine: endLine sourceFile: file sourceLine: token line :method)
   ]
 ]
 

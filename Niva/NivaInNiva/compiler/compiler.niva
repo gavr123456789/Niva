@@ -92,7 +92,7 @@ constructor NivaBuildSystem [
         // path is to main.niva, need to get its paret to start search
         p = | path
             | null => io currentDir
-            |=> io getParent path: path
+            |=> io getParent :path
 
         walkedFiles = io walkDir path: p,
             filter: [
@@ -131,7 +131,7 @@ constructor NivaBuildSystem [
               moduleId: source nivaModuleId
               relativePath: source relativePath
               path: source path
-              content: content)
+              :content)
         ]
 
         (providers filter: [it backend == backend]) forEach: [provider ->
@@ -262,7 +262,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload(hotReload):
   files forEach: [relativePath, content ->
     destination = stagingGenerated + "/" + relativePath
     FileSystem createDirectories: (io getParent path: destination) toPath
-    io writeFile file: destination content: content
+    io writeFile file: destination :content
   ]
 
   io writeFile file: stagingManifest content: manifest edn
@@ -311,13 +311,13 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload(hotReload):
   ]
   FileSystem deleteRecursively: stagingRoot toPath
 
-  CljGenerationResult generationId: generationId published: true
+  CljGenerationResult :generationId published: true
     generatedRoot: publishedGenerated manifestPath: root + "/manifest.edn"
 ]
 
 constructor NivaCompiler [
     on runArgs: List(String) withIO: IO_Container = [
-      NivaCompiler runArgs: runArgs withIO: withIO measureTime: false
+      NivaCompiler :runArgs :withIO measureTime: false
       ()
     ]
     on runArgs(args): List(String) withIO(io): IO_Container measureTime: Bool = [ // enable time
@@ -333,7 +333,7 @@ constructor NivaCompiler [
 
 
 
-        argsParsed = ArgParser args: args
+        argsParsed = ArgParser :args
         {option path backend runtime target debug repl replLine nativeBuild} = argsParsed
         cljTarget = target == CompilerTarget.Bb
           ifTrue: [CljTarget.Bb]
@@ -400,11 +400,11 @@ constructor NivaCompiler [
               ifFalse: [res toIrModule]
             mode = repl ifTrue: [CljEmitMode.Repl] ifFalse: [CljEmitMode.Program]
             repl ifTrue: [
-              cljContent = CljBackend fullFromIrModule: irModule debug: debug mode: mode
+              cljContent = CljBackend fullFromIrModule: irModule :debug :mode
               io writeFile file: realCljPath + "/main.clj" content: cljContent
             ] ifFalse: [
               output = CljBackend fullOutputFromIrModuleForTarget: irModule
-                debug: debug mode: mode target: cljTarget
+                :debug :mode target: cljTarget
               output publishTo: realCljPath withIO: io hotReload: false
               ()
             ]
@@ -434,7 +434,7 @@ constructor NivaCompiler [
           sources = NivaBuildSystem findAllFilesFrom: path withIO: io backend: backendStr
           //t3 = measureTimeFrom from: t2 text: "collect-files"
 
-          resolver = ResolverHelper resolveSources: sources entryPoint: entryPoint backend: backendStr
+          resolver = ResolverHelper resolveSources: sources :entryPoint backend: backendStr
           resolverErrors = (resolver db listOfErrors) + (resolver db nonInlineReturnErrors values toList)
           allResolverErrors = resolverErrors
           allResolverErrors isNotEmpty ifTrue: [
@@ -466,9 +466,9 @@ constructor NivaCompiler [
             requestVersion <- requestVersion + 1
             sources = NivaBuildSystem findAllFilesFrom: watchPathMaybe withIO: io backend: "clj"
             snapshot = WorkspaceSnapshot fromSources: sources revision: requestVersion
-              entryPoint: entryPoint documentVersions: #{}
-            result = session compileSnapshot: snapshot config: config
-              requestVersion: requestVersion cancelled: false incremental: true
+              :entryPoint documentVersions: #{}
+            result = session compileSnapshot: snapshot :config
+              :requestVersion cancelled: false incremental: true
             result commitReady ifFalse: [
               result diagnostics forEach: [diagnostic ->
                 (diagnostic path + ": " + diagnostic message) echo
@@ -509,7 +509,7 @@ constructor NivaCompiler [
           // publish a first good generation before asking clj-reload to load it
           compileAndPublish do
           JvmReloadHost start: projectRoot generatedDir: realCljPath + "/generated"
-            entryNamespace: entryNamespace runtime: watchRuntime onChange: [
+            :entryNamespace runtime: watchRuntime onChange: [
               changed = compileAndPublish do
               changed ifTrue: [JvmReloadHost reloadChanged]
               ()

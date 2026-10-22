@@ -22,14 +22,14 @@ mut Parser messageDeclFrom(tok): Token receiver: AstType2 name: String args: Lis
   body = this parseBodyOrSingleExpr
   ^ MessageDecl
     token: tok
-    receiver: receiver
-    name: name
-    args: args
-    returnType: returnType
-    body: body
-    isSingleExpr: isSingleExpr
-    isConstructor: isConstructor
-    isInline: isInline
+    :receiver
+    :name
+    :args
+    :returnType
+    :body
+    :isSingleExpr
+    :isConstructor
+    :isInline
 ]
 
 mut Parser
@@ -68,7 +68,7 @@ mut Parser
         ^ this nextExpression: this step
       ]
       // Int inc ->? = ^[]
-      this messageDeclFrom: tok receiver: receiverType name: name args: {} returnType: returnType isConstructor: isConstructor isInline: isInline
+      this messageDeclFrom: tok receiver: receiverType :name args: {} :returnType :isConstructor :isInline
     ] ifFalse: [
       kwParts2 = kwPartsMaybe expect: "Expected keyword declaration arguments"
       returnType = this messageDeclReturnType
@@ -82,7 +82,7 @@ mut Parser
       kwName = kwParts2 nameParts joinWith: "__" transform: [
         it
       ]
-      this messageDeclFrom: tok receiver: receiverType name: kwName args: kwParts2 args returnType: returnType isConstructor: isConstructor isInline: isInline
+      this messageDeclFrom: tok receiver: receiverType name: kwName args: kwParts2 args :returnType :isConstructor :isInline
     ]
   ]
   | TokenType.BinarySymbol => [
@@ -109,11 +109,11 @@ mut Parser
 
     this messageDeclFrom: tok
       receiver: receiverType
-      name: name
+      :name
       args: {(NameAndAstType name: arg lexeme astType: argType)}
-      returnType: returnType
-      isConstructor: isConstructor
-      isInline: isInline
+      :returnType
+      :isConstructor
+      :isInline
   ]
   |=> [
     this restoreFrom: savePosition
@@ -180,11 +180,11 @@ extend mut Parser [
         this matchAssert: TokenType.Assign
         this messageDeclFrom: token
           receiver: receiverType
-          name: name
+          :name
           args: {}
-          returnType: returnType
-          isConstructor: isConstructor
-          isInline: isInline
+          :returnType
+          :isConstructor
+          :isInline
       ]
       |=> [
         returnType = this messageDeclReturnType
@@ -199,9 +199,9 @@ extend mut Parser [
           receiver: receiverType
           name: kwName
           args: kwParts args
-          returnType: returnType
-          isConstructor: isConstructor
-          isInline: isInline
+          :returnType
+          :isConstructor
+          :isInline
       ]
     ]
     | TokenType.IdentifierDoubleColon | TokenType.IdentifierColon => [
@@ -224,9 +224,9 @@ extend mut Parser [
         receiver: receiverType
         name: kwName
         args: kwParts2 args
-        returnType: returnType
-        isConstructor: isConstructor
-        isInline: isInline
+        :returnType
+        :isConstructor
+        :isInline
     ]
     | TokenType.BinarySymbol => [
       arg = this step
@@ -247,11 +247,11 @@ extend mut Parser [
       args = {(NameAndAstType name: arg lexeme astType: argType)}
       this messageDeclFrom: token
         receiver: receiverType
-        name: name
-        args: args
-        returnType: returnType
-        isConstructor: isConstructor
-        isInline: isInline
+        :name
+        :args
+        :returnType
+        :isConstructor
+        :isInline
     ]
     |=> [
       TO DO: "message declaration expected after `on`"
@@ -315,8 +315,8 @@ extend mut Parser [
     isTypeStart ifFalse: [^ null]
     argType = this parseType
     KeywordDeclArg
-      arg: (NameAndAstType name: name astType: argType)
-      namePart: namePart
+      arg: (NameAndAstType :name astType: argType)
+      :namePart
   ]
 
   on parseKeywordDeclArgFrom(tok): Token -> KeywordDeclArg? = [

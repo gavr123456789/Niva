@@ -190,8 +190,8 @@ AstType toString -> String = [
 ]
 
 constructor AstType name: String tok: Token = AstType
-  tok: tok
-  name: name
+  :tok
+  :name
   isNullable: false
   genericParams: {}
   isMut: false

@@ -80,7 +80,7 @@ constructor GoBackend [
       line = i == 0
         ifTrue: [valName + " " + name + " = iota"]
        ifFalse: [valName]
-      sb appendIndent: 1 line: line
+      sb appendIndent: 1 :line
     ]
     sb appendLine: ")"
     sb appendLine: ""
@@ -118,11 +118,11 @@ constructor GoBackend [
         ]
       ]
     ]
-    fn body blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: fn returnType
+    fn body blockToGoStatements: ctx :scope :sb indent: 1 returnType: fn returnType
 
     fn returnType isGoUnitType
       ifTrue: [
-        ctx emitResult: (fn body result) sb: sb indent: 1 retType: fn returnType scope: scope
+        ctx emitResult: (fn body result) :sb indent: 1 retType: fn returnType :scope
         fn returnType errors isNotEmpty ifTrue: [
           (fn body hasTrailingReturn) ifFalse: [
             sb appendIndent: 1 line: "return nil"
@@ -135,11 +135,11 @@ constructor GoBackend [
         fnBodyResult == null
           ifTrue: [
             hasTrailingReturn ifFalse: [
-              ctx emitResult: null sb: sb indent: 1 retType: fn returnType scope: scope
+              ctx emitResult: null :sb indent: 1 retType: fn returnType :scope
             ]
           ]
           ifFalse: [
-            ctx emitResult: fnBodyResult sb: sb indent: 1 retType: fn returnType scope: scope
+            ctx emitResult: fnBodyResult :sb indent: 1 retType: fn returnType :scope
           ]
       ]
 
@@ -173,13 +173,13 @@ constructor GoBackend [
     sb appendIndent: 2 line: "}"
     sb appendIndent: 1 line: "}()"
     scope = GoScope new
-    entry blockToGoStatements: ctx scope: scope sb: sb indent: 1 returnType: entry resultType
+    entry blockToGoStatements: ctx :scope :sb indent: 1 returnType: entry resultType
     entryResult = entry result
     | entryResult
     | null => ()
     |=> [
       entryResult token printGoLine-intoSb: sb
-      sb appendIndent: 1 line: (entryResult toGoStatement: ctx scope: scope returnType: entry resultType)
+      sb appendIndent: 1 line: (entryResult toGoStatement: ctx :scope returnType: entry resultType)
     ]
     sb appendLine: "}"
     sb appendLine: ""
@@ -272,7 +272,7 @@ constructor GoBackend [
       fileNames at: it name put: "main.go"
     ]
 
-    ^ GoSymbolTable typeNames: typeNames funcNames: funcNames packageNames: packageNames fileNames: fileNames fieldNames: fieldNames constructorFieldTypes: constructorFieldTypes fieldTypesByName: fieldTypesByName unionTypeIds: unionTypeIds unionDefs: unionDefs
+    ^ GoSymbolTable :typeNames :funcNames :packageNames :fileNames :fieldNames :constructorFieldTypes :fieldTypesByName :unionTypeIds :unionDefs
   ]
 
   // Phase 1: reject IR shapes that the Go backend cannot emit safely.
@@ -308,10 +308,10 @@ constructor GoBackend [
         fn receiverType validateGoTypeRefs: knownTypeIds goErrors: errors
         fn args forEach: [it typeRef validateGoTypeRefs: knownTypeIds goErrors: errors]
         fn returnType validateGoTypeRefs: knownTypeIds goErrors: errors
-        fn body validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors
+        fn body validateGoIrBlock: knownFuncIds :knownTypeIds goErrors: errors
       ]
     ]
-    ir entries forEach: [it validateGoIrBlock: knownFuncIds knownTypeIds: knownTypeIds goErrors: errors]
+    ir entries forEach: [it validateGoIrBlock: knownFuncIds :knownTypeIds goErrors: errors]
 
     ^ errors toList
   ]
@@ -337,57 +337,57 @@ constructor GoBackend [
     importsByFile::mut Map(String, Set(String)) = #{}!
     importsByFile at: "main.go" put: imports
 
-    ^ GoImportPlan importsByFile: importsByFile
+    ^ GoImportPlan :importsByFile
   ]
 
   // Fragment helper: creates the local emission state shared by every independently emitted fragment.
   on newFragmentFrame(symbols): GoSymbolTable imports: GoImportPlan fileKey: String -> GoFragmentFrame = [
     ctx = GoContext forSymbols: symbols
     ctx imports addAll: (imports importsForFile: fileKey, toSet)
-    ^ GoFragmentFrame ctx: ctx sb: StringBuilder new
+    ^ GoFragmentFrame :ctx sb: StringBuilder new
   ]
 
   // Fragment helper: converts a filled fragment frame into stable merge metadata and generated code.
   on finishFragment(frame): GoFragmentFrame pkgId: String fileKey: String orderKey: String -> GoFragment = [
     ^ GoFragment
-          pkgId: pkgId
-        fileKey: fileKey
-       orderKey: orderKey
+          :pkgId
+        :fileKey
+       :orderKey
         imports: (frame ctx imports toList)
            code: (frame sb toString)
   ]
 
   // Fragment builder: turns one type definition into an independently mergeable Go fragment.
   on typeFragment(def): IrTypeDef symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
-    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    frame = GoBackend newFragmentFrame: symbols :imports fileKey: "main.go"
     GoBackend emitTypeDef: def ctx: frame ctx sb: frame sb
     ^ GoBackend finishFragment: frame pkgId: def pkgId fileKey: "main.go" orderKey: ("10_type_" + def id)
   ]
 
   // Fragment builder: turns one union definition and its branch declarations into a Go fragment.
   on unionFragment(def): IrUnionDef symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
-    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    frame = GoBackend newFragmentFrame: symbols :imports fileKey: "main.go"
     GoBackend emitUnionDef: def ctx: frame ctx sb: frame sb
     ^ GoBackend finishFragment: frame pkgId: def pkgId fileKey: "main.go" orderKey: ("20_union_" + def id)
   ]
 
   // Fragment builder: turns one enum definition into an independently mergeable Go fragment.
   on enumFragment(def): IrEnumDef symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
-    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    frame = GoBackend newFragmentFrame: symbols :imports fileKey: "main.go"
     GoBackend emitEnumDef: def ctx: frame ctx sb: frame sb
     ^ GoBackend finishFragment: frame pkgId: def pkgId fileKey: "main.go" orderKey: ("30_enum_" + def id)
   ]
 
   // Fragment builder: emits one function with planned names/imports so it can later run in parallel.
   on functionFragment(fn): IrFunction symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
-    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    frame = GoBackend newFragmentFrame: symbols :imports fileKey: "main.go"
     GoBackend emitFunction: fn ctx: frame ctx sb: frame sb
     ^ GoBackend finishFragment: frame pkgId: fn pkgId fileKey: "main.go" orderKey: ("40_function_" + fn id)
   ]
 
   // Fragment builder: wraps the IR entry block as the deterministic main function fragment.
   on entryFragment(entry): IrBlock symbols: GoSymbolTable imports: GoImportPlan -> GoFragment = [
-    frame = GoBackend newFragmentFrame: symbols imports: imports fileKey: "main.go"
+    frame = GoBackend newFragmentFrame: symbols :imports fileKey: "main.go"
     GoBackend emitEntry: entry ctx: frame ctx sb: frame sb
     ^ GoBackend finishFragment: frame pkgId: "main" fileKey: "main.go" orderKey: "90_entry_main"
   ]
@@ -396,13 +396,13 @@ constructor GoBackend [
     fragments::mut List(GoFragment) = {}!
 
     // todo parallel
-    pkg types forEach: [fragments add: (GoBackend typeFragment: it symbols: symbols imports: imports)]
+    pkg types forEach: [fragments add: (GoBackend typeFragment: it :symbols :imports)]
     // todo parallel
-    pkg unions forEach: [fragments add: (GoBackend unionFragment: it symbols: symbols imports: imports)]
+    pkg unions forEach: [fragments add: (GoBackend unionFragment: it :symbols :imports)]
     // todo parallel
-    pkg enums forEach: [fragments add: (GoBackend enumFragment: it symbols: symbols imports: imports)]
+    pkg enums forEach: [fragments add: (GoBackend enumFragment: it :symbols :imports)]
     // todo parallel
-    pkg functions forEach: [fragments add: (GoBackend functionFragment: it symbols: symbols imports: imports)]
+    pkg functions forEach: [fragments add: (GoBackend functionFragment: it :symbols :imports)]
 
     ^ fragments toList
   ]
@@ -413,10 +413,10 @@ constructor GoBackend [
 
     // todo parallel
     ir packages forEach: [pkg ->
-      fragments addAll: (GoBackend emitPackage: pkg symbols: symbols imports: imports)
+      fragments addAll: (GoBackend emitPackage: pkg :symbols :imports)
     ]
     ir entries forEach: [it ->
-      fragments add: (GoBackend entryFragment: it symbols: symbols imports: imports)
+      fragments add: (GoBackend entryFragment: it :symbols :imports)
     ]
 
     ^ fragments toList
@@ -483,7 +483,7 @@ constructor GoBackend [
 
     symbols = GoBackend planGoSymbols: ir
     imports = GoBackend planGoImports: ir
-    fragments = GoBackend emitGoFragments: ir symbols: symbols imports: imports
+    fragments = GoBackend emitGoFragments: ir :symbols :imports
     files = GoBackend mergeGoFragments: fragments
 
     ^ GoBackend renderGoFile: (files first)
