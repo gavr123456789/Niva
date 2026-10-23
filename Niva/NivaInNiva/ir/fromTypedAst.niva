@@ -221,12 +221,11 @@ NivaMethod toCanonicalIrFunctionId(db): TyperDB -> String = [
       ]
 
       getMethodFromType = [t::NivaType ->
-        methodsMaybe = db typeToMethodNameToMethod at: (t toMangledName)
+        methodsMaybe = db typeToMethodBuckets at: (t toMangledName)
         | methodsMaybe
         | null => getConstructorFromType :t
         |=> [
-            methods::mut Map(String, NivaMethod) = methodsMaybe
-            methodMaybe = methods at: nameLocal
+            methodMaybe = methodsMaybe methodAt: this methodBucketKind name: nameLocal
             | methodMaybe
             | null => getConstructorFromType :t
             |=> methodMaybe
@@ -887,11 +886,11 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
               // fix custom binary methods
               // binary methods for core types can belong to the current package
               // so use the receiver type while MessageDeclT keeps the declaration package
-              methodsMaybe = db typeToMethodNameToMethod at: (currentType toMangledName)
+              methodsMaybe = db typeToMethodBuckets at: (currentType toMangledName)
               methodPkg = | methodsMaybe
                 | null => currentPkg
                 |=> [
-                  methodMaybe = methodsMaybe at: op
+                  methodMaybe = methodsMaybe methodAt: MethodBucketKind.Binary name: op
                   | methodMaybe
                   | null => currentPkg
                   |=> methodMaybe pkgName
@@ -1052,20 +1051,38 @@ MessageDeclT toIrFunction(db): TyperDB currentPkg: String typeFieldsById: Map(St
 
   // lookup mut receiver requirement
   mut requiresMutReceiver = false
-  methodsMaybe = isConstructor
-    ifTrue: [db constructorsTypeToMethodNameToMethod at: (receiverType toMangledName)]
-    ifFalse: [db typeToMethodNameToMethod at: (receiverType toMangledName)]
+  methodsMaybe::MethodBuckets? = isConstructor
+    ifTrue: [null]
+    ifFalse: [db typeToMethodBuckets at: (receiverType toMangledName)]
 
   | methodsMaybe
   | null => ()
   |=> [
-    methodMaybe = methodsMaybe at: name
+    methodBucket = args isEmpty
+      ifTrue: [MethodBucketKind.Unary]
+      ifFalse: [name isBinaryOperator ifTrue: [MethodBucketKind.Binary] ifFalse: [MethodBucketKind.Keyword]]
+    methodMaybe = methodsMaybe methodAt: methodBucket name: name
     | methodMaybe
     | null => []
     |=> [
       requiresMutReceiver <- methodMaybe forMut
       ()
     ]
+    ()
+  ]
+
+  constructorMaybe::NivaMethod? = isConstructor
+    ifFalse: [null]
+    ifTrue: [
+      constructorsMaybe = db constructorsTypeToMethodNameToMethod at: (receiverType toMangledName)
+      | constructorsMaybe
+      | null => null
+      |=> constructorsMaybe at: name
+    ]
+  | constructorMaybe
+  | null => ()
+  |=> [
+    requiresMutReceiver <- constructorMaybe forMut
     ()
   ]
 

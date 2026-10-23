@@ -545,22 +545,22 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
                   ifFalse: [isSingleExpr && noDeclaredReturnType && finalTypedBody v isNotEmpty]
 
   shouldInferSingleExprReturnType ifTrue: [
-    methodsMaybe = db typeToMethodNameToMethod at: (receiverType toMangledName)
+    methodsMaybe = db typeToMethodBuckets at: (receiverType toMangledName)
     | methodsMaybe
     | null => ()
     |=> [
-      existingMethodMaybe = methodsMaybe at: name
+      existingMethodMaybe = methodsMaybe methodAt: (args isEmpty ifTrue: [MethodBucketKind.Unary] ifFalse: [name isBinaryOperator ifTrue: [MethodBucketKind.Binary] ifFalse: [MethodBucketKind.Keyword]]) name: name
       | existingMethodMaybe
-      | null => []
+      | null => ()
       |=> [
-        | existingMethodMaybe returnType
-        | Unknown => [
-          inferredRt = finalTypedBody t
-          updatedMethod = existingMethodMaybe copyWithDifferentReturnType: inferredRt
-          db replaceMethod: updatedMethod inType: receiverType
+          | existingMethodMaybe returnType
+          | Unknown => [
+            inferredRt = finalTypedBody t
+            updatedMethod = existingMethodMaybe copyWithDifferentReturnType: inferredRt
+            db replaceMethod: updatedMethod inType: receiverType
+          ]
+          |=> []
         ]
-        |=> []
-      ]
     ]
   ]
 

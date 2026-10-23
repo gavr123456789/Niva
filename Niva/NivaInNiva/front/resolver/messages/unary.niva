@@ -6,7 +6,7 @@ UnaryMsg resolveUnaryFromDb2(db): TyperDB withContext(c): Context -> UnaryMsgT =
     args: {}
     :kind
 
-  kwResolved = kw resolveKeywordFromDb2: db withContext: c nameOverride: selector name expectedType: null
+  kwResolved = kw resolveKeywordFromDb2: db withContext: c receiverTyped: (receiver toTypedExprFromDb2: db withContext: c) nameOverride: selector name expectedType: null bucket: MethodBucketKind.Unary
 
   ^ UnaryMsgT
     receiver: kwResolved receiver
