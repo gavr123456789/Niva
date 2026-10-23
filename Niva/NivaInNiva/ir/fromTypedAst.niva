@@ -990,8 +990,10 @@ TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: Stri
 
   exprs isNotEmpty ifTrue: [
     lastIndex = exprs count - 1
-    exprs forEachIndexed: [i, expr ->
+    exprs forEachIndexed: [i, bodyExpr ->
       isLast = i == lastIndex
+      // a statement in brackets, like (^ x), is still a statement
+      expr = bodyExpr withoutBrackets
       | expr
       | VarDeclarationT
       | AssignT
