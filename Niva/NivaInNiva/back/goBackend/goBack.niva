@@ -1029,6 +1029,11 @@ extend IrExpr [
     | IrLiteralExpr => literal kind == IrLiteralKind.Null
     |=> false
 
+  on isGoBoolLiteral -> Bool =
+    | this
+    | IrLiteralExpr => literal kind == IrLiteralKind.Bool
+    |=> false
+
   // mut values whose type is boxable live as go pointers so struct copies
   // share the same cell this mirrors the reference semantics of the jvm and
   // clojure backends
@@ -1474,9 +1479,12 @@ extend IrExpr [
   ] ifFalse: [
       | this
       | IrMatchExpr => [
-        | kind
-        | IrMatchKind.ByBool => ctx emitBoolMatchStatement: this :sb :indent :returnType :scope
-        |=> ctx emitMatchStatement: this :sb :indent :returnType :scope
+        // ifTrue: and ifFalse: are matches with the cases true and false. A match
+        // on true whose cases are conditions is an if else chain, like a match on a value
+        isIfTrueIfFalse = (kind == IrMatchKind.ByBool) && (cases any: [it condition isGoBoolLiteral not]) not
+        isIfTrueIfFalse
+          ifTrue: [ctx emitBoolMatchStatement: this :sb :indent :returnType :scope]
+          ifFalse: [ctx emitMatchStatement: this :sb :indent :returnType :scope]
       ]
       | IrBlockExpr => [
         blockScope = scope copyWithUnitReturnValue: false

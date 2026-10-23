@@ -583,6 +583,27 @@ Test goStatementMatchNonLocalReturnCodegen = [
   Assert that: (go contains: "_ = 10") equals: false
 ]
 
+Test goStatementMatchOnTrueWithConditions = [
+  fileMain = """
+    String f -> String = [
+      | true
+      | this == "a" => "is a" echo
+      |=> "not a" echo
+      "end"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // an if else chain like a match on a value, where it was left out
+  go contains: "__matchSubject := true", assertTrue
+  go contains: "if (__matchSubject == (this == \"a\")) {", assertTrue
+  go contains: "core.Any__echo(\"is a\")", assertTrue
+  go contains: "core.Any__echo(\"not a\")", assertTrue
+]
+
 Test goImplicitLambdaArgCodegen = [
   fileMain = """
     {1 2 3} map: [it + 1]
