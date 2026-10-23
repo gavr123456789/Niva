@@ -179,7 +179,7 @@ constructor GoBackend [
     | null => ()
     |=> [
       entryResult token printGoLine-intoSb: sb
-      sb appendIndent: 1 line: (entryResult toGoStatement: ctx :scope returnType: entry resultType)
+      entryResult emitAsUnusedValue: ctx :scope :sb indent: 1 returnType: entry resultType
     ]
     sb appendLine: "}"
     sb appendLine: ""

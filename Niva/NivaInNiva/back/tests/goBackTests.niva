@@ -487,8 +487,12 @@ Test goNestedMatchCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "__matchSubject :=", assertTrue
-  go contains: "return func()", assertTrue
+  // each branch assigns res, no anonymous function returns it
+  go contains: "var res int\n", assertTrue
+  go contains: "res = 10", assertTrue
+  go contains: "res = 20", assertTrue
+  go contains: "res = 30", assertTrue
+  Assert that: (go contains: "func() int") equals: false
 ]
 
 Test goMatchVariableSubjectNarrowsAlias = [
@@ -509,10 +513,10 @@ Test goMatchVariableSubjectNarrowsAlias = [
 
   go contains: "case main_Rectangle:", assertTrue
   go contains: "shape := __matchSubject.(main_Rectangle)", assertTrue
-  go contains: "return ((shape).width * (shape).height)", assertTrue
+  go contains: "area = ((shape).width * (shape).height)", assertTrue
   go contains: "case main_Circle:", assertTrue
   go contains: "shape := __matchSubject.(main_Circle)", assertTrue
-  go contains: "return (shape).radius", assertTrue
+  go contains: "area = (shape).radius", assertTrue
 ]
 
 Test goInlineForEachCodegen = [
@@ -628,6 +632,176 @@ Test goStatementMatchOnMutCellSubject = [
   // c is a mut cell, *rune, so the match is on what it points to
   go contains: "var c *rune = ", assertTrue
   go contains: "__matchSubject := *c", assertTrue
+]
+
+Test goValueMatchNonLocalReturnCodegen = [
+  fileMain = """
+    Int inValue -> String = [
+      s = this > 0 ifTrue: [^ "returned"] ifFalse: ["kept"]
+      s + "!"
+    ]
+    Int inMatchValue -> String = [
+      mut s = ""
+      s <- | this
+           | 0 => ^ "zero"
+           |=> "other"
+      s + "!"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // statements, not an anonymous function the ^ would only leave
+  go contains: "var s string\n", assertTrue
+  go contains: "return \"returned\"", assertTrue
+  go contains: "s = \"kept\"", assertTrue
+  go contains: "return \"zero\"", assertTrue
+  go contains: "s = \"other\"", assertTrue
+  Assert that: (go contains: "func() string {") equals: false
+]
+
+Test goTailMatchNonLocalReturnCodegen = [
+  fileMain = """
+    union Expr = | Num v: Int | Sym name: String
+
+    Expr simplify -> Expr = [
+      | this
+      | Num => ^ this
+      |=> Sym name: "x"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "return this", assertTrue
+  go contains: "return main_Sym{\"x\"}", assertTrue
+  Assert that: (go contains: "func() main_") equals: false
+]
+
+Test goMatchInsideValueIsLiftedCodegen = [
+  fileMain = """
+    Int asArgument -> String = [
+      ((this > 0 ifTrue: [^ "returned"] ifFalse: ["kept"]) + "!") echo
+      "end"
+    ]
+    Int asOperand -> Int = [
+      y = (this > 0 ifTrue: [^ 1] ifFalse: [2]) + 10
+      y
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // a temp assigned in each branch takes the match's place
+  go contains: "var __matchValue string\n", assertTrue
+  go contains: "return \"returned\"", assertTrue
+  go contains: "__matchValue = \"kept\"", assertTrue
+  go contains: "core.Any__echo((__matchValue + \"!\"))", assertTrue
+  go contains: "var __matchValue int\n", assertTrue
+  go contains: "__matchValue = 2", assertTrue
+  go contains: "var y int = (__matchValue + 10)", assertTrue
+  Assert that: (go contains: "func() string {") equals: false
+  Assert that: (go contains: "func() int {") equals: false
+]
+
+Test goLiftedMatchKeepsEvaluationOrder = [
+  fileMain = """
+    Int g -> Int = this + 1
+    Int inOrder -> Int = [
+      ^ this g + (this > 0 ifTrue: [^ 1] ifFalse: [2])
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // the call before the match runs before it
+  go contains: "var __operand int = main__core_Int__g(this)", assertTrue
+  (go substringBefore: "var __matchValue int") contains: "var __operand int", assertTrue
+  go contains: "return (__operand + __matchValue)", assertTrue
+]
+
+Test goLiftedMatchRightOfAndRunsOnlyWhenNeeded = [
+  fileMain = """
+    Int shortCircuit -> Bool = [
+      ^ (this > 0) && (this > 10 ifTrue: [^ false] ifFalse: [true])
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // && is a match on its left side, with the match on the right in its true branch
+  go contains: "if (this > 0) {", assertTrue
+  (go substringBefore: "if (this > 10) {") contains: "if (this > 0) {", assertTrue
+  go contains: "return false", assertTrue
+  go contains: "__matchValue = true", assertTrue
+  go contains: "__matchValue = false", assertTrue
+  go contains: "return __matchValue", assertTrue
+  Assert that: (go contains: "&&") equals: false
+]
+
+Test goLiftedMatchInLoopConditionRunsEachTime = [
+  fileMain = """
+    Int loop -> Int = [
+      mut i = 0
+      [i < (this > 0 ifTrue: [3] ifFalse: [0])] whileTrue: [i <- i + 1]
+      i
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // inside the loop, and i is mut, so its value is kept before the match runs
+  (go substringBefore: "var __matchValue int") contains: "for {", assertTrue
+  go contains: "var __operand int = i", assertTrue
+  go contains: "if !((__operand < __matchValue)) { break }", assertTrue
+]
+
+Test goMatchOnTrueWithConditionsCodegen = [
+  fileMain = """
+    String kind -> Int =
+      | true
+      | this == "a" => 1
+      |=> 2
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // an if else chain like a match on a value
+  go contains: "__matchSubject := true", assertTrue
+  go contains: "if (__matchSubject == (this == \"a\")) {", assertTrue
+  go contains: "return 1", assertTrue
+  go contains: "return 2", assertTrue
+]
+
+Test goUnitMatchValueRunsBranchesAsStatements = [
+  fileMain = """
+    Int noValue -> String = [
+      s = this > 0 ifTrue: ["x" echo]
+      "end"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "var s struct{}\n", assertTrue
+  go contains: "        core.Any__echo(\"x\")\n", assertTrue
+  Assert that: (go contains: "s = core.Any__echo") equals: false
 ]
 
 Test goImplicitLambdaArgCodegen = [
