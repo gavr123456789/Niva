@@ -554,8 +554,7 @@ extend IrBlock [
       ]
     ]
     splitIdx != -1 ifTrue: [
-      ^ (this cljSplitAt: splitIdx) toCljBlockBodyWithBind: ctx scope: scope
-          bindName: bindName bindValue: bindValue
+      ^ (this cljSplitAt: splitIdx) toCljBlockBodyWithBind: ctx :scope :bindName :bindValue
     ]
 
     injectedBinding::mut List(CljBinding) = {}
@@ -699,7 +698,7 @@ extend IrBlock [
   on cljSplitAt(idx): Int -> IrBlock = [
     split = stmts at: idx
     ^ | split
-      | IrReturn => IrBlock stmts: (stmts dropLast: stmts count - idx) result: split expr resultType: resultType
+      | IrReturn => IrBlock stmts: (stmts dropLast: stmts count - idx) result: split expr :resultType
       |=> this
   ]
 ]
