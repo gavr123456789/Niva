@@ -14,9 +14,9 @@ type TyperDB
 
   typesById: mut Map(String, TypeT)
   dtc: DefaultTypesContainer
-  typeToMethodNameToMethod: mut Map(String, mut Map(String, NivaMethod)) // methodDB
+  typeToMethodBuckets: mut Map(String, MethodBuckets) // methodDB
   genericReceiverMethods: mut Map(String, GenericReceiverMethodTemplate)
-  nullableMethods: mut Map(String, mut Map(String, NivaMethod))
+  nullableMethods: mut Map(String, MethodBuckets)
   constructorsTypeToMethodNameToMethod: mut Map(String, mut Map(String, NivaMethod)) // constructorsDB, since we can have constructo and message with the same names
   instantiatedCache: mut Map(String, mut Map(String, NivaMethod)) // From instantiated generics types like List(Int)
   canonicalCollectionInstances: mut Map(String, NivaType)
@@ -76,23 +76,23 @@ constructor TyperDB new -> TyperDB = [
 
   emptyFloatMethods::mut Map(String, NivaMethod) = #{}!
   emptyUnitMethods::mut Map(String, NivaMethod) = #{}!
-  typeToMethodNameToMethod::mut Map(String, mut Map(String, NivaMethod)) = #{}!
-  typeToMethodNameToMethod at: (charT toMangledName) put: charProtocol
-  typeToMethodNameToMethod at: (intT toMangledName) put: intProtocol
-  typeToMethodNameToMethod at: (longT toMangledName) put: longProtocol
-  typeToMethodNameToMethod at: (doubleT toMangledName) put: doubleProtocol
-  typeToMethodNameToMethod at: (floatT toMangledName) put: emptyFloatMethods
-  typeToMethodNameToMethod at: (strT toMangledName) put: strProtocol
-  typeToMethodNameToMethod at: (boolT toMangledName) put: boolProtocol
-  typeToMethodNameToMethod at: (unitT toMangledName) put: emptyUnitMethods
-  typeToMethodNameToMethod at: (anyT toMangledName) put: anyProtocol
-  typeToMethodNameToMethod at: (errorT toMangledName) put: errorProtocol
-  typeToMethodNameToMethod at: (listT toMangledName) put: listProtocol
-  typeToMethodNameToMethod at: (mapT toMangledName) put: mapProtocol
-  typeToMethodNameToMethod at: (setT toMangledName) put: setProtocol
-  typeToMethodNameToMethod at: (intRangeT toMangledName) put: intRangeProtocol
-  typeToMethodNameToMethod at: (charRangeT toMangledName) put: charRangeProtocol
-  typeToMethodNameToMethod at: (sbNivaType toMangledName) put: stringBuilderProtocol
+  typeToMethodBuckets::mut Map(String, MethodBuckets) = #{}!
+  typeToMethodBuckets at: (charT toMangledName) put: (MethodBuckets fromMethods: charProtocol)
+  typeToMethodBuckets at: (intT toMangledName) put: (MethodBuckets fromMethods: intProtocol)
+  typeToMethodBuckets at: (longT toMangledName) put: (MethodBuckets fromMethods: longProtocol)
+  typeToMethodBuckets at: (doubleT toMangledName) put: (MethodBuckets fromMethods: doubleProtocol)
+  typeToMethodBuckets at: (floatT toMangledName) put: (MethodBuckets fromMethods: emptyFloatMethods)
+  typeToMethodBuckets at: (strT toMangledName) put: (MethodBuckets fromMethods: strProtocol)
+  typeToMethodBuckets at: (boolT toMangledName) put: (MethodBuckets fromMethods: boolProtocol)
+  typeToMethodBuckets at: (unitT toMangledName) put: (MethodBuckets fromMethods: emptyUnitMethods)
+  typeToMethodBuckets at: (anyT toMangledName) put: (MethodBuckets fromMethods: anyProtocol)
+  typeToMethodBuckets at: (errorT toMangledName) put: (MethodBuckets fromMethods: errorProtocol)
+  typeToMethodBuckets at: (listT toMangledName) put: (MethodBuckets fromMethods: listProtocol)
+  typeToMethodBuckets at: (mapT toMangledName) put: (MethodBuckets fromMethods: mapProtocol)
+  typeToMethodBuckets at: (setT toMangledName) put: (MethodBuckets fromMethods: setProtocol)
+  typeToMethodBuckets at: (intRangeT toMangledName) put: (MethodBuckets fromMethods: intRangeProtocol)
+  typeToMethodBuckets at: (charRangeT toMangledName) put: (MethodBuckets fromMethods: charRangeProtocol)
+  typeToMethodBuckets at: (sbNivaType toMangledName) put: (MethodBuckets fromMethods: stringBuilderProtocol)
 
   sbConstructors::mut Map(String, NivaMethod) = #{}!
   sbConstructors at: "new" put: sb generateDefaultConstructor
@@ -152,7 +152,7 @@ constructor TyperDB new -> TyperDB = [
     branchIdToParentId: #{}!
     :typesById
     :dtc
-    :typeToMethodNameToMethod
+    :typeToMethodBuckets
     genericReceiverMethods: #{}!
     nullableMethods: #{}!
     constructorsTypeToMethodNameToMethod: constructorsCache
@@ -491,29 +491,29 @@ extend TyperDB [
   on addMethod(m): NivaMethod forType(forType): NivaType = [
     | forType
     | NullableT => [
-      innerToMethodMaybe = nullableMethods at: m name
-      innerToMethod::mut Map(String, NivaMethod) = | innerToMethodMaybe
+      bucketsMaybe = nullableMethods at: m name
+      buckets::MethodBuckets = | bucketsMaybe
         | null => [
-          newMap::mut Map(String, NivaMethod) = #{}!
-          nullableMethods at: m name put: newMap
-          newMap
+          newBuckets = MethodBuckets new
+          nullableMethods at: m name put: newBuckets
+          newBuckets
         ]
-        |=> innerToMethodMaybe
+        |=> bucketsMaybe
       key = this nullableMethodKeyFor: forType v
-      innerToMethod containsKey: key,
-        ifTrue: [TO DO: "Type $forType already has method $m"]
+      contains = buckets contains: m methodBucketKind name: key
+      contains ifTrue: [TO DO: "Type $forType already has method $m"]
 
-      innerToMethod at: key put: m
+      buckets putAt: m methodBucketKind name: key method: m
     ]
     |=> [
-      methodNameToMethodMapMaybe = typeToMethodNameToMethod at: (forType toMangledName)
-      methodNameToMethodMap::mut Map(String, NivaMethod) = | methodNameToMethodMapMaybe
+      bucketsMaybe = typeToMethodBuckets at: (forType toMangledName)
+      buckets::MethodBuckets = | bucketsMaybe
         | null => TO DO: "Missing methods for type $forType"
-        |=> methodNameToMethodMapMaybe
-      methodNameToMethodMap containsKey: m name,
-        ifTrue: [TO DO: "Type $forType already has method $m"]
+        |=> bucketsMaybe
+      contains = buckets contains: m methodBucketKind name: m name
+      contains ifTrue: [TO DO: "Type $forType already has method $m"]
 
-      methodNameToMethodMap at: m name put: m
+      buckets put: m
     ]
   ]
 
@@ -541,7 +541,7 @@ extend TyperDB [
   ]
 
   on registerGenericReceiverMethod(m): NivaMethod forType: NivaType = [
-    key = m pkgName + "__" + forType toMangledName + "__" + m name
+    key = m pkgName + "__" + forType toMangledName + "__" + ((m methodBucketKind toString)) + "__" + m name
     duplicate = genericReceiverMethods at: key
     duplicate != null ifTrue: [
       TO DO: "Generic receiver method $m name already exists for $forType in package $m pkgName"
@@ -587,10 +587,10 @@ extend TyperDB [
     ]
   ]
 
-  on findGenericReceiverMethod(name): String forType::NivaType -> NivaMethod? = [
+  on findGenericReceiverMethod(name): String forType::NivaType bucket(bucket): MethodBucketKind -> NivaMethod? = [
     matches::mut List::NivaMethod = {}!
     genericReceiverMethods values forEach: [candidate ->
-      candidate method name == name ifTrue: [
+      (candidate method name == name) && (candidate method methodBucketKind == bucket) ifTrue: [
         mapping = this matchGenericReceiver: candidate receiverPattern actual: forType
         mappingMaybe = mapping
         | mappingMaybe
@@ -602,19 +602,16 @@ extend TyperDB [
           receiverNames = (receiverGenerics map: [generic -> generic name]) toSet
           specialized = candidate method replaceGenericsFromTable: mappingMaybe dontMangle: receiverNames mangle: false db: this
           mut specializedName = specialized name
-          existingMethods = typeToMethodNameToMethod at: (forType toMangledName)
+          existingMethods = typeToMethodBuckets at: (forType toMangledName)
           existingMethodsMaybe = existingMethods
           | existingMethodsMaybe
           | null => []
           |=> [
-            existing = existingMethodsMaybe at: specializedName
-            existingMaybe = existing
-            | existingMaybe
+            existingCollision = existingMethodsMaybe allMethods find: [candidate -> (candidate name == specializedName) && (candidate args count != specialized args count)]
+            | existingCollision
             | null => []
             |=> [
-              existingMaybe args count != specialized args count ifTrue: [
-                specializedName <- specializedName + "__" + specialized args count toString
-              ]
+              specializedName <- specializedName + "__" + (specialized args count toString)
             ]
           ]
           resolvedReturnType = | specialized returnType
@@ -692,16 +689,16 @@ extend TyperDB [
         TO DO: "Ambiguous generic receiver method $name for $forType"
       ]
       method = matches first
-      cache = typeToMethodNameToMethod at: (forType toMangledName)
+      cache = typeToMethodBuckets at: (forType toMangledName)
       | cache
       | null => [
-        newCache::mut Map(String, NivaMethod) = #{}!
-        newCache at: method name put: method
-        typeToMethodNameToMethod at: (forType toMangledName) put: newCache
+        newCache = MethodBuckets new
+        newCache put: method
+        typeToMethodBuckets at: (forType toMangledName) put: newCache
       ]
       |=> [
-        existingCache::mut Map(String, NivaMethod) = cache
-        existingCache at: method name put: method
+        existingCache::MethodBuckets = cache
+        existingCache put: method
       ]
       method
     ]
@@ -808,10 +805,10 @@ extend TyperDB [
 
 
     // 2 add to methods db
-    x = this typeToMethodNameToMethod at: (nivaType toMangledName)
+    x = this typeToMethodBuckets at: (nivaType toMangledName)
     | x
     | null => [
-      this typeToMethodNameToMethod at: (nivaType toMangledName) put: #{}! // new type does't have any methods yet
+      this typeToMethodBuckets at: (nivaType toMangledName) put: (MethodBuckets new) // new type does't have any methods yet
     ] |=> TO DO: "Compiler bug: such type was already added to methodDB"
 
     // 3 to constructors
@@ -869,8 +866,8 @@ extend TyperDB [
 
     // add empty method lits to methods and constructors
     this instantiatedCache at: (instantiatedNivaType toMangledName) put: #{}!
-    instMethods::mut Map(String, NivaMethod) = #{}!
-    this typeToMethodNameToMethod at: (instantiatedNivaType toMangledName) put: instMethods
+    instMethods = MethodBuckets new
+    this typeToMethodBuckets at: (instantiatedNivaType toMangledName) put: instMethods
     instConstructors::mut Map(String, NivaMethod) = #{}!
     this constructorsTypeToMethodNameToMethod at: (instantiatedNivaType toMangledName) put: instConstructors
 
@@ -885,13 +882,13 @@ extend TyperDB [
     // copy methods
     dontMangle = letterToType keys toSet
     baseNivaType::NivaType = baseType
-    methodsOfGeneric = this typeToMethodNameToMethod at: (baseNivaType toMangledName)
+    methodsOfGeneric = this typeToMethodBuckets at: (baseNivaType toMangledName)
     | methodsOfGeneric
     | null => ()
     |=> [
-       methodsOfGeneric values forEach: [ m ->
+       methodsOfGeneric allMethods forEach: [ m ->
           newM = m replaceGenericsFromTable: letterToType :dontMangle mangle: false db: this
-          instMethods at: newM name put: newM
+          instMethods put: newM
        ]
     ]
 
@@ -919,19 +916,19 @@ extend TyperDB [
         canonicalCollectionInstances at: collId put: collectionAsType
 
         coreBaseAsType::NivaType = coreBase
-        baseMethodsMaybe = typeToMethodNameToMethod at: (coreBaseAsType toMangledName)
-        baseMethods::mut Map(String, NivaMethod) = | baseMethodsMaybe
+    baseMethodsMaybe = typeToMethodBuckets at: (coreBaseAsType toMangledName)
+    baseMethods::MethodBuckets = | baseMethodsMaybe
           | null => TO DO: errMsg
           |=> baseMethodsMaybe
-        instMethods::mut Map(String, NivaMethod) = #{}!
+    instMethods = MethodBuckets new
         dontMangle = letterToType keys toSet
 
-        baseMethods values forEach: [ m ->
+    baseMethods allMethods forEach: [ m ->
           newM = m replaceGenericsFromTable: letterToType :dontMangle mangle: false db: this
-          instMethods at: newM name put: newM
+      instMethods put: newM
         ]
 
-        typeToMethodNameToMethod at: (collectionAsType toMangledName) put: instMethods
+    typeToMethodBuckets at: (collectionAsType toMangledName) put: instMethods
         constructorsTypeToMethodNameToMethod at: (collectionAsType toMangledName) put: #{}!
         collectionType
       ]
@@ -962,28 +959,29 @@ extend TyperDB [
   on replaceMethod(m): NivaMethod inType::NivaType = [
     | inType
     | NullableT => [
-      innerToMethodMaybe = nullableMethods at: m name
-      innerToMethod::mut Map(String, NivaMethod) = | innerToMethodMaybe
+      bucketsMaybe = nullableMethods at: m name
+      buckets::MethodBuckets = | bucketsMaybe
         | null => TO DO: "Missing nullable method table for $m name"
-        |=> innerToMethodMaybe
-      innerToMethod at: (this nullableMethodKeyFor: inType v) put: m
+        |=> bucketsMaybe
+      buckets putAt: m methodBucketKind name: (this nullableMethodKeyFor: inType v) method: m
     ]
     |=> [
-      methodTableMaybe = typeToMethodNameToMethod at: (inType toMangledName)
-      x::mut Map(String, NivaMethod) = | methodTableMaybe
+      bucketsMaybe = typeToMethodBuckets at: (inType toMangledName)
+      buckets::MethodBuckets = | bucketsMaybe
         | null => TO DO: "Missing method table for $inType"
-        |=> methodTableMaybe
-      x at: m name put: m
+        |=> bucketsMaybe
+      buckets put: m
     ]
   ]
 
 
-  on findMethodOnNullable(name): String inner(innerType): NivaType -> NivaMethod? = [
+  on findMethodOnNullable(name): String inner(innerType): NivaType bucket(bucket): MethodBucketKind -> NivaMethod? = [
     byInnerTypeMaybe = nullableMethods at: name
+    lookupKey = this nullableMethodKeyFor: innerType
     ^ | byInnerTypeMaybe
       | null => null
       |=> [
-        nullableMethod = byInnerTypeMaybe at: (this nullableMethodKeyFor: innerType)
+        nullableMethod = byInnerTypeMaybe methodAt: bucket name: lookupKey
         // a non local return inside a nested block is lost by the go backend
         // so the branches are selected by matching here
         isSameInnerType = | nullableMethod
@@ -991,7 +989,10 @@ extend TyperDB [
           |=> nullableMethod receiverType unwrapNullable sameTypeStrictAs: innerType
         | isSameInnerType
         | true => nullableMethod
-        |=> byInnerTypeMaybe at: "?"
+        |=> [
+          nullableAny = byInnerTypeMaybe methodAt: bucket name: "?"
+          nullableAny
+        ]
       ]
   ]
 
@@ -1027,7 +1028,7 @@ extend TyperDB [
         isInline: false
   ]
 
-  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2  -> NivaMethod? = [
+  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2 bucket(bucket): MethodBucketKind -> NivaMethod? = [
     lookupType = forType
     constructorMethodMaybe = receiver isIdentifierConstructor ifTrue: [
       constructorsMaybe = this constructorsTypeToMethodNameToMethod at: (lookupType toMangledName)
@@ -1049,13 +1050,13 @@ extend TyperDB [
     nullableLookup ifTrue: [
       nullableMethod = | nullableInner
         | null => null
-        |=> this findMethodOnNullable: name inner: nullableInner
+        |=> this findMethodOnNullable: name inner: nullableInner :bucket
       nullableMethod != null ifTrue: [
         nullableMethodMaybe = nullableMethod
         resolvedNullableMethod = nullableMethodMaybe expect: "Nullable method disappeared during lookup"
         ^ resolvedNullableMethod
       ]
-      genericMethod = this findGenericReceiverMethod: name forType: lookupType
+      genericMethod = this findGenericReceiverMethod: name forType: lookupType :bucket
       genericMethod != null ifTrue: [
         genericMethodMaybe = genericMethod
         resolvedGenericMethod = genericMethodMaybe expect: "Generic method disappeared during lookup"
@@ -1064,10 +1065,10 @@ extend TyperDB [
       ^ null
     ]
 
-    x = this typeToMethodNameToMethod at: (lookupType toMangledName)
+    x = this typeToMethodBuckets at: (lookupType toMangledName)
     | x
     | null => [
-      genericMethod = this findGenericReceiverMethod: name forType: lookupType
+      genericMethod = this findGenericReceiverMethod: name forType: lookupType :bucket
       genericMethod != null ifTrue: [
         genericMethodMaybe = genericMethod
         resolvedGenericMethod = genericMethodMaybe expect: "Generic method disappeared during lookup"
@@ -1075,7 +1076,7 @@ extend TyperDB [
       ]
       // method body of a generic receiver is resolved before the receiver type is specialized, in that phase a lambda
       // argument can have the unresolved type T like a + a inside `List(Int) reduce: [a b -> a + b]`
-      // T is not a concrete key in typeToMethodNameToMethod so we let the caller continue with the Any protocol instead of reporting a missing type
+      // T is not a concrete key in typeToMethodBuckets so we let the caller continue with the Any protocol instead of reporting a missing type
       | lookupType
       | NullableT | UnresolvedGenericT | NothingT => [^ null]
       |=> [
@@ -1084,20 +1085,20 @@ extend TyperDB [
     ]
     |=> []
 
-    y::mut Map(String, NivaMethod) = | x
+    y::MethodBuckets = | x
       | null => | lookupType
-        | UnresolvedGenericT | NothingT => #{}!
+        | UnresolvedGenericT | NothingT => (MethodBuckets new)
         |=> [
           TO DO: "missing method table for " + lookupType toString + " while looking up " + name + " at " + receiver token toPosition
-          #{}!
+          MethodBuckets new
         ]
       |=> x
 
-    methodMaybe = y at: name
+    methodMaybe = y methodAt: bucket name: name
     result =
       | methodMaybe
       | null => [
-        genericMethod = this findGenericReceiverMethod: name forType: lookupType
+        genericMethod = this findGenericReceiverMethod: name forType: lookupType :bucket
         | genericMethod
         | null => [
         | lookupType
@@ -1107,12 +1108,12 @@ extend TyperDB [
           rest = chain drop: 1
           parentWithMethod = rest find: [t ->
             parentType::NivaType = t
-            methodsMaybe = this typeToMethodNameToMethod at: (parentType toMangledName)
+            methodsMaybe = this typeToMethodBuckets at: (parentType toMangledName)
             | methodsMaybe
             | null => false
             |=> [
-              methods::mut Map(String, NivaMethod) = methodsMaybe
-              method = methods at: name
+              methods::MethodBuckets = methodsMaybe
+              method = methods methodAt: bucket name: name
               method != null
             ]
           ]
@@ -1121,11 +1122,11 @@ extend TyperDB [
           | null => null
           |=> [
             parentType::NivaType = parentWithMethodMaybe
-            methodsMaybe = this typeToMethodNameToMethod at: (parentType toMangledName)
-            methods::mut Map(String, NivaMethod) = | methodsMaybe
+            methodsMaybe = this typeToMethodBuckets at: (parentType toMangledName)
+            methods::MethodBuckets = | methodsMaybe
               | null => TO DO: "Missing methods for union parent"
               |=> methodsMaybe
-            inherited = methods at: name
+            inherited = methods methodAt: bucket name: name
             | inherited
             | null => null
             |=> [
@@ -1188,7 +1189,7 @@ extend TyperDB [
 
   on findMsgFromReceiver(receiver): TypedExpr2
     byName(name): String
-    currentPkg: NivaPkg -> NivaMethod = [
+    currentPkg: NivaPkg bucket(bucket): MethodBucketKind -> NivaMethod = [
 
     receiverType = receiver typeInfo t
     tryMethod = this findTryMethod: receiver byName: name
@@ -1200,7 +1201,7 @@ extend TyperDB [
     |=> [
       | true
       | name == "try" => [
-          recoveryMethodMaybe = this findMethodInAllProtocols: "toString" forType: dtc any :receiver
+          recoveryMethodMaybe = this findMethodInAllProtocols: "toString" forType: dtc any :receiver bucket: MethodBucketKind.Unary
           recoveryMethodMaybe expect: "Missing toString method for error recovery"
         ]
       |=> [
@@ -1239,7 +1240,7 @@ extend TyperDB [
           pkgMaybe = packages at: lookupType pkgName
           pkg = pkgMaybe expect: "Missing package for type $lookupType"
 
-          methodMaybe = this findMethodInAllProtocols: name forType: lookupType :receiver
+          methodMaybe = this findMethodInAllProtocols: name forType: lookupType :receiver :bucket
           unionFieldGetterMaybe = this findUnionFieldGetter: name :receiver
           | true
           | unionFieldGetterMaybe != null => unionFieldGetterMaybe expect: "Union field getter disappeared during lookup"
@@ -1249,7 +1250,7 @@ extend TyperDB [
             | null => [
                 receiverHasErrors
                   ifTrue: [
-                    forbiddenMethod = this findMethodInAllProtocols: name forType: receiverType :receiver
+                    forbiddenMethod = this findMethodInAllProtocols: name forType: receiverType :receiver :bucket
                     | forbiddenMethod
                     | null => [TO DO: "Searching for $name method but its not found for type $receiverType"]
                     |=> [
@@ -1259,7 +1260,7 @@ extend TyperDB [
                   ]
                   ifFalse: [
                     anyType = dtc any
-                    foundInAnyMaybe = this findMethodInAllProtocols: name forType: anyType :receiver
+                    foundInAnyMaybe = this findMethodInAllProtocols: name forType: anyType :receiver :bucket
                     | foundInAnyMaybe
                     | null => [
                                 TO DO: "Searching for " + name + " method but its not found for type " + receiverType toString + " at " + receiver token toPosition]
@@ -1411,10 +1412,10 @@ extend TyperDB [
     sb appendLine: ""
 
     sb appendLine: "#### Methods"
-    methodsMaybe = typeToMethodNameToMethod at: (t toMangledName)
+    methodsMaybe = typeToMethodBuckets at: (t toMangledName)
     methods::List(NivaMethod) = | methodsMaybe
       | null => {}
-      |=> methodsMaybe values
+      |=> methodsMaybe allMethods
         filter: [it kind != MessageSendKind.Getter]
         ,sortedBy: [it name]
     methods isEmpty
@@ -1535,9 +1536,9 @@ type ResolverLookupEnvironment
   branchIdToParentId: Map(String, String)
   typesById: Map(String, TypeT)
   dtc: DefaultTypesContainer
-  typeToMethodNameToMethod: Map(String, Map(String, NivaMethod))
+  typeToMethodBuckets: Map(String, MethodBuckets)
   genericReceiverMethods: Map(String, GenericReceiverMethodTemplate)
-  nullableMethods: Map(String, Map(String, NivaMethod))
+  nullableMethods: Map(String, MethodBuckets)
   constructorsTypeToMethodNameToMethod: Map(String, Map(String, NivaMethod))
   instantiatedCache: Map(String, Map(String, NivaMethod))
   canonicalCollectionInstances: Map(String, NivaType)
@@ -1559,13 +1560,13 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
   unionBranches::mut Map(String, Set(String)) = #{}!
   unionRootToBranches forEach: [key, values -> unionBranches at: key put: values toSet]
 
-  methods::mut Map(String, Map(String, NivaMethod)) = #{}!
-  typeToMethodNameToMethod forEach: [receiverTypeKey, values ->
-    methods at: receiverTypeKey put: values toMap
+  methods::mut Map(String, MethodBuckets) = #{}!
+  typeToMethodBuckets forEach: [receiverTypeKey, values ->
+    methods at: receiverTypeKey put: values toImmutable
   ]
-  nullable::mut Map(String, Map(String, NivaMethod)) = #{}!
+  nullable::mut Map(String, MethodBuckets) = #{}!
   nullableMethods forEach: [name, values ->
-    nullable at: name put: values toMap
+    nullable at: name put: values toImmutable
   ]
   constructors::mut Map(String, Map(String, NivaMethod)) = #{}!
   constructorsTypeToMethodNameToMethod forEach: [receiverTypeKey, values ->
@@ -1587,7 +1588,7 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
     branchIdToParentId: branchIdToParentId toMap
     typesById: typesById toMap
     :dtc
-    typeToMethodNameToMethod: methods toMap
+    typeToMethodBuckets: methods toMap
     genericReceiverMethods: genericReceiverMethods toMap
     nullableMethods: nullable toMap
     constructorsTypeToMethodNameToMethod: constructors toMap
@@ -1621,13 +1622,13 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
     copyUnionBranches at: key put: values toMutableSet
   ]
 
-  copyMethods::mut Map(String, mut Map(String, NivaMethod)) = #{}!
-  typeToMethodNameToMethod forEach: [receiverType, values ->
-    copyMethods at: receiverType put: values toMutableMap
+  copyMethods::mut Map(String, MethodBuckets) = #{}!
+  typeToMethodBuckets forEach: [receiverType, values ->
+    copyMethods at: receiverType put: values toMutable
   ]
-  copyNullable::mut Map(String, mut Map(String, NivaMethod)) = #{}!
+  copyNullable::mut Map(String, MethodBuckets) = #{}!
   nullableMethods forEach: [name, values ->
-    copyNullable at: name put: values toMutableMap
+    copyNullable at: name put: values toMutable
   ]
   copyConstructors::mut Map(String, mut Map(String, NivaMethod)) = #{}!
   constructorsTypeToMethodNameToMethod forEach: [receiverType, values ->
@@ -1661,7 +1662,7 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
     typeDeclarationTokens: typeTokens methodDeclarationTokens: methodTokens
     unionRootToBranches: copyUnionBranches branchIdToParentId: parents
     typesById: typesByIdMutable :dtc
-    typeToMethodNameToMethod: copyMethods
+    typeToMethodBuckets: copyMethods
     genericReceiverMethods: genericTemplates nullableMethods: copyNullable
     constructorsTypeToMethodNameToMethod: copyConstructors
     instantiatedCache: copyInstantiations canonicalCollectionInstances: canonical

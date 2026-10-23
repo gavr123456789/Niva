@@ -1,0 +1,88 @@
+enum MethodBucketKind = Unary | Binary | Keyword
+
+
+type MethodBuckets
+  unary: mut Map(String, NivaMethod)
+  binary: mut Map(String, NivaMethod)
+  keyword: mut Map(String, NivaMethod)
+
+
+constructor MethodBuckets new -> MethodBuckets = MethodBuckets
+  unary: #{}!
+  binary: #{}!
+  keyword: #{}!
+
+
+constructor MethodBuckets fromMethods(methods): mut Map(String, NivaMethod) -> MethodBuckets = [
+  buckets = MethodBuckets new
+  methods values forEach: [method -> buckets put: method]
+  ^ buckets
+]
+
+
+String isBinaryOperator -> Bool = [
+  firstChar = this first
+  ^ (firstChar isLetter not) && (firstChar != '_')
+]
+
+
+extend NivaMethod [
+  on methodBucketKind -> MethodBucketKind = [
+    args isEmpty ifTrue: [^ MethodBucketKind.Unary]
+    name isBinaryOperator ifTrue: [^ MethodBucketKind.Binary]
+    ^ MethodBucketKind.Keyword
+  ]
+]
+
+
+extend MethodBuckets [
+  on bucketFor(kind): MethodBucketKind -> mut Map(String, NivaMethod) =
+    | kind
+    | MethodBucketKind.Unary => unary
+    | MethodBucketKind.Binary => binary
+    |=> keyword
+
+  on put(m): NivaMethod = [
+    bucket::mut Map(String, NivaMethod) = this bucketFor: m methodBucketKind
+    bucket at: m name put: m
+  ]
+
+  on contains(kind): MethodBucketKind name(name): String -> Bool = [
+    bucket = this bucketFor: kind
+    ^ bucket containsKey: name
+  ]
+
+  on methodAt(kind): MethodBucketKind name(name): String -> NivaMethod? = [
+    bucket = this bucketFor: kind
+    ^ bucket at: name
+  ]
+
+  on putAt(kind): MethodBucketKind name(name): String method(m): NivaMethod = [
+    bucket::mut Map(String, NivaMethod) = this bucketFor: kind
+    bucket at: name put: m
+  ]
+
+  on allMethods -> List(NivaMethod) = [
+    result::mut List(NivaMethod) = {}!
+    unary values forEach: [result add: it]
+    binary values forEach: [result add: it]
+    keyword values forEach: [result add: it]
+    ^ result toList
+  ]
+
+  on toImmutable -> MethodBuckets = [
+    buckets = MethodBuckets new
+    unary forEach: [key, value -> buckets unary at: key put: value]
+    binary forEach: [key, value -> buckets binary at: key put: value]
+    keyword forEach: [key, value -> buckets keyword at: key put: value]
+    ^ buckets
+  ]
+
+  on toMutable -> MethodBuckets = [
+    buckets = MethodBuckets new
+    unary forEach: [key, value -> buckets unary at: key put: value]
+    binary forEach: [key, value -> buckets binary at: key put: value]
+    keyword forEach: [key, value -> buckets keyword at: key put: value]
+    ^ buckets
+  ]
+]

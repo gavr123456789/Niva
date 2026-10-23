@@ -480,7 +480,7 @@ InterpolatedString resolveInterpolatedString(db): TyperDB withContext(c): Contex
     typed = part toTypedExprFromDb2: db withContext: c
     isString = (typed typeInfo t) sameTypeAs: (db dtc str)
     partExpr = isString ifTrue: [typed] ifFalse: [
-      toStringMethod = db findMsgFromReceiver: typed byName: "toString" currentPkg: c currentPkg
+      toStringMethod = db findMsgFromReceiver: typed byName: "toString" currentPkg: c currentPkg bucket: MethodBucketKind.Unary
       UnaryMsgT
         receiver: typed
         token: part token
@@ -498,7 +498,7 @@ InterpolatedString resolveInterpolatedString(db): TyperDB withContext(c): Contex
   |=> [
     mut acc::TypedExpr2 = typedParts first
     (typedParts drop: 1) forEach: [next ->
-      plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg
+      plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg bucket: MethodBucketKind.Binary
       partTypeInfo = TypeInfo t: (db dtc str) isMut: false listOfErrors: (allErrors toMutableList)
       plusArg = NameAndExprT name: (Identifier :token name: "+" path: null) expr: next
       acc <- BinaryMsgT
@@ -555,6 +555,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
             findMethodInAllProtocols: name
             forType: thisType t
             receiver: thisIdent
+            bucket: MethodBucketKind.Unary
 
           | methodMaybe
           | null => [

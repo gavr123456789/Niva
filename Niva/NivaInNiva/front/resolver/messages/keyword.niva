@@ -8,7 +8,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context nameOverri
     | null => this getNameFromArgs
     |=> nameOverride
   receiverTypedExpr = this resolveReceiverForInlineMethod: db withContext: c methodName: msgName
-  ^ this resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr :nameOverride :expectedType
+  ^ this resolveKeywordFromDb2: db withContext: c receiverTyped: receiverTypedExpr :nameOverride :expectedType bucket: MethodBucketKind.Keyword
 ]
 
 KeywordMsg resolveReceiverForInlineMethod(db): TyperDB withContext(c): Context methodName: String -> TypedExpr2 = [
@@ -28,7 +28,7 @@ KeywordMsg resolveReceiverForInlineMethod(db): TyperDB withContext(c): Context m
   |=> receiverExpr toTypedExprFromDb2: db withContext: c
 ]
 
-KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType?  -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType? bucket(bucket): MethodBucketKind -> KeywordMsgT = [
   receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType
@@ -173,15 +173,15 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     ]
   mut kwMsgDB = isTypeReceiver ifTrue: [
     | typedConstructorMaybe
-    | null => db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg
+    | null => db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg :bucket
     |=> typedConstructorMaybe
   ] ifFalse: [
-    db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg
+    db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg :bucket
   ]
 
   // unary and keyword can share the same name, so if current not match, there might be generic kinda overloading
   kwMsgDB args count != args count ifTrue: [
-    genericCandidateMaybe = db findGenericReceiverMethod: msgName forType: receiverType
+    genericCandidateMaybe = db findGenericReceiverMethod: msgName forType: receiverType :bucket
     | genericCandidateMaybe
     | null => []
     |=> genericCandidateMaybe args count == args count ifTrue: [kwMsgDB <- genericCandidateMaybe]
@@ -262,7 +262,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
 
 
 
-    methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr
+    methodAlreadyExists = db findMethodInAllProtocols: newMethod name forType: instReceiverType receiver: receiverTypedExpr bucket: (newMethod methodBucketKind)
 
     | methodAlreadyExists
     | null => [
