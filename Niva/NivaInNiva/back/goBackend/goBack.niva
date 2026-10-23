@@ -1579,14 +1579,9 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
       ]
 ]
 
-// a match whose value is used
-// is emitted as statements, each branch ending by assigning its value to a
-// variable declared before it, or by returning it. One inside another
-// expression is lifted out first, into a temp variable assigned the same way,
-// so no match becomes an anonymous go function and a ^ in a branch returns
-// from the method:
+// transforms matchExpr (not statement) from 
 //   x = (1 > 2 ifTrue: [^ 2] ifFalse: [2]) + 2
-// is
+// to
 //   var __matchValue int
 //   if (1 > 2) {
 //       return 2
@@ -1594,8 +1589,7 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
 //       __matchValue = 2
 //   }
 //   var x int = (__matchValue + 2)
-// A block used as a value, like the body of a ^= method, stays an anonymous
-// function: a ^ in it gives the block's value
+// A block used as a value, like the body of a ^= method, stays an anonymous function: a ^ in it gives the block's value
 extend IrExpr [
   on goNeedsStatements -> Bool =
     | this
@@ -1674,15 +1668,13 @@ extend IrExpr [
     IrVarRef :typeRef :token name: tempName
   ]
 
-  // this value with each match in it emitted first, as statements assigning
-  // a temp that takes its place
+  // this value with each match in it emitted first, as statements assigning a temp that takes its place
   on goLifted(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> IrExpr =
     | this
     | IrMatchExpr => this goToTemp: "__matchValue" :ctx :scope :sb :indent :returnType
     |=> this goLiftedOperands: ctx :scope :sb :indent :returnType
 
-  // the same for what's inside this expression, but not for itself. The
-  // operands evaluated before the last lifted one are kept in temps first
+  // the same for what's inside this expression, but not for itself, the operands evaluated before the last lifted one are kept in temps first
   on goLiftedOperands(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int returnType: IrTypeRef -> IrExpr = [
     operands = this goOperands
     mut lastLifted = -1
