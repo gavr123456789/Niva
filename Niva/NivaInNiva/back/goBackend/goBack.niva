@@ -550,7 +550,8 @@ GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
 // go function, so a non-local return (^) works
 GoContext emitMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope -> Unit = [
   matchKind = matchExpr kind
-  subjectExpr = matchExpr subject toGoExpr: this :scope
+  // the value of a mut cell, not the cell
+  subjectExpr = matchExpr subject toGoValueExpr: this :scope
   | matchKind
   | IrMatchKind.ByError => [
     this emitMatchErrorStatement: matchExpr :sb :indent :returnType :scope subjectCode: subjectExpr
@@ -685,25 +686,35 @@ GoContext emitMatchErrorStatement(matchExpr): IrMatchExpr sb: StringBuilder inde
     aliasStr = matchExpr goMatchAliasOrIt
     caseScope locals add: aliasStr
     sb appendIndent: (indent + 2) line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
+    (c body collectIrRefNames contains: aliasStr) ifFalse: [
+      sb appendIndent: (indent + 2) line: ("_ = " + aliasStr)
+    ]
     this emitMatchBlockStatements: (c body) :sb indent: (indent + 2) :returnType scope: caseScope
   ]
   sb appendIndent: (indent + 1) line: "default:"
   sb appendIndent: (indent + 2) line: "panic(\"unmatched error\")"
   sb appendIndent: (indent + 1) line: "}"
-  sb appendIndent: indent line: "}"
   elseBranchLocal = matchExpr elseBranch
   | elseBranchLocal
   | null => [
+    sb appendIndent: indent line: "}"
     subjectIsUnit ifFalse: [sb appendIndent: indent line: ("_ = " + valueName)]
   ]
   |=> [
     elseScope = scope copy
     aliasStr = matchExpr goMatchAliasOrIt
     elseScope locals add: aliasStr
+    // only when there's no error, and in a block of its own, so the next
+    // match on errors can declare its alias too
+    sb appendIndent: indent line: "} else {"
     subjectIsUnit ifFalse: [
-      sb appendIndent: indent line: (aliasStr + " := " + valueName)
+      sb appendIndent: (indent + 1) line: (aliasStr + " := " + valueName)
+      (elseBranchLocal collectIrRefNames contains: aliasStr) ifFalse: [
+        sb appendIndent: (indent + 1) line: ("_ = " + aliasStr)
+      ]
     ]
-    this emitMatchBlockStatements: elseBranchLocal :sb :indent :returnType scope: elseScope
+    this emitMatchBlockStatements: elseBranchLocal :sb indent: (indent + 1) :returnType scope: elseScope
+    sb appendIndent: indent line: "}"
   ]
 ]
 
@@ -1027,6 +1038,11 @@ extend IrExpr [
   on isGoNullLiteral -> Bool =
     | this
     | IrLiteralExpr => literal kind == IrLiteralKind.Null
+    |=> false
+
+  on isGoBoolLiteral -> Bool =
+    | this
+    | IrLiteralExpr => literal kind == IrLiteralKind.Bool
     |=> false
 
   // mut values whose type is boxable live as go pointers so struct copies
@@ -1474,9 +1490,12 @@ extend IrExpr [
   ] ifFalse: [
       | this
       | IrMatchExpr => [
-        | kind
-        | IrMatchKind.ByBool => ctx emitBoolMatchStatement: this :sb :indent :returnType :scope
-        |=> ctx emitMatchStatement: this :sb :indent :returnType :scope
+        // ifTrue: and ifFalse: are matches with the cases true and false. A match
+        // on true whose cases are conditions is an if else chain, like a match on a value
+        isIfTrueIfFalse = (kind == IrMatchKind.ByBool) && (cases any: [it condition isGoBoolLiteral not]) not
+        isIfTrueIfFalse
+          ifTrue: [ctx emitBoolMatchStatement: this :sb :indent :returnType :scope]
+          ifFalse: [ctx emitMatchStatement: this :sb :indent :returnType :scope]
       ]
       | IrBlockExpr => [
         blockScope = scope copyWithUnitReturnValue: false
@@ -1613,6 +1632,9 @@ IrMatchExpr goMatchErrorInto(sb): StringBuilder ctx: GoContext scope: GoScope su
     aliasStr = this goMatchAliasOrIt
     caseScope locals add: aliasStr
     sb appendIndent: 3 line: (aliasStr + " := " + errName + ".(" + typeStr + ")")
+    (c body collectIrRefNames contains: aliasStr) ifFalse: [
+      sb appendIndent: 3 line: ("_ = " + aliasStr)
+    ]
     c body blockToGoStatements: ctx scope: caseScope :sb indent: 3 returnType: retType
     ctx emitBlockResultAndReturn: (c body) :sb indent: 3 :retType scope: caseScope
       returnStmt: (hasErrors ifTrue: ["return nil"] ifFalse: ["return"])
@@ -1643,6 +1665,9 @@ IrMatchExpr goMatchErrorInto(sb): StringBuilder ctx: GoContext scope: GoScope su
     elseScope locals add: aliasStr
     subjectIsUnit ifFalse: [
       sb appendIndent: 1 line: (aliasStr + " := " + valueName)
+      (elseBlock collectIrRefNames contains: aliasStr) ifFalse: [
+        sb appendIndent: 1 line: ("_ = " + aliasStr)
+      ]
     ]
     elseBlock blockToGoStatements: ctx scope: elseScope :sb indent: 1 returnType: retType
     ctx emitBlockResultAndReturn: elseBlock :sb indent: 1 :retType scope: elseScope
