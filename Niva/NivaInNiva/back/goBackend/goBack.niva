@@ -550,7 +550,8 @@ GoContext emitBoolMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder inden
 // go function, so a non-local return (^) works
 GoContext emitMatchStatement(matchExpr): IrMatchExpr sb: StringBuilder indent: Int returnType: IrTypeRef scope: GoScope -> Unit = [
   matchKind = matchExpr kind
-  subjectExpr = matchExpr subject toGoExpr: this :scope
+  // the value of a mut cell, not the cell
+  subjectExpr = matchExpr subject toGoValueExpr: this :scope
   | matchKind
   | IrMatchKind.ByError => [
     this emitMatchErrorStatement: matchExpr :sb :indent :returnType :scope subjectCode: subjectExpr

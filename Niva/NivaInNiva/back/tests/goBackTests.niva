@@ -604,6 +604,32 @@ Test goStatementMatchOnTrueWithConditions = [
   go contains: "core.Any__echo(\"not a\")", assertTrue
 ]
 
+Test goStatementMatchOnMutCellSubject = [
+  fileMain = """
+    type Parser
+      input: String
+      pos: Int
+
+    mut Parser peek -> Char = input at: pos
+
+    mut Parser show -> Unit = [
+      c = this peek
+      | c
+      | '{' => "object" echo
+      |=> "other" echo
+      ()
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // c is a mut cell, *rune, so the match is on what it points to
+  go contains: "var c *rune = ", assertTrue
+  go contains: "__matchSubject := *c", assertTrue
+]
+
 Test goImplicitLambdaArgCodegen = [
   fileMain = """
     {1 2 3} map: [it + 1]
