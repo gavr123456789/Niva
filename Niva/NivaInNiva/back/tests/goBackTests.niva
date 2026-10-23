@@ -697,6 +697,27 @@ Test goValueMatchReturnOnErrorCodegen = [
   Assert that: (go contains: "func() int {") equals: false
 ]
 
+Test goValueMatchReturnInBracketsCodegen = [
+  fileMain = """
+    Int asValue -> String = [
+      x = | this
+          | 0 => (^ "zero")
+          |=> 1
+      "value " + x toString
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // (^ "zero") is the same statement as ^ "zero", not a block that returns its value
+  go contains: "var x int\n", assertTrue
+  go contains: "return \"zero\"", assertTrue
+  go contains: "x = 1", assertTrue
+  Assert that: (go contains: "func() string {") equals: false
+]
+
 Test goTailMatchNonLocalReturnCodegen = [
   fileMain = """
     union Expr = | Num v: Int | Sym name: String

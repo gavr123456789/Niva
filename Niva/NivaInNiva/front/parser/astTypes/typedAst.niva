@@ -62,6 +62,12 @@ type TypedBody
   t: NivaType
   listOfErrors: List::NivaType
 
+// brackets only group, (x) is x
+TypedExpr2 withoutBrackets -> TypedExpr2 =
+  | this
+  | ExprInBracketsT => value withoutBrackets
+  |=> this
+
 TypedBody containsNonLocalReturn -> Bool = [
   v any: [it containsNonLocalReturn]
 ]

@@ -176,7 +176,8 @@ extend Body [
 // a branch that ends with ^ has no value, so it doesn't decide the match's type
 TypedBody matchBranchType(db): TyperDB -> NivaType = [
   endsWithReturn = v isEmpty ifTrue: [false] ifFalse: [
-    lastExpr = v last
+    // also in brackets, (^ x)
+    lastExpr = v last withoutBrackets
     | lastExpr
     | ReturnStatementT => true
     |=> false

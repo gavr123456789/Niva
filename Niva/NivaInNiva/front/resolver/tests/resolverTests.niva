@@ -785,6 +785,13 @@ Test matchBranchEndingWithReturnDoesNotDecideItsType = [
       |=> this
       "not zero"
     ]
+
+    Int describeZeroInBrackets -> String = [
+      | this
+      | 0 => (^ "zero")
+      |=> 1
+      "done"
+    ]
   """
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
