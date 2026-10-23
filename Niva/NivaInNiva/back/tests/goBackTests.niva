@@ -583,6 +583,53 @@ Test goStatementMatchNonLocalReturnCodegen = [
   Assert that: (go contains: "_ = 10") equals: false
 ]
 
+Test goStatementMatchOnTrueWithConditions = [
+  fileMain = """
+    String f -> String = [
+      | true
+      | this == "a" => "is a" echo
+      |=> "not a" echo
+      "end"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // an if else chain like a match on a value, where it was left out
+  go contains: "__matchSubject := true", assertTrue
+  go contains: "if (__matchSubject == (this == \"a\")) {", assertTrue
+  go contains: "core.Any__echo(\"is a\")", assertTrue
+  go contains: "core.Any__echo(\"not a\")", assertTrue
+]
+
+Test goStatementMatchOnMutCellSubject = [
+  fileMain = """
+    type Parser
+      input: String
+      pos: Int
+
+    mut Parser peek -> Char = input at: pos
+
+    mut Parser show -> Unit = [
+      c = this peek
+      | c
+      | '{' => "object" echo
+      |=> "other" echo
+      ()
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // c is a mut cell, *rune, so the match is on what it points to
+  go contains: "var c *rune = ", assertTrue
+  go contains: "__matchSubject := *c", assertTrue
+]
+
 Test goImplicitLambdaArgCodegen = [
   fileMain = """
     {1 2 3} map: [it + 1]
@@ -690,6 +737,40 @@ Test goErrorDomainMatchByCoreErrorCodegen = [
 
   go contains: "case error:", assertTrue
   go contains: "it := __matchErr.(error)", assertTrue
+]
+
+Test goErrorMatchStatementAliasAndElse = [
+  fileMain = """
+    errordomain E =
+    | Bad text: String
+
+    Int parse -> Int!{Bad} = [
+      this >= 0 ifTrue: [^ this * 10]
+      (Bad text: "negative") throw
+      ^ 0
+    ]
+
+    Int show -> String = [
+      | this parse
+      | Bad => "bad" echo
+      |=> it toString echo
+      | (this + 1) parse
+      | Bad => it text echo
+      |=> "ok" echo
+      "done"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // an alias a branch doesn't use would stop the go build
+  go contains: "it := __matchErr.(main_Bad)\n            _ = it", assertTrue
+  go contains: "it := __matchValue_1\n        _ = it", assertTrue
+  // the else branch runs only without an error, and its alias is in a block
+  go contains: "} else {\n        it := __matchValue\n", assertTrue
+  go contains: "__matchValue_1, __matchErr_1 := main__core_Int__parse((this + 1))", assertTrue
 ]
 
 Test goTryRethrowsError = [
