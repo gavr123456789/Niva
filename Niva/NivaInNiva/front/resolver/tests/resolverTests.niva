@@ -761,6 +761,43 @@ Test nestedInlineReturnInsideNonInlineMapIsRejected = [
   errors first msg contains: "non-local return requires an inline function", assertTrue
 ]
 
+Test matchBranchEndingWithReturnDoesNotDecideItsType = [
+  fileMain = """
+    errordomain E =
+    | Bad text: String
+
+    Int parse -> Int!{Bad} = [
+      this >= 0 ifTrue: [^ this * 10]
+      (Bad text: "negative") throw
+      ^ 0
+    ]
+
+    Int describe -> String = [
+      | this parse
+      | Bad => ^ "bad input"
+      |=> []
+      "parsed"
+    ]
+
+    Int describeZero -> String = [
+      | this
+      | 0 => ^ "zero"
+      |=> this
+      "not zero"
+    ]
+
+    Int describeZeroInBrackets -> String = [
+      | this
+      | 0 => (^ "zero")
+      |=> 1
+      "done"
+    ]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+]
+
     Test resolveUnaryBinaryKeywordMessages = [
   fileMain = """
     type Counter value: Int
