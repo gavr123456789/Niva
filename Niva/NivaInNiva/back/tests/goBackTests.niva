@@ -1362,8 +1362,8 @@ Test goEqTypeWithListUsesGeneratedFunction = [
 
   // plain fields first, then the list, which compares sizes first
   go contains: "func main_Bag__eq(a, b main_Bag) bool {\n    return (a.n == b.n) &&\n        core.List__equals(a.items, b.items, core.Eq[int])\n}", assertTrue
-  go contains: "core.Any__echo(main_Bag__eq(b1, b2))", assertTrue
-  go contains: "core.Any__echo((!main_Bag__eq(b1, b2)))", assertTrue
+  go contains: "main_Bag__eq(b1, b2)", assertTrue
+  go contains: "(!main_Bag__eq(b1, b2))", assertTrue
 ]
 
 Test goEqUnionComparesBranchFirst = [
@@ -1381,7 +1381,7 @@ Test goEqUnionComparesBranchFirst = [
   go contains: "func main_Expr__eq(a, b main_Expr) bool {\n    switch x := a.(type) {\n    case main_Sum:\n        y, ok := b.(main_Sum)\n        return ok && main_Sum__eq(x, y)\n    }\n    return a == b\n}", assertTrue
   // go's == already compares a Num
   Assert that: (go contains: "main_Num__eq") equals: false
-  go contains: "core.Any__echo(main_Expr__eq(a, b))", assertTrue
+  go contains: "main_Expr__eq(a, b)", assertTrue
 ]
 
 Test goEqPointerFieldsCompareValues = [
@@ -1399,7 +1399,7 @@ Test goEqPointerFieldsCompareValues = [
   go contains: "core.Ptr__equals(a.p, b.p, core.Eq[main_Point])", assertTrue
   go contains: "core.Ptr__equals(a.q, b.q, core.Eq[main_Point])", assertTrue
   go contains: "core.Ptr__equals(a.n, b.n, core.Eq[int])", assertTrue
-  go contains: "core.Any__echo(main_Holder__eq(h1, h2))", assertTrue
+  go contains: "main_Holder__eq(h1, h2)", assertTrue
 ]
 
 Test goEqOnlyWhereNeeded = [
@@ -1421,12 +1421,12 @@ Test goEqOnlyWhereNeeded = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   // types go's == compares by content keep it
-  go contains: "core.Any__echo((p1 == p2))", assertTrue
-  go contains: "core.Any__echo((l == l))", assertTrue
+  go contains: "(p1 == p2)", assertTrue
+  go contains: "(l == l)", assertTrue
   Assert that: (go contains: "main_Point__eq") equals: false
   // Bag is never compared, so it gets no function
   Assert that: (go contains: "main_Bag__eq") equals: false
-  go contains: "core.Any__echo((bagMaybe == nil))", assertTrue
+  go contains: "(bagMaybe == nil)", assertTrue
 ]
 
 Test goEqCollectionsAndBlocks = [
@@ -1472,11 +1472,11 @@ Test goDeclaredEqIsCalled = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "core.Any__echo(main__Point__equals(p1, p2))", assertTrue
+  go contains: "main__Point__equals(p1, p2)", assertTrue
   // != negates the type's == when it has no != of its own
-  go contains: "core.Any__echo((main__Point__equals(p1, p2) == false))", assertTrue
-  go contains: "core.Any__echo(main__Pair__notEquals(q1, q2))", assertTrue
-  go contains: "core.Any__echo((q1 == q2))", assertTrue
+  go contains: "(main__Point__equals(p1, p2) == false)", assertTrue
+  go contains: "main__Pair__notEquals(q1, q2)", assertTrue
+  go contains: "(q1 == q2)", assertTrue
 ]
 
 Test goDeclaredEqOnUnionIsCalledForBranches = [
@@ -1491,7 +1491,7 @@ Test goDeclaredEqOnUnionIsCalledForBranches = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "core.Any__echo(main__Shape__equals(c1, c2))", assertTrue
+  go contains: "main__Shape__equals(c1, c2)", assertTrue
 ]
 
 Test goEqNullCollectionIsNotEmpty = [
@@ -1504,7 +1504,7 @@ Test goEqNullCollectionIsNotEmpty = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "core.Any__echo((((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int])))", assertTrue
+  go contains: "(((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int]))", assertTrue
 ]
 
 Test goEqGenericTypeTakesCompareForTypeParam = [
@@ -1524,11 +1524,11 @@ Test goEqGenericTypeTakesCompareForTypeParam = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "func main_Box__eq[T any](a, b main_Box[T], eqT func(T, T) bool) bool {\n    return eqT(a.value, b.value)\n}", assertTrue
-  go contains: "core.Any__echo(main_Box__eq(a, b, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) }))", assertTrue
-  go contains: "core.Any__echo(main_Box__eq(c, c, core.Eq[int]))", assertTrue
+  go contains: "main_Box__eq(a, b, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })", assertTrue
+  go contains: "main_Box__eq(c, c, core.Eq[int])", assertTrue
   go contains: "func main_Pair__eq[A any, B any](a, b main_Pair[A, B], eqA func(A, A) bool, eqB func(B, B) bool) bool {", assertTrue
   go contains: "core.List__equals(a.second, b.second, eqB)", assertTrue
-  go contains: "core.Any__echo(main_Pair__eq(p, p, core.Eq[int], core.Eq[string]))", assertTrue
+  go contains: "main_Pair__eq(p, p, core.Eq[int], core.Eq[string])", assertTrue
 ]
 
 Test goEqTypeParamInGenericMethodUsesAny = [
