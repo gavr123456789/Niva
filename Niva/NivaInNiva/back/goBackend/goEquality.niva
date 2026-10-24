@@ -4,18 +4,20 @@ extend GoContext [
   // whether go's == compares a value of this type by content, mut cells are read through before comparing so isMut doesn't count, and a type param could be anything
   on goEqIsNative(typeRef): IrTypeRef eqTypeIds: Set(String) -> Bool = [
     baseId = typeRef typeId goNormalizeTypeId
-    isCollection = (typeRef kind == IrTypeRefKind.Builtin) &&
-      ((baseId == "core_List") || (baseId == "core_Set") || (baseId == "core_Map"))
-    isBlock = typeRef kind == IrTypeRefKind.Function
-    isPointer = this needsGoNullablePointerFor: typeRef
-    ^ (isCollection || isBlock || isPointer || typeRef isGoTypeParam || (eqTypeIds contains: baseId)) not
+    ^ ((typeRef kind == IrTypeRefKind.Builtin) &&
+        ((baseId == "core_List") || (baseId == "core_Set") || (baseId == "core_Map"))) || // is collection
+      (typeRef kind == IrTypeRefKind.Function) ||  // is block
+      (this needsGoNullablePointerFor: typeRef) || // is pointer
+      (typeRef isGoTypeParam) ||
+      (eqTypeIds contains: baseId),
+      not
   ]
 
   // a struct field also keeps a mut value as a pointer
   on goFieldEqIsNative(typeRef): IrTypeRef eqTypeIds: Set(String) -> Bool =
-    ((typeRef goIsMutBoxType: this) not) && (this goEqIsNative: typeRef :eqTypeIds)
+    (typeRef goIsMutBoxType: this, not) && (this goEqIsNative: typeRef :eqTypeIds)
 
-  // the types that get a compare function: the ones go's == can't compare, that some == reaches
+  // the types that get a compare function: the ones go's == can't compare
   on goEqTypeIdsFor(ir): IrModule -> Set(String) = [
     eqTypeIds = this goEqTypeIdsAll: ir
     compared::mut List(IrTypeRef) = {}!
@@ -33,16 +35,15 @@ extend GoContext [
   ]
 
   on addGoEqTypeId(id): String eqTypeIds: Set(String) reached: mut Set(String) -> Unit = [
-    ((eqTypeIds contains: id) && (reached contains: id) not) ifTrue: [
-      reached add: id
-      fieldsMaybe = symbols fieldTypesByName at: id
-      | fieldsMaybe
-      | null => []
-      |=> fieldsMaybe forEach: [name, fieldType -> this addGoEqType: fieldType :eqTypeIds :reached]
-      (this isGoUnionType: id) ifTrue: [
-        (symbols concreteUnionBranchTypeIds: id) forEach: [this addGoEqTypeId: it :eqTypeIds :reached]
+    (eqTypeIds contains: id) && (reached contains: id) not,
+      ifTrue: [
+        reached add: id
+        fieldsMaybe = symbols fieldTypesByName at: id
+        | fieldsMaybe | null => []
+        |=> fieldsMaybe forEach: [name, fieldType -> .addGoEqType: fieldType :eqTypeIds :reached]
+        .isGoUnionType: id,
+          ifTrue: [symbols concreteUnionBranchTypeIds: id, forEach: [.addGoEqTypeId: it :eqTypeIds :reached]]
       ]
-    ]
   ]
 
   // types and union branches with a field go's == can't compare, a type param too, and unions with such a branch
@@ -51,12 +52,14 @@ extend GoContext [
     unionIds::mut List(String) = {}!
     ir packages forEach: [pkg ->
       pkg types forEach: [def -> fieldsById at: (def id goNormalizeTypeId) put: def fields]
+
       pkg unions forEach: [def ->
-        unionIds add: (def id goNormalizeTypeId)
+        unionIds add: def id goNormalizeTypeId
         def branches forEach: [br ->
           branchTypeId = def pkgId + "_" + br name
           branchFields::List(IrField) = def commonFields + br fields
-          (br isInclude not) ifTrue: [fieldsById at: (branchTypeId goNormalizeTypeId) put: branchFields]
+          br isInclude
+            ifFalse: [fieldsById at: (branchTypeId goNormalizeTypeId) put: branchFields]
         ]
       ]
     ]
@@ -67,11 +70,12 @@ extend GoContext [
     [changed] whileTrue: [
       changed <- false
       fieldsById forEach: [id, fields ->
-        needsFunc = fields any: [(this goFieldEqIsNative: it typeRef :eqTypeIds) not]
-        ((eqTypeIds contains: id) not && needsFunc) ifTrue: [
-          eqTypeIds add: id
-          changed <- true
-        ]
+        needsFunc = fields any: [.goFieldEqIsNative: it typeRef :eqTypeIds, not]
+        (eqTypeIds contains: id, not) && needsFunc,
+          ifTrue: [
+            eqTypeIds add: id
+            changed <- true
+          ]
       ]
       unionIds forEach: [id ->
         needsFunc = (symbols concreteUnionBranchTypeIds: id) any: [eqTypeIds contains: it]
@@ -79,44 +83,45 @@ extend GoContext [
           eqTypeIds add: id
           changed <- true
         ]
+        (eqTypeIds contains: id, not) && needsFunc,
+          ifTrue: [
+            eqTypeIds add: id
+            changed <- true
+          ]
       ]
     ]
     ^ eqTypeIds toSet
   ]
 
-  // go expression comparing a and b, two values of this type, by content
-  on goEqExpr(typeRef): IrTypeRef a: String b: String -> String = [
-    noTypeParams::List(String) = {}
-    ^ this goEqExpr: typeRef :a :b typeParams: noTypeParams
-  ]
-
   // typeParams have a compare function in scope, eqT for T, another type param compares with go's == through any
   on goEqExpr(typeRef): IrTypeRef a: String b: String typeParams: List(String) -> String = [
     baseId = typeRef typeId goNormalizeTypeId
-    ^ (this goEqIsNative: typeRef eqTypeIds: symbols eqTypeIds)
-      ifTrue: ["(" + a + " == " + b + ")"]
+    ^ this goEqIsNative: typeRef eqTypeIds: symbols eqTypeIds,
+      ifTrue: ["($a == $b)"]
       ifFalse: [
-        this addImport: "niva_go/core"
+        .addImport: "niva_go/core"
         // a block compares by its signature, which its type already fixes, so two are equal unless one is null
         isBlock = typeRef kind == IrTypeRefKind.Function
-        isBlock ifTrue: ["((" + a + " == nil) == (" + b + " == nil))"] ifFalse: [
-          (this needsGoNullablePointerFor: typeRef)
-            ifTrue: ["core.Ptr__equals(" + a + ", " + b + ", " + (this goEqFunc: (typeRef nullable: false) :typeParams) + ")"]
-            ifFalse: [
-              collectionEq = | baseId
-                | "core_List" => "core.List__equals(" + a + ", " + b + ", " + (this goEqFunc: typeRef arg: 0 :typeParams) + ")"
-                | "core_Set" => "core.Set__equals(" + a + ", " + b + ")"
-                | "core_Map" => "core.Map__equals(" + a + ", " + b + ", " + (this goEqFunc: typeRef arg: 1 :typeParams) + ")"
-                |=> ""
-              typeArgEqs = typeRef args map: [this goEqFunc: it :typeParams]
-              // a null collection is nil, so it isn't equal to an empty one
-              | true
-              | typeRef isGoTypeParam => (this goEqFunc: typeRef :typeParams) + "(" + a + ", " + b + ")"
-              | collectionEq == "" => (this goTypeNameFor: baseId) + "__eq(" + ({a b} + typeArgEqs joinWith: ", ") + ")"
-              | typeRef nullable => "(((" + a + " == nil) == (" + b + " == nil)) && " + collectionEq + ")"
-              |=> collectionEq
-            ]
-        ]
+        isBlock,
+          ifTrue: ["(($a == nil) == ($b == nil))"]
+          ifFalse: [
+            .needsGoNullablePointerFor: typeRef,
+              ifTrue: ["core.Ptr__equals($a, $b, " + (.goEqFunc: (typeRef nullable: false) :typeParams) + ")"]
+              ifFalse: [
+                collectionEq = | baseId
+                  | "core_List" => "core.List__equals($a, $b, " + (.goEqFunc: typeRef arg: 0 :typeParams) + ")"
+                  | "core_Set" => "core.Set__equals($a, $b)"
+                  | "core_Map" => "core.Map__equals($a, $b, " + (.goEqFunc: typeRef arg: 1 :typeParams) + ")"
+                  |=> ""
+                typeArgEqs = typeRef args map: [.goEqFunc: it :typeParams]
+                // a null collection is nil, so it isn't equal to an empty one
+                | true
+                | typeRef isGoTypeParam => (.goEqFunc: typeRef :typeParams) + "($a, $b)"
+                | collectionEq == "" => (.goTypeNameFor: baseId) + "__eq(" + ({a b} + typeArgEqs joinWith: ", ") + ")"
+                | typeRef nullable => "((($a == nil) == ($b == nil)) && $collectionEq)"
+                |=> collectionEq
+              ]
+          ]
       ]
   ]
 
@@ -124,50 +129,59 @@ extend GoContext [
   on goEqFunc(typeRef): IrTypeRef typeParams: List(String) -> String = [
     baseId = typeRef typeId goNormalizeTypeId
     goType = typeRef toGoType: this
-    isNative = this goEqIsNative: typeRef eqTypeIds: symbols eqTypeIds
+    isNative = .goEqIsNative: typeRef eqTypeIds: symbols eqTypeIds
     // a generic type's function takes more args, so it's wrapped like any other
-    hasOwnFunc = (symbols eqTypeIds contains: baseId) && ((this needsGoNullablePointerFor: typeRef) not) && typeRef args isEmpty
+    hasOwnFunc = (symbols eqTypeIds contains: baseId) && (.needsGoNullablePointerFor: typeRef, not) && typeRef args isEmpty
     ^ | true
-      | typeRef isGoTypeParam => (typeParams any: [it == baseId]) ifTrue: [baseId goEqParam] ifFalse: ["core.EqAny[" + goType + "]"]
-      | isNative => "core.Eq[" + goType + "]"
-      | hasOwnFunc => (this goTypeNameFor: baseId) + "__eq"
-      |=> "func(a, b " + goType + ") bool { return " + (this goEqExpr: typeRef a: "a" b: "b" :typeParams) + " }"
+      | typeRef isGoTypeParam => (typeParams any: [it == baseId]),
+                                    ifTrue: [baseId goEqParam]
+                                    ifFalse: ["core.EqAny[$goType]"]
+      | isNative => "core.Eq[$goType]"
+      | hasOwnFunc => (.goTypeNameFor: baseId) + "__eq"
+      |=> "func(a, b $goType) bool { return " + (.goEqExpr: typeRef a: "a" b: "b" :typeParams) + " }"
   ]
 
   // the compare function for an item of a collection, any when the item type is missing
   on goEqFunc(typeRef): IrTypeRef arg(i): Int typeParams: List(String) -> String =
-    typeRef args count > i
-      ifTrue: [this goEqFunc: (typeRef args at: i) :typeParams]
+    typeRef args count > i,
+      ifTrue: [.goEqFunc: (typeRef args at: i) :typeParams]
       ifFalse: ["core.Eq[interface{}]"]
 
   // compares a field of a and b, a mut cell compares the value it holds
   on goFieldEqExpr(f): IrField typeParams: List(String) -> String = [
     fieldName = f name toSafeGoIdent
-    a = "a." + fieldName
-    b = "b." + fieldName
-    ^ (f typeRef goIsMutBoxType: this)
+    a = "a.$fieldName"
+    b = "b.$fieldName"
+    ^ (f typeRef goIsMutBoxType: this),
       ifTrue: [
-        this addImport: "niva_go/core"
-        "core.Ptr__equals(" + a + ", " + b + ", " + (this goEqFunc: f typeRef :typeParams) + ")"
+        .addImport: "niva_go/core"
+        "core.Ptr__equals($a, $b, " + (.goEqFunc: f typeRef :typeParams) + ")"
       ]
-      ifFalse: [this goEqExpr: f typeRef :a :b :typeParams]
+      ifFalse: [.goEqExpr: f typeRef :a :b :typeParams]
   ]
 
   // the signature of a compare function, a generic one takes a compare function for each type param
   on goEqFuncHeader(name): String typeParams: List(String) -> String = [
-    eqParams = typeParams map: [", " + it goEqParam + " func(" + it toSafeGoIdent + ", " + it toSafeGoIdent + ") bool"]
+    eqParams = typeParams map: [param ->
+      eqParam = param goEqParam
+      paramName = param toSafeGoIdent
+      ", $eqParam func($paramName, $paramName) bool"
+    ]
     goType = name + typeParams goTypeArgs
-    ^ "func " + name + "__eq" + typeParams goTypeParams + "(a, b " + goType + (eqParams joinWith: "") + ") bool {"
+    funcName = name + "__eq" + typeParams goTypeParams
+    eqParamsText = eqParams joinWith: ""
+    ^ "func $funcName(a, b $goType$eqParamsText) bool {"
   ]
 
   // compares the fields go's == can compare first, then the ones that cost more
   on emitGoEqFunc(goType): String typeParams: List(String) fields: List(IrField) sb: StringBuilder -> Unit = [
     eqTypeIds = symbols eqTypeIds
-    cheap = fields filter: [this goFieldEqIsNative: it typeRef :eqTypeIds]
-    costly = fields filter: [(this goFieldEqIsNative: it typeRef :eqTypeIds) not]
-    compares = (cheap + costly) map: [this goFieldEqExpr: it :typeParams]
-    sb appendLine: (this goEqFuncHeader: goType :typeParams)
-    sb appendIndent: 1 line: ("return " + (compares joinWith: " &&\n        "))
+    cheap = fields filter: [.goFieldEqIsNative: it typeRef :eqTypeIds]
+    costly = fields filter: [.goFieldEqIsNative: it typeRef :eqTypeIds, not]
+    compares = (cheap + costly) map: [.goFieldEqExpr: it :typeParams]
+    sb appendLine: (.goEqFuncHeader: goType :typeParams)
+    compareExpr = compares joinWith: " &&\n        "
+    sb appendIndent: 1 line: "return $compareExpr"
     sb appendLine: "}"
     sb appendLine: ""
     ()
@@ -175,22 +189,25 @@ extend GoContext [
 
   // a union compares the branch first, then that branch's fields, branches go's == can compare are left to it, as is a generic branch of a union that isn't generic itself
   on emitGoUnionEqFunc(def): IrUnionDef sb: StringBuilder -> Unit = [
-    name = this goTypeNameFor: def id
+    name = .goTypeNameFor: def id
     typeParams = def typeParams
     branchIds = (symbols concreteUnionBranchTypeIds: def id) filter: [branchId ->
-      branchParams = this goEqTypeParamsOf: branchId
-      (symbols eqTypeIds contains: branchId) && ((branchParams any: [param -> (typeParams any: [it == param]) not]) not)
+      branchParams = .goEqTypeParamsOf: branchId
+      hasEqFunc = symbols eqTypeIds contains: branchId
+      hasExtraTypeParam = branchParams any: [param -> (typeParams any: [it == param], not)]
+      hasEqFunc && (hasExtraTypeParam, not)
     ], sortedBy: [it]
-    sb appendLine: (this goEqFuncHeader: name :typeParams)
+    sb appendLine: (.goEqFuncHeader: name :typeParams)
     sb appendIndent: 1 line: "switch x := a.(type) {"
     branchIds forEach: [branchId ->
-      branchName = this goTypeNameFor: branchId
-      branchParams = this goEqTypeParamsOf: branchId
+      branchName = .goTypeNameFor: branchId
+      branchParams = .goEqTypeParamsOf: branchId
       branchType = branchName + branchParams goTypeArgs
       eqArgs = {"x" "y"} + (branchParams map: [it goEqParam])
-      sb appendIndent: 1 line: ("case " + branchType + ":")
-      sb appendIndent: 2 line: ("y, ok := b.(" + branchType + ")")
-      sb appendIndent: 2 line: ("return ok && " + branchName + "__eq(" + (eqArgs joinWith: ", ") + ")")
+      eqFuncName = branchName + "__eq"
+      sb appendIndent: 1 line: "case $branchType:"
+      sb appendIndent: 2 line: "y, ok := b.($branchType)"
+      sb appendIndent: 2 line: "return ok && $eqFuncName(" + (eqArgs joinWith: ", ") + ")"
     ]
     sb appendIndent: 1 line: "}"
     sb appendIndent: 1 line: "return a == b"
@@ -204,8 +221,7 @@ extend GoContext [
     names::mut List(String) = {}!
     seen::mut Set(String) = #()!
     fieldTypesMaybe = symbols constructorFieldTypes at: typeId
-    | fieldTypesMaybe
-    | null => []
+    | fieldTypesMaybe | null => []
     |=> fieldTypesMaybe forEach: [it collectGoTypeParamsInto: names :seen]
     ^ names toList
   ]
@@ -220,10 +236,10 @@ String goEqParam -> String = "eq" + this toSafeGoIdent
 IrOpBin goEqTypeRef(ctx): GoContext -> IrTypeRef? = [
   mut result::IrTypeRef? = null
   typeMaybe = this goEqOperandType: ctx
-  | typeMaybe
-  | null => []
+  | typeMaybe | null => []
   |=> [
-    (ctx goEqIsNative: typeMaybe eqTypeIds: ctx symbols eqTypeIds) ifFalse: [result <- typeMaybe]
+    ctx goEqIsNative: typeMaybe eqTypeIds: ctx symbols eqTypeIds,
+      ifFalse: [result <- typeMaybe]
   ]
   ^ result
 ]
@@ -231,13 +247,16 @@ IrOpBin goEqTypeRef(ctx): GoContext -> IrTypeRef? = [
 // the operand type == compares by: a branch against its union compares as the union, a nullable pointer keeps go's == since a narrowed one is already read through
 IrOpBin goEqOperandType(ctx): GoContext -> IrTypeRef? = [
   operands::List(IrExpr) = {left right}
-  isEq = ((op == "==") || (op == "!=")) && ((operands any: [it isGoNullLiteral]) not)
-  types = operands map: [it typeRef], filter: [(ctx needsGoNullablePointerFor: it) not]
+  isEq = ((op == "==") || (op == "!=")) && (operands any: [it isGoNullLiteral], not)
+  types = operands map: [it typeRef], filter: [ctx needsGoNullablePointerFor: it, not]
   unionTypes = types filter: [ctx isGoUnionType: it typeId]
   mut result::IrTypeRef? = null
-  (isEq && types isNotEmpty) ifTrue: [
-    result <- unionTypes isNotEmpty ifTrue: [unionTypes first] ifFalse: [types first]
-  ]
+  (isEq && types isNotEmpty),
+    ifTrue: [
+      result <- unionTypes isNotEmpty,
+        ifTrue: [unionTypes first]
+        ifFalse: [types first]
+    ]
   ^ result
 ]
 
@@ -245,8 +264,7 @@ IrOpBin goEqOperandType(ctx): GoContext -> IrTypeRef? = [
 IrBlock collectGoEqTypesInto(types): mut List(IrTypeRef) ctx: GoContext -> Unit = [
   stmts forEach: [it collectGoEqTypesInto: types :ctx]
   resultMaybe = result
-  | resultMaybe
-  | null => []
+  | resultMaybe | null => []
   |=> resultMaybe collectGoEqTypesInto: types :ctx
 ]
 
@@ -254,8 +272,7 @@ IrStmt collectGoEqTypesInto(types): mut List(IrTypeRef) ctx: GoContext -> Unit =
   | this
   | IrLet => [
       valueMaybe = value
-      | valueMaybe
-      | null => []
+      | valueMaybe | null => []
       |=> valueMaybe collectGoEqTypesInto: types :ctx
     ]
   | IrSetLocal => [value collectGoEqTypesInto: types :ctx]
@@ -267,8 +284,7 @@ IrStmt collectGoEqTypesInto(types): mut List(IrTypeRef) ctx: GoContext -> Unit =
   | IrExprStmt => [expr collectGoEqTypesInto: types :ctx]
   | IrReturn => [
       exprMaybe = expr
-      | exprMaybe
-      | null => []
+      | exprMaybe | null => []
       |=> exprMaybe collectGoEqTypesInto: types :ctx
     ]
   | IrWhile => [
@@ -284,8 +300,7 @@ IrExpr collectGoEqTypesInto(types): mut List(IrTypeRef) ctx: GoContext -> Unit =
   | IrFieldGet => [receiver collectGoEqTypesInto: types :ctx]
   | IrCall => [
       calleeMaybe = callee
-      | calleeMaybe
-      | null => []
+      | calleeMaybe | null => []
       |=> calleeMaybe collectGoEqTypesInto: types :ctx
       args forEach: [it collectGoEqTypesInto: types :ctx]
     ]
@@ -304,8 +319,7 @@ IrExpr collectGoEqTypesInto(types): mut List(IrTypeRef) ctx: GoContext -> Unit =
   | IrCollectionLiteral => [items forEach: [it collectGoEqTypesInto: types :ctx]]
   | IrOpBin => [
       compareTypeMaybe = this goEqOperandType: ctx
-      | compareTypeMaybe
-      | null => []
+      | compareTypeMaybe | null => []
       |=> [
         types add: compareTypeMaybe
         ()
