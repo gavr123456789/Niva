@@ -8,7 +8,7 @@ constructor GoBackend [
     sb appendLine: "}"
     sb appendLine: ""
     (ctx symbols eqTypeIds contains: (def id goNormalizeTypeId)) ifTrue: [
-      ctx emitGoEqFunc: name fields: def fields :sb
+      ctx emitGoEqFunc: name typeParams: def typeParams fields: def fields :sb
     ]
     ()
   ]
@@ -62,7 +62,7 @@ constructor GoBackend [
             ]
         sb appendLine: ""
         (ctx symbols eqTypeIds contains: (branchTypeId goNormalizeTypeId)) ifTrue: [
-          ctx emitGoEqFunc: branchName fields: branchFields :sb
+          ctx emitGoEqFunc: branchName typeParams: branchTypeParams fields: branchFields :sb
         ]
         ()
       ]

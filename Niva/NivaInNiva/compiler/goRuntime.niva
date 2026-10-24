@@ -26,6 +26,8 @@ constructor GoRuntimeSources coreSource -> String = """
 
   // == by content for values go's == can't compare that way, lists built here are never nil so a nil one is null
   func Eq[T comparable](a, b T) bool { return a == b }
+  // a type param in a generic method, whose compare isn't known, compares with go's ==
+  func EqAny[T any](a, b T) bool { return any(a) == any(b) }
   func Ptr__equals[T any](a, b *T, eq func(T, T) bool) bool {
   	if a == nil || b == nil {
   		return a == b

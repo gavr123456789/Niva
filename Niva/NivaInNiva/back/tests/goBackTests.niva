@@ -1506,3 +1506,40 @@ Test goEqNullCollectionIsNotEmpty = [
 
   go contains: "core.Any__echo((((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int])))", assertTrue
 ]
+
+Test goEqGenericTypeTakesCompareForTypeParam = [
+  fileMain = """
+    type Box(T) value: T
+    type Pair(A, B) first: A second: List(B)
+    a::Box(List(Int)) = Box value: {1 2}
+    b::Box(List(Int)) = Box value: {1 2}
+    (a == b) echo
+    c::Box(Int) = Box value: 1
+    (c == c) echo
+    p::Pair(Int, String) = Pair first: 1 second: {"x"}
+    (p == p) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func main_Box__eq[T any](a, b main_Box[T], eqT func(T, T) bool) bool {\n    return eqT(a.value, b.value)\n}", assertTrue
+  go contains: "core.Any__echo(main_Box__eq(a, b, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) }))", assertTrue
+  go contains: "core.Any__echo(main_Box__eq(c, c, core.Eq[int]))", assertTrue
+  go contains: "func main_Pair__eq[A any, B any](a, b main_Pair[A, B], eqA func(A, A) bool, eqB func(B, B) bool) bool {", assertTrue
+  go contains: "core.List__equals(a.second, b.second, eqB)", assertTrue
+  go contains: "core.Any__echo(main_Pair__eq(p, p, core.Eq[int], core.Eq[string]))", assertTrue
+]
+
+Test goEqTypeParamInGenericMethodUsesAny = [
+  fileMain = """
+    T isSame: other::T -> Bool = this == other
+    (1 isSame: 1) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // the compare for T isn't known in a generic method, so it's go's == through any
+  go contains: "return core.EqAny[T](this, other)", assertTrue
+]
