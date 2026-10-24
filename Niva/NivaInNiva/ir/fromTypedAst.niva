@@ -701,6 +701,49 @@ MessageSendT toIrInlineIteration(db): TyperDB currentPkg: String typeFieldsById:
   inlineExpr
 ]
 
+// a binary method declared in niva code, on the type or a union it's a branch of
+TyperDB declaredBinary(op): String forType(t): NivaType -> NivaMethod? = [
+  mut result = this declaredBinary: op onlyForType: t
+  | t
+  | TypeT => (this unionAncestorChain: t) forEach: [ancestor ->
+      result == null ifTrue: [result <- this declaredBinary: op onlyForType: ancestor]
+    ]
+  |=> []
+  ^ result
+]
+
+TyperDB declaredBinary(op): String onlyForType(t): NivaType -> NivaMethod? = [
+  mut result::NivaMethod? = null
+  methodsMaybe = typeToMethodBuckets at: (t toMangledName)
+  | methodsMaybe
+  | null => []
+  |=> [
+    methodMaybe = methodsMaybe methodAt: MethodBucketKind.Binary name: op
+    | methodMaybe
+    | null => []
+    |=> [(methodMaybe decl != null) ifTrue: [result <- methodMaybe]]
+  ]
+  ^ result
+]
+
+// an operator both backends have, but == and != call the type's own when it declares one, as the jvm compiler does, and != negates its == when it has no !=
+TyperDB irOp(op): String left: IrExpr right: IrExpr leftType: NivaType typeRef: IrTypeRef token: Token -> IrExpr = [
+  mut ownMaybe::NivaMethod? = null
+  ((op == "==") || (op == "!=")) ifTrue: [ownMaybe <- this declaredBinary: op forType: leftType]
+  ((op == "!=") && (ownMaybe == null)) ifTrue: [ownMaybe <- this declaredBinary: "==" forType: leftType]
+  own = ownMaybe
+  ^ | own
+    | null => IrOpBin :typeRef :token :op :left :right
+    |=> [
+      receiverParam = own receiverType toIrTypeRefWithMutErrors: own forMut errorsList: {}
+      ownReceiver = own receiverType toIrTypeRefWithMutErrors: false errorsList: {}
+      call = IrCall :typeRef :token funcId: (own toCanonicalIrFunctionId: this) callee: null args: {left right} paramTypes: {receiverParam (own args first toIrTypeRef)} isConstructor: false isBindCall: false isInline: false msgName: own name declPkg: own pkgName receiverType: ownReceiver propagatingErrVar: null bind: null
+      own name == op
+        ifTrue: [call]
+        ifFalse: [IrOpBin :typeRef :token op: "==" left: call right: (false toIrBoolLiteralExpr: this)]
+    ]
+]
+
 MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrExpr = [
   receiverExpr = receiver toIrExpr: db :currentPkg :typeFieldsById :thisTypeRef
   receiverType = receiver typeInfo t
@@ -880,7 +923,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
 
           opIsNative
             ifTrue: [
-              currentExpr <- IrOpBin typeRef: newTypeRef :token :op left: currentExpr right: argExpr
+              currentExpr <- db irOp: op left: currentExpr right: argExpr leftType: currentType typeRef: newTypeRef :token
             ]
             ifFalse: [
               // fix custom binary methods

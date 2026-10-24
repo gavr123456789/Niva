@@ -1452,3 +1452,44 @@ Test goEqCollectionsAndBlocks = [
   // a block has nothing to compare, two are equal only when both are null
   go contains: "return ((a.f == nil) && (b.f == nil))", assertTrue
 ]
+
+Test goDeclaredEqIsCalled = [
+  fileMain = """
+    type Point x: Int y: Int
+    Point == other::Point -> Bool = x == other x
+    type Pair a: Int b: Int
+    Pair != other::Pair -> Bool = a != other a
+    p1 = Point x: 1 y: 2
+    p2 = Point x: 1 y: 3
+    (p1 == p2) echo
+    (p1 != p2) echo
+    q1 = Pair a: 1 b: 2
+    q2 = Pair a: 1 b: 3
+    (q1 != q2) echo
+    (q1 == q2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.Any__echo(main__Point__equals(p1, p2))", assertTrue
+  // != negates the type's == when it has no != of its own
+  go contains: "core.Any__echo((main__Point__equals(p1, p2) == false))", assertTrue
+  go contains: "core.Any__echo(main__Pair__notEquals(q1, q2))", assertTrue
+  go contains: "core.Any__echo((q1 == q2))", assertTrue
+]
+
+Test goDeclaredEqOnUnionIsCalledForBranches = [
+  fileMain = """
+    union Shape = | Circle r: Int | Square s: Int
+    Shape == other::Shape -> Bool = true
+    c1 = Circle r: 1
+    c2 = Circle r: 2
+    (c1 == c2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.Any__echo(main__Shape__equals(c1, c2))", assertTrue
+]
