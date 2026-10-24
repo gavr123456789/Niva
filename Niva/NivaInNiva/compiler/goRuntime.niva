@@ -24,6 +24,17 @@ constructor GoRuntimeSources coreSource -> String = """
 
   func NewNullable[T any](value T) *T { return &value }
 
+  // == by content for values go's == can't compare that way, lists built here are never nil so a nil one is null
+  func Eq[T comparable](a, b T) bool { return a == b }
+  // a type param in a generic method, whose compare isn't known, compares with go's ==
+  func EqAny[T any](a, b T) bool { return any(a) == any(b) }
+  func Ptr__equals[T any](a, b *T, eq func(T, T) bool) bool {
+  	if a == nil || b == nil {
+  		return a == b
+  	}
+  	return eq(*a, *b)
+  }
+
   type StringBuilder struct {
   	value string
   }
@@ -107,7 +118,7 @@ constructor GoRuntimeSources coreSource -> String = """
   }
   func IntRange__forEach(s IntRange, f func(int)) { s.ForEach(f) }
   func IntRange__map[T any](s IntRange, f func(int) T) []T {
-  	var res []T
+  	res := []T{}
   	if s.Start <= s.EndInclusive {
   		for i := s.Start; i <= s.EndInclusive; i++ {
   			res = append(res, f(i))
@@ -116,7 +127,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	return res
   }
   func IntRange__filter(s IntRange, f func(int) bool) []int {
-  	var res []int
+  	res := []int{}
   	if s.Start <= s.EndInclusive {
   		for i := s.Start; i <= s.EndInclusive; i++ {
   			if f(i) {
@@ -146,7 +157,7 @@ constructor GoRuntimeSources coreSource -> String = """
   }
   func CharRange__forEach(s CharRange, f func(rune)) { s.ForEach(f) }
   func CharRange__map[T any](s CharRange, f func(rune) T) []T {
-  	var res []T
+  	res := []T{}
   	if s.Start <= s.EndInclusive {
   		for i := s.Start; i <= s.EndInclusive; i++ {
   			res = append(res, f(i))
@@ -155,7 +166,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	return res
   }
   func CharRange__filter(s CharRange, f func(rune) bool) []rune {
-  	var res []rune
+  	res := []rune{}
   	if s.Start <= s.EndInclusive {
   		for i := s.Start; i <= s.EndInclusive; i++ {
   			if f(i) {
@@ -580,6 +591,17 @@ constructor GoRuntimeSources coreSource -> String = """
   func List__plus_single[T any](s []T, o T) []T {
   	return append(append([]T{}, s...), o)
   }
+  func List__equals[T any](s, o []T, eq func(T, T) bool) bool {
+  	if len(s) != len(o) {
+  		return false
+  	}
+  	for i := range s {
+  		if !eq(s[i], o[i]) {
+  			return false
+  		}
+  	}
+  	return true
+  }
   func List__forEach[T any](s []T, f func(T)) {
   	for _, it := range s {
   		f(it)
@@ -606,7 +628,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	return r
   }
   func List__filter[T any](s []T, p func(T) bool) []T {
-  	var r []T
+  	r := []T{}
   	for _, it := range s {
   		if p(it) {
   			r = append(r, it)
@@ -623,7 +645,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	return false
   }
   func List__sortedBy[T any, K any](s []T, key func(T) K) []T {
-  	r := append([]T(nil), s...)
+  	r := append([]T{}, s...)
   	valueLess := func(a, b any) bool {
   		if a == nil {
   			return b != nil
@@ -700,7 +722,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	if sz <= 0 {
   		panic("sz < 0")
   	}
-  	var r [][]T
+  	r := [][]T{}
   	for i := 0; i < len(s); i += sz {
   		end := min(i+sz, len(s))
   		r = append(r, s[i:end])
@@ -883,6 +905,17 @@ constructor GoRuntimeSources coreSource -> String = """
   	_, ok := s[i]
   	return ok
   }
+  func Set__equals[T comparable](s, o map[T]struct{}) bool {
+  	if len(s) != len(o) {
+  		return false
+  	}
+  	for item := range s {
+  		if _, ok := o[item]; !ok {
+  			return false
+  		}
+  	}
+  	return true
+  }
   func Set__mut_add[T comparable](s map[T]struct{}, i T) { s[i] = struct{}{} }
   func Set__mut_addAll[T comparable](s, other map[T]struct{}) {
   	for item := range other {
@@ -897,6 +930,18 @@ constructor GoRuntimeSources coreSource -> String = """
 
   func Map__count[K comparable, V any](s map[K]V) int    { return len(s) }
   func Map__isEmpty[K comparable, V any](s map[K]V) bool { return len(s) == 0 }
+  func Map__equals[K comparable, V any](s, o map[K]V, eq func(V, V) bool) bool {
+  	if len(s) != len(o) {
+  		return false
+  	}
+  	for k, v := range s {
+  		ov, ok := o[k]
+  		if !ok || !eq(v, ov) {
+  			return false
+  		}
+  	}
+  	return true
+  }
   func Map__toMap[K comparable, V any](s map[K]V) map[K]V {
   	r := make(map[K]V, len(s))
   	for k, v := range s {

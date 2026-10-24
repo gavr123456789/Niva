@@ -377,7 +377,7 @@ Test goNullableInt64UsesNonNullableTarget = [
   valueType = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int64" ownerPkg: "core" args: {} returnType: null isMut: false nullable: false errors: {}
   nullableType = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int64" ownerPkg: "core" args: {} returnType: null isMut: false nullable: true errors: {}
   value = IrLiteralExpr literal: (IrLiteral kind: IrLiteralKind.Int lexeme: "42") typeRef: valueType token: (Token fake)
-  symbols = GoSymbolTable typeNames: #{}! funcNames: #{}! packageNames: #{}! fileNames: #{}! fieldNames: #{}! constructorFieldTypes: #{}! fieldTypesByName: #{}! unionTypeIds: #()! unionDefs: #{}!
+  symbols = GoSymbolTable typeNames: #{}! funcNames: #{}! packageNames: #{}! fileNames: #{}! fieldNames: #{}! constructorFieldTypes: #{}! fieldTypesByName: #{}! unionTypeIds: #()! unionDefs: #{}! eqTypeIds: #()!
   ctx = GoContext forSymbols: symbols
   go = value toGoNullableInitExpr: ctx scope: (GoScope new) targetType: nullableType
 
@@ -1347,4 +1347,199 @@ Test goUserInlineMethodSplicesCallbackReturn = [
   go contains: "__niva_inline_", assertTrue
   // the callback body is spliced so its `^` becomes a real return
   go contains: "return 42", assertTrue
+]
+Test goEqTypeWithListUsesGeneratedFunction = [
+  fileMain = """
+    type Bag n: Int items: List(Int)
+    b1 = Bag n: 1 items: {1 2}
+    b2 = Bag n: 1 items: {1 2}
+    (b1 == b2) echo
+    (b1 != b2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // plain fields first, then the list, which compares sizes first
+  go contains: "func main_Bag__eq(a, b main_Bag) bool {\n    return (a.n == b.n) &&\n        core.List__equals(a.items, b.items, core.Eq[int])\n}", assertTrue
+  go contains: "main_Bag__eq(b1, b2)", assertTrue
+  go contains: "(!main_Bag__eq(b1, b2))", assertTrue
+]
+
+Test goEqUnionComparesBranchFirst = [
+  fileMain = """
+    union Expr = | Num v: Int | Sum terms: List(Expr)
+    a::Expr = Sum terms: {(Num v: 1)}
+    b::Expr = Sum terms: {(Num v: 1)}
+    (a == b) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func main_Sum__eq(a, b main_Sum) bool {\n    return core.List__equals(a.terms, b.terms, main_Expr__eq)\n}", assertTrue
+  go contains: "func main_Expr__eq(a, b main_Expr) bool {\n    switch x := a.(type) {\n    case main_Sum:\n        y, ok := b.(main_Sum)\n        return ok && main_Sum__eq(x, y)\n    }\n    return a == b\n}", assertTrue
+  // go's == already compares a Num
+  Assert that: (go contains: "main_Num__eq") equals: false
+  go contains: "main_Expr__eq(a, b)", assertTrue
+]
+
+Test goEqPointerFieldsCompareValues = [
+  fileMain = """
+    type Point x: Int y: Int
+    type Holder p: Point? q: mut Point n: Int?
+    h1 = Holder p: (Point x: 1 y: 2) q: (Point x: 3 y: 4) n: 5
+    h2 = Holder p: (Point x: 1 y: 2) q: (Point x: 3 y: 4) n: 5
+    (h1 == h2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.Ptr__equals(a.p, b.p, core.Eq[main_Point])", assertTrue
+  go contains: "core.Ptr__equals(a.q, b.q, core.Eq[main_Point])", assertTrue
+  go contains: "core.Ptr__equals(a.n, b.n, core.Eq[int])", assertTrue
+  go contains: "main_Holder__eq(h1, h2)", assertTrue
+]
+
+Test goEqOnlyWhereNeeded = [
+  fileMain = """
+    type Point x: Int y: Int
+    type Bag items: List(Int)
+    type Line from: Point to: Point
+    p1 = Point x: 1 y: 2
+    p2 = Point x: 1 y: 2
+    (p1 == p2) echo
+    b = Bag items: {1}
+    l = Line from: p1 to: p2
+    (l == l) echo
+    bagMaybe::Bag? = b
+    (bagMaybe == null) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // types go's == compares by content keep it
+  go contains: "(p1 == p2)", assertTrue
+  go contains: "(l == l)", assertTrue
+  Assert that: (go contains: "main_Point__eq") equals: false
+  // Bag is never compared, so it gets no function
+  Assert that: (go contains: "main_Bag__eq") equals: false
+  go contains: "(bagMaybe == nil)", assertTrue
+]
+
+Test goEqCollectionsAndBlocks = [
+  fileMain = """
+    type Op f: [Int -> Int]
+    type Env vars: Map(String, List(Int)) tags: Set(String)
+    ({1 2} == {1 2}) echo
+    ({{1} {2}} != {{1} {2}}) echo
+    e = Env vars: #{"x" {1}} tags: #("t")
+    (e == e) echo
+    o = Op f: [it + 1]
+    (o == o) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.List__equals([]int{1, 2}, []int{1, 2}, core.Eq[int])", assertTrue
+  go contains: "(!core.List__equals(", assertTrue
+  go contains: "func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) }", assertTrue
+  go contains: "core.Map__equals(a.vars, b.vars, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })", assertTrue
+  go contains: "core.Set__equals(a.tags, b.tags)", assertTrue
+  // a block compares by its signature, which its type already fixes
+  go contains: "return ((a.f == nil) == (b.f == nil))", assertTrue
+]
+
+Test goDeclaredEqIsCalled = [
+  fileMain = """
+    type Point x: Int y: Int
+    Point == other::Point -> Bool = x == other x
+    type Pair a: Int b: Int
+    Pair != other::Pair -> Bool = a != other a
+    p1 = Point x: 1 y: 2
+    p2 = Point x: 1 y: 3
+    (p1 == p2) echo
+    (p1 != p2) echo
+    q1 = Pair a: 1 b: 2
+    q2 = Pair a: 1 b: 3
+    (q1 != q2) echo
+    (q1 == q2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "main__Point__equals(p1, p2)", assertTrue
+  // != negates the type's == when it has no != of its own
+  go contains: "(main__Point__equals(p1, p2) == false)", assertTrue
+  go contains: "main__Pair__notEquals(q1, q2)", assertTrue
+  go contains: "(q1 == q2)", assertTrue
+]
+
+Test goDeclaredEqOnUnionIsCalledForBranches = [
+  fileMain = """
+    union Shape = | Circle r: Int | Square s: Int
+    Shape == other::Shape -> Bool = true
+    c1 = Circle r: 1
+    c2 = Circle r: 2
+    (c1 == c2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "main__Shape__equals(c1, c2)", assertTrue
+]
+
+Test goEqNullCollectionIsNotEmpty = [
+  fileMain = """
+    x::List(Int)? = {}
+    y::List(Int)? = null
+    (x == y) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "(((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int]))", assertTrue
+]
+
+Test goEqGenericTypeTakesCompareForTypeParam = [
+  fileMain = """
+    type Box(T) value: T
+    type Pair(A, B) first: A second: List(B)
+    a::Box(List(Int)) = Box value: {1 2}
+    b::Box(List(Int)) = Box value: {1 2}
+    (a == b) echo
+    c::Box(Int) = Box value: 1
+    (c == c) echo
+    p::Pair(Int, String) = Pair first: 1 second: {"x"}
+    (p == p) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "func main_Box__eq[T any](a, b main_Box[T], eqT func(T, T) bool) bool {\n    return eqT(a.value, b.value)\n}", assertTrue
+  go contains: "main_Box__eq(a, b, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })", assertTrue
+  go contains: "main_Box__eq(c, c, core.Eq[int])", assertTrue
+  go contains: "func main_Pair__eq[A any, B any](a, b main_Pair[A, B], eqA func(A, A) bool, eqB func(B, B) bool) bool {", assertTrue
+  go contains: "core.List__equals(a.second, b.second, eqB)", assertTrue
+  go contains: "main_Pair__eq(p, p, core.Eq[int], core.Eq[string])", assertTrue
+]
+
+Test goEqTypeParamInGenericMethodUsesAny = [
+  fileMain = """
+    T isSame: other::T -> Bool = this == other
+    (1 isSame: 1) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // the compare for T isn't known in a generic method, so it's go's == through any
+  go contains: "return core.EqAny[T](this, other)", assertTrue
 ]
