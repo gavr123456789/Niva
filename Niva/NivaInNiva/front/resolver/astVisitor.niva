@@ -549,7 +549,14 @@ MessageDecl resolveBodyWithDb(db): TyperDB pkg: NivaPkg extraTypes: mut Map(Stri
     | methodsMaybe
     | null => ()
     |=> [
-      existingMethodMaybe = methodsMaybe methodAt: (args isEmpty ifTrue: [MethodBucketKind.Unary] ifFalse: [name isBinaryOperator ifTrue: [MethodBucketKind.Binary] ifFalse: [MethodBucketKind.Keyword]]) name: name
+      existingMethodMaybe = methodsMaybe
+                              methodAt: (| true
+                                         | args isEmpty => MethodBucketKind.Unary
+                                         | name isBinaryOperator => MethodBucketKind.Binary
+                                         |=> MethodBucketKind.Keyword)
+                              name: name
+
+
       | existingMethodMaybe
       | null => ()
       |=> [

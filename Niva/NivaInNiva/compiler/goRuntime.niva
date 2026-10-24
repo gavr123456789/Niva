@@ -14,6 +14,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	"strconv"
   	"strings"
   	"unicode"
+          "unicode/utf8"
   )
 
   // unit is empty and nullable values use pointers
@@ -249,7 +250,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	}
   	return string(rs)
   }
-  func String__count(s string) int        { return len([]rune(s)) }
+  func String__count(s string) int        { return utf8.RuneCountInString(s) }
   func String__trim(s string) string      { return strings.TrimSpace(s) }
   func String__trimIndent(s string) string {
   	s = strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
@@ -304,11 +305,16 @@ constructor GoRuntimeSources coreSource -> String = """
   	return rs[len(rs)-1]
   }
   func String__at(s string, i int) rune {
-  	rs := []rune(s)
-  	if i < 0 || i >= len(rs) {
-  		panic("Idx out")
-  	}
-  	return rs[i]
+          if i < 0 {
+              panic("Idx out")
+          }
+          for _, r := range s {
+              if i == 0 {
+                  return r
+              }
+              i--
+          }
+          panic("Idx out")
   }
   func String__get(s string, i int) rune   { return String__at(s, i) }
   func String__split(s, d string) []string { return strings.Split(s, d) }
@@ -398,9 +404,9 @@ constructor GoRuntimeSources coreSource -> String = """
   	return string(r)
   }
   func String__forEach(s string, f func(rune)) {
-  	for _, r := range []rune(s) {
-  		f(r)
-  	}
+          for _, r := range s {
+              f(r)
+          }
   }
   func String__filter(s string, p func(rune) bool) string {
   	var r []rune
