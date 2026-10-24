@@ -1243,7 +1243,7 @@ extend IrExpr [
         | eqTypeMaybe
         | null => "(" + l + " " + op + " " + r + ")"
         |=> [
-          eq = ctx goEqExpr: eqTypeMaybe a: l b: r
+          eq = ctx goEqExpr: eqTypeMaybe a: l b: r typeParams: {}
           op == "!=" ifTrue: ["(!" + eq + ")"] ifFalse: [eq]
         ]
     ]
@@ -1585,7 +1585,7 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
       ]
 ]
 
-// transforms matchExpr (not statement) from 
+// transforms matchExpr (not statement) from
 //   x = (1 > 2 ifTrue: [^ 2] ifFalse: [2]) + 2
 // to
 //   var __matchValue int
