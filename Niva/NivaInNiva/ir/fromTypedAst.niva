@@ -739,7 +739,7 @@ TyperDB irOp(op): String left: IrExpr right: IrExpr leftType: NivaType typeRef: 
     |=> [
       receiverParam = own receiverType toIrTypeRefWithMutErrors: own forMut errorsList: {}
       ownReceiver = own receiverType toIrTypeRefWithMutErrors: false errorsList: {}
-      call = IrCall :typeRef :token funcId: (own toCanonicalIrFunctionId: this) callee: null args: {left right} paramTypes: {receiverParam (own args first toIrTypeRef)} isConstructor: false isBindCall: false isInline: false msgName: own name declPkg: own pkgName receiverType: ownReceiver propagatingErrVar: null bind: null
+      call = IrCall :typeRef :token funcId: (own toCanonicalIrFunctionId: this) callee: null args: {left right} paramTypes: {receiverParam (own args first toIrTypeRef)} genericArgs: (own genericTypeArgs map: [it toIrType-immut-no-errors]) isConstructor: false isBindCall: false isInline: false msgName: own name declPkg: own pkgName receiverType: ownReceiver propagatingErrVar: null bind: null
       own name == op
         ifTrue: [call]
         ifFalse: [IrOpBin :typeRef :token op: "==" left: call right: (false toIrBoolLiteralExpr: this)]
