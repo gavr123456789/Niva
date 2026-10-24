@@ -1449,8 +1449,8 @@ Test goEqCollectionsAndBlocks = [
   go contains: "func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) }", assertTrue
   go contains: "core.Map__equals(a.vars, b.vars, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })", assertTrue
   go contains: "core.Set__equals(a.tags, b.tags)", assertTrue
-  // a block has nothing to compare, two are equal only when both are null
-  go contains: "return ((a.f == nil) && (b.f == nil))", assertTrue
+  // a block compares by its signature, which its type already fixes
+  go contains: "return ((a.f == nil) == (b.f == nil))", assertTrue
 ]
 
 Test goDeclaredEqIsCalled = [

@@ -95,9 +95,9 @@ extend GoContext [
       ifTrue: ["(" + a + " == " + b + ")"]
       ifFalse: [
         this addImport: "niva_go/core"
-        // a block has nothing to compare, two are equal only when both are null
+        // a block compares by its signature, which its type already fixes, so two are equal unless one is null
         isBlock = typeRef kind == IrTypeRefKind.Function
-        isBlock ifTrue: ["((" + a + " == nil) && (" + b + " == nil))"] ifFalse: [
+        isBlock ifTrue: ["((" + a + " == nil) == (" + b + " == nil))"] ifFalse: [
           (this needsGoNullablePointerFor: typeRef)
             ifTrue: ["core.Ptr__equals(" + a + ", " + b + ", " + (this goEqFunc: (typeRef nullable: false)) + ")"]
             ifFalse: [
