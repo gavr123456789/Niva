@@ -98,6 +98,7 @@ IrExpr collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
       | null => []
       |=> collector addDependencyTo: declPkgMaybe kind: callKind :token symbol: callSymbol
       paramTypes forEach: [it collectDependenciesInto: collector at: token]
+      genericArgs forEach: [it collectDependenciesInto: collector at: token]
       receiverTypeMaybe = receiverType
       | receiverTypeMaybe
       | null => []

@@ -19,8 +19,8 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
   collP addMethod: (NivaMethod unary: "isNotEmpty" receiverType: collectionType returnT: boolT)
   collP addMethod: (NivaMethod binary: "+" receiverType: collectionType argT: collectionType returnT: collectionType)
 
-  collP addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: str returnT: boolT)
-  collP addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: str returnT: boolT)
+  collP addMethod: (NivaMethod binary: "==" receiverType: collectionType argT: collectionType returnT: boolT)
+  collP addMethod: (NivaMethod binary: "!=" receiverType: collectionType argT: collectionType returnT: boolT)
 
   collP addMethod: (NivaMethod singleArgKw: "at" receiverType: collectionType argT: intT returnT: itemType )
   collP addMethod: (NivaMethod singleArgKw: "contains" receiverType: collectionType argT: itemType returnT: boolT )

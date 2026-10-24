@@ -187,11 +187,12 @@ extend NivaType [
     | SetT => this t isContainsUnresolvedGenerics
     | MapT => (this k isContainsUnresolvedGenerics) || (this v isContainsUnresolvedGenerics)
     | FuntionT => [
+      hasGenericInGenericArgs = genericArgs any: [it isContainsUnresolvedGenerics]
       hasGenericInFields = fields any: [ it typeT isContainsUnresolvedGenerics ]
       hasGenericInReturn = returnType isContainsUnresolvedGenerics
       hasGenericInErrors = returnErrors any: [it isContainsUnresolvedGenerics]
 
-      hasGenericInFields || hasGenericInReturn || hasGenericInErrors
+      hasGenericInGenericArgs || hasGenericInFields || hasGenericInReturn || hasGenericInErrors
     ]
     | TypeT => [
       genericArgs any: [ it isContainsUnresolvedGenerics ]
@@ -218,6 +219,7 @@ extend NivaType [
       ]
       | FuntionT => [
         res::mut List::NivaType = {}!
+        genericArgs forEach: [it collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
         fields forEach: [it typeT collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
         returnType collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]
         returnErrors forEach: [it collectUnresolvedGenericsInto: visitedTypes, forEach: [res add: it]]
@@ -288,6 +290,12 @@ extend NivaType [
     | FuntionT => [
       | actual
       | FuntionT => [
+          genericArgs count == actual genericArgs count ifTrue: [
+            genericArgs forEachIndexed: [i, gExp ->
+              gAct = actual genericArgs at: i
+              gExp collectGenericMappingsFrom: gAct :into :db
+            ]
+          ]
         fields count == actual fields count ifTrue: [
           fields forEachIndexed: [i, fExp ->
             fAct = actual fields at: i
@@ -408,6 +416,7 @@ constructor FuntionT [
 type NivaMethod
   name: String
   receiverType: NivaType
+  genericTypeArgs: List(NivaType)
   args: List(TypeTField)
   returnType: NivaType
   returnErrors: List::NivaType
@@ -440,12 +449,37 @@ extend NivaMethod [
       |=> false
     ]
 
+  on genericTypeArgsFrom(mapping): Map(String, NivaType) -> List(NivaType) = [
+    seen::mut Set(String) = #()!
+    result::mut List(NivaType) = {}!
+    methodTypes::mut List::NivaType = {}!
+    methodTypes add: receiverType
+    args forEach: [arg -> methodTypes add: arg typeT]
+    methodTypes add: returnType
+    returnErrors forEach: [methodTypes add: it]
+    methodTypes forEach: [methodType ->
+      methodType collectUnresolvedGenerics forEach: [generic ->
+        seen contains: generic name, ifFalse: [
+          seen add: generic name
+          actual = mapping at: generic name
+          | actual
+          | null => result add: generic
+          |=> result add: actual
+        ]
+      ]
+    ]
+    result toList
+  ]
+
 
   on replaceGenericsFromTable(letterToType): Map(String, NivaType) dontMangle: Set(String) mangle: Bool db: TyperDB -> NivaMethod = [
 
     recType = receiverType
     retType = returnType
     instantiatedReceiverOrDefaultT = recType replaceGenericsFromTableDeep: letterToType :db
+    instantiatedGenericTypeArgs = genericTypeArgs isNotEmpty
+      ifTrue: [genericTypeArgs map: [it replaceGenericsFromTableDeep: letterToType :db]]
+      ifFalse: [this genericTypeArgsFrom: letterToType]
     instantiatedReturnOrDefaultT = retType replaceGenericsFromTableDeep: letterToType :db
     instantiatedReturnErrors = returnErrors map: [it replaceGenericsFromTableDeep: letterToType :db]
 
@@ -489,6 +523,7 @@ extend NivaMethod [
     ^ NivaMethod
         name: newMethodName
         receiverType: instantiatedReceiverOrDefaultT
+        genericTypeArgs: instantiatedGenericTypeArgs
         args: newArgs
         returnType: instantiatedReturnOrDefaultT
         returnErrors: instantiatedReturnErrors
@@ -502,13 +537,13 @@ extend NivaMethod [
   ]
 
   on copyWithDifferentReturnType(rt): NivaType =
-    NivaMethod :name :receiverType :args returnType: rt :returnErrors :forMut :possibleErrors :kind :decl :protocolName :pkgName :isInline
+    NivaMethod :name :receiverType :genericTypeArgs :args returnType: rt :returnErrors :forMut :possibleErrors :kind :decl :protocolName :pkgName :isInline
 
   on copyWithDifferentReturnErrors(errors): List::NivaType =
-    NivaMethod :name :receiverType :args :returnType returnErrors: errors :forMut :possibleErrors :kind :decl :protocolName :pkgName :isInline
+    NivaMethod :name :receiverType :genericTypeArgs :args :returnType returnErrors: errors :forMut :possibleErrors :kind :decl :protocolName :pkgName :isInline
 
   on markedInline -> NivaMethod = NivaMethod
-    :name :receiverType :args :returnType
+    :name :receiverType :genericTypeArgs :args :returnType
     :returnErrors :forMut :possibleErrors
     :kind :decl :protocolName :pkgName isInline: true
 
@@ -536,6 +571,7 @@ constructor NivaMethod [
   on name::String receiverType::NivaType args::List::TypeTField returnType::NivaType forMut::Bool protocolName::String pkgName::String = NivaMethod
     :name
     :receiverType
+    genericTypeArgs: {}
     :args
     :returnType
     returnErrors: {}!
@@ -550,6 +586,7 @@ constructor NivaMethod [
   on defaultConstructorWithName(name): String receiverType: NivaType args: List(TypeTField) returnType: NivaType decl: MessageDecl? protocolName::String pkgName::String -> NivaMethod = NivaMethod
     :name
     :receiverType
+    genericTypeArgs: {}
     :args
     :returnType
     returnErrors: {}!

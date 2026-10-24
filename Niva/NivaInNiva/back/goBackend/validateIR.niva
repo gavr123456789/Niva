@@ -44,6 +44,7 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
       |=> calleeMaybe validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors
       args forEach: [it validateGoIrExpr: knownFuncIds :knownTypeIds :goErrors]
       paramTypes forEach: [it validateGoTypeRefs: knownTypeIds :goErrors]
+      genericArgs forEach: [it validateGoTypeRefs: knownTypeIds :goErrors]
       receiverTypeMaybe = receiverType
       | receiverTypeMaybe
       | null => []

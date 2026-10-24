@@ -55,7 +55,7 @@ IdentifierT toString -> String = [
     ^ pathStr + name + isType
 ]
 
-type NameAndExprT name: Identifier expr: TypedExpr2
+type NameAndExprT name: Identifier expr: TypedExpr2 dbMsg: NivaMethod?
 
 type TypedBody
   v: List(TypedExpr2)

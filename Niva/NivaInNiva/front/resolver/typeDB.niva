@@ -636,6 +636,7 @@ extend TyperDB [
           specializedWithActualReceiver = NivaMethod
             name: specializedName
             receiverType: forType
+            genericTypeArgs: specialized genericTypeArgs
             args: specialized args
             returnType: resolvedReturnType
             returnErrors: specialized returnErrors
@@ -1016,6 +1017,7 @@ extend TyperDB [
     |=> NivaMethod
         :name
         :receiverType
+        genericTypeArgs: {}
         args: {}
         returnType: receiverType unwrapNullable
         returnErrors: {}!
@@ -1169,6 +1171,7 @@ extend TyperDB [
           NivaMethod
             :name
             :receiverType
+            genericTypeArgs: {}
             args: {}
             returnType: field typeT
             returnErrors: {}!
