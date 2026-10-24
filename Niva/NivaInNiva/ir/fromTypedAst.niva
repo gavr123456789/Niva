@@ -605,6 +605,7 @@ MessageSendT toIrInlineIterationWithLambda(callback): IrLambda db: TyperDB curre
     typeRef: intTypeRef :token
     funcId: (receiverType toIrFunctionId: "count" declPkg: "core")
     callee: null args: countArgs paramTypes: {receiverTypeRef}
+    genericArgs: (receiverType typeArgsForComparison map: [it toIrType-immut-no-errors])
     isConstructor: false isBindCall: false isInline: false
     msgName: "count" declPkg: "core" receiverType: receiverTypeRef
     propagatingErrVar: null bind: null
@@ -613,6 +614,7 @@ MessageSendT toIrInlineIterationWithLambda(callback): IrLambda db: TyperDB curre
     typeRef: (callbackArgs last typeRef) :token
     funcId: (receiverType toIrFunctionId: "at" declPkg: "core")
     callee: null args: atArgs paramTypes: {receiverTypeRef intTypeRef}
+    genericArgs: (receiverType typeArgsForComparison map: [it toIrType-immut-no-errors])
     isConstructor: false isBindCall: false isInline: false
     msgName: "at" declPkg: "core" receiverType: receiverTypeRef
     propagatingErrVar: null bind: null
@@ -708,6 +710,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   methodReceiverTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: false errorsList: {}
   methodReceiverParamTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: (dbMsg forMut) errorsList: {}
   methodArgParamTypes = dbMsg args map: [it toIrTypeRef]
+  genericArgs = dbMsg genericTypeArgs map: [it toIrType-immut-no-errors]
   exprType = typeInfo toIrTypeRef
 
   isDefaultCtor = dbMsg kind == MessageSendKind.DefaultConstructor
@@ -825,7 +828,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             isReceiverFunction && (selector name == "do")
                   ifTrue: [
                     propagatingErrVar = exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]
-                    IrCall typeRef: exprType :token funcId: null callee: receiverExpr args: {} paramTypes: {} isConstructor: false isBindCall: false isInline: false msgName: null declPkg: null receiverType: null :propagatingErrVar bind: null
+                    IrCall typeRef: exprType :token funcId: null callee: receiverExpr args: {} paramTypes: {} genericArgs: {} isConstructor: false isBindCall: false isInline: false msgName: null declPkg: null receiverType: null :propagatingErrVar bind: null
                   ]
                   ifFalse: [
                     isCtor ifTrue: [
@@ -834,13 +837,13 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                                                   ]
                                         ifFalse: [
                                           callId = dbMsg toCanonicalIrFunctionId: db
-                                          IrCall typeRef: exprType :token funcId: callId callee: null args: {} paramTypes: {} isConstructor: true isBindCall: false isInline: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef propagatingErrVar: null bind: bindPlan
+                                          IrCall typeRef: exprType :token funcId: callId callee: null args: {} paramTypes: {} genericArgs: genericArgs isConstructor: true isBindCall: false isInline: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef propagatingErrVar: null bind: bindPlan
                                         ]
                            ]
                            ifFalse: [
                              callId = dbMsg toCanonicalIrFunctionId: db
                              propagatingErrVar = exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]
-                             IrCall typeRef: exprType :token funcId: callId callee: null args: {receiverExpr} paramTypes: {methodReceiverParamTypeRef} isConstructor: false isBindCall: isBindReceiver isInline: dbMsg isInline msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef :propagatingErrVar bind: bindPlan
+                             IrCall typeRef: exprType :token funcId: callId callee: null args: {receiverExpr} paramTypes: {methodReceiverParamTypeRef} genericArgs: genericArgs isConstructor: false isBindCall: isBindReceiver isInline: dbMsg isInline msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef :propagatingErrVar bind: bindPlan
                            ]
                   ]
           ]
@@ -897,7 +900,11 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                 ]
               callId = currentType toIrFunctionId: op declPkg: methodPkg
               currentTypeRef = currentType toIrTypeRefWithMutErrors: false errorsList: {}
-              currentExpr <- IrCall typeRef: newTypeRef :token funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} isConstructor: false isBindCall: false isInline: false msgName: op declPkg: methodPkg receiverType: currentTypeRef propagatingErrVar: (newTypeRef errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null
+              binaryMethodMaybe = arg dbMsg
+              binaryGenericArgs::List(IrTypeRef) = | binaryMethodMaybe
+                | null => {}
+                |=> (binaryMethodMaybe genericTypeArgs map: [it toIrType-immut-no-errors])
+              currentExpr <- IrCall typeRef: newTypeRef :token funcId: callId callee: null args: {currentExpr argExpr} paramTypes: {methodReceiverParamTypeRef (arg expr typeInfo toIrTypeRef)} genericArgs: binaryGenericArgs isConstructor: false isBindCall: false isInline: false msgName: op declPkg: methodPkg receiverType: currentTypeRef propagatingErrVar: (newTypeRef errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null
             ]
 
           currentType <- opResultType
@@ -931,7 +938,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
             isReceiverFunction
               ifTrue: [
                 argsExprs = args map: [it expr toIrExpr: db :currentPkg :typeFieldsById :thisTypeRef]
-                IrCall typeRef: exprType :token funcId: null callee: receiverExpr args: argsExprs paramTypes: functionParamTypes isConstructor: false isBindCall: false isInline: false msgName: null declPkg: null receiverType: null propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null
+                IrCall typeRef: exprType :token funcId: null callee: receiverExpr args: argsExprs paramTypes: functionParamTypes genericArgs: {} isConstructor: false isBindCall: false isInline: false msgName: null declPkg: null receiverType: null propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: null
               ]
               ifFalse: [
                 argsExprs = args map: [it expr toIrExpr: db :currentPkg :typeFieldsById :thisTypeRef]
@@ -943,12 +950,12 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
                                 ]
                       ifFalse: [
                         callId = dbMsg toCanonicalIrFunctionId: db
-                        IrCall typeRef: exprType :token funcId: callId callee: null args: argsExprs paramTypes: methodArgParamTypes isConstructor: true isBindCall: false isInline: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef propagatingErrVar: null bind: bindPlan
+                        IrCall typeRef: exprType :token funcId: callId callee: null args: argsExprs paramTypes: methodArgParamTypes genericArgs: genericArgs isConstructor: true isBindCall: false isInline: false msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef propagatingErrVar: null bind: bindPlan
                       ]
                   ]
                   ifFalse: [
                     callId = dbMsg toCanonicalIrFunctionId: db
-                    IrCall typeRef: exprType :token funcId: callId callee: null args: ({receiverExpr} + argsExprs) paramTypes: ({methodReceiverParamTypeRef} + methodArgParamTypes) isConstructor: false isBindCall: isBindReceiver isInline: dbMsg isInline msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: bindPlan
+                    IrCall typeRef: exprType :token funcId: callId callee: null args: ({receiverExpr} + argsExprs) paramTypes: ({methodReceiverParamTypeRef} + methodArgParamTypes) genericArgs: genericArgs isConstructor: false isBindCall: isBindReceiver isInline: dbMsg isInline msgName: (dbMsg name) declPkg: (dbMsg pkgName) receiverType: methodReceiverTypeRef propagatingErrVar: (exprType errors isNotEmpty ifTrue: ["__err"] ifFalse: [null]) bind: bindPlan
                   ]
               ]
           ]

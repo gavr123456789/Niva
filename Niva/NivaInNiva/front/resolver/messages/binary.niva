@@ -24,7 +24,7 @@ BinaryMsg replaceArgsWithTypedfromDb2(db): TyperDB withContext(c): Context -> Bi
     lastReceiverExpr <- binary expr
 
     typedArg = kwResolved args first
-    typedArgs add: (NameAndExprT name: typedArg name expr: typedArg expr)
+    typedArgs add: (NameAndExprT name: typedArg name expr: typedArg expr dbMsg: kwResolved dbMsg)
     lastReceiverTypedExpr <- typedArg expr
   ]
 

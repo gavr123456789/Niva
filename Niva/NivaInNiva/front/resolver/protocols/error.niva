@@ -3,6 +3,7 @@ constructor NivaMethod errorThrowMethod(name): String errorType: NivaType nothin
   NivaMethod
     :name
     receiverType: errorType
+    genericTypeArgs: {}
     args: (hasArg ifTrue: [{(TypeTField :name typeT: str isMut: false)}] ifFalse: [{}])
     returnType: nothing
     returnErrors: {errorType}

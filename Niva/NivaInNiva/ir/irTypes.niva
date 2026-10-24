@@ -151,7 +151,7 @@ union IrExpr typeRef: IrTypeRef token: Token =
 | IrVarRef name: String
 | IrThisRef
 | IrFieldGet receiver: IrExpr field: String
-| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) isConstructor: Bool isBindCall: Bool isInline: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
+| IrCall funcId: String? callee: IrExpr? args: List(IrExpr) paramTypes: List(IrTypeRef) genericArgs: List(IrTypeRef) isConstructor: Bool isBindCall: Bool isInline: Bool msgName: String? declPkg: String? receiverType: IrTypeRef? propagatingErrVar: String? bind: IrBind?
 | IrLambda args: List(IrArg) body: IrBlock
 | IrBlockExpr block: IrBlock
 // typeAlias is for making `this` or `it` inside branches
