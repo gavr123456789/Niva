@@ -1493,3 +1493,16 @@ Test goDeclaredEqOnUnionIsCalledForBranches = [
 
   go contains: "core.Any__echo(main__Shape__equals(c1, c2))", assertTrue
 ]
+
+Test goEqNullCollectionIsNotEmpty = [
+  fileMain = """
+    x::List(Int)? = {}
+    y::List(Int)? = null
+    (x == y) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  go contains: "core.Any__echo((((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int])))", assertTrue
+]

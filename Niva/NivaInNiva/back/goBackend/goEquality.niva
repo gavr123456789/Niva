@@ -101,11 +101,16 @@ extend GoContext [
           (this needsGoNullablePointerFor: typeRef)
             ifTrue: ["core.Ptr__equals(" + a + ", " + b + ", " + (this goEqFunc: (typeRef nullable: false)) + ")"]
             ifFalse: [
-              | baseId
-              | "core_List" => "core.List__equals(" + a + ", " + b + ", " + (this goEqFunc: typeRef arg: 0) + ")"
-              | "core_Set" => "core.Set__equals(" + a + ", " + b + ")"
-              | "core_Map" => "core.Map__equals(" + a + ", " + b + ", " + (this goEqFunc: typeRef arg: 1) + ")"
-              |=> (this goTypeNameFor: baseId) + "__eq(" + a + ", " + b + ")"
+              collectionEq = | baseId
+                | "core_List" => "core.List__equals(" + a + ", " + b + ", " + (this goEqFunc: typeRef arg: 0) + ")"
+                | "core_Set" => "core.Set__equals(" + a + ", " + b + ")"
+                | "core_Map" => "core.Map__equals(" + a + ", " + b + ", " + (this goEqFunc: typeRef arg: 1) + ")"
+                |=> ""
+              // a null collection is nil, so it isn't equal to an empty one
+              | true
+              | collectionEq == "" => (this goTypeNameFor: baseId) + "__eq(" + a + ", " + b + ")"
+              | typeRef nullable => "(((" + a + " == nil) == (" + b + " == nil)) && " + collectionEq + ")"
+              |=> collectionEq
             ]
         ]
       ]
