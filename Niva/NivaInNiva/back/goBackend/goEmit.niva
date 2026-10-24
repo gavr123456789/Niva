@@ -7,6 +7,9 @@ constructor GoBackend [
     def fields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
     sb appendLine: "}"
     sb appendLine: ""
+    (ctx symbols eqTypeIds contains: (def id goNormalizeTypeId)) ifTrue: [
+      ctx emitGoEqFunc: name fields: def fields :sb
+    ]
     ()
   ]
 
@@ -58,6 +61,9 @@ constructor GoBackend [
               ()
             ]
         sb appendLine: ""
+        (ctx symbols eqTypeIds contains: (branchTypeId goNormalizeTypeId)) ifTrue: [
+          ctx emitGoEqFunc: branchName fields: branchFields :sb
+        ]
         ()
       ]
     ]
@@ -68,6 +74,9 @@ constructor GoBackend [
         branchName = ctx goTypeNameFor: branchTypeId
         sb appendLine: ("func (" + branchName + ") is" + name + "() {}")
       ]
+    ]
+    (ctx symbols eqTypeIds contains: (def id goNormalizeTypeId)) ifTrue: [
+      ctx emitGoUnionEqFunc: def :sb
     ]
   ]
 
@@ -272,7 +281,8 @@ constructor GoBackend [
       fileNames at: it name put: "main.go"
     ]
 
-    ^ GoSymbolTable :typeNames :funcNames :packageNames :fileNames :fieldNames :constructorFieldTypes :fieldTypesByName :unionTypeIds :unionDefs
+    symbols = GoSymbolTable :typeNames :funcNames :packageNames :fileNames :fieldNames :constructorFieldTypes :fieldTypesByName :unionTypeIds :unionDefs eqTypeIds: #()!
+    ^ symbols eqTypeIds: ((GoContext forSymbols: symbols) goEqTypeIdsFor: ir)
   ]
 
   // Phase 1: reject IR shapes that the Go backend cannot emit safely.
