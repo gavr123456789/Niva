@@ -103,7 +103,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
               ]
             ]
 
-          NameAndExprT name: (kwArg name) expr: typedExpr
+          NameAndExprT name: (kwArg name) expr: typedExpr dbMsg: null
         ]
 
         resolvedReceiverType =
@@ -127,6 +127,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         shadowMsg = NivaMethod
           name: msgName
           receiverType: resolvedReceiverType
+          genericTypeArgs: {}
           args: shadowMsgArgs
           returnType: resolvedReceiverType
           returnErrors: {}!
@@ -248,7 +249,7 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
         ]
       ]
 
-          NameAndExprT :name expr: typedExpr
+          NameAndExprT :name expr: typedExpr dbMsg: kwMsgDB
   ]
 
   (letterToType count > 0) ifTrue: [

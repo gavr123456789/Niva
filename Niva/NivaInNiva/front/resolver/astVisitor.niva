@@ -215,6 +215,7 @@ TypeDeclVisitor
             getter = NivaMethod
               name: field name
               receiverType: resolvedType
+              genericTypeArgs: {}
               args: {}
               returnType: field typeT
               returnErrors: {}!
@@ -340,6 +341,7 @@ TypeDeclVisitor
         method = NivaMethod
           name: msg name
           :receiverType
+          genericTypeArgs: {}
           args: argsT
           returnType: (msg getReturnTypeIfDeclaredOrUnknown: db) // if generic need to resolve
           :returnErrors

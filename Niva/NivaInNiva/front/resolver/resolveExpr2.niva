@@ -500,7 +500,7 @@ InterpolatedString resolveInterpolatedString(db): TyperDB withContext(c): Contex
     (typedParts drop: 1) forEach: [next ->
       plusMethod = db findMsgFromReceiver: acc byName: "+" currentPkg: c currentPkg bucket: MethodBucketKind.Binary
       partTypeInfo = TypeInfo t: (db dtc str) isMut: false listOfErrors: (allErrors toMutableList)
-      plusArg = NameAndExprT name: (Identifier :token name: "+" path: null) expr: next
+      plusArg = NameAndExprT name: (Identifier :token name: "+" path: null) expr: next dbMsg: plusMethod
       acc <- BinaryMsgT
         receiver: acc
         :token
@@ -573,6 +573,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
                 getter = NivaMethod
                   :name
                   receiverType: thisTypeT
+                  genericTypeArgs: {}
                   args: {}
                   returnType: unionField typeT
                   returnErrors: {}!
