@@ -1094,3 +1094,33 @@ Test cljEarlyReturnInLoopOrValueIsReported = [
   Assert that: ctx unsupportedReturns count equals: 3
   ctx unsupportedReturns toList first contains: "can't return from here", assertTrue
 ]
+
+Test cljListEquality = [
+  fileMain = """
+    ({1 2} == {1 2}) echo
+    ({1 2} != {1 3}) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(= [1 2] [1 2])", assertTrue
+  clj contains: "(not= [1 2] [1 3])", assertTrue
+]
+
+Test cljDeclaredEqIsCalled = [
+  fileMain = """
+    type Point x: Int y: Int
+    Point == other::Point -> Bool = x == other x
+    p1 = Point x: 1 y: 2
+    p2 = Point x: 1 y: 3
+    (p1 == p2) echo
+    (p1 != p2) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/Any__echo (main_Point__== p1 p2))", assertTrue
+  clj contains: "(niva.core/Any__echo (= (main_Point__== p1 p2) false))", assertTrue
+]
