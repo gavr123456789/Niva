@@ -12,6 +12,8 @@ constructorFieldTypes: Map(String, List(IrTypeRef))
 fieldTypesByName: Map(String, Map(String, IrTypeRef))
 unionTypeIds: Set(String)
 unionDefs: Map(String, IrUnionDef)
+// types whose == is a generated compare function, see goEquality.niva
+eqTypeIds: Set(String)
 
 type GoImportPlan
   importsByFile: Map(String, Set(String))
@@ -1237,7 +1239,13 @@ extend IrExpr [
     | IrOpBin       => [
         l = left toGoValueExpr: ctx :scope
         r = right toGoValueExpr: ctx :scope
-        "(" + l + " " + op + " " + r + ")"
+        eqTypeMaybe = this goEqTypeRef: ctx
+        | eqTypeMaybe
+        | null => "(" + l + " " + op + " " + r + ")"
+        |=> [
+          eq = ctx goEqExpr: eqTypeMaybe a: l b: r typeParams: {}
+          op == "!=" ifTrue: ["(!" + eq + ")"] ifFalse: [eq]
+        ]
     ]
     | IrCall => [
         msgNameMaybe = msgName
@@ -1577,7 +1585,7 @@ IrCollectionLiteral collectionToGoExpr(ctx): GoContext scope: GoScope -> String 
       ]
 ]
 
-// transforms matchExpr (not statement) from 
+// transforms matchExpr (not statement) from
 //   x = (1 > 2 ifTrue: [^ 2] ifFalse: [2]) + 2
 // to
 //   var __matchValue int
