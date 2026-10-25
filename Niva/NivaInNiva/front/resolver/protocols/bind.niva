@@ -4,17 +4,17 @@ constructor NivaProtocol bindFromDefaultTypes(dtc): DefaultTypesContainer  -> mu
 
   bindProto addMethod: (NivaMethod singleArgCtorKw: "emit" receiverType: bind argT: str returnType: t)
 
-  goNameArgs = {
-    (TypeTField name: "goPkg" typeT: str isMut: false)
-    (TypeTField name: "goName" typeT: str isMut: false)
+  nameArgs = {
+    (TypeTField name: "pkg" typeT: str isMut: false)
+    (TypeTField name: "name" typeT: str isMut: false)
   }
-  bindProto addMethod: (NivaMethod manyArgKw: goNameArgs receiverType: bind returnT: t)
+  bindProto addMethod: (NivaMethod manyArgKw: nameArgs receiverType: bind returnT: t)
 
-  goEmitArgs = {
-    (TypeTField name: "goPkg" typeT: str isMut: false)
+  importsEmitArgs = {
+    (TypeTField name: "imports" typeT: (SetT t: str) isMut: false)
     (TypeTField name: "emit" typeT: str isMut: false)
   }
-  bindProto addMethod: (NivaMethod manyArgKw: goEmitArgs receiverType: bind returnT: t)
+  bindProto addMethod: (NivaMethod manyArgKw: importsEmitArgs receiverType: bind returnT: t)
 
   ^bindProto methods
 ]

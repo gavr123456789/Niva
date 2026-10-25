@@ -87,8 +87,36 @@ String parseNivaBindingManifest -> List(NivaBindingProvider) = [
   ^ providers toList
 ]
 
+type NivaBindingInterface
+  backend: String
+  moduleId: String
+  relativePath: String
+  signature: String
+
+NivaBindingProvider bindingInterface(files): List(NivaSourceFile) withIO(io): IO_Container -> NivaBindingInterface = [
+  sourceMaybe = files find: [it relativePath == relativePath]
+  | sourceMaybe
+  | null => TO DO: "binding manifest source not found: " + relativePath
+  |=> [
+    source = sourceMaybe
+    content = io readFile path: source path
+    sourceFile = SourceFile path: source path
+    tokens = Lexer get-tokens: content file: sourceFile
+    parsed = Parser newParseTokens: tokens
+    statements = parsed statements
+    signatures = statements map: [it interfaceCanonical],
+                            filter: [it isNotEmpty],
+                            sortedBy: [it]
+    NivaBindingInterface :backend :moduleId :relativePath
+      signature: (signatures joinWith: "\n")
+  ]
+]
+
 constructor NivaBuildSystem [
     on findAllFilesFrom(path): String? withIO(io): IO_Container backend(backend): String -> List(NivaSourceInput) = [
+        bindingMismatch = NivaBuildSystem bindingInterfaceMismatch: path withIO: io
+        bindingMismatch ifNotNull: [mismatch -> TO DO: mismatch]
+
         // path is to main.niva, need to get its paret to start search
         p = | path
             | null => io currentDir
@@ -102,7 +130,7 @@ constructor NivaBuildSystem [
             sortedBy: [it relativePath]
 
         manifestPath = p + "/niva.bindings"
-        hasBindingManifest = FileSystem exists: (manifestPath toPath)
+        hasBindingManifest = (io exists path: manifestPath)
         providers = hasBindingManifest
           ifTrue: [(io readFile path: manifestPath) parseNivaBindingManifest]
           ifFalse: [{}]
@@ -160,6 +188,53 @@ constructor NivaBuildSystem [
 
         sources toList
     ]
+
+    on bindingInterfaceMismatch(path): String? withIO(io): IO_Container -> String? = [
+        root = | path
+               | null => io currentDir
+               |=> io getParent :path
+        manifestPath = root + "/niva.bindings"
+        (io exists path: manifestPath) ifFalse: [^ null]
+
+        providers = (io readFile path: manifestPath) parseNivaBindingManifest
+        files = io walkDir path: root,
+          filter: [
+            (it relativePath endsWith: ".niva") &&
+              ((it relativePath isTestSource) not)
+          ],
+          sortedBy: [it relativePath]
+
+        groups::mut Map(String, mut List::NivaBindingProvider) = #{}!
+        providers forEach: [provider ->
+          existingMaybe = groups at: provider moduleId
+          mut group::mut List::NivaBindingProvider = {}!
+          | existingMaybe
+          | null => ()
+          |=> group <- existingMaybe
+          group add: provider
+          groups at: provider moduleId put: group
+        ]
+
+        mut mismatch::String? = null
+        groups forEach: [moduleId, variants ->
+          backends = (variants map: [it backend]) toSet
+          backends count > 1 ifTrue: [
+            baseline = (variants first) bindingInterface: files withIO: io
+            (variants drop: 1) forEach: [provider ->
+              provider backend != baseline backend ifTrue: [
+                candidate = provider bindingInterface: files withIO: io
+                ((mismatch == null) && (candidate signature != baseline signature)) ifTrue: [
+                  mismatch <- "binding interface mismatch for " + moduleId +
+                    " between " + baseline backend + " (" + baseline relativePath +
+                    ") and " + candidate backend + " (" + candidate relativePath + ")\n" +
+                    baseline signature + "\n---\n" + candidate signature
+                ]
+              ]
+            ]
+          ]
+        ]
+        mismatch
+    ]
 ]
 
 
@@ -170,7 +245,7 @@ type NivaCompiler
 // them while they still hold a generated variant (so switching between run and
 // watch refreshes them), but keep any user edits untouched
 IO_Container cljDepsFileNeedsWrite(file): String -> Bool = [
-  (FileSystem exists: (file toPath)) ifFalse: [true] ifTrue: [
+  (this exists path: file) ifFalse: [true] ifTrue: [
     existing = this readFile path: file
     (existing == (CompilerConstants cljProjectDepsSource)) ||
       (existing == (CompilerConstants cljPlainDepsSource))
@@ -188,7 +263,7 @@ IO_Container ensureCljProjectAt(root): String hotReload(hotReload): Bool -> Unit
   (this cljDepsFileNeedsWrite: root + "/deps.edn") ifTrue: [
     this writeFile file: root + "/deps.edn" content: depsContent
   ]
-  (FileSystem exists: ((root + "/niva/core.clj") toPath)) ifFalse: [
+  (this exists path: (root + "/niva/core.clj")) ifFalse: [
     this writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
   ]
   ()
@@ -280,7 +355,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload(hotReload):
   ]
 
   // publish only fully written staging content
-  hadPublishedGenerated = FileSystem exists: (publishedGenerated toPath)
+  hadPublishedGenerated = (io exists path: publishedGenerated)
   hadPublishedGenerated ifTrue: [
     FileSystem moveFrom: publishedGenerated toPath to: backupGenerated toPath
   ]
@@ -296,7 +371,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload(hotReload):
   hadPublishedGenerated ifTrue: [
     FileSystem deleteRecursively: backupGenerated toPath
   ]
-  hadLegacyGenerated = FileSystem exists: (legacyGenerated toPath)
+  hadLegacyGenerated = (io exists path: legacyGenerated)
   hadLegacyGenerated ifTrue: [
     FileSystem deleteRecursively: legacyGenerated toPath
   ]
@@ -305,7 +380,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload(hotReload):
     FileSystem createDirectories: (io getParent path: hostPath) toPath
     io writeFile file: hostPath content: (CompilerConstants jvmHostSource)
   ] ifFalse: [
-    (FileSystem exists: (hotReloadDir toPath)) ifTrue: [
+    (io exists path: hotReloadDir) ifTrue: [
       FileSystem deleteRecursively: (hotReloadDir toPath)
     ]
   ]

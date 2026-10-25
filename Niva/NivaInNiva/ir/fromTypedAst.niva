@@ -59,17 +59,6 @@ extend TypeInfo [
 
 // new Bind design https://github.com/gavr123456789/Niva/issues/418#issuecomment-4822453495
 
-extend String [
-  on bindCapitalizeFirst -> String = [
-    | true
-    | this count == 0 => this
-    |=> [
-      firstUp = ((this at: 0) uppercaseChar) toString
-      firstUp + (this drop: 1)
-    ]
-  ]
-]
-
 extend Expr [
   on bindCallArgs -> List(NameAndExpr) = [
     | this
@@ -93,7 +82,7 @@ extend MessageDecl [
 
   on bindIsEmptyBody -> Bool = (isSingleExpr not) && (body unTypedBody isEmpty)
 
-  // exactly `Bind emit: "..."` (one keyword) -> template.
+  // bind emit templates may include imports
   on bindEmitTemplate -> String? = [
     exprs = body unTypedBody
     first = exprs count == 1 ifTrue: [exprs first] ifFalse: [null]
@@ -120,7 +109,7 @@ extend MessageDecl [
           emitArg = callArgs find: [it name name == "emit"]
           hasSupportedArgs = (callArgs count == 1) ||
             ((callArgs count == 2) &&
-              (callArgs any: [it name name == "goPkg"]))
+              (callArgs any: [it name name == "imports"]))
           hasSupportedArgs ifFalse: [^ null]
           emitArgMaybe = emitArg
           | emitArgMaybe
@@ -157,41 +146,81 @@ extend MessageDecl [
       |=> [
         value = argMaybe expr
         | value
-        | StringExpr => value token lexeme unquoteLiteral
+        | StringExpr => [
+          tok = value token
+          tok kind == TokenType.RawString ifTrue: [tok lexeme unquoteRawLiteral] ifFalse: [tok lexeme unquoteLiteral]
+        ]
         |=> null
       ]
     ]
     |=> null
   ]
 
-  on bindPlanWith(db): TyperDB pkg: String -> IrBind? = [
+  on bindImports -> Set(String)? = [
+    exprs = body unTypedBody
+    exprs count == 1 ifFalse: [^ null]
+    firstExpr = exprs first
+    | firstExpr
+    | KeywordMsg => [
+      callArgs = firstExpr bindCallArgs
+      importsArg = callArgs find: [it name name == "imports"]
+      importsArgMaybe = importsArg
+      | importsArgMaybe
+      | null => null
+      |=> [
+        importsValue = importsArgMaybe expr
+        | importsValue
+        | CollectionLiteral => [
+          values::mut List(String) = {}!
+          importsValue elements unTypedBody forEach: [entry ->
+            | entry
+            | StringExpr => [
+              tok = entry token
+              values add: (tok kind == TokenType.RawString ifTrue: [tok lexeme unquoteRawLiteral] ifFalse: [tok lexeme unquoteLiteral])
+            ]
+            |=> TO DO: "Bind imports must contain only strings"
+          ]
+          values toSet
+        ]
+        |=> TO DO: "Bind imports must be a string collection"
+      ]
+    ]
+    |=> null
+  ]
+
+  on bindPlanWith(db): TyperDB -> IrBind? = [
     isBind = db isBindMessageDecl: this
     isBind ifFalse: [^ null]
 
-    explicitGoPkg = this bindConfigArg: "goPkg"
-    explicitGoName = this bindConfigArg: "goName"
     this bindIsEmptyBody ifTrue: [
-      // keep foreign names unchanged for clojure
-      ^ IrBindByName goPkg: pkg goName: this bindFirstKey isStatic: isConstructor
-          isGoNameExplicit: false
+      TO DO: "empty Bind declarations must specify pkg and name"
+      ^ null
     ]
     mut bindPlanResult::IrBind? = null
-    | explicitGoName
+    explicitName = this bindConfigArg: "name"
+    | explicitName
       | null => [
         tmplMaybe = this bindEmitTemplate
         tmplMaybe ifNotNull: [tmplValue ->
-          explicitGoPkgMaybe = explicitGoPkg
-          goPkg = explicitGoPkgMaybe orElse: pkg
-          bindPlanResult <- IrBindEmit template: tmplValue :goPkg
-            isGoSpecific: (explicitGoPkgMaybe != null)
+          importsMaybe = this bindImports
+          emptyImports::mut List(String) = {}!
+          mut imports::Set(String) = emptyImports toSet
+          | importsMaybe
+          | null => ()
+          |=> imports <- importsMaybe
+          bindPlanResult <- IrBindEmit template: tmplValue :imports
+            hasImports: (importsMaybe != null)
           ()
         ]
       ]
       |=> [
-      explicitGoPkgMaybe = explicitGoPkg
-      goPkg = explicitGoPkgMaybe orElse: pkg
-      bindPlanResult <- IrBindByName :goPkg goName: explicitGoName isStatic: isConstructor
-          isGoNameExplicit: true
+      pkgMaybe = this bindConfigArg: "pkg"
+      pkgMaybe ifNotNull: [pkgValue ->
+        pkgValue isEmpty ifTrue: [TO DO: "Bind pkg must not be empty"]
+        explicitName isEmpty ifTrue: [TO DO: "Bind name must not be empty"]
+        bindPlanResult <- IrBindByName pkg: pkgValue name: explicitName isStatic: isConstructor
+        ()
+      ]
       ()
       ]
     bindPlanResult
@@ -765,7 +794,7 @@ MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map
   dbMsgDeclMaybe = dbMsg decl
   bindPlan = | dbMsgDeclMaybe
     | null => null
-    |=> dbMsgDeclMaybe bindPlanWith: db pkg: (dbMsg pkgName)
+    |=> dbMsgDeclMaybe bindPlanWith: db
   isReceiverFunction = | receiverType
     | FuntionT => true
     |=> false

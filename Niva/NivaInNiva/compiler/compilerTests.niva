@@ -124,7 +124,7 @@ Test buildLoaderUsesBindingManifest = [
   io writeFile file: root + "/main.niva" content: "1 echo"
   io writeFile file: root + "/shared.niva" content: "type Shared value: String"
   io writeFile file: root + "/providers/io.niva"
-    content: "String trim -> String = Bind goPkg: \"strings\" emit: \"strings.TrimSpace($0)\""
+    content: "String trim -> String = Bind imports: #(\"strings\") emit: \"strings.TrimSpace($0)\""
   io writeFile file: root + "/unlisted.go.bind.niva" content: "not valid Niva {{{"
   io writeFile file: root + "/niva.bindings"
     content: "go|provider.bound|providers/io.niva\n"

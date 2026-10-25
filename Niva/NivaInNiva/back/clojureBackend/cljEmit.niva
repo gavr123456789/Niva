@@ -200,12 +200,13 @@ IrCall cljAttachedBindOutput(ctx): CljContext scope: CljScope -> String = [
       | bindValue
       | IrBindByName => [
           argsStr = (this cljArgValues: ctx :scope) joinWith: " "
-          namespace = bindValue goPkg cljBindNamespace
+          namespace = bindValue pkg cljNamespace
           namespace != "" ifTrue: [ctx addImport: namespace]
           argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
-          "(" + namespace + "/" + (bindValue goName cljSanitizeIdent) + argsPart + ")"
+          "(" + namespace + "/" + (bindValue name cljSanitizeIdent) + argsPart + ")"
         ]
       | IrBindEmit => [
+          bindValue imports forEach: [ctx addImport: (it cljNamespace)]
           emitArgVals = this cljArgValues: ctx :scope
           bindValue template bindApply0: emitArgVals
         ]
