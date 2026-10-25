@@ -1543,3 +1543,27 @@ Test goEqTypeParamInGenericMethodUsesAny = [
   // the compare for T isn't known in a generic method, so it's go's == through any
   go contains: "return core.EqAny[T](this, other)", assertTrue
 ]
+
+Test goCollectionLiteralOfBranchesUsesExpectedUnion = [
+  fileMain = """
+    union Expr = | Num v: Int | Sym name: String | Sum terms: List(Expr)
+    Expr wrap -> Expr = | this
+    | Num => Sum terms: {this}
+    |=> this
+    Int count(es): Set(Expr) -> Int = es count
+    s = Sum terms: {(Sym name: "x")}
+    m::Map(String, Expr) = #{"a" (Num v: 1)}
+    (1 count: #((Num v: 1))) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  // go slices and maps aren't covariant, so the literal has to be made with the union, not the branch
+  go contains: "main_Sum{[]main_Expr{main_Sym{\"x\"}}}", assertTrue
+  go contains: "return main_Sum{[]main_Expr{this}}", assertTrue
+  go contains: "map[main_Expr]struct{}{ main_Num{1}: struct{}{} }", assertTrue
+  go contains: "map[string]main_Expr{\"a\": main_Num{1}}", assertTrue
+  Assert that: (go contains: "[]main_Sym{") equals: false
+  Assert that: (go contains: "[]main_Num{") equals: false
+]

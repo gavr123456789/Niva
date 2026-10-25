@@ -1124,3 +1124,17 @@ Test cljDeclaredEqIsCalled = [
   clj contains: "(niva.core/Any__echo (main_Point__== p1 p2))", assertTrue
   clj contains: "(niva.core/Any__echo (= (main_Point__== p1 p2) false))", assertTrue
 ]
+
+Test cljMutListOfBranchesIsAtom = [
+  fileMain = """
+    union Expr = | Num v: Int | Sym name: String
+    l::mut List(Expr) = {(Num v: 1)}
+    l add: (Sym name: "y")
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // the literal is a List(Expr) like the declaration, so it gets the atom
+  clj contains: "(let [l (atom [(->main_Num 1)])", assertTrue
+]
