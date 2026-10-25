@@ -1067,3 +1067,15 @@ Test goCollectionLiteralOfBranchesUsesExpectedUnion = [
     "map[string]main_Expr{\"a\": main_Num{1}}"
   } containsNone: {"[]main_Sym{" "[]main_Num{"}
 ]
+
+// go's comparison operators already order strings
+Test goStringsAreOrderedWithGoOperators = [
+  Assert nivaToGo: """
+    a = "apple"
+    b = "banana"
+    (a < b) echo
+    (a > b) echo
+    (a <= b) echo
+    (a >= b) echo
+  """ containsAll: {"(a < b)" "(a > b)" "(a <= b)" "(a >= b)"}
+]

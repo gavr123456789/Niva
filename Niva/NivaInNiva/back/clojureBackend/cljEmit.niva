@@ -24,11 +24,16 @@ extend IrExpr [
     | IrOpBin => [
         l = left  toCljExpr: ctx :scope
         r = right toCljExpr: ctx :scope
-        // replace + for Strings to str, its not possible to overload + for str natively
-        isStrPlus = (op == "+") && ((left cljExprTypeRef typeId cljNormalizeTypeId) == "core_String")
-        isStrPlus
-          ifTrue:  ["(str " + l + " " + r + ")"]
-          ifFalse: ["(" + (op cljOperator) + " " + l + " " + r + ")"]
+        // TODO make a better\cheaper way to check for default times
+        isStr = (left cljExprTypeRef typeId cljNormalizeTypeId) == "core_String"
+        isStr
+          ifTrue: [
+            | true
+            | (op == "+") => "(str $l $r)"
+            | (op == "<") || (op == ">") || (op == "<=") || (op == ">=") => "($op (compare $l $r) 0)"
+            |=> "(" + (op cljOperator) + " $l $r)"
+          ]
+          ifFalse: ["(" + (op cljOperator) + " $l $r)"]
       ]
     | IrCall     => this callToCljExpr:  ctx :scope
     | IrLambda   => this lambdaToCljExpr: ctx :scope
