@@ -1138,3 +1138,24 @@ Test cljMutListOfBranchesIsAtom = [
   // the literal is a List(Expr) like the declaration, so it gets the atom
   clj contains: "(let [l (atom [(->main_Num 1)])", assertTrue
 ]
+
+Test cljStringsAreOrderedWithCompare = [
+  fileMain = """
+    a = "apple"
+    b = "banana"
+    (a < b) echo
+    (a >= b) echo
+    (1 < 2) echo
+    (a + b) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // clojure's < and >= take only numbers, so strings go through compare, and numbers and + stay as they were
+  clj contains: "(< (compare a b) 0)", assertTrue
+  clj contains: "(>= (compare a b) 0)", assertTrue
+  clj contains: "(< 1 2)", assertTrue
+  clj contains: "(str a b)", assertTrue
+]

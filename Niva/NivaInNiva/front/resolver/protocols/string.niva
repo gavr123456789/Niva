@@ -17,6 +17,10 @@ constructor NivaProtocol stringFromDefaultTypes(dtc): DefaultTypesContainer  -> 
 
   strProto addMethod: (NivaMethod binary: "==" receiverType: str argT: str returnT: bool)
   strProto addMethod: (NivaMethod binary: "!=" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: "<" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: ">" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: "<=" receiverType: str argT: str returnT: bool)
+  strProto addMethod: (NivaMethod binary: ">=" receiverType: str argT: str returnT: bool)
 
   // keyword
   strProto addMethod: (NivaMethod singleArgKw: "at" receiverType: str argT: int returnT: char )
