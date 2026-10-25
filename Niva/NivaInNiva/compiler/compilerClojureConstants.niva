@@ -496,6 +496,7 @@ constructor CompilerConstants nivaCoreSource -> String = """
 (defn List__mapIndexed [s f] (mapv f (range) s))
 (defn List__filter [s predicate] (filterv predicate s))
 (defn List__sortedBy [s key-fn] (vec (sort-by key-fn s)))
+(defn List__sortedWith [s cmp] (vec (sort cmp s)))
 
 (defn List__at [s i]
   (when (or (neg? i) (>= i (count s)))
