@@ -1159,3 +1159,17 @@ Test cljStringsAreOrderedWithCompare = [
   clj contains: "(< 1 2)", assertTrue
   clj contains: "(str a b)", assertTrue
 ]
+
+Test cljInjectIntoCallsRuntimeFunction = [
+  fileMain = """
+    ({1 2 3} inject: 0 into: [acc, x -> acc + x]) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  // the call inject:into: compiles to has to be the function the runtime defines
+  clj contains: "(niva.core/List__inject__into ", assertTrue
+  Assert that: (CompilerConstants nivaCoreSource contains: "(defn List__inject__into ") equals: true
+]
