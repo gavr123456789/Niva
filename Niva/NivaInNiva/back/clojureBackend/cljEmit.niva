@@ -24,15 +24,16 @@ extend IrExpr [
     | IrOpBin => [
         l = left  toCljExpr: ctx :scope
         r = right toCljExpr: ctx :scope
+        // TODO make a better\cheaper way to check for default times
         isStr = (left cljExprTypeRef typeId cljNormalizeTypeId) == "core_String"
-        // replace + for Strings to str, its not possible to overload + for str natively
-        isStrPlus = (op == "+") && isStr
-        // clojure's < > <= >= take only numbers, so Strings are ordered with compare
-        isStrOrder = isStr && ((op == "<") || (op == ">") || (op == "<=") || (op == ">="))
-        | true
-        | isStrPlus => "(str $l $r)"
-        | isStrOrder => "($op (compare $l $r) 0)"
-        |=> "(" + (op cljOperator) + " " + l + " " + r + ")"
+        isStr
+          ifTrue: [
+            | true
+            | (op == "+") => "(str $l $r)"
+            | (op == "<") || (op == ">") || (op == "<=") || (op == ">=") => "($op (compare $l $r) 0)"
+            |=> "(" + (op cljOperator) + " $l $r)"
+          ]
+          ifFalse: ["(" + (op cljOperator) + " $l $r)"]
       ]
     | IrCall     => this callToCljExpr:  ctx :scope
     | IrLambda   => this lambdaToCljExpr: ctx :scope
