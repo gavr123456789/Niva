@@ -147,7 +147,7 @@ Test goCoreAnyMethodOwnerCodegen = [
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
 
-  go contains: "core.Any__echo(1)", assertTrue
+  go contains: "core.Any__echo[int](1)", assertTrue
   Assert that: (go contains: "core.Int__echo(1)") equals: false
 ]
 
@@ -289,9 +289,9 @@ Test goUnitMatchBranchResultIsEmitted = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "case main_Ok[int]:", assertTrue
-  go contains: "core.Any__echo(1)", assertTrue
+  go contains: "core.Any__echo[int](1)", assertTrue
   go contains: "case main_Baad[int]:", assertTrue
-  go contains: "core.Any__echo(2)", assertTrue
+  go contains: "core.Any__echo[int](2)", assertTrue
 ]
 
 Test goEnumCodegen = [
@@ -478,9 +478,9 @@ Test goNestedMatchCodegen = [
     x = 1
     y = 2
     res = | x
-    | 1 => | y
-            | 2 => 10
-            |=> 20
+          | 1 => | y
+                 | 2 => 10
+                 |=> 20
     |=> 30
   """
 
@@ -604,8 +604,8 @@ Test goStatementMatchOnTrueWithConditions = [
   // an if else chain like a match on a value, where it was left out
   go contains: "__matchSubject := true", assertTrue
   go contains: "if (__matchSubject == (this == \"a\")) {", assertTrue
-  go contains: "core.Any__echo(\"is a\")", assertTrue
-  go contains: "core.Any__echo(\"not a\")", assertTrue
+  go contains: "core.Any__echo[string](\"is a\")", assertTrue
+  go contains: "core.Any__echo[string](\"not a\")", assertTrue
 ]
 
 Test goStatementMatchOnMutCellSubject = [
@@ -758,7 +758,7 @@ Test goMatchInsideValueIsLiftedCodegen = [
   go contains: "var __matchValue string\n", assertTrue
   go contains: "return \"returned\"", assertTrue
   go contains: "__matchValue = \"kept\"", assertTrue
-  go contains: "core.Any__echo((__matchValue + \"!\"))", assertTrue
+  go contains: "core.Any__echo[string]((__matchValue + \"!\"))", assertTrue
   go contains: "var __matchValue int\n", assertTrue
   go contains: "__matchValue = 2", assertTrue
   go contains: "var y int = (__matchValue + 10)", assertTrue
@@ -856,7 +856,7 @@ Test goUnitMatchValueRunsBranchesAsStatements = [
   go = GoBackend fullFromIrModule: (result toIrModule)
 
   go contains: "var s struct{}\n", assertTrue
-  go contains: "        core.Any__echo(\"x\")\n", assertTrue
+  go contains: "        core.Any__echo[string](\"x\")\n", assertTrue
   Assert that: (go contains: "s = core.Any__echo") equals: false
 ]
 
@@ -867,7 +867,7 @@ Test goImplicitLambdaArgCodegen = [
 
   result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
-  go contains: "core.List__map[int]([]int{1, 2, 3}, func(it int) int {", assertTrue
+  go contains: "core.List__map[int, int]([]int{1, 2, 3}, func(it int) int {", assertTrue
   go contains: "return (it + 1)", assertTrue
   Assert that: (go contains: "func() int") equals: false
 ]
