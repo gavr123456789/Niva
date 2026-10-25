@@ -1087,3 +1087,10 @@ Test goInjectIntoCallsRuntimeFunction = [
   """ containsAll: {"core.List__inject__into["}
   Assert that: (GoRuntimeSources coreSource contains: "func List__inject__into[") equals: true
 ]
+
+Test goSortedWithCallsRuntimeFunction = [
+  Assert nivaToGo: """
+    ({3 1 2} sortedWith: [a, b -> a - b]) echo
+  """ containsAll: {"core.List__sortedWith["}
+  Assert that: (GoRuntimeSources coreSource contains: "func List__sortedWith[T any](s []T, cmp func(T, T) int) []T") equals: true
+]

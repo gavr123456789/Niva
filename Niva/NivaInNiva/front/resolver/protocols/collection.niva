@@ -118,6 +118,20 @@ constructor NivaProtocol collectionFromDefaultTypes(dtc): DefaultTypesContainer 
                                       argT: sortedByBlock
                                    returnT: collectionType)
 
+      // a comparator, as on the jvm compiler: negative if a comes before b, 0 if they're equal, positive if after
+      aArg = TypeTField name: "a" typeT: itemType isMut: false
+      bArg = TypeTField name: "b" typeT: itemType isMut: false
+      sortedWithBlock = FuntionT
+                    fields: { aArg bArg }!
+                      name: "sortedWith"
+               genericArgs: {}!
+                   pkgName: "core"
+                returnType: intT
+      collP addMethod: (NivaMethod singleArgKw: "sortedWith"
+                              receiverType: collectionType
+                                      argT: sortedWithBlock
+                                   returnT: collectionType)
+
       accArg = TypeTField name: "acc" typeT: t isMut: false
       injectBlock = FuntionT
                     fields: { accArg itArg }!

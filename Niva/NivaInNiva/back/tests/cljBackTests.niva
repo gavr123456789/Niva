@@ -1173,3 +1173,16 @@ Test cljInjectIntoCallsRuntimeFunction = [
   clj contains: "(niva.core/List__inject__into ", assertTrue
   Assert that: (CompilerConstants nivaCoreSource contains: "(defn List__inject__into ") equals: true
 ]
+
+Test cljSortedWithCallsRuntimeFunction = [
+  fileMain = """
+    ({3 1 2} sortedWith: [a, b -> a - b]) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/List__sortedWith ", assertTrue
+  Assert that: (CompilerConstants nivaCoreSource contains: "(defn List__sortedWith ") equals: true
+]

@@ -673,6 +673,11 @@ constructor GoRuntimeSources coreSource -> String = """
   	sort.SliceStable(r, func(i, j int) bool { return valueLess(key(r[i]), key(r[j])) })
   	return r
   }
+  func List__sortedWith[T any](s []T, cmp func(T, T) int) []T {
+  	r := append([]T{}, s...)
+  	sort.SliceStable(r, func(i, j int) bool { return cmp(r[i], r[j]) < 0 })
+  	return r
+  }
   func List__at[T any](s []T, i int) T {
   	if i < 0 || i >= len(s) {
   		panic("Idx out")
