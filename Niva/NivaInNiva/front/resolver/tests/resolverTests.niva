@@ -721,6 +721,17 @@ Test stringsAreOrdered = [
   result entryPointExpressions forEach: [Assert that: it typeInfo t name equals: "Bool"]
 ]
 
+Test listSortedWithComparator = [
+  fileMain = """
+    {3 1 2} sortedWith: [a, b -> a - b]
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  t = result entryPointExpressions first typeInfo t asListT
+  Assert that: t t name equals: "Int"
+]
+
 Test inlineForEachAllowsNonLocalReturn = [
   fileMain = """
     Unit find -> Int = [
