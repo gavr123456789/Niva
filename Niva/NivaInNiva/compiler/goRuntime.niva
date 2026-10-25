@@ -759,7 +759,7 @@ constructor GoRuntimeSources coreSource -> String = """
   	}
   	return -1
   }
-  func List__injectInto[T any, R any](s []T, ini R, op func(R, T) R) R {
+  func List__inject__into[T any, R any](s []T, ini R, op func(R, T) R) R {
   	r := ini
   	for _, it := range s {
   		r = op(r, it)
