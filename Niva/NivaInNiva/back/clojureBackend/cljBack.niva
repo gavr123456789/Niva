@@ -146,8 +146,7 @@ String cljFuncIdToName -> String =
 
 
 extend String [
-  // `clojure.string.bind` -> `clojure/string`
-  on cljBindNamespace -> String = this replace: "/" with: "."
+  on cljNamespace -> String = this replace: "/" with: "."
 
   on cljNormalizeTypeId -> String =
     (this contains: "__") ifTrue: [this substringBefore: "__"] ifFalse: [this]

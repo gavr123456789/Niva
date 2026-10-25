@@ -1261,21 +1261,15 @@ extend IrExpr [
           |=> [
             | bindMaybe
           | IrBindByName => [
-              ctx addImport: bindMaybe goPkg
+              ctx addImport: bindMaybe pkg
               byNameArgs = args mapIndexed: [i, it ->
                 paramType = paramTypes at: i
                 it toGoArgExpr: ctx :scope :paramType
               ], goCallArgs
-              goName = bindMaybe isGoNameExplicit
-                ifTrue: [bindMaybe goName]
-                ifFalse: [bindMaybe goName bindCapitalizeFirst]
-              (bindMaybe goPkg goPkgQualifier) + "." + goName + "(" + byNameArgs + ")"
+              (bindMaybe pkg goImportQualifier) + "." + bindMaybe name + "(" + byNameArgs + ")"
             ]
           | IrBindEmit => [
-              // emit templates import their declared package
-              (bindMaybe goPkg) ifNotNull: [importPathsMaybe ->
-                (importPathsMaybe split: ",") forEach: [ctx addImport: it]
-              ]
+              bindMaybe imports forEach: [ctx addImport: it]
               // $0 = receiver/this, $1 = first keyword arg, ...
               emitArgVals = args mapIndexed: [i, it ->
                 paramType = paramTypes at: i

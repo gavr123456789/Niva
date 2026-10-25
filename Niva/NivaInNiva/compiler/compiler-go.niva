@@ -5,7 +5,7 @@
 static JvmReloadHost start(projectRoot): String generatedDir: String
     entryNamespace(entryNamespace): String runtime(runtime): String
     onChange(onChange): [ -> Unit] -> Unit =
-  Bind goPkg: "fmt,niva_go/core,os,os/exec,path/filepath,sort,strings,strconv,time" emit: """(func() core.Unit {
+  Bind imports: #("fmt" "niva_go/core" "os" "os/exec" "path/filepath" "sort" "strings" "strconv" "time") emit: """(func() core.Unit {
   nivaWatchRoot := $0
   if nivaWatchRoot == "" { nivaWatchRoot = "." }
   nivaWatchGenerated := $1
@@ -69,7 +69,7 @@ static JvmReloadHost start(projectRoot): String generatedDir: String
 
 // the live session polls this marker next to the generated sources and reloads
 static JvmReloadHost reloadChanged -> Unit =
-  Bind goPkg: "os,niva_go/core,path/filepath,strconv,time" emit: """(func() core.Unit {
+  Bind imports: #("os" "niva_go/core" "path/filepath" "strconv" "time") emit: """(func() core.Unit {
   nivaSignalDir, nivaSignalDirErr := os.Getwd()
   if nivaSignalDirErr != nil { panic(nivaSignalDirErr) }
   nivaSignalPath := filepath.Join(nivaSignalDir, ".niva_clj", "niva-reload.signal")

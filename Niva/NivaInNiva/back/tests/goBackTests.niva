@@ -124,7 +124,7 @@ Test goCustomConstructorCallUsesDeclaredFunction = [
 
 Test goBindingsReadFile = [
   bindFile = """
-    Int read: String -> String = Bind goPkg: "os" emit: "os.ReadFile($1)"
+    Int read: String -> String = Bind imports: #("os") emit: "os.ReadFile($1)"
   """
   fileMain = """
     x = 1 read: "file.txt"
@@ -1116,7 +1116,7 @@ Test goTryErrorableNullableValue = [
 Test goBindPlaceholder10 = [
   bindFile = """
     Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int =
-      Bind goPkg: "" emit: "$10 + $1"
+      Bind imports: #() emit: "$10 + $1"
   """
   fileMain = """
     x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
@@ -1133,7 +1133,7 @@ Test goBindPlaceholder10 = [
 // Point 2: single `Bind emit:` body is inlined at the call site (no wrapper func).
 Test goBindInlineEmitUnary = [
   bindFile = """
-    Int double -> Int = Bind goPkg: "" emit: "($0 * 2)"
+    Int double -> Int = Bind imports: #() emit: "($0 * 2)"
   """
   fileMain = """
     x = 21 double
@@ -1149,7 +1149,7 @@ Test goBindInlineEmitUnary = [
 // Point 2: keyword form, $0 = this, $1 = first arg, $2 = second arg.
 Test goBindInlineEmitKeyword = [
   bindFile = """
-    Int sas: Int and: Bool -> Int = Bind goPkg: "" emit: "kekeke($1, $0, $2)"
+    Int sas: Int and: Bool -> Int = Bind imports: #() emit: "kekeke($1, $0, $2)"
   """
   fileMain = """
     y = 1 sas: 2 and: true
@@ -1165,7 +1165,7 @@ Test goBindInlineEmitKeyword = [
 // instance method: receiver becomes the first Go argument.
 Test goBindByNameInstance = [
   bindFile = """
-    String toUpper -> String = Bind goPkg: "strings" goName: "ToUpper"
+    String toUpper -> String = Bind pkg: "strings" name: "ToUpper"
   """
   fileMain = """
     a = "hi" toUpper
@@ -1180,7 +1180,7 @@ Test goBindByNameInstance = [
 
 Test goBindEmitImportsAllDeclaredPackages = [
   bindFile = """
-    String trim -> String = Bind goPkg: "fmt,strings" emit: "fmt.Sprint(strings.TrimSpace($0))"
+    String trim -> String = Bind imports: #("fmt" "strings") emit: "fmt.Sprint(strings.TrimSpace($0))"
   """
   fileMain = """
     value = "  niva  " trim
@@ -1216,7 +1216,7 @@ Test goBindByNameStatic = [
 Test goBindEmitInBody = [
   bindFile = """
     Int compute -> Int = [
-      a::Int = Bind goPkg: "" emit: "1 + 41"
+      a::Int = Bind imports: #() emit: "1 + 41"
       ^ a
     ]
   """
@@ -1241,7 +1241,7 @@ Test goSharedEmitRequiresGoPackage = [
   errors = GoBackend validateIr: (result toIrModule)
   messages = errors joinWith: "\n" transform: [it message]
 
-  Assert that: (messages contains: "Go backend requires an explicit goPkg for Bind emit templates") equals: true
+  Assert that: (messages contains: "Go backend requires explicit imports for Bind emit templates") equals: true
 ]
 
 Test goUnsupportedConstructorBindHasDiagnostic = [

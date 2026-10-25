@@ -5,9 +5,8 @@ extend String [
                               "const" "fallthrough" "if" "range" "type"
                               "continue" "for" "import" "return" "var") contains: this
 
-  // Go package qualifier used at call sites: last path segment of an import path
-  // "net/http" -> "http", "os" -> "os"
-  on goPkgQualifier -> String = this substringAfterLast: "/"
+  // go import qualifier at call sites
+  on goImportQualifier -> String = this substringAfterLast: "/"
 
   // verrry badd, need iterate over symbols
   on goSanitizeIdent -> String =

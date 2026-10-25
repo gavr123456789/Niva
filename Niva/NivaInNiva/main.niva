@@ -9,6 +9,7 @@ type NivaSourceFile
 type IO_Container
   readFile:   [String -> String]
   writeFile:  [String, String -> Unit]
+  exists:     [String -> Bool]
   walkDir:    [String -> List(NivaSourceFile)]
   getParent:  [String -> String]
   createDirectories: [String -> Unit]
@@ -27,6 +28,10 @@ constructor IO_Container new -> IO_Container = [
     FileSystem write: path toPath
                content: fileContent
     ()
+  ]
+
+  exists::[String -> Bool] = [path::String ->
+    FileSystem exists: (path toPath)
   ]
 
   walkDir::[String -> List(NivaSourceFile)] = [path: String ->
@@ -71,7 +76,7 @@ constructor IO_Container new -> IO_Container = [
     ProcessRunner run: args dir: path
   ]
 
-  ^ IO_Container :readFile :writeFile :walkDir :getParent
+  ^ IO_Container :readFile :writeFile :exists :walkDir :getParent
     :createDirectories :deleteRecursively
     currentDir: System currentDir :runProgram :runProgramFromPath
 ]

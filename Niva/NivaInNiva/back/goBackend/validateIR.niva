@@ -10,9 +10,9 @@ IrExpr validateGoIrExpr(knownFuncIds): Set(String) knownTypeIds: Set(String) goE
       |=> [
         | bindMaybe
         | IrBindEmit => [
-          bindMaybe isGoSpecific ifFalse: [
+          bindMaybe hasImports ifFalse: [
             goErrors add: (GoIrError message:
-              "Go backend requires an explicit goPkg for Bind emit templates")
+              "Go backend requires explicit imports for Bind emit templates")
           ]
         ]
         |=> []
