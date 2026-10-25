@@ -708,6 +708,19 @@ Test matchBranchesWrappingNarrowedValueTakeReturnType = [
   Assert that: result db listOfErrors count equals: 0
 ]
 
+Test stringsAreOrdered = [
+  fileMain = """
+    "x" < "y"
+    "x" > "y"
+    "x" <= "y"
+    "x" >= "y"
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  result entryPointExpressions forEach: [Assert that: it typeInfo t name equals: "Bool"]
+]
+
 Test inlineForEachAllowsNonLocalReturn = [
   fileMain = """
     Unit find -> Int = [
