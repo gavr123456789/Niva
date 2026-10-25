@@ -1079,3 +1079,11 @@ Test goStringsAreOrderedWithGoOperators = [
     (a >= b) echo
   """ containsAll: {"(a < b)" "(a > b)" "(a <= b)" "(a >= b)"}
 ]
+
+// the call inject:into: compiles to has to be the function the runtime defines
+Test goInjectIntoCallsRuntimeFunction = [
+  Assert nivaToGo: """
+    ({1 2 3} inject: 0 into: [acc, x -> acc + x]) echo
+  """ containsAll: {"core.List__inject__into["}
+  Assert that: (GoRuntimeSources coreSource contains: "func List__inject__into[") equals: true
+]

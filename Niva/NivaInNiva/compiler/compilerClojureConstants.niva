@@ -544,7 +544,7 @@ constructor CompilerConstants nivaCoreSource -> String = """
        (keep-indexed (fn [i item] (when (predicate item) i))s))
       -1))
 
-(defn List__injectInto [s initial operation]
+(defn List__inject__into [s initial operation]
   (clojure.core/reduce operation initial s))
 
 (defn List__reduce [s operation]
