@@ -248,6 +248,15 @@ NivaType sameTypeAsMany(types): List(NivaType) -> Int? = [
   result
 ]
 
+// the item type of a collection literal, widened to the union its context expects when the items are branches of it, so {(Sym name: "x")} given as a List(Expr) is a List(Expr), not a List(Sym)
+NivaType widenedTo(expected): NivaType? db: TyperDB -> NivaType = | expected
+  | null => this
+  |=> [
+    | expected
+    | TypeT => .isAssignableTo: expected :db, ifTrue: [expected] ifFalse: [this]
+    |=> this
+  ]
+
 extend TyperDB [
   on checkUnionMatchExhaustiveness(subjectType): NivaType branches: List(MatchBranchT) elseBranch: TypedBody? token: Token = [
     | subjectType
@@ -657,15 +666,18 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
         typeInfo: (TypeInfo t: mapType isMut: isMutable listOfErrors: {})
     ]
 
+    expectedKey = | expectedMap
+      | null => null
+      |=> expectedMap k
+    expectedValue = | expectedMap
+      | null => null
+      |=> expectedMap v
+
     typedBody = elements
       resolveCollectionElements: db
       withContext: c
-      expectedEven: (| expectedMap
-        | null => null
-        |=> expectedMap k)
-      expectedOdd: (| expectedMap
-        | null => null
-        |=> expectedMap v)
+      expectedEven: expectedKey
+      expectedOdd: expectedValue
 
     elems = typedBody v
     typesOfElems = elems map: [it typeInfo t]
@@ -720,7 +732,7 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
     ]
 
 
-    mapType = db addCollectionInstantiationIfAbsent: (MapT k: first v: second)
+    mapType = db addCollectionInstantiationIfAbsent: (MapT k: (first widenedTo: expectedKey :db) v: (second widenedTo: expectedValue :db))
 
     MapLiteralT
       :token
@@ -800,13 +812,14 @@ Expr toTypedExprFromDb2(db): TyperDB withContext(c): Context expectedType: NivaT
       db addErrorMessage: (ErrorWrongArgType tok: this token msg: "Wrong type of $wrongElement element, $f type expected")
     ]
 
+    itemType = f widenedTo: expectedElem :db
     astType = token kind == TokenType.OpenParenHash
       ifTrue: [
-        newType = db addCollectionInstantiationIfAbsent: (SetT t: f)
+        newType = db addCollectionInstantiationIfAbsent: (SetT t: itemType)
         SetLiteralT :token elements: typedBody typeInfo: (TypeInfo t: newType isMut: isMutable listOfErrors: {})
       ]
       ifFalse: [
-        newType = db addCollectionInstantiationIfAbsent: (ListT t: f)
+        newType = db addCollectionInstantiationIfAbsent: (ListT t: itemType)
         ListLiteralT :token elements: typedBody typeInfo: (TypeInfo t: newType isMut: isMutable listOfErrors: {})
       ]
 

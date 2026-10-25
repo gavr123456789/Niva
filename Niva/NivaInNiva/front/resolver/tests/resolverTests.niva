@@ -670,6 +670,44 @@ Test listMapFilterForEachChain = [
   Assert that: t t name equals: "Int"
 ]
 
+Test collectionLiteralOfBranchesTakesExpectedUnion = [
+  fileMain = """
+    union Expr = | Num v: Int | Sym name: String
+    l::List(Expr) = {(Num v: 1)}
+    s::Set(Expr) = #((Sym name: "x"))
+    m::Map(String, Expr) = #{"a" (Num v: 1)}
+    u = {(Num v: 1)}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  typedAst = result entryPointExpressions
+  Assert that: result db listOfErrors count equals: 0
+
+  listType = typedAst at: 0, asVarDeclarationT value typeInfo t asListT
+  Assert that: listType t name equals: "Expr"
+  setType = typedAst at: 1, asVarDeclarationT value typeInfo t asSetT
+  Assert that: setType t name equals: "Expr"
+  mapType = typedAst at: 2, asVarDeclarationT value typeInfo t asMapT
+  Assert that: mapType v name equals: "Expr"
+  // with nothing expected, the items give the type
+  untypedType = typedAst at: 3, asVarDeclarationT value typeInfo t asListT
+  Assert that: untypedType t name equals: "Num"
+]
+
+Test matchBranchesWrappingNarrowedValueTakeReturnType = [
+  fileMain = """
+    union Expr = | Num v: Int | Sym name: String | Sum terms: List(Expr)
+    Expr operands -> List(Expr) = | this
+    | Sum => terms
+    | Num => {this}
+    | Sym => {this}
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  // each {this} is a List(Expr), not a List(Num) and a List(Sym) that don't merge
+  Assert that: result db listOfErrors count equals: 0
+]
+
 Test inlineForEachAllowsNonLocalReturn = [
   fileMain = """
     Unit find -> Int = [
