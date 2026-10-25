@@ -192,7 +192,7 @@ Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
   sources = #{
     "model" "String shout -> String = [^ this upper-case]"
     "main" "value = \"hi\" shout"
-    "clojure.string.bind" "String upper-case -> String = []"
+    "clojure.string.bind" "String upper-case -> String = Bind pkg: \"clojure.string\" name: \"upper-case\""
   }
   result = ResolverHelper resolve: sources entryPoint: "main" backend: "clj"
   Assert that: result db listOfErrors count equals: 0
@@ -767,7 +767,7 @@ Test cljBindEmitRawStringInline = [
 // first Clojure arg.
 Test cljBindByNameInstance = [
   bindFile = """
-    String upper-case -> String = []
+    String upper-case -> String = Bind pkg: "clojure.string" name: "upper-case"
   """
   fileMain = """
     a = "hi" upper-case
@@ -783,7 +783,7 @@ Test cljBindByNameInstance = [
 // Static bind: the receiver type is not part of the external call arguments.
 Test cljBindByNameStatic = [
   bindFile = """
-    static String parse-long: String -> Int = []
+    static String parse-long: String -> Int = Bind pkg: "clojure.core" name: "parse-long"
   """
   fileMain = """
     x = String parse-long: "42"

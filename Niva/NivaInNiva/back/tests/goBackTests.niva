@@ -1161,8 +1161,7 @@ Test goBindInlineEmitKeyword = [
   Assert that: (go contains: "func main__core_Int__sas__and") equals: false
 ]
 
-// Point 1: empty body in a .bind.niva file -> bind by function name.
-// instance method: receiver becomes the first Go argument.
+// by-name instance binding passes the receiver as the first Go argument
 Test goBindByNameInstance = [
   bindFile = """
     String toUpper -> String = Bind pkg: "strings" name: "ToUpper"
@@ -1198,7 +1197,7 @@ Test goBindEmitImportsAllDeclaredPackages = [
 // Point 1: static (constructor) bind by name -> receiver is NOT an argument.
 Test goBindByNameStatic = [
   bindFile = """
-    static String atoi: String -> Int = []
+    static String atoi: String -> Int = Bind pkg: "strconv" name: "Atoi"
   """
   fileMain = """
     b = String atoi: "42"
@@ -1231,7 +1230,7 @@ Test goBindEmitInBody = [
   go contains: "func main__core_Int__compute", assertTrue
 ]
 
-Test goSharedEmitRequiresGoPackage = [
+Test goSharedEmitRequiresImports = [
   bindFile = """
     Int answer -> Int = Bind emit: "42"
   """

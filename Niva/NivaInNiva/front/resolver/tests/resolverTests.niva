@@ -138,7 +138,7 @@ Test declaredErrorEffectsRequireBodyErrors = [
 Test inlineBindDeclarationAllowsDeclaredErrorEffect = [
   bindFile = """
     String readFile -> String!Error =
-      Bind emit: "(slurp $0)"
+      Bind imports: #() emit: "(slurp $0)"
   """
   fileMain = "x = \"hi\" readFile"
 
@@ -149,7 +149,7 @@ Test inlineBindDeclarationAllowsDeclaredErrorEffect = [
 Test inlineBindWithoutDeclaredErrorEffectDoesNotInferOne = [
   bindFile = """
     String readFile -> String =
-      Bind emit: "(slurp $0)"
+      Bind imports: #() emit: "(slurp $0)"
   """
   fileMain = "x = \"hi\" readFile"
 
