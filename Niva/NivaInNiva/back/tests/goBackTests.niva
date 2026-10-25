@@ -1,5 +1,32 @@
+String assertGoContents(expected): List(String) excludes(excluded): List(String) -> Unit = [
+  expected forEach: [snippet -> Assert that: (this contains: snippet) equals: true]
+  excluded forEach: [snippet -> Assert that: (this contains: snippet) equals: false]
+]
+
+constructor Assert nivaToGo: String containsAll: List(String) -> Unit = [
+  Assert nivaToGo: nivaToGo containsAll: containsAll containsNone: {}
+]
+
+constructor Assert nivaToGo: String containsAll: List(String) containsNone: List(String) -> Unit = [
+  result = ResolverHelper resolve: #{"main" nivaToGo} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go assertGoContents: containsAll excludes: containsNone
+]
+
+constructor Assert nivaFiles: Map(String, String) containsAll: List(String) -> Unit = [
+  Assert nivaFiles: nivaFiles containsAll: containsAll containsNone: {}
+]
+
+constructor Assert nivaFiles: Map(String, String) containsAll: List(String) containsNone: List(String) -> Unit = [
+  result = ResolverHelper resolve: nivaFiles entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go assertGoContents: containsAll excludes: containsNone
+]
+
 Test goTaggedUnionShapes = [
-  fileMain = """
+  Assert nivaToGo: """
     type Point
       x: Int
       y: Int
@@ -18,49 +45,30 @@ Test goTaggedUnionShapes = [
     | Rectangle => area width * area height
     | Circle => area radius * area radius * 3
 
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_Point struct {", assertTrue
-  go contains: "type main_Shape interface {\n    ismain_Shape()\n}", assertTrue
-  go contains: "type main_Rectangle struct {", assertTrue
-  go contains: "type main_Circle struct {", assertTrue
-  go contains: "func (main_Rectangle) ismain_Shape() {}", assertTrue
-  go contains: "func (main_Circle) ismain_Shape() {}", assertTrue
-  go contains: "func (this main_Rectangle) nivaField__width() int { return this.width }", assertTrue
-  go contains: "func (this main_Rectangle) nivaField__height() int { return this.height }", assertTrue
-  go contains: "func main__Shape__area", assertTrue
-  go contains: "switch __matchSubject.(type) {", assertTrue
-  go contains: "case main_Rectangle:", assertTrue
-  go contains: "this := __matchSubject.(main_Rectangle)", assertTrue
-  go contains: "return ((this).nivaField__width() * (this).nivaField__height())", assertTrue
-  go contains: "case main_Circle:", assertTrue
-  go contains: "this := __matchSubject.(main_Circle)", assertTrue
-  go contains: "return (((this).nivaField__radius() * (this).nivaField__radius()) * 3)", assertTrue
-  go contains: "default:", assertTrue
-  go contains: "panic(\"invalid type assertion\")", assertTrue
+  """ containsAll: {
+    "type main_Point struct {" "type main_Shape interface {\n    ismain_Shape()\n}" "type main_Rectangle struct {" "type main_Circle struct {"
+    "func (main_Rectangle) ismain_Shape() {}" "func (main_Circle) ismain_Shape() {}"
+    "func (this main_Rectangle) nivaField__width() int { return this.width }"
+    "func (this main_Rectangle) nivaField__height() int { return this.height }" "func main__Shape__area" "switch __matchSubject.(type) {"
+    "case main_Rectangle:" "this := __matchSubject.(main_Rectangle)" "return ((this).nivaField__width() * (this).nivaField__height())"
+    "case main_Circle:" "this := __matchSubject.(main_Circle)" "return (((this).nivaField__radius() * (this).nivaField__radius()) * 3)"
+    "default:" "panic(\"invalid type assertion\")"
+  }
 ]
 
 Test goShadowCopyCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
       age: Int
 
     p = Person name: "Alice" age: 24
     p2 = p age: 25
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "main_Person{(p).name, 25}", assertTrue
+  """ containsAll: {"main_Person{(p).name, 25}"}
 ]
 
 Test goNestedUnionIncludesParentInterfaces = [
-  fileMain = """
+  Assert nivaToGo: """
     union LiteralExpr =
     | Integer value: Int
 
@@ -69,16 +77,11 @@ Test goNestedUnionIncludesParentInterfaces = [
 
     union Statement =
     | ^Expr
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_LiteralExpr interface {\n    ismain_LiteralExpr()\n    ismain_Expr()\n    ismain_Statement()\n}", assertTrue
+  """ containsAll: {"type main_LiteralExpr interface {\n    ismain_LiteralExpr()\n    ismain_Expr()\n    ismain_Statement()\n}"}
 ]
 
 Test goMutReceiverUsesPointer = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
 
@@ -93,164 +96,105 @@ Test goMutReceiverUsesPointer = [
     p::mut Person = Person name: "qwf"
     p changeName: "Aboba"
     1 person: p
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "func main__Person__changeName(this *main_Person, changeName string)", assertTrue
-  go contains: "func main__core_Int__person(this int, person *main_Person)", assertTrue
-  go contains: "var p *main_Person = &main_Person{\"qwf\"}", assertTrue
-  go contains: "main__Person__changeName(p, \"Aboba\")", assertTrue
-  go contains: "main__core_Int__person(1, p)", assertTrue
+  """ containsAll: {
+    "func main__Person__changeName(this *main_Person, changeName string)" "func main__core_Int__person(this int, person *main_Person)"
+    "var p *main_Person = &main_Person{\"qwf\"}" "main__Person__changeName(p, \"Aboba\")" "main__core_Int__person(1, p)"
+  }
 ]
 
 Test goCustomConstructorCallUsesDeclaredFunction = [
-  fileMain = """
+  Assert nivaToGo: """
     type Named
       value: String
 
     constructor Named from: String -> Named = Named value: from
 
     named = Named from: "Ada"
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "func main__Named__from", assertTrue
-  go contains: "main__Named__from(\"Ada\")", assertTrue
+  """ containsAll: {"func main__Named__from" "main__Named__from(\"Ada\")"}
 ]
 
 Test goBindingsReadFile = [
-  bindFile = """
-    Int read: String -> String = Bind imports: #("os") emit: "os.ReadFile($1)"
-  """
-  fileMain = """
+  Assert nivaFiles: #{
+    "main" """
     x = 1 read: "file.txt"
     x echo
   """
-
-  result = ResolverHelper resolve: #{"main" fileMain "os.bind" bindFile} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-  go contains: "import (", assertTrue
-  go contains: "\"niva_go/core\"", assertTrue
-  go contains: "\"os\"", assertTrue
-  go contains: "os.ReadFile(\"file.txt\")", assertTrue
+    "os.bind" """
+    Int read: String -> String = Bind imports: #("os") emit: "os.ReadFile($1)"
+  """
+  } containsAll: {"import (" "\"niva_go/core\"" "\"os\"" "os.ReadFile(\"file.txt\")"}
 ]
 
 Test goCoreAnyMethodOwnerCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     1 echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "core.Any__echo[int](1)", assertTrue
-  Assert that: (go contains: "core.Int__echo(1)") equals: false
+  """ containsAll: {"core.Any__echo[int](1)"} containsNone: {"core.Int__echo(1)"}
 ]
 
 Test goCompilerProtocolCallsAreStatic = [
-  fileMain = """
+  Assert nivaToGo: """
     Compiler getName: 1
     Compiler getPlace
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "core.Compiler__getName(1)", assertTrue
-  go contains: "core.Compiler__getPlace()", assertTrue
-  Assert that: (go contains: "struct{}") equals: false
+  """ containsAll: {"core.Compiler__getName(1)" "core.Compiler__getPlace()"}
+      containsNone: {"struct{}"}
 ]
 
 Test goEntryLastExprDoesNotReturn = [
-  fileMain = """
+  Assert nivaToGo: """
     1 + 2
     3 + 4
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "_ = (1 + 2)", assertTrue
-  go contains: "_ = (3 + 4)", assertTrue
-  Assert that: (go contains: "return (3 + 4)") equals: false
-  Assert that: (go contains: "\"niva_go/core\"") equals: false
+  """ containsAll: {"_ = (1 + 2)" "_ = (3 + 4)"} containsNone: {"return (3 + 4)" "\"niva_go/core\""}
 ]
 
 Test goGenericTypeParams = [
-  fileMain = """
+  Assert nivaToGo: """
     type Box
       value: T
 
     box = Box value: 1
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_Box[T any] struct {", assertTrue
-  go contains: "value T", assertTrue
-  go contains: "var box main_Box[int] = main_Box[int]{1}", assertTrue
+  """ containsAll: {"type main_Box[T any] struct {" "value T" "var box main_Box[int] = main_Box[int]{1}"}
 ]
 
 Test goExplicitGenericTypeParams = [
-  fileMain = """
+  Assert nivaToGo: """
     type Box(T, G) x: T y: G
 
     box = Box x: 1 y: "two"
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_Box[T any, G any] struct {", assertTrue
-  go contains: "x T", assertTrue
-  go contains: "y G", assertTrue
-  go contains: "var box main_Box[int, string] = main_Box[int, string]{1, \"two\"}", assertTrue
+  """ containsAll: {"type main_Box[T any, G any] struct {"
+                    "x T" "y G"
+                    "var box main_Box[int, string] = main_Box[int, string]{1, \"two\"}"}
 ]
 
 Test goGenericUnionBranchTypeParams = [
-  fileMain = """
+  Assert nivaToGo: """
     union Result =
     | Ok t: T
     | Baad x: T
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_Result interface {\n    ismain_Result()\n}", assertTrue
-  go contains: "type main_Ok[T any] struct {", assertTrue
-  go contains: "t T", assertTrue
-  go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
-  go contains: "type main_Baad[T any] struct {", assertTrue
-  go contains: "x T", assertTrue
-  go contains: "func (main_Baad[T]) ismain_Result() {}", assertTrue
+  """ containsAll: {
+    "type main_Result interface {\n    ismain_Result()\n}"
+    "type main_Ok[T any] struct {" "t T"
+    "func (main_Ok[T]) ismain_Result() {}"
+    "type main_Baad[T any] struct {"
+    "x T"
+    "func (main_Baad[T]) ismain_Result() {}"
+  }
 ]
 
 Test goExplicitGenericUnionBranchTypeParams = [
-  fileMain = """
+  Assert nivaToGo: """
     union Result(T) =
     | Ok t: T
     | Baad x: T
 
     x = Ok t: 42
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_Result[T any] interface {\n    ismain_Result()\n}", assertTrue
-  go contains: "type main_Ok[T any] struct {", assertTrue
-  go contains: "func (main_Ok[T]) ismain_Result() {}", assertTrue
-  go contains: "var x main_Ok[int] = main_Ok[int]{42}", assertTrue
+  """ containsAll: {
+    "type main_Result[T any] interface {\n    ismain_Result()\n}" "type main_Ok[T any] struct {" "func (main_Ok[T]) ismain_Result() {}"
+    "var x main_Ok[int] = main_Ok[int]{42}"
+  }
 ]
 
 Test goTypeMatchConcreteSubjectUsesInterfaceTmp = [
-  fileMain = """
+  Assert nivaToGo: """
     union Result(T) =
     | Ok t: T
     | Baad x: T
@@ -260,20 +204,15 @@ Test goTypeMatchConcreteSubjectUsesInterfaceTmp = [
     | x
     | Ok => [x t echo]
     | Baad => [x x echo]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var __matchSubject interface{} = x", assertTrue
-  go contains: "case main_Ok[int]:", assertTrue
-  go contains: "x := __matchSubject.(main_Ok[int])", assertTrue
-  go contains: "case main_Baad[int]:", assertTrue
-  go contains: "x := __matchSubject.(main_Baad[int])", assertTrue
+  """ containsAll: {
+    "var __matchSubject interface{} = x" "case main_Ok[int]:"
+    "x := __matchSubject.(main_Ok[int])" "case main_Baad[int]:"
+    "x := __matchSubject.(main_Baad[int])"
+  }
 ]
 
 Test goUnitMatchBranchResultIsEmitted = [
-  fileMain = """
+  Assert nivaToGo: """
     union Result(T) =
     | Ok t: T
     | Baad x: T
@@ -283,70 +222,43 @@ Test goUnitMatchBranchResultIsEmitted = [
     | x
     | Ok => [1 echo]
     | Baad => [2 echo]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "case main_Ok[int]:", assertTrue
-  go contains: "core.Any__echo[int](1)", assertTrue
-  go contains: "case main_Baad[int]:", assertTrue
-  go contains: "core.Any__echo[int](2)", assertTrue
+  """ containsAll: {"case main_Ok[int]:" "core.Any__echo[int](1)" "case main_Baad[int]:" "core.Any__echo[int](2)"}
 ]
 
 Test goEnumCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     enum Color = Red | Green | Blue
     x = Color.Red
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_Color int", assertTrue
-  go contains: "main_Color_Red main_Color = iota", assertTrue
-  go contains: "main_Color_Green", assertTrue
-  go contains: "main_Color_Blue", assertTrue
-  go contains: "var x main_Color = main_Color_Red", assertTrue
+  """ containsAll: {"type main_Color int" "main_Color_Red main_Color = iota"
+                    "main_Color_Green" "main_Color_Blue"
+                    "var x main_Color = main_Color_Red"}
 ]
 
 Test goEnumMatchUsesValueConditions = [
-  fileMain = """
+  Assert nivaToGo: """
     enum Color = Red | Green
     x = Color.Red
 
     | x
     | Color.Red => [1]
     | Color.Green => [2]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if (__matchSubject == main_Color_Red) {", assertTrue
-  go contains: "} else if (__matchSubject == main_Color_Green) {", assertTrue
-  Assert that: (go contains: "switch __matchSubject.(type) {") equals: false
+  """ containsAll: {"if (__matchSubject == main_Color_Red) {" "} else if (__matchSubject == main_Color_Green) {"}
+      containsNone: {"switch __matchSubject.(type) {"}
 ]
 
 Test goNullableTypeCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
 
     type Holder
       maybeAge: Int?
       maybePerson: Person?
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "maybeAge *int", assertTrue
-  go contains: "maybePerson *main_Person", assertTrue
+  """ containsAll: {"maybeAge *int" "maybePerson *main_Person"}
 ]
 
 Test goNullableValueInitializerCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
 
@@ -359,18 +271,14 @@ Test goNullableValueInitializerCodegen = [
     result = | nullableValue
       | null => 0
       |=> nullableValue inc
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var nullableValue *int = core.NewNullable(int(42))", assertTrue
-  go contains: "var nullableNull *int = nil", assertTrue
-  go contains: "var nullableText *string = core.NewNullable(string(\"text\"))", assertTrue
-  go contains: "var nullableComputed *int = core.NewNullable(int((1 + 2)))", assertTrue
-  go contains: "var nullablePerson *main_Person = core.NewNullable(main_Person(main_Person{\"Ada\"}))", assertTrue
-  go contains: "var nullableAgain *int = nullableValue", assertTrue
-  go contains: "core.Int__inc(*nullableValue)", assertTrue
+  """ containsAll: {
+    "var nullableValue *int = core.NewNullable(int(42))" "var nullableNull *int = nil"
+    "var nullableText *string = core.NewNullable(string(\"text\"))"
+    "var nullableComputed *int = core.NewNullable(int((1 + 2)))"
+    "var nullablePerson *main_Person = core.NewNullable(main_Person(main_Person{\"Ada\"}))"
+    "var nullableAgain *int = nullableValue"
+    "core.Int__inc(*nullableValue)"
+  }
 ]
 
 Test goNullableInt64UsesNonNullableTarget = [
@@ -385,22 +293,15 @@ Test goNullableInt64UsesNonNullableTarget = [
 ]
 
 Test goWhileTrueCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     mut c = 3
     [c > 0] whileTrue: [c <- c - 1]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "for {", assertTrue
-  go contains: "if !((c > 0)) { break }", assertTrue
-  go contains: "c = (c - 1)", assertTrue
-  Assert that: (go contains: ")()") equals: false
+  """ containsAll: {"for {" "if !((c > 0)) { break }" "c = (c - 1)"}
+      containsNone: {")()"}
 ]
 
 Test goWhileAndIfTrueReturnFromEnclosingMethod = [
-  fileMain = """
+  Assert nivaToGo: """
     Int findAtTwo -> Int = [
       mut i = 0
       [i < 3] whileTrue: [
@@ -411,70 +312,44 @@ Test goWhileAndIfTrueReturnFromEnclosingMethod = [
     ]
 
     0 findAtTwo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if (i == 2) {", assertTrue
-  go contains: "return i", assertTrue
-  go contains: "return 0", assertTrue
-  Assert that: (go contains: "func() int") equals: false
+  """ containsAll: {"if (i == 2) {" "return i" "return 0"} containsNone: {"func() int"}
 ]
 
 Test goDestructureCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
       age: Int
 
     alice = Person name: "Alice" age: 24
     {age name} = alice
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var age int = __destructTmp.age", assertTrue
-  go contains: "var name string = __destructTmp.name", assertTrue
+  """ containsAll: {"var age int = __destructTmp.age" "var name string = __destructTmp.name"}
 ]
 
 Test goDestructureAliasCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
       age: Int
 
     alice = Person name: "Alice" age: 24
     {n = name a = age} = alice
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var n string = __destructTmp.name", assertTrue
-  go contains: "var a int = __destructTmp.age", assertTrue
+  """ containsAll: {"var n string = __destructTmp.name" "var a int = __destructTmp.age"}
 ]
 
 Test goDestructureAliasUnusedCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     type Person
       name: String
       age: Int
 
     alice = Person name: "Alice" age: 24
     {n = name a = age} = alice
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "_ = n", assertTrue
-  go contains: "_ = a", assertTrue
+  """ containsAll: {"_ = n" "_ = a"}
 ]
 
 Test goNestedMatchCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     x = 1
     y = 2
     res = | x
@@ -482,21 +357,11 @@ Test goNestedMatchCodegen = [
                  | 2 => 10
                  |=> 20
     |=> 30
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // each branch assigns res, no anonymous function returns it
-  go contains: "var res int\n", assertTrue
-  go contains: "res = 10", assertTrue
-  go contains: "res = 20", assertTrue
-  go contains: "res = 30", assertTrue
-  Assert that: (go contains: "func() int") equals: false
+  """ containsAll: {"var res int\n" "res = 10" "res = 20" "res = 30"} containsNone: {"func() int"}
 ]
 
 Test goMatchVariableSubjectNarrowsAlias = [
-  fileMain = """
+  Assert nivaToGo: """
     union Shape =
     | Rectangle width: Int height: Int
     | Circle radius: Int
@@ -506,65 +371,39 @@ Test goMatchVariableSubjectNarrowsAlias = [
     area = | shape
     | Rectangle => shape width * shape height
     | Circle => shape radius
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "case main_Rectangle:", assertTrue
-  go contains: "shape := __matchSubject.(main_Rectangle)", assertTrue
-  go contains: "area = ((shape).width * (shape).height)", assertTrue
-  go contains: "case main_Circle:", assertTrue
-  go contains: "shape := __matchSubject.(main_Circle)", assertTrue
-  go contains: "area = (shape).radius", assertTrue
+  """ containsAll: {
+    "case main_Rectangle:" "shape := __matchSubject.(main_Rectangle)"
+    "area = ((shape).width * (shape).height)" "case main_Circle:"
+    "shape := __matchSubject.(main_Circle)" "area = (shape).radius"
+  }
 ]
 
 Test goInlineForEachCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     {1 2 3} forEach: [item::Int -> item echo]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "for {", assertTrue
-  go contains: "var item int =", assertTrue
-  Assert that: (go contains: "func(item int)") equals: false
+  """ containsAll: {"for {" "var item int ="} containsNone: {"func(item int)"}
 ]
 
 Test goSingleBranchBooleanHasNoOpFallback = [
-  fileMain = """
+  Assert nivaToGo: """
     false ifTrue: [1 echo]
     true ifFalse: [2 echo]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "} else {", assertTrue
+  """ containsAll: {"} else {"}
 ]
 
 Test goInlineForEachNonLocalReturnCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     Unit find -> Int = [
       {1 2 3} forEach: [item::Int ->
         item == 2 ifTrue: [^ item]
       ]
       ^ 0
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "for {", assertTrue
-  go contains: "return item", assertTrue
-  Assert that: (go contains: "func(item int)") equals: false
+  """ containsAll: {"for {" "return item"} containsNone: {"func(item int)"}
 ]
 
 Test goStatementMatchNonLocalReturnCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     Unit find -> Int = [
       n = 1
       n == 0 ifTrue: [
@@ -574,42 +413,25 @@ Test goStatementMatchNonLocalReturnCodegen = [
       ]
       ^ 30
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "__matchSubject := n", assertTrue
-  go contains: "if (__matchSubject == 1) {", assertTrue
-  go contains: "return 10", assertTrue
-  go contains: "return 20", assertTrue
-  Assert that: (go contains: "_ = 10") equals: false
+  """ containsAll: {"__matchSubject := n" "if (__matchSubject == 1) {" "return 10" "return 20"}
+      containsNone: {"_ = 10"}
 ]
 
 Test goStatementMatchOnTrueWithConditions = [
-  fileMain = """
+  Assert nivaToGo: """
     String f -> String = [
       | true
       | this == "a" => "is a" echo
       |=> "not a" echo
       "end"
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // an if else chain like a match on a value, where it was left out
-  go contains: "__matchSubject := true", assertTrue
-  go contains: "if (__matchSubject == (this == \"a\")) {", assertTrue
-  go contains: "core.Any__echo[string](\"is a\")", assertTrue
-  go contains: "core.Any__echo[string](\"not a\")", assertTrue
+  """ containsAll: {
+    "__matchSubject := true" "if (__matchSubject == (this == \"a\")) {" "core.Any__echo[string](\"is a\")" "core.Any__echo[string](\"not a\")"
+  }
 ]
 
 Test goStatementMatchOnMutCellSubject = [
-  fileMain = """
+  Assert nivaToGo: """
     type Parser
       input: String
       pos: Int
@@ -623,19 +445,11 @@ Test goStatementMatchOnMutCellSubject = [
       |=> "other" echo
       ()
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // c is a mut cell, *rune, so the match is on what it points to
-  go contains: "var c *rune = ", assertTrue
-  go contains: "__matchSubject := *c", assertTrue
+  """ containsAll: {"var c *rune = " "__matchSubject := *c"}
 ]
 
 Test goValueMatchNonLocalReturnCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     Int inValue -> String = [
       s = this > 0 ifTrue: [^ "returned"] ifFalse: ["kept"]
       s + "!"
@@ -647,23 +461,11 @@ Test goValueMatchNonLocalReturnCodegen = [
            |=> "other"
       s + "!"
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // statements, not an anonymous function the ^ would only leave
-  go contains: "var s string\n", assertTrue
-  go contains: "return \"returned\"", assertTrue
-  go contains: "s = \"kept\"", assertTrue
-  go contains: "return \"zero\"", assertTrue
-  go contains: "s = \"other\"", assertTrue
-  Assert that: (go contains: "func() string {") equals: false
+  """ containsAll: {"var s string\n" "return \"returned\"" "s = \"kept\"" "return \"zero\"" "s = \"other\""} containsNone: {"func() string {"}
 ]
 
 Test goValueMatchReturnOnErrorCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain E =
     | Bad text: String
 
@@ -685,41 +487,22 @@ Test goValueMatchReturnOnErrorCodegen = [
           | Bad => ^ "bad input"
       "value " + v toString
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var v int\n", assertTrue
-  go contains: "return \"bad input\"", assertTrue
-  go contains: "v = it", assertTrue
-  Assert that: (go contains: "func() int {") equals: false
+  """ containsAll: {"var v int\n" "return \"bad input\"" "v = it"} containsNone: {"func() int {"}
 ]
 
 Test goValueMatchReturnInBracketsCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     Int asValue -> String = [
       x = | this
           | 0 => (^ "zero")
           |=> 1
       "value " + x toString
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // (^ "zero") is the same statement as ^ "zero", not a block that returns its value
-  go contains: "var x int\n", assertTrue
-  go contains: "return \"zero\"", assertTrue
-  go contains: "x = 1", assertTrue
-  Assert that: (go contains: "func() string {") equals: false
+  """ containsAll: {"var x int\n" "return \"zero\"" "x = 1"} containsNone: {"func() string {"}
 ]
 
 Test goTailMatchNonLocalReturnCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     union Expr = | Num v: Int | Sym name: String
 
     Expr simplify -> Expr = [
@@ -727,19 +510,11 @@ Test goTailMatchNonLocalReturnCodegen = [
       | Num => ^ this
       |=> Sym name: "x"
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "return this", assertTrue
-  go contains: "return main_Sym{\"x\"}", assertTrue
-  Assert that: (go contains: "func() main_") equals: false
+  """ containsAll: {"return this" "return main_Sym{\"x\"}"} containsNone: {"func() main_"}
 ]
 
 Test goMatchInsideValueIsLiftedCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     Int asArgument -> String = [
       ((this > 0 ifTrue: [^ "returned"] ifFalse: ["kept"]) + "!") echo
       "end"
@@ -748,149 +523,74 @@ Test goMatchInsideValueIsLiftedCodegen = [
       y = (this > 0 ifTrue: [^ 1] ifFalse: [2]) + 10
       y
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // a temp assigned in each branch takes the match's place
-  go contains: "var __matchValue string\n", assertTrue
-  go contains: "return \"returned\"", assertTrue
-  go contains: "__matchValue = \"kept\"", assertTrue
-  go contains: "core.Any__echo[string]((__matchValue + \"!\"))", assertTrue
-  go contains: "var __matchValue int\n", assertTrue
-  go contains: "__matchValue = 2", assertTrue
-  go contains: "var y int = (__matchValue + 10)", assertTrue
-  Assert that: (go contains: "func() string {") equals: false
-  Assert that: (go contains: "func() int {") equals: false
+  """ containsAll: {
+    "var __matchValue string\n" "return \"returned\""
+    "__matchValue = \"kept\"" "core.Any__echo[string]((__matchValue + \"!\"))"
+    "var __matchValue int\n" "__matchValue = 2" "var y int = (__matchValue + 10)"}
+    containsNone: {"func() string {" "func() int {"}
 ]
 
 Test goLiftedMatchKeepsEvaluationOrder = [
-  fileMain = """
+  Assert nivaToGo: """
     Int g -> Int = this + 1
     Int inOrder -> Int = [
       ^ this g + (this > 0 ifTrue: [^ 1] ifFalse: [2])
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // the call before the match runs before it
-  go contains: "var __operand int = main__core_Int__g(this)", assertTrue
-  (go substringBefore: "var __matchValue int") contains: "var __operand int", assertTrue
-  go contains: "return (__operand + __matchValue)", assertTrue
+  """ containsAll: {"var __operand int = main__core_Int__g(this)" "return (__operand + __matchValue)"}
 ]
 
 Test goLiftedMatchRightOfAndRunsOnlyWhenNeeded = [
-  fileMain = """
+  Assert nivaToGo: """
     Int shortCircuit -> Bool = [
       ^ (this > 0) && (this > 10 ifTrue: [^ false] ifFalse: [true])
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // && is a match on its left side, with the match on the right in its true branch
-  go contains: "if (this > 0) {", assertTrue
-  (go substringBefore: "if (this > 10) {") contains: "if (this > 0) {", assertTrue
-  go contains: "return false", assertTrue
-  go contains: "__matchValue = true", assertTrue
-  go contains: "__matchValue = false", assertTrue
-  go contains: "return __matchValue", assertTrue
-  Assert that: (go contains: "&&") equals: false
+  """ containsAll: {"if (this > 0) {" "return false" "__matchValue = true" "__matchValue = false" "return __matchValue"} containsNone: {"&&"}
 ]
 
 Test goLiftedMatchInLoopConditionRunsEachTime = [
-  fileMain = """
+  Assert nivaToGo: """
     Int loop -> Int = [
       mut i = 0
       [i < (this > 0 ifTrue: [3] ifFalse: [0])] whileTrue: [i <- i + 1]
       i
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // inside the loop, and i is mut, so its value is kept before the match runs
-  (go substringBefore: "var __matchValue int") contains: "for {", assertTrue
-  go contains: "var __operand int = i", assertTrue
-  go contains: "if !((__operand < __matchValue)) { break }", assertTrue
+  """ containsAll: {"var __operand int = i" "if !((__operand < __matchValue)) { break }"}
 ]
 
 Test goMatchOnTrueWithConditionsCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     String kind -> Int =
       | true
       | this == "a" => 1
       |=> 2
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // an if else chain like a match on a value
-  go contains: "__matchSubject := true", assertTrue
-  go contains: "if (__matchSubject == (this == \"a\")) {", assertTrue
-  go contains: "return 1", assertTrue
-  go contains: "return 2", assertTrue
+  """ containsAll: {"__matchSubject := true" "if (__matchSubject == (this == \"a\")) {" "return 1" "return 2"}
 ]
 
 Test goUnitMatchValueRunsBranchesAsStatements = [
-  fileMain = """
+  Assert nivaToGo: """
     Int noValue -> String = [
       s = this > 0 ifTrue: ["x" echo]
       "end"
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var s struct{}\n", assertTrue
-  go contains: "        core.Any__echo[string](\"x\")\n", assertTrue
-  Assert that: (go contains: "s = core.Any__echo") equals: false
+  """ containsAll: {"var s struct{}\n" "        core.Any__echo[string](\"x\")\n"} containsNone: {"s = core.Any__echo"}
 ]
 
 Test goImplicitLambdaArgCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     {1 2 3} map: [it + 1]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-  go contains: "core.List__map[int, int]([]int{1, 2, 3}, func(it int) int {", assertTrue
-  go contains: "return (it + 1)", assertTrue
-  Assert that: (go contains: "func() int") equals: false
+  """ containsAll: {"core.List__map[int, int]([]int{1, 2, 3}, func(it int) int {" "return (it + 1)"} containsNone: {"func() int"}
 ]
 
 Test goInlineForEachCapturesMutableLocal = [
-  fileMain = """
+  Assert nivaToGo: """
     mut total = 0
     {1 2 3} forEach: [item::Int -> total <- total + item]
     total echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "for {", assertTrue
-  go contains: "var item int =", assertTrue
-  Assert that: (go contains: "func(item int) {") equals: false
-  go contains: "total = (total + item)", assertTrue
+  """ containsAll: {"for {" "var item int =" "total = (total + item)"} containsNone: {"func(item int) {"}
 ]
 
 Test goErrorDomainThrowCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain MyError =
     | Error1 text: String
     | Error2 code: Int
@@ -899,20 +599,14 @@ Test goErrorDomainThrowCodegen = [
       (Error2 code: 404) throw
       ^ 42
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "type main_MyError interface {\n    error\n    ismain_MyError()\n}", assertTrue
-  go contains: "func (main_Error1) Error() string { return \"Error1\" }", assertTrue
-  go contains: "func main__core_Unit__foo(this struct{}) (int, error) {", assertTrue
-  go contains: "return 0, main_Error2{404}", assertTrue
-  go contains: "return 42, nil", assertTrue
+  """ containsAll: {
+    "type main_MyError interface {\n    error\n    ismain_MyError()\n}" "func (main_Error1) Error() string { return \"Error1\" }"
+    "func main__core_Unit__foo(this struct{}) (int, error) {" "return 0, main_Error2{404}" "return 42, nil"
+  }
 ]
 
 Test goErrorDomainHandledMatchCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain MyError =
     | Error1 text: String
     | Error2 code: Int
@@ -929,22 +623,14 @@ Test goErrorDomainHandledMatchCodegen = [
                 |=> [it]
       ^ default
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "func main__core_Unit__bar(this struct{}) int {", assertTrue
-  go contains: "__matchValue, __matchErr := main__core_Unit__foo(core.UnitInstance)", assertTrue
-  go contains: "switch __matchErr.(type) {", assertTrue
-  go contains: "case main_Error1:", assertTrue
-  go contains: "it := __matchErr.(main_Error1)", assertTrue
-  go contains: "it := __matchValue", assertTrue
-  Assert that: (go contains: "func main__core_Unit__bar(this struct{}) (int, error)") equals: false
+  """ containsAll: {
+    "func main__core_Unit__bar(this struct{}) int {" "__matchValue, __matchErr := main__core_Unit__foo(core.UnitInstance)"
+    "switch __matchErr.(type) {" "case main_Error1:" "it := __matchErr.(main_Error1)" "it := __matchValue"
+  } containsNone: {"func main__core_Unit__bar(this struct{}) (int, error)"}
 ]
 
 Test goErrorDomainMatchByCoreErrorCodegen = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain MyError =
     | Error1 text: String
     | Error2 code: Int
@@ -960,17 +646,11 @@ Test goErrorDomainMatchByCoreErrorCodegen = [
                 |=> [it]
       ^ default
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "case error:", assertTrue
-  go contains: "it := __matchErr.(error)", assertTrue
+  """ containsAll: {"case error:" "it := __matchErr.(error)"}
 ]
 
 Test goErrorMatchStatementAliasAndElse = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain E =
     | Bad text: String
 
@@ -989,22 +669,14 @@ Test goErrorMatchStatementAliasAndElse = [
       |=> "ok" echo
       "done"
     ]
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // an alias a branch doesn't use would stop the go build
-  go contains: "it := __matchErr.(main_Bad)\n            _ = it", assertTrue
-  go contains: "it := __matchValue_1\n        _ = it", assertTrue
-  // the else branch runs only without an error, and its alias is in a block
-  go contains: "} else {\n        it := __matchValue\n", assertTrue
-  go contains: "__matchValue_1, __matchErr_1 := main__core_Int__parse((this + 1))", assertTrue
+  """ containsAll: {
+    "it := __matchErr.(main_Bad)\n            _ = it" "it := __matchValue_1\n        _ = it" "} else {\n        it := __matchValue\n"
+    "__matchValue_1, __matchErr_1 := main__core_Int__parse((this + 1))"
+  }
 ]
 
 Test goTryRethrowsError = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain MyError =
     | Error1 text: String
 
@@ -1014,30 +686,18 @@ Test goTryRethrowsError = [
     ]
 
     value = () foo try
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if __tryErr != nil { return 0, __tryErr }", assertTrue
-  go contains: "return __tryValue, nil", assertTrue
+  """ containsAll: {"if __tryErr != nil { return 0, __tryErr }" "return __tryValue, nil"}
 ]
 
 Test goTryPanicsOnNull = [
-  fileMain = """
+  Assert nivaToGo: """
     value::Int? = null
     unwrapped = value try
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
-  go contains: "return *__tryValue", assertTrue
+  """ containsAll: {"if __tryValue == nil { panic(\"try on null\") }" "return *__tryValue"}
 ]
 
 Test goOrPanicReturnsValueAndPanicsOnErrorOrNull = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain MyError =
     | Error1 text: String
 
@@ -1049,51 +709,31 @@ Test goOrPanicReturnsValueAndPanicsOnErrorOrNull = [
     errorValue = () foo orPANIC
     maybe::Int? = 42
     nullableValue = maybe orPANIC
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if __tryErr != nil { panic(__tryErr) }", assertTrue
-  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
-  go contains: "return __tryValue", assertTrue
-  go contains: "return *__tryValue", assertTrue
-  Assert that: (go contains: "func() (int, error) {") equals: false
+  """ containsAll: {
+    "if __tryErr != nil { panic(__tryErr) }" "if __tryValue == nil { panic(\"try on null\") }" "return __tryValue" "return *__tryValue"
+  } containsNone: {"func() (int, error) {"}
 ]
 
 Test goTryNullableReferenceValues = [
-  fileMain = """
+  Assert nivaToGo: """
     anyValue::Any? = null
     listValue::List?(Int) = null
     mapValue::Map?(String, Int) = null
     anyResult = anyValue try
     listResult = listValue try
     mapResult = mapValue try
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
-  Assert that: (go contains: "return *__tryValue") equals: false
+  """ containsAll: {"if __tryValue == nil { panic(\"try on null\") }"} containsNone: {"return *__tryValue"}
 ]
 
 Test goTryUnitNullableChecksNull = [
-  fileMain = """
+  Assert nivaToGo: """
     value::Unit? = null
     result = value try
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
-  Assert that: (go contains: "return core.UnitInstance") equals: false
+  """ containsAll: {"if __tryValue == nil { panic(\"try on null\") }"} containsNone: {"return core.UnitInstance"}
 ]
 
 Test goTryErrorableNullableValue = [
-  fileMain = """
+  Assert nivaToGo: """
     errordomain MyError =
     | Error1 text: String
 
@@ -1103,131 +743,97 @@ Test goTryErrorableNullableValue = [
     ]
 
     value = () foo try
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main" backend: "go"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "if __tryErr != nil { return __tryErr }", assertTrue
-  go contains: "if __tryValue == nil { panic(\"try on null\") }", assertTrue
+  """ containsAll: {"if __tryErr != nil { return __tryErr }" "if __tryValue == nil { panic(\"try on null\") }"}
 ]
 
 Test goBindPlaceholder10 = [
-  bindFile = """
+  Assert nivaFiles: #{
+    "main" """
+    x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
+  """
+    "main.bind" """
     Int sumMany: a::Int b::Int c::Int d::Int e::Int f::Int g::Int h::Int i::Int j::Int k::Int -> Int =
       Bind imports: #() emit: "$10 + $1"
   """
-  fileMain = """
-    x = 0 sumMany: 1 b: 2 c: 3 d: 4 e: 5 f: 6 g: 7 h: 8 i: 9 j: 10 k: 11
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "10 + 1", assertTrue
+  } containsAll: {"10 + 1"}
 ]
 
 // New bind design (docs/bind_redesign_plan.md)
 
 // Point 2: single `Bind emit:` body is inlined at the call site (no wrapper func).
 Test goBindInlineEmitUnary = [
-  bindFile = """
-    Int double -> Int = Bind imports: #() emit: "($0 * 2)"
-  """
-  fileMain = """
+  Assert nivaFiles: #{
+    "main" """
     x = 21 double
   """
-  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "(21 * 2)", assertTrue
-  // no wrapper function is generated for an inline emit
-  Assert that: (go contains: "func main__core_Int__double") equals: false
+    "main.bind" """
+    Int double -> Int = Bind imports: #() emit: "($0 * 2)"
+  """
+  } containsAll: {"(21 * 2)"} containsNone: {"func main__core_Int__double"}
 ]
 
 // Point 2: keyword form, $0 = this, $1 = first arg, $2 = second arg.
 Test goBindInlineEmitKeyword = [
-  bindFile = """
-    Int sas: Int and: Bool -> Int = Bind imports: #() emit: "kekeke($1, $0, $2)"
-  """
-  fileMain = """
+  Assert nivaFiles: #{
+    "main" """
     y = 1 sas: 2 and: true
   """
-  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "kekeke(2, 1, true)", assertTrue
-  Assert that: (go contains: "func main__core_Int__sas__and") equals: false
+    "main.bind" """
+    Int sas: Int and: Bool -> Int = Bind imports: #() emit: "kekeke($1, $0, $2)"
+  """
+  } containsAll: {"kekeke(2, 1, true)"} containsNone: {"func main__core_Int__sas__and"}
 ]
 
 // by-name instance binding passes the receiver as the first Go argument
 Test goBindByNameInstance = [
-  bindFile = """
-    String toUpper -> String = Bind pkg: "strings" name: "ToUpper"
-  """
-  fileMain = """
+  Assert nivaFiles: #{
+    "main" """
     a = "hi" toUpper
   """
-  result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "strings.ToUpper(\"hi\")", assertTrue
-  go contains: "\"strings\"", assertTrue
+    "strings.bind" """
+    String toUpper -> String = Bind pkg: "strings" name: "ToUpper"
+  """
+  } containsAll: {"strings.ToUpper(\"hi\")" "\"strings\""}
 ]
 
 Test goBindEmitImportsAllDeclaredPackages = [
-  bindFile = """
-    String trim -> String = Bind imports: #("fmt" "strings") emit: "fmt.Sprint(strings.TrimSpace($0))"
-  """
-  fileMain = """
+  Assert nivaFiles: #{
+    "main" """
     value = "  niva  " trim
     value echo
   """
-  result = ResolverHelper resolve: #{"main" fileMain "strings.bind" bindFile} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  Assert that: (go contains: "fmt.Sprint(strings.TrimSpace(\"  niva  \"))") equals: true
-  Assert that: (go contains: "\"fmt\"") equals: true
-  Assert that: (go contains: "\"strings\"") equals: true
+    "strings.bind" """
+    String trim -> String = Bind imports: #("fmt" "strings") emit: "fmt.Sprint(strings.TrimSpace($0))"
+  """
+  } containsAll: {"fmt.Sprint(strings.TrimSpace(\"  niva  \"))" "\"fmt\"" "\"strings\""}
 ]
 
 // Point 1: static (constructor) bind by name -> receiver is NOT an argument.
 Test goBindByNameStatic = [
-  bindFile = """
-    static String atoi: String -> Int = Bind pkg: "strconv" name: "Atoi"
-  """
-  fileMain = """
+  Assert nivaFiles: #{
+    "main" """
     b = String atoi: "42"
   """
-  result = ResolverHelper resolve: #{"main" fileMain "strconv.bind" bindFile} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "strconv.Atoi(\"42\")", assertTrue
-  go contains: "\"strconv\"", assertTrue
+    "strconv.bind" """
+    static String atoi: String -> Int = Bind pkg: "strconv" name: "Atoi"
+  """
+  } containsAll: {"strconv.Atoi(\"42\")" "\"strconv\""}
 ]
 
 // Point 3: a multi-expr bind-file body stays a real function; its ordinary
 // `Bind emit:` call is inserted inline in that function.
 Test goBindEmitInBody = [
-  bindFile = """
+  Assert nivaFiles: #{
+    "main" """
+    x = 0 compute
+  """
+    "main.bind" """
     Int compute -> Int = [
       a::Int = Bind imports: #() emit: "1 + 41"
       ^ a
     ]
   """
-  fileMain = """
-    x = 0 compute
-  """
-  result = ResolverHelper resolve: #{"main" fileMain "main.bind" bindFile} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "1 + 41", assertTrue
-  // a multi-expr bind body is a normal Go function
-  go contains: "func main__core_Int__compute", assertTrue
+  } containsAll: {"1 + 41" "func main__core_Int__compute"}
 ]
 
 Test goSharedEmitRequiresImports = [
@@ -1236,7 +842,7 @@ Test goSharedEmitRequiresImports = [
   """
   fileMain = "x = 0 answer"
   result = ResolverHelper resolve: #{"main" fileMain "shared.bind" bindFile}
-    entryPoint: "main" backend: "go"
+    entryPoint: "main"
   errors = GoBackend validateIr: (result toIrModule)
   messages = errors joinWith: "\n" transform: [it message]
 
@@ -1267,66 +873,39 @@ Test goUnsupportedConstructorBindHasDiagnostic = [
 ]
 
 Test goEntryPointRecoversPanics = [
-  result = ResolverHelper resolve: #{"main" "1 echo"} entryPoint: "main" backend: "go"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "defer func() {", assertTrue
-  go contains: "recovered := recover()", assertTrue
-  go contains: "fmt.Fprintln(os.Stderr, recovered)", assertTrue
-  go contains: "os.Exit(1)", assertTrue
+  Assert nivaToGo: "1 echo" containsAll: {"defer func() {" "recovered := recover()" "fmt.Fprintln(os.Stderr, recovered)" "os.Exit(1)"}
 ]
 
 Test goAtomIdentifierAsStringLiteral = [
-  fileMain = """
+  Assert nivaToGo: """
     color = #red
     other = #blue
-  """
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var color string = \"red\"", assertTrue
-  go contains: "var other string = \"blue\"", assertTrue
+  """ containsAll: {"var color string = \"red\"" "var other string = \"blue\""}
 ]
 
 
 /// dollars and quotes are built by concatenation
 /// so that the kotlin bootstrap does not touch them
 Test goInterpolatedStringConcat = [
-  dollar = "$"
-  quote = (34 toChar) toString
-  fileMain = "type Point\n  x: Int\n\nn = 5\np = Point x: 1\nt = " + quote + dollar + "[n + 1] of " + dollar + "[p]" + quote + "\n"
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "var t string = ((core.Any__toString((n + 1)) + \" of \") + core.Any__toString(p))", assertTrue
+  Assert nivaToGo: ("type Point\n  x: Int\n\nn = 5\np = Point x: 1\nt = " + ((34 toChar) toString) + ("$") + "[n + 1] of " + ("$") + "[p]" + ((34 toChar) toString) + "\n") containsAll: {
+    "var t string = ((core.Any__toString((n + 1)) + \" of \") + core.Any__toString(p))"
+  }
 ]
 
 /// escaped dollar becomes a plain dollar in the emitted go string
 Test goEscapedDollarStaysPlainText = [
-  dollar = "$"
-  bs = "\\"
-  quote = (34 toChar) toString
-  fileMain = "t = " + quote + bs + dollar + "name" + quote + "\n"
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: ("var t string = " + quote + dollar + "name" + quote), assertTrue
+  Assert nivaToGo: ("t = " + ((34 toChar) toString) + ("\\") + ("$") + "name" + ((34 toChar) toString) + "\n") containsAll: {
+    ("var t string = " + ((34 toChar) toString) + ("$") + "name" + ((34 toChar) toString))
+  }
 ]
 
 
 Test goRangeUntilExclusive = [
-  fileMain = "r = 1..<3"
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  Assert that: result db listOfErrors count equals: 0
-  go = GoBackend fullFromIrModule: (result toIrModule)
-  go contains: "core.Int__rangeUntil(1, 3)", assertTrue
+  Assert nivaToGo: "r = 1..<3" containsAll: {"core.Int__rangeUntil(1, 3)"}
 ]
 
 Test goUserInlineMethodSplicesCallbackReturn = [
-  fileMain = """
+  Assert nivaToGo: """
     Int apply(body): [Int -> Unit] ^= [
       body item: this
     ]
@@ -1337,72 +916,49 @@ Test goUserInlineMethodSplicesCallbackReturn = [
     ]
 
     1 run echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // the inline method body is expanded at the call site
-  go contains: "__niva_inline_", assertTrue
-  // the callback body is spliced so its `^` becomes a real return
-  go contains: "return 42", assertTrue
+  """ containsAll: {"__niva_inline_" "return 42"}
 ]
 Test goEqTypeWithListUsesGeneratedFunction = [
-  fileMain = """
+  Assert nivaToGo: """
     type Bag n: Int items: List(Int)
     b1 = Bag n: 1 items: {1 2}
     b2 = Bag n: 1 items: {1 2}
     (b1 == b2) echo
     (b1 != b2) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // plain fields first, then the list, which compares sizes first
-  go contains: "func main_Bag__eq(a, b main_Bag) bool {\n    return (a.n == b.n) &&\n        core.List__equals(a.items, b.items, core.Eq[int])\n}", assertTrue
-  go contains: "main_Bag__eq(b1, b2)", assertTrue
-  go contains: "(!main_Bag__eq(b1, b2))", assertTrue
+  """ containsAll: {
+    "func main_Bag__eq(a, b main_Bag) bool {\n    return (a.n == b.n) &&\n        core.List__equals(a.items, b.items, core.Eq[int])\n}"
+    "main_Bag__eq(b1, b2)" "(!main_Bag__eq(b1, b2))"
+  }
 ]
 
 Test goEqUnionComparesBranchFirst = [
-  fileMain = """
+  Assert nivaToGo: """
     union Expr = | Num v: Int | Sum terms: List(Expr)
     a::Expr = Sum terms: {(Num v: 1)}
     b::Expr = Sum terms: {(Num v: 1)}
     (a == b) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "func main_Sum__eq(a, b main_Sum) bool {\n    return core.List__equals(a.terms, b.terms, main_Expr__eq)\n}", assertTrue
-  go contains: "func main_Expr__eq(a, b main_Expr) bool {\n    switch x := a.(type) {\n    case main_Sum:\n        y, ok := b.(main_Sum)\n        return ok && main_Sum__eq(x, y)\n    }\n    return a == b\n}", assertTrue
-  // go's == already compares a Num
-  Assert that: (go contains: "main_Num__eq") equals: false
-  go contains: "main_Expr__eq(a, b)", assertTrue
+  """ containsAll: {
+    "func main_Sum__eq(a, b main_Sum) bool {\n    return core.List__equals(a.terms, b.terms, main_Expr__eq)\n}"
+    "func main_Expr__eq(a, b main_Expr) bool {\n    switch x := a.(type) {\n    case main_Sum:\n        y, ok := b.(main_Sum)\n        return ok && main_Sum__eq(x, y)\n    }\n    return a == b\n}"
+    "main_Expr__eq(a, b)"
+  } containsNone: {"main_Num__eq"}
 ]
 
 Test goEqPointerFieldsCompareValues = [
-  fileMain = """
+  Assert nivaToGo: """
     type Point x: Int y: Int
     type Holder p: Point? q: mut Point n: Int?
     h1 = Holder p: (Point x: 1 y: 2) q: (Point x: 3 y: 4) n: 5
     h2 = Holder p: (Point x: 1 y: 2) q: (Point x: 3 y: 4) n: 5
     (h1 == h2) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "core.Ptr__equals(a.p, b.p, core.Eq[main_Point])", assertTrue
-  go contains: "core.Ptr__equals(a.q, b.q, core.Eq[main_Point])", assertTrue
-  go contains: "core.Ptr__equals(a.n, b.n, core.Eq[int])", assertTrue
-  go contains: "main_Holder__eq(h1, h2)", assertTrue
+  """ containsAll: {
+    "core.Ptr__equals(a.p, b.p, core.Eq[main_Point])" "core.Ptr__equals(a.q, b.q, core.Eq[main_Point])"
+    "core.Ptr__equals(a.n, b.n, core.Eq[int])" "main_Holder__eq(h1, h2)"
+  }
 ]
 
 Test goEqOnlyWhereNeeded = [
-  fileMain = """
+  Assert nivaToGo: """
     type Point x: Int y: Int
     type Bag items: List(Int)
     type Line from: Point to: Point
@@ -1414,22 +970,11 @@ Test goEqOnlyWhereNeeded = [
     (l == l) echo
     bagMaybe::Bag? = b
     (bagMaybe == null) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // types go's == compares by content keep it
-  go contains: "(p1 == p2)", assertTrue
-  go contains: "(l == l)", assertTrue
-  Assert that: (go contains: "main_Point__eq") equals: false
-  // Bag is never compared, so it gets no function
-  Assert that: (go contains: "main_Bag__eq") equals: false
-  go contains: "(bagMaybe == nil)", assertTrue
+  """ containsAll: {"(p1 == p2)" "(l == l)" "(bagMaybe == nil)"} containsNone: {"main_Point__eq" "main_Bag__eq"}
 ]
 
 Test goEqCollectionsAndBlocks = [
-  fileMain = """
+  Assert nivaToGo: """
     type Op f: [Int -> Int]
     type Env vars: Map(String, List(Int)) tags: Set(String)
     ({1 2} == {1 2}) echo
@@ -1438,22 +983,16 @@ Test goEqCollectionsAndBlocks = [
     (e == e) echo
     o = Op f: [it + 1]
     (o == o) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "core.List__equals([]int{1, 2}, []int{1, 2}, core.Eq[int])", assertTrue
-  go contains: "(!core.List__equals(", assertTrue
-  go contains: "func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) }", assertTrue
-  go contains: "core.Map__equals(a.vars, b.vars, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })", assertTrue
-  go contains: "core.Set__equals(a.tags, b.tags)", assertTrue
-  // a block compares by its signature, which its type already fixes
-  go contains: "return ((a.f == nil) == (b.f == nil))", assertTrue
+  """ containsAll: {
+    "core.List__equals([]int{1, 2}, []int{1, 2}, core.Eq[int])" "(!core.List__equals("
+    "func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) }"
+    "core.Map__equals(a.vars, b.vars, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })" "core.Set__equals(a.tags, b.tags)"
+    "return ((a.f == nil) == (b.f == nil))"
+  }
 ]
 
 Test goDeclaredEqIsCalled = [
-  fileMain = """
+  Assert nivaToGo: """
     type Point x: Int y: Int
     Point == other::Point -> Bool = x == other x
     type Pair a: Int b: Int
@@ -1466,48 +1005,29 @@ Test goDeclaredEqIsCalled = [
     q2 = Pair a: 1 b: 3
     (q1 != q2) echo
     (q1 == q2) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "main__Point__equals(p1, p2)", assertTrue
-  // != negates the type's == when it has no != of its own
-  go contains: "(main__Point__equals(p1, p2) == false)", assertTrue
-  go contains: "main__Pair__notEquals(q1, q2)", assertTrue
-  go contains: "(q1 == q2)", assertTrue
+  """ containsAll: {"main__Point__equals(p1, p2)" "(main__Point__equals(p1, p2) == false)" "main__Pair__notEquals(q1, q2)" "(q1 == q2)"}
 ]
 
 Test goDeclaredEqOnUnionIsCalledForBranches = [
-  fileMain = """
+  Assert nivaToGo: """
     union Shape = | Circle r: Int | Square s: Int
     Shape == other::Shape -> Bool = true
     c1 = Circle r: 1
     c2 = Circle r: 2
     (c1 == c2) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "main__Shape__equals(c1, c2)", assertTrue
+  """ containsAll: {"main__Shape__equals(c1, c2)"}
 ]
 
 Test goEqNullCollectionIsNotEmpty = [
-  fileMain = """
+  Assert nivaToGo: """
     x::List(Int)? = {}
     y::List(Int)? = null
     (x == y) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "(((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int]))", assertTrue
+  """ containsAll: {"(((x == nil) == (y == nil)) && core.List__equals(x, y, core.Eq[int]))"}
 ]
 
 Test goEqGenericTypeTakesCompareForTypeParam = [
-  fileMain = """
+  Assert nivaToGo: """
     type Box(T) value: T
     type Pair(A, B) first: A second: List(B)
     a::Box(List(Int)) = Box value: {1 2}
@@ -1517,34 +1037,23 @@ Test goEqGenericTypeTakesCompareForTypeParam = [
     (c == c) echo
     p::Pair(Int, String) = Pair first: 1 second: {"x"}
     (p == p) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  go contains: "func main_Box__eq[T any](a, b main_Box[T], eqT func(T, T) bool) bool {\n    return eqT(a.value, b.value)\n}", assertTrue
-  go contains: "main_Box__eq(a, b, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })", assertTrue
-  go contains: "main_Box__eq(c, c, core.Eq[int])", assertTrue
-  go contains: "func main_Pair__eq[A any, B any](a, b main_Pair[A, B], eqA func(A, A) bool, eqB func(B, B) bool) bool {", assertTrue
-  go contains: "core.List__equals(a.second, b.second, eqB)", assertTrue
-  go contains: "main_Pair__eq(p, p, core.Eq[int], core.Eq[string])", assertTrue
+  """ containsAll: {
+    "func main_Box__eq[T any](a, b main_Box[T], eqT func(T, T) bool) bool {\n    return eqT(a.value, b.value)\n}"
+    "main_Box__eq(a, b, func(a, b []int) bool { return core.List__equals(a, b, core.Eq[int]) })" "main_Box__eq(c, c, core.Eq[int])"
+    "func main_Pair__eq[A any, B any](a, b main_Pair[A, B], eqA func(A, A) bool, eqB func(B, B) bool) bool {"
+    "core.List__equals(a.second, b.second, eqB)" "main_Pair__eq(p, p, core.Eq[int], core.Eq[string])"
+  }
 ]
 
 Test goEqTypeParamInGenericMethodUsesAny = [
-  fileMain = """
+  Assert nivaToGo: """
     T isSame: other::T -> Bool = this == other
     (1 isSame: 1) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // the compare for T isn't known in a generic method, so it's go's == through any
-  go contains: "return core.EqAny[T](this, other)", assertTrue
+  """ containsAll: {"return core.EqAny[T](this, other)"}
 ]
 
 Test goCollectionLiteralOfBranchesUsesExpectedUnion = [
-  fileMain = """
+  Assert nivaToGo: """
     union Expr = | Num v: Int | Sym name: String | Sum terms: List(Expr)
     Expr wrap -> Expr = | this
     | Num => Sum terms: {this}
@@ -1553,16 +1062,8 @@ Test goCollectionLiteralOfBranchesUsesExpectedUnion = [
     s = Sum terms: {(Sym name: "x")}
     m::Map(String, Expr) = #{"a" (Num v: 1)}
     (1 count: #((Num v: 1))) echo
-  """
-
-  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
-  go = GoBackend fullFromIrModule: (result toIrModule)
-
-  // go slices and maps aren't covariant, so the literal has to be made with the union, not the branch
-  go contains: "main_Sum{[]main_Expr{main_Sym{\"x\"}}}", assertTrue
-  go contains: "return main_Sum{[]main_Expr{this}}", assertTrue
-  go contains: "map[main_Expr]struct{}{ main_Num{1}: struct{}{} }", assertTrue
-  go contains: "map[string]main_Expr{\"a\": main_Num{1}}", assertTrue
-  Assert that: (go contains: "[]main_Sym{") equals: false
-  Assert that: (go contains: "[]main_Num{") equals: false
+  """ containsAll: {
+    "main_Sum{[]main_Expr{main_Sym{\"x\"}}}" "return main_Sum{[]main_Expr{this}}" "map[main_Expr]struct{}{ main_Num{1}: struct{}{} }"
+    "map[string]main_Expr{\"a\": main_Num{1}}"
+  } containsNone: {"[]main_Sym{" "[]main_Num{"}
 ]
