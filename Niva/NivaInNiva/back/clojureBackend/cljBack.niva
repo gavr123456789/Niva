@@ -123,7 +123,13 @@ extend String [
         ,replace: ".." with: "rangeTo"
         ,replace: "?" with: "_QM"
 
+  // a type's name, without its package's dots, since Clojure reads a dotted name as a class
+  on cljTypeIdent -> String = this cljSanitizeIdent replace: "." with: "_"
+
   on cljGeneratedNamespace -> String = "niva.generated." + this
+
+  // the Java package a generated namespace puts its records in
+  on cljGeneratedClassPackage -> String = this cljGeneratedNamespace replace: "-" with: "_"
 
   on cljGeneratedPath -> String =
     // clojure translates - in files into _
@@ -181,16 +187,29 @@ IrTypeRef cljTypeName -> String = [
   // TODO
   ^ baseId == "core_Error"
       ifTrue: [":niva.core/Error"]
-      ifFalse: [baseId cljSanitizeIdent]
+      ifFalse: [baseId cljTypeIdent]
 ]
 
+// declared in another package, so named with its namespace
+IrTypeRef cljCanQualify(ctx): CljContext -> Bool = [
+  owner = this ownerPkg
+  ^ (ctx currentPackage != "") && (owner != "") &&
+    (owner != "core") && (owner != ctx currentPackage)
+]
+
+// a record's class, which another namespace names with `.`, as a Java class
 IrTypeRef cljQualifiedTypeName(ctx): CljContext -> String = [
   baseName = this cljTypeName
-  owner = this ownerPkg
-  canQualify = (ctx currentPackage != "") && (owner != "") &&
-    (owner != "core") && (owner != ctx currentPackage)
-  ^ canQualify ifTrue: [(owner cljGeneratedNamespace) + "/" + baseName] ifFalse: [baseName]
+  ^ (this cljCanQualify: ctx)
+    ifTrue: [(this ownerPkg cljGeneratedClassPackage) + "." + baseName]
+    ifFalse: [baseName]
 ]
+
+// a var named after the type, a constructor or an enum value, which another namespace names with `/`
+IrTypeRef cljQualifiedVarName(name): String ctx: CljContext -> String =
+  (this cljCanQualify: ctx)
+    ifTrue: [(this ownerPkg cljGeneratedNamespace) + "/" + name]
+    ifFalse: [name]
 
 // enum atoms use the generated enum Var instead of a plain keyword
 IrLiteralExpr cljLiteralExpr(ctx): CljContext -> String = [
@@ -200,8 +219,8 @@ IrLiteralExpr cljLiteralExpr(ctx): CljContext -> String = [
     (exprType kind == IrTypeRefKind.Custom) &&
     (exprType ownerPkg != "")
   ^ isEnumAtom ifTrue: [
-    enumName = exprType cljQualifiedTypeName: ctx
-    enumName + "_" + (exprLiteral lexeme cljSanitizeIdent)
+    valueName = exprType cljTypeName + "_" + (exprLiteral lexeme cljSanitizeIdent)
+    exprType cljQualifiedVarName: valueName :ctx
   ] ifFalse: [
     exprLiteral toCljLiteral
   ]
