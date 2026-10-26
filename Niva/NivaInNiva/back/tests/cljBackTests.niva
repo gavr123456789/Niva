@@ -73,6 +73,27 @@ Test cljTypeHintsMapNullableMutableAndCustomTypes = [
   Assert that: (personRef cljClassHint: modelCtx) equals: "niva.generated.model.model_Person"
 ]
 
+Test cljPrimitiveHintsRespectClojureArityLimit = [
+  intRef = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int" ownerPkg: "core"
+    args: {} returnType: null isMut: false nullable: false errors: {}
+  arg = IrArg name: "value" typeRef: intRef needsGoPointer: false
+  body = IrBlock stmts: {} result: null resultType: intRef
+  fn = IrFunction
+    id: "main.test"
+    pkgId: "main"
+    name: "test"
+    receiverType: intRef
+    args: {arg arg arg arg arg}
+    returnType: intRef
+    requiresMutReceiver: false
+    generics: {}
+    instantiations: {}
+    :body
+    token: (Token fake)
+
+  Assert that: (fn cljPrimitiveHintsAllowed) equals: false
+]
+
 Test cljPackageOutputUsesStableNamespacesAndPaths = [
   sources = #{
     "model" "type Person name: String\nPerson greet -> String = [^ name]"
