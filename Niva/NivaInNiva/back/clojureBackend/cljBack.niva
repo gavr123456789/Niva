@@ -22,6 +22,7 @@ type CljContext
   hotReload: Bool
   debugEntries: mut Map(Int, CljDebugEntry)
   currentPackage: String
+  currentNamespace: String
   // `^` that can't be put in tail position, reported once emitting is done
   unsupportedReturns: mut Set(String)
 
@@ -33,17 +34,21 @@ type CljDebugEntry
   method: String
 
 constructor CljContext newDebug(debug): Bool -> CljContext =
-  CljContext newDebug: debug imports: #() pkg: "" hotReload: false
+  CljContext newDebug: debug imports: #() pkg: "" namespace: "" hotReload: false
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String hotReload(hotReload): Bool -> CljContext =
+  CljContext newDebug: debug imports: imports pkg: pkg namespace: "" hotReload: hotReload
+
+constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
+    pkg(pkg): String namespace(namespace): String hotReload(hotReload): Bool -> CljContext =
   CljContext imports: (imports toMutableSet) stateNames: #()! :debug
-    :hotReload debugEntries: #{}! currentPackage: pkg
+    :hotReload debugEntries: #{}! currentPackage: pkg currentNamespace: namespace
     unsupportedReturns: #()!
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
-  CljContext newDebug: debug :imports :pkg hotReload: false
+  CljContext newDebug: debug :imports :pkg namespace: "" hotReload: false
 
 CljContext addImport(name): String -> Unit = [
   imports add: name
@@ -210,6 +215,64 @@ IrTypeRef cljQualifiedVarName(name): String ctx: CljContext -> String =
   (this cljCanQualify: ctx)
     ifTrue: [(this ownerPkg cljGeneratedNamespace) + "/" + name]
     ifFalse: [name]
+
+// Primitive function hints are deliberately narrower than Clojure's complete
+// set of primitive aliases. Clojure only supports long/double primitive
+// signatures for functions, and nullable/mutable values cannot use them.
+IrTypeRef cljIsPrimitiveNumeric -> Bool = [
+  baseId = this typeId cljNormalizeTypeId
+  ^ (baseId == "core_Int") || (baseId == "core_Long") || (baseId == "core_Double")
+]
+
+IrTypeRef cljPrimitiveFunctionHint -> String = [
+  (this nullable) || (this isMut) ifTrue: [""] ifFalse: [
+    baseId = this typeId cljNormalizeTypeId
+    | baseId
+    | "core_Int" | "core_Long" => "long"
+    | "core_Double" => "double"
+    |=> ""
+  ]
+]
+
+// A class hint names the generated Java class, not the Clojure value shape.
+// Collection hints stay out of the generic path because List/Set/Map are
+// polymorphic Clojure values and only need a class hint at a Java boundary.
+IrTypeRef cljClassHint(ctx): CljContext -> String = [
+  this isMut ifTrue: [""] ifFalse: [
+    baseId = this typeId cljNormalizeTypeId
+    | this kind
+    | IrTypeRefKind.Builtin => [
+        | baseId
+        | "core_String" => "String"
+        | "core_StringBuilder" => "StringBuilder"
+        |=> ""
+      ]
+    | IrTypeRefKind.Function => "clojure.lang.IFn"
+    | IrTypeRefKind.Custom => [
+        owner = this ownerPkg
+        ((owner == "") || (owner == "core")) ifTrue: [""] ifFalse: [
+          classNamespace = ctx currentPackage == ""
+            ifTrue: [ctx currentNamespace]
+            ifFalse: [owner cljGeneratedNamespace]
+          classNamespace + "." + (this cljTypeName)
+        ]
+      ]
+    |=> ""
+  ]
+]
+
+IrFunction cljPrimitiveHintsAllowed -> Bool = [
+  unsafeArg = args any: [arg ->
+    t = arg typeRef
+    (t cljIsPrimitiveNumeric) && ((t nullable) || (t isMut))
+  ]
+  unsafeReturn = (returnType cljIsPrimitiveNumeric) &&
+    ((returnType nullable) || (returnType isMut))
+  hasPrimitiveType = (returnType cljPrimitiveFunctionHint != "") ||
+    (args any: [it typeRef cljPrimitiveFunctionHint != ""])
+  ^ (args count <= 4) && hasPrimitiveType &&
+    (unsafeArg not) && (unsafeReturn not)
+]
 
 // enum atoms use the generated enum Var instead of a plain keyword
 IrLiteralExpr cljLiteralExpr(ctx): CljContext -> String = [
