@@ -290,9 +290,20 @@ IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
 // IrLambda
 // ---------------------------------------------------------------------------
 
+IrArg toCljFunctionArg(allowPrimitive): Bool ctx(ctx): CljContext -> String = [
+  primitiveHint = allowPrimitive ifTrue: [typeRef cljPrimitiveFunctionHint] ifFalse: [""]
+  classHint = primitiveHint == "" ifTrue: [typeRef cljClassHint: ctx] ifFalse: [""]
+  hint = primitiveHint != "" ifTrue: [primitiveHint] ifFalse: [classHint]
+  prefix = hint == "" ifTrue: [""] ifFalse: ["^" + hint + " "]
+  ^ prefix + (name cljSanitizeIdent)
+]
+
 IrExpr lambdaToCljExpr(ctx): CljContext scope: CljScope -> String = [
   | this | IrLambda => [
-    argsStr = (this args) joinWith: " " transform: [it name cljSanitizeIdent]
+    // Lambda primitive signatures are intentionally deferred: callbacks are
+    // commonly invoked through IFn and class hints are sufficient for the
+    // Java interop cases this emitter currently produces.
+    argsStr = (this args) joinWith: " " transform: [it toCljFunctionArg: false :ctx]
 
     innerScope = scope copy
     // lambda arg mutability is not tracked in IrArg, treat all as immutable locals
@@ -862,7 +873,13 @@ constructor CljBackend [
   on emitFunctionNamed(name): String fn(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
     // fn.args already includes `this` for instance methods
     generatedLine = (sb toString) cljLineCount
-    fullArgs = fn args joinWith: " " transform: [it name cljSanitizeIdent]
+    primitiveHints = fn cljPrimitiveHintsAllowed
+    fullArgs = fn args joinWith: " " transform: [it toCljFunctionArg: primitiveHints :ctx]
+    primitiveReturnHint = primitiveHints ifTrue: [fn returnType cljPrimitiveFunctionHint] ifFalse: [""]
+    returnHint = primitiveReturnHint != ""
+      ifTrue: [primitiveReturnHint]
+      ifFalse: [fn returnType cljClassHint: ctx]
+    returnPart = returnHint == "" ifTrue: [""] ifFalse: [" ^" + returnHint]
 
     scope = CljScope new
     ctx stateNames forEach: [it -> scope mutLocals add: it]
@@ -871,11 +888,11 @@ constructor CljBackend [
     (body contains: "\n")
       ifTrue: [
         indented = body replace: "\n" with: "\n  "
-        sb appendLine: ("(defn " + name + " [" + fullArgs + "]")
+        sb appendLine: ("(defn " + name + returnPart + " [" + fullArgs + "]")
         sb appendLine: ("  " + indented + ")")
       ]
       ifFalse: [
-        sb appendLine: ("(defn " + name + " [" + fullArgs + "] " + body + ")")
+        sb appendLine: ("(defn " + name + returnPart + " [" + fullArgs + "] " + body + ")")
     ]
     sb appendLine: ""
     generatedEndLine = ((sb toString) cljLineCount) - 2
@@ -1075,7 +1092,7 @@ constructor CljBackend [
       ifTrue: [ir packages first name]
       ifFalse: [""]
     ctx = CljContext newDebug: debug imports: initialImports pkg: packageName
-      hotReload: (mode == CljEmitMode.HotReload)
+      namespace: namespace hotReload: (mode == CljEmitMode.HotReload)
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut Set(String) = #()!

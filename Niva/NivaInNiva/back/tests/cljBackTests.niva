@@ -44,6 +44,35 @@ Test cljRecordTypes = [
   """ containsAll: {"(defrecord main_Point [x y])"}
 ]
 
+Test cljFunctionHintsUseClojureTypeTags = [
+  Assert nivaToClj: """
+    type Person name: String
+    Person greet -> String = this name
+    Int double -> Int = this * 2
+  """ containsAll: {
+    "(defn main_Person__greet ^String [^niva.generated.main.main_Person this]"
+    "(defn main__core_Int__double ^long [^long this]"
+  } containsNone: {"^Int" "^int"}
+]
+
+Test cljTypeHintsMapNullableMutableAndCustomTypes = [
+  intRef = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int" ownerPkg: "core"
+    args: {} returnType: null isMut: false nullable: false errors: {}
+  nullableInt = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int" ownerPkg: "core"
+    args: {} returnType: null isMut: false nullable: true errors: {}
+  mutableInt = IrTypeRef kind: IrTypeRefKind.Builtin typeId: "core_Int" ownerPkg: "core"
+    args: {} returnType: null isMut: true nullable: false errors: {}
+  personRef = IrTypeRef kind: IrTypeRefKind.Custom typeId: "model_Person" ownerPkg: "model"
+    args: {} returnType: null isMut: false nullable: false errors: {}
+  modelCtx = CljContext newDebug: false imports: #() pkg: "model"
+    namespace: "niva.generated.model" hotReload: false
+
+  Assert that: (intRef cljPrimitiveFunctionHint) equals: "long"
+  Assert that: (nullableInt cljPrimitiveFunctionHint) equals: ""
+  Assert that: (mutableInt cljPrimitiveFunctionHint) equals: ""
+  Assert that: (personRef cljClassHint: modelCtx) equals: "niva.generated.model.model_Person"
+]
+
 Test cljPackageOutputUsesStableNamespacesAndPaths = [
   sources = #{
     "model" "type Person name: String\nPerson greet -> String = [^ name]"
@@ -416,7 +445,7 @@ Test cljUnionShapesAsRecords = [
 Test cljFunctionAsDefn = [
   Assert nivaToClj: """
     Int double -> Int = this * 2
-  """ containsAll: {"(defn main__core_Int__double [this]" "(* this 2)"}
+  """ containsAll: {"(defn main__core_Int__double ^long [^long this]" "(* this 2)"}
 ]
 
 Test cljStringBuilderConstructor = [
@@ -569,7 +598,7 @@ Test cljCustomBinaryOnCoreReceiverUsesDeclaringPackage = [
       true
     ]
     "en" - "sas", echo
-  """ containsAll: {"(defn main__core_String__- [this x] true)" "(main__core_String__- \"en\" \"sas\")"} containsNone: {"niva.core/String__-"}
+  """ containsAll: {"(defn main__core_String__- [^String this ^String x] true)" "(main__core_String__- \"en\" \"sas\")"} containsNone: {"niva.core/String__-"}
 ]
 
 Test cljGenericEchoKeepsValue = [
@@ -594,7 +623,7 @@ Test cljGenericReceiverGetsSpecializedFunction = [
     p = Person name: "Alice"
     T sas = "hii!"
     p sas
-  """ containsAll: {"(declare main__T__sas main__main_Person__sas main_Person__sas)" "(defn main_Person__sas [this]"}
+  """ containsAll: {"(declare main__T__sas main__main_Person__sas main_Person__sas)" "(defn main_Person__sas ^String [^niva.generated.main.main_Person this]"}
 ]
 
 Test cljGenericReceiverPreservesNestedGenericTypes = [
@@ -603,7 +632,7 @@ Test cljGenericReceiverPreservesNestedGenericTypes = [
     Box(T) keep: List(T) -> Unit = ()
     b = Box value: 1
     b keep: {2}
-  """ containsAll: {"(defn main_Box__core_Int__keep [this keep]"}
+  """ containsAll: {"(defn main_Box__core_Int__keep [^niva.generated.main.main_Box this keep]"}
 ]
 
 Test cljGenericArgumentAndUnaryOverloadAreDistinct = [
@@ -614,7 +643,7 @@ Test cljGenericArgumentAndUnaryOverloadAreDistinct = [
     T sas = "Sas"
     p sas: 42
     p sas
-  """ containsAll: {"(defn main_Person__sas__core_Int [this sas]" "(defn main_Person__sas__0 [this]"}
+  """ containsAll: {"(defn main_Person__sas__core_Int ^String [^niva.generated.main.main_Person this ^long sas]" "(defn main_Person__sas__0 ^String [^niva.generated.main.main_Person this]"}
 ]
 
 Test cljMatchByTypeUsesCondpInstance = [
