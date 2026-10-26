@@ -58,13 +58,8 @@ extend IrExpr [
             ]
             |=> ""
           ]
-        constructorName = "->" + (this typeId cljNormalizeTypeId cljSanitizeIdent)
-        owner = (this typeRef) ownerPkg
-        canQualify = (ctx currentPackage != "") && (owner != "") &&
-          (owner != "core") && (owner != ctx currentPackage)
-        name = canQualify
-          ifTrue: [(owner cljGeneratedNamespace) + "/" + constructorName]
-          ifFalse: [constructorName]
+        constructorName = "->" + (this typeId cljNormalizeTypeId cljTypeIdent)
+        name = this typeRef cljQualifiedVarName: constructorName :ctx
         recordExpr = "(" + name + argsStr + ")"
         recordOutput = (this typeRef isMut) ifTrue: ["(atom " + recordExpr + ")"] ifFalse: [recordExpr]
         constructorOutput != "" ifTrue: [constructorOutput] ifFalse: [recordOutput]
@@ -790,7 +785,10 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         // and the extraction done by a ByError match).
         throwErrExpr = errExpr
         errRecordStr = | throwErrExpr
-          | IrTypeRefExpr => "(->" + (throwErrExpr ref typeId cljNormalizeTypeId cljSanitizeIdent) + ")"
+          | IrTypeRefExpr => [
+            errRef = throwErrExpr ref
+            "(" + (errRef cljQualifiedVarName: "->" + (errRef typeId cljNormalizeTypeId cljTypeIdent) :ctx) + ")"
+          ]
           |=> throwErrExpr toCljExpr: ctx :scope
         CljBinding name: "_"
           value: ("(let [__cljErr " + errRecordStr + "] (throw (ex-info (str __cljErr) {:value __cljErr})))")
@@ -809,7 +807,7 @@ IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String =
 
 constructor CljBackend [
   on emitTypeDef(def): IrTypeDef ctx: CljContext sb: StringBuilder -> Unit = [
-    name = def id cljNormalizeTypeId cljSanitizeIdent
+    name = def id cljNormalizeTypeId cljTypeIdent
     fields = def fields joinWith: " " transform: [it name cljSanitizeIdent]
     typeDef = ctx hotReload
       ifTrue: ["^:clj-reload/keep (defrecord " + name + " [" + fields + "])"]
@@ -824,7 +822,7 @@ constructor CljBackend [
     def branches forEach: [br ->
       br isInclude ifFalse: [
         branchTypeId = def pkgId + "_" + br name
-        branchName = branchTypeId cljSanitizeIdent
+        branchName = branchTypeId cljTypeIdent
         commonStr = def commonFields joinWith: " " transform: [f -> f name cljSanitizeIdent]
         branchStr = br fields joinWith: " " transform: [f -> f name cljSanitizeIdent]
         fieldsStr = commonStr == ""
@@ -842,7 +840,7 @@ constructor CljBackend [
   ]
 
   on emitEnumDef(def): IrEnumDef ctx: CljContext sb: StringBuilder -> Unit = [
-    name = def id cljNormalizeTypeId cljSanitizeIdent
+    name = def id cljNormalizeTypeId cljTypeIdent
     def values forEach: [v ->
       valSafe = v cljSanitizeIdent
       valName = name + "_" + valSafe
