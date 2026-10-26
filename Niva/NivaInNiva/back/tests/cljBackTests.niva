@@ -179,8 +179,79 @@ Test cljPackageOutputQualifiesUnionBranches = [
   mainMaybe = output files at: "niva/generated/main.clj"
   main = mainMaybe expect: "Missing generated main"
 
-  main contains: "niva.generated.model/->model_Circle", assertTrue
-  main contains: "niva.generated.model/model_Circle", assertTrue
+  // a constructor is a var, named with `/`, and a record's class with `.`
+  main assertCljContents: {"niva.generated.model/->model_Circle" "niva.generated.model.model_Circle"}
+    excludes: {"niva.generated.model/model_Circle"}
+]
+
+Test cljFolderPackageNamesHaveNoDots = [
+  sources = #{
+    "geo.shapes" "type Point x: Int\nunion Shape =\n| Circle radius: Int\nenum Color = Red | Green"
+    "main" "p = Point x: 1\nshape = Circle radius: 1\nvalue = | shape\n| Circle => shape radius\n|=> 0\ncolor = Color.Red"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  shapesMaybe = output files at: "niva/generated/geo/shapes.clj"
+  shapes = shapesMaybe expect: "Missing generated geo.shapes"
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
+
+  // Clojure reads a dotted name as a class, so the package's dots become `_`
+  shapes assertCljContents: {
+    "(defrecord geo_shapes_Point [x])"
+    "(defrecord geo_shapes_Circle [radius])"
+    "(def geo_shapes_Color_Red :geo_shapes_Color_Red)"
+  } excludes: {"geo.shapes_"}
+  main assertCljContents: {
+    "niva.generated.geo.shapes/->geo_shapes_Point"
+    "niva.generated.geo.shapes/->geo_shapes_Circle"
+    "niva.generated.geo.shapes.geo_shapes_Circle"
+    "niva.generated.geo.shapes/geo_shapes_Color_Red"
+  } excludes: {"geo.shapes_" "niva.generated.geo.shapes/geo_shapes_Circle"}
+]
+
+Test cljFolderPackageUnionMatchesFromMainOnBabashka = [
+  sources = #{
+    "geo.shapes" "union Shape =\n| Circle radius: Int\n| Square side: Int"
+    "main" "shape::Shape = Square side: 3\nvalue = | shape\n| Circle => shape radius\n| Square => shape side\nvalue print"
+    "main.bind" "Int print -> Unit = Bind emit: \"(println $0)\""
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModuleForTarget: (result toIrModule)
+    debug: false mode: CljEmitMode.Program target: CljTarget.Bb
+  io = IO_Container new
+  root = ".niva_clj/folder-package"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/folder-package && mkdir -p .niva_clj/folder-package/niva/generated/geo"}
+  Assert that: setupExit equals: 0
+  output files forEach: [relativePath, content ->
+    io writeFile file: root + "/" + relativePath :content
+  ]
+
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "bb -cp . -m niva.generated.main > result.txt"}
+  Assert that: exit equals: 0
+  Assert that: (io readFile path: root + "/result.txt") equals: "3\n"
+  io deleteRecursively path: root
+]
+
+// the Java package of a namespace with a dash has `_` in its place
+Test cljPackageWithDashNamesClassByJavaPackage = [
+  sources = #{
+    "my-geo" "union Shape =\n| Circle radius: Int"
+    "main" "shape = Circle radius: 1\nvalue = | shape\n| Circle => shape radius\n|=> 0"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
+
+  main contains: "niva.generated.my-geo/->my-geo_Circle", assertTrue
+  main contains: "niva.generated.my_geo.my-geo_Circle", assertTrue
 ]
 
 Test cljPackageOutputQualifiesEnumAtom = [
@@ -218,7 +289,22 @@ Test cljPackageOutputQualifiesErrorBranches = [
   main = mainMaybe expect: "Missing generated main"
 
   model contains: "(->model_Missing 404)", assertTrue
-  main contains: "niva.generated.model/model_Missing", assertTrue
+  main contains: "niva.generated.model.model_Missing", assertTrue
+]
+
+Test cljPackageOutputQualifiesThrownBranch = [
+  sources = #{
+    "model" "errordomain ModelError =\n| NotFound"
+    "main" "Unit fail -> Int!{NotFound} = [\n  NotFound throw\n  ^ 0\n]"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
+
+  main contains: "(niva.generated.model/->model_NotFound)", assertTrue
 ]
 
 Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
