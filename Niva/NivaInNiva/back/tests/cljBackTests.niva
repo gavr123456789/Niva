@@ -94,6 +94,88 @@ Test cljPrimitiveHintsRespectClojureArityLimit = [
   Assert that: (fn cljPrimitiveHintsAllowed) equals: false
 ]
 
+// a union is one record per branch and an enum is keywords, so only the branch gets a class hint
+Test cljUnionAndEnumGetNoClassHint = [
+  Assert nivaToClj: """
+    union Shape =
+    | Circle radius: Int
+    | Square side: Int
+    enum Color = Red | Green
+    Shape area -> Int = | this
+      | Circle => radius
+      | Square => side
+    Color isRed -> Bool = this == Color.Red
+    Circle grow -> Shape = Circle radius: radius + 1
+  """ containsAll: {
+    "(defn main_Shape__area ^long [this]"
+    "(defn main_Color__isRed [this]"
+    "(defn main_Circle__grow [^niva.generated.main.main_Circle this]"
+  } containsNone: {"^niva.generated.main.main_Shape" "^niva.generated.main.main_Color"}
+]
+
+// a file knows another package's unions and enums too
+Test cljPackageOutputGivesNoClassHintToOtherPackagesUnion = [
+  sources = #{
+    "model" "union Shape =\n| Circle radius: Int\nenum Color = Red | Green"
+    "main" "Shape describe -> String = \"shape\"\nColor describe -> String = \"color\"\nCircle size -> Int = radius"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
+
+  main assertCljContents: {
+    "(defn main__model_Shape__describe ^String [this]"
+    "(defn main__model_Color__describe ^String [this]"
+    "[^niva.generated.model.model_Circle this]"
+  } excludes: {"^niva.generated.model.model_Shape" "^niva.generated.model.model_Color"}
+]
+
+// the Java package of a namespace with a dash has `_` in its place
+Test cljPackageWithDashHintsClassByJavaPackage = [
+  sources = #{
+    "my-geo" "type Circle radius: Int\nCircle size -> Int = radius"
+    "main" "(Circle radius: 1) size"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  geoMaybe = output files at: "niva/generated/my_geo.clj"
+  geo = geoMaybe expect: "Missing generated my-geo"
+
+  geo contains: "[^niva.generated.my_geo.my-geo_Circle this]", assertTrue
+]
+
+// JVM Clojure resolves every class hint as it compiles, where bb ignores them
+Test cljUnionAndEnumMethodsRunOnJvm = [
+  sources = #{
+    "model" "union Shape =\n| Circle radius: Int\n| Square side: Int\nenum Color = Red | Green"
+    "main" "Shape area -> Int = | this\n| Circle => radius\n| Square => side\nColor score -> Int = | this\n| Color.Red => 1\n| Color.Green => 2\n(Square side: 3) area print\nColor.Green score print"
+    "main.bind" "Int print -> Unit = Bind emit: \"(println $0)\""
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  io = IO_Container new
+  root = ".niva_clj/jvm-hints"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/jvm-hints && mkdir -p .niva_clj/jvm-hints/niva/generated"}
+  Assert that: setupExit equals: 0
+  output files forEach: [relativePath, content ->
+    io writeFile file: root + "/" + relativePath :content
+  ]
+  io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
+
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "clojure -M -m niva.generated.main > result.txt"}
+  Assert that: exit equals: 0
+  Assert that: (io readFile path: root + "/result.txt") equals: "3\n2\n"
+  io deleteRecursively path: root
+]
+
 Test cljPackageOutputUsesStableNamespacesAndPaths = [
   sources = #{
     "model" "type Person name: String\nPerson greet -> String = [^ name]"

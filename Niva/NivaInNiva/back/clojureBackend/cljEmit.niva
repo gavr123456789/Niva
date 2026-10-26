@@ -1010,6 +1010,7 @@ constructor CljBackend [
       ]
       ifFalse: [ir packages]
 
+    classlessTypes = ir cljClasslessTypes
     packages sortedBy: [it name], forEach: [pkg ->
       localDependencyNames = pkg dependencyPackageNames filter: [it != "core"]
       localImports = (localDependencyNames map: [dependency -> dependency cljGeneratedNamespace]) toSet
@@ -1018,7 +1019,7 @@ constructor CljBackend [
       packageIr = IrModule version: ir version pkg: pkg name packages: {pkg} entry: packageEntry
       content = CljBackend fullFromIrModule: packageIr :debug :mode
         namespace: (pkg cljGeneratedNamespace) initialImports: localImports
-        mainClass: ((pkg name == ir pkg) && (target == CljTarget.Jvm))
+        :classlessTypes mainClass: ((pkg name == ir pkg) && (target == CljTarget.Jvm))
       files at: (pkg cljGeneratedPath) put: content
     ]
 
@@ -1087,12 +1088,20 @@ constructor CljBackend [
   // Public entry point.
   on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode
       namespace(namespace): String initialImports(initialImports): Set(String)
-      mainClass(mainClass): Bool -> String = [
+      mainClass(mainClass): Bool -> String =
+    CljBackend fullFromIrModule: ir :debug :mode :namespace :initialImports
+      classlessTypes: ir cljClasslessTypes :mainClass
+
+  // a file of a program in several gets the classless types of every package
+  on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode
+      namespace(namespace): String initialImports(initialImports): Set(String)
+      classlessTypes(classlessTypes): Set(String) mainClass(mainClass): Bool -> String = [
     packageName = ir packages count == 1
       ifTrue: [ir packages first name]
       ifFalse: [""]
     ctx = CljContext newDebug: debug imports: initialImports pkg: packageName
       namespace: namespace hotReload: (mode == CljEmitMode.HotReload)
+    ctx classlessTypes addAll: classlessTypes
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut Set(String) = #()!

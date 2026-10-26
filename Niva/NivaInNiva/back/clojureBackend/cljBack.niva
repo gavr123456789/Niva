@@ -23,6 +23,8 @@ type CljContext
   debugEntries: mut Map(Int, CljDebugEntry)
   currentPackage: String
   currentNamespace: String
+  // unions and enums, which have no class to hint
+  classlessTypes: mut Set(String)
   // `^` that can't be put in tail position, reported once emitting is done
   unsupportedReturns: mut Set(String)
 
@@ -44,7 +46,7 @@ constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String namespace(namespace): String hotReload(hotReload): Bool -> CljContext =
   CljContext imports: (imports toMutableSet) stateNames: #()! :debug
     :hotReload debugEntries: #{}! currentPackage: pkg currentNamespace: namespace
-    unsupportedReturns: #()!
+    classlessTypes: #()! unsupportedReturns: #()!
 
 constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
     pkg(pkg): String -> CljContext =
@@ -146,6 +148,16 @@ extend String [
 IrPackage cljGeneratedNamespace -> String = this name cljGeneratedNamespace
 
 IrPackage cljGeneratedPath -> String = this name cljGeneratedPath
+
+// a union is one record per branch and an enum is keywords, so neither is a class
+IrModule cljClasslessTypes -> Set(String) = [
+  ids::mut Set(String) = #()!
+  packages forEach: [pkg ->
+    pkg unions forEach: [ids add: it id cljNormalizeTypeId]
+    pkg enums forEach: [ids add: it id cljNormalizeTypeId]
+  ]
+  ^ ids
+]
 
 // mangled function name derived directly from IR
 IrFunction cljFuncNameFromIr -> String = this id cljFuncIdToName
@@ -250,12 +262,14 @@ IrTypeRef cljClassHint(ctx): CljContext -> String = [
     | IrTypeRefKind.Function => "clojure.lang.IFn"
     | IrTypeRefKind.Custom => [
         owner = this ownerPkg
-        ((owner == "") || (owner == "core")) ifTrue: [""] ifFalse: [
-          classNamespace = ctx currentPackage == ""
-            ifTrue: [ctx currentNamespace]
-            ifFalse: [owner cljGeneratedNamespace]
-          classNamespace + "." + (this cljTypeName)
-        ]
+        ((owner == "") || (owner == "core") || (ctx classlessTypes contains: baseId))
+          ifTrue: [""]
+          ifFalse: [
+            classNamespace = ctx currentPackage == ""
+              ifTrue: [ctx currentNamespace]
+              ifFalse: [owner cljGeneratedClassPackage]
+            classNamespace + "." + (this cljTypeName)
+          ]
       ]
     |=> ""
   ]
