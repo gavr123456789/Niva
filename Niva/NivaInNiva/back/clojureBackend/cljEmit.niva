@@ -1126,6 +1126,9 @@ constructor CljBackend [
       pkg types  forEach: [CljBackend emitTypeDef:  it :ctx sb: body]
       pkg unions forEach: [CljBackend emitUnionDef: it :ctx sb: body]
       pkg enums  forEach: [CljBackend emitEnumDef:  it :ctx sb: body]
+    ]
+    // a REPL module has every package in one namespace, so every type goes before any function that may name it
+    ir packages forEach: [pkg ->
       pkg functions forEach: [fn ->
         baseName = fn cljFuncNameFromIr
         functionNames add: baseName

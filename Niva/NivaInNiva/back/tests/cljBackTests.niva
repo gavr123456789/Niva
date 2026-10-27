@@ -655,6 +655,47 @@ Test cljReplStateInitializersUsePlainValues = [
   """ mode: CljEmitMode.Repl containsAll: {"(def a 1)" "(def b (+ a 1))"} containsNone: {"@a"}
 ]
 
+// a REPL module has every package in one namespace, so another package's types come before main's functions
+Test cljReplDefinesEveryPackagesTypesBeforeFunctions = [
+  sources = #{
+    "main" "Shape describe -> String = | this\n| Circle => \"circle\"\n| Square => \"square\"\nColor isRed -> Bool = this == Color.Red\nCircle grow -> Circle = Circle radius: 2\nPoint sum -> Int = this x + this y"
+    "model.shapes" "union Shape =\n| Circle radius: Int\n| Square side: Int\nenum Color = Red | Green\ntype Point x: Int y: Int"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule) debug: false mode: CljEmitMode.Repl
+
+  clj contains: "(defn main__model__shapes_Circle__grow ^niva.repl.session.model_shapes_Circle", assertTrue
+  clj substringBefore: "(defn ", assertCljContents: {
+    "(defrecord model_shapes_Circle [radius])"
+    "(defrecord model_shapes_Square [side])"
+    "(def model_shapes_Color_Red :model_shapes_Color_Red)"
+    "(defrecord model_shapes_Point [x y])"
+  } excludes: {}
+]
+
+Test cljReplModuleWithFolderPackageRunsOnBabashka = [
+  sources = #{
+    "main" "Shape size -> Int = | this\n| Circle => radius\n| Square => side\nshape::Shape = Square side: 3\nshape size echo"
+    "model.shapes" "union Shape =\n| Circle radius: Int\n| Square side: Int"
+  }
+  result = ResolverHelper resolve: sources entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule) debug: false mode: CljEmitMode.Repl
+  io = IO_Container new
+  root = ".niva_clj/repl-packages"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/repl-packages && mkdir -p .niva_clj/repl-packages/niva"}
+  Assert that: setupExit equals: 0
+  io writeFile file: root + "/main.clj" content: clj
+  io writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
+
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "bb -cp . main.clj > result.txt"}
+  Assert that: exit equals: 0
+  Assert that: (io readFile path: root + "/result.txt") equals: "3\n"
+  io deleteRecursively path: root
+]
+
 Test cljProgramMutVarUsesLocalAtom = [
   Assert nivaToClj: """
     mut c = 3
