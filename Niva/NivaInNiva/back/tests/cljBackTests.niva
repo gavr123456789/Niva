@@ -1109,3 +1109,65 @@ Test cljSortedWithCallsRuntimeFunction = [
   clj contains: "(niva.core/List__sortedWith ", assertTrue
   Assert that: (CompilerConstants nivaCoreSource contains: "(defn List__sortedWith ") equals: true
 ]
+
+// a core method on an operator calls the runtime's word for it, as on Go
+Test cljCollectionOperatorsCallRuntimeWords = [
+  fileMain = """
+    ({1 2} + {3}) echo
+    (#(1 2) + #(3)) echo
+    (#(1 2) - #(1)) echo
+    (#{1 2} + #{3 4}) echo
+    (#{1 2 3 4} - 1) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  {"List__plus" "Set__plus" "Set__minus" "Map__plus" "Map__minus"} forEach: [name ->
+    clj contains: "(niva.core/$name ", assertTrue
+    Assert that: (CompilerConstants nivaCoreSource contains: "(defn $name ") equals: true
+  ]
+  Assert that: (clj contains: "__+") equals: false
+  Assert that: (clj contains: "__-") equals: false
+]
+
+Test cljAnyCallsRuntimeFunction = [
+  fileMain = """
+    ({1 2} any: [it > 1]) echo
+  """
+
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+
+  clj contains: "(niva.core/List__any ", assertTrue
+  Assert that: (CompilerConstants nivaCoreSource contains: "(defn List__any ") equals: true
+]
+
+Test cljCollectionOperatorsAndAnyRunOnBabashka = [
+  fileMain = """
+    ({1 2} + {3}) echo
+    (#(1 2) - #(1)) echo
+    ({1 2} any: [it > 1]) echo
+    ({1 2} any: [it > 5]) echo
+  """
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModuleForTarget: (result toIrModule)
+    debug: false mode: CljEmitMode.Program target: CljTarget.Bb
+  io = IO_Container new
+  root = ".niva_clj/collection-ops"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/collection-ops && mkdir -p .niva_clj/collection-ops/niva/generated"}
+  Assert that: setupExit equals: 0
+  output files forEach: [relativePath, content ->
+    io writeFile file: root + "/" + relativePath :content
+  ]
+  io writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
+
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "bb -cp . -m niva.generated.main > result.txt"}
+  Assert that: exit equals: 0
+  Assert that: (io readFile path: root + "/result.txt") equals: "{1 2 3}\n#(2)\ntrue\nfalse\n"
+  io deleteRecursively path: root
+]
