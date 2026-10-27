@@ -188,7 +188,7 @@ IrTypeRef coreFuncNameFromCljCall(name): String forMut(isMutable): Bool -> Strin
   ^ name == "echo"
       ifTrue: ["Any__echo"]
       ifFalse: [
-        methodName = (isMutable ifTrue: ["mut_"] ifFalse: [""]) + (name cljSanitizeIdent)
+        methodName = (isMutable ifTrue: ["mut_"] ifFalse: [""]) + (name cljCoreMethodName)
         (recvBase cljSanitizeIdent) + "__" + methodName
       ]
 ]
@@ -314,6 +314,24 @@ String cljOperator -> String =
   | "||" => "or"
   | "%" => "rem"
   |=> this
+
+// the runtime names a method on an operator with Go's word for it, List__plus for `+`
+String cljCoreMethodName -> String =
+  | this
+  | "==" => "equals"
+  | "!=" => "notEquals"
+  | ">=" => "gte"
+  | "<=" => "lte"
+  | ">"  => "gt"
+  | "<"  => "lt"
+  | "||" => "or"
+  | "&&" => "and"
+  | "+"  => "plus"
+  | "-"  => "minus"
+  | "*"  => "times"
+  | "/"  => "div"
+  | "%"  => "rem"
+  |=> this cljSanitizeIdent
 
 // ---------------------------------------------------------------------------
 // literals
