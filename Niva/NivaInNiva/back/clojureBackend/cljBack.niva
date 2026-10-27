@@ -40,22 +40,22 @@ type CljDebugEntry
 constructor CljContext newDebug(debug): Bool -> CljContext =
   CljContext newDebug: debug imports: #() pkg: "" namespace: "" hotReload: false
 
-constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
-    pkg(pkg): String hotReload(hotReload): Bool -> CljContext =
-  CljContext newDebug: debug imports: imports pkg: pkg namespace: "" hotReload: hotReload
+constructor CljContext newDebug(debug): Bool imports: Set(String)
+    pkg: String hotReload: Bool -> CljContext =
+  CljContext newDebug: debug :imports :pkg namespace: "" :hotReload
 
-constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
-    pkg(pkg): String namespace(namespace): String hotReload(hotReload): Bool -> CljContext =
+constructor CljContext newDebug(debug): Bool imports: Set(String)
+    pkg: String namespace: String hotReload: Bool -> CljContext =
   CljContext newDebug: debug :imports :pkg :namespace :hotReload repl: false
 
-constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
-    pkg(pkg): String namespace(namespace): String hotReload(hotReload): Bool repl(repl): Bool -> CljContext =
+constructor CljContext newDebug(debug): Bool imports: Set(String)
+    pkg: String namespace: String hotReload: Bool repl: Bool -> CljContext =
   CljContext imports: (imports toMutableSet) stateNames: #()! :debug
     :hotReload :repl debugEntries: #{}! currentPackage: pkg currentNamespace: namespace
     classlessTypes: #()! unsupportedReturns: #()!
 
-constructor CljContext newDebug(debug): Bool imports(imports): Set(String)
-    pkg(pkg): String -> CljContext =
+constructor CljContext newDebug(debug): Bool imports: Set(String)
+    pkg: String -> CljContext =
   CljContext newDebug: debug :imports :pkg namespace: "" hotReload: false
 
 CljContext addImport(name): String -> Unit = [
