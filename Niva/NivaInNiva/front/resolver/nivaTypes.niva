@@ -408,7 +408,7 @@ constructor NullableT v::NivaType = NullableT name: v name pkgName: v pkgName :v
 
 // keep core function types error free
 constructor FuntionT [
-  on fields(fields): mut List::TypeTField name(name): String genericArgs(genericArgs): mut List::NivaType pkgName(pkgName): String returnType(returnType): NivaType -> FuntionT =
+  on fields: mut List::TypeTField name: String genericArgs: mut List::NivaType pkgName: String returnType: NivaType -> FuntionT =
     FuntionT :name :pkgName :fields :genericArgs :returnType returnErrors: {}
 ]
 

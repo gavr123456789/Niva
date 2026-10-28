@@ -3,8 +3,8 @@
 // stdin is a pipe that is never written so the session exits when the parent dies
 // the exec package keeps the pipe writer held so garbage collection cannot close it
 static JvmReloadHost start(projectRoot): String generatedDir: String
-    entryNamespace(entryNamespace): String runtime(runtime): String
-    onChange(onChange): [ -> Unit] -> Unit =
+    entryNamespace: String runtime: String
+    onChange: [ -> Unit] -> Unit =
   Bind imports: #("fmt" "niva_go/core" "os" "os/exec" "path/filepath" "sort" "strings" "strconv" "time") emit: """(func() core.Unit {
   nivaWatchRoot := $0
   if nivaWatchRoot == "" { nivaWatchRoot = "." }

@@ -1,6 +1,6 @@
 static JvmReloadHost start(projectRoot): String generatedDir: String
-    entryNamespace(entryNamespace): String runtime(runtime): String
-    onChange(onChange): [ -> Unit] -> Unit = [
+    entryNamespace: String runtime: String
+    onChange: [ -> Unit] -> Unit = [
   root = projectRoot isEmpty ifTrue: ["."] ifFalse: [projectRoot]
   sessionRoot = generatedDir substringBeforeLast: "/"
   useBb = runtime == "bb"

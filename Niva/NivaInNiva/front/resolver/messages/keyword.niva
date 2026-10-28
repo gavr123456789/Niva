@@ -28,7 +28,7 @@ KeywordMsg resolveReceiverForInlineMethod(db): TyperDB withContext(c): Context m
   |=> receiverExpr toTypedExprFromDb2: db withContext: c
 ]
 
-KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType? bucket(bucket): MethodBucketKind -> KeywordMsgT = [
+KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTyped: TypedExpr2 nameOverride: String? expectedType: NivaType? bucket: MethodBucketKind -> KeywordMsgT = [
   receiverTypedExpr = receiverTyped
   receiverType = receiverTypedExpr typeInfo t
   db addCollectionInstantiationIfAbsent: receiverType

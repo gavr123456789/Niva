@@ -488,7 +488,7 @@ extend TyperDB [
   ]
 
   /// adds method to protocol, if no such protocol - creates it
-  on addMethod(m): NivaMethod forType(forType): NivaType = [
+  on addMethod(m): NivaMethod forType: NivaType = [
     | forType
     | NullableT => [
       bucketsMaybe = nullableMethods at: m name
@@ -587,7 +587,7 @@ extend TyperDB [
     ]
   ]
 
-  on findGenericReceiverMethod(name): String forType::NivaType bucket(bucket): MethodBucketKind -> NivaMethod? = [
+  on findGenericReceiverMethod(name): String forType::NivaType bucket: MethodBucketKind -> NivaMethod? = [
     matches::mut List::NivaMethod = {}!
     genericReceiverMethods values forEach: [candidate ->
       (candidate method name == name) && (candidate method methodBucketKind == bucket) ifTrue: [
@@ -824,7 +824,7 @@ extend TyperDB [
     typeDeclarationTokens at: (t pkgName + "." + t name) put: token
   ]
 
-  on registerMethodDeclaration(receiver): NivaType name(name): String token: Token = [
+  on registerMethodDeclaration(receiver): NivaType name: String token: Token = [
     key = receiver pkgName + "." + receiver name + "." + name
     methodDeclarationTokens at: key put: token
   ]
@@ -976,7 +976,7 @@ extend TyperDB [
   ]
 
 
-  on findMethodOnNullable(name): String inner(innerType): NivaType bucket(bucket): MethodBucketKind -> NivaMethod? = [
+  on findMethodOnNullable(name): String inner(innerType): NivaType bucket: MethodBucketKind -> NivaMethod? = [
     byInnerTypeMaybe = nullableMethods at: name
     lookupKey = this nullableMethodKeyFor: innerType
     ^ | byInnerTypeMaybe
@@ -1030,7 +1030,7 @@ extend TyperDB [
         isInline: false
   ]
 
-  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2 bucket(bucket): MethodBucketKind -> NivaMethod? = [
+  on findMethodInAllProtocols(name): String forType::NivaType receiver::TypedExpr2 bucket: MethodBucketKind -> NivaMethod? = [
     lookupType = forType
     constructorMethodMaybe = receiver isIdentifierConstructor ifTrue: [
       constructorsMaybe = this constructorsTypeToMethodNameToMethod at: (lookupType toMangledName)
@@ -1192,7 +1192,7 @@ extend TyperDB [
 
   on findMsgFromReceiver(receiver): TypedExpr2
     byName(name): String
-    currentPkg: NivaPkg bucket(bucket): MethodBucketKind -> NivaMethod = [
+    currentPkg: NivaPkg bucket: MethodBucketKind -> NivaMethod = [
 
     receiverType = receiver typeInfo t
     tryMethod = this findTryMethod: receiver byName: name
@@ -2145,7 +2145,7 @@ constructor ResolverHelper resolveSources(sources): List(NivaSourceInput) entryP
   ResolverInterfaceSnapshot collectSources: sources :entryPoint :backend,
     resolveBodies
 
-TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db(db): TyperDB -> TypeT = [
+TypeT replaceGenericsFromTable(letterToType): Map(String, NivaType) db: TyperDB -> TypeT = [
   newFields = fields map: [
     TypeTField name: it name
               typeT: (it typeT replaceGenericsFromTableDeep: letterToType :db)

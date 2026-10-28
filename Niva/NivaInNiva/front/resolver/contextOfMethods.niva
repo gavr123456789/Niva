@@ -16,7 +16,7 @@ constructor Context [
   on rootWithPkg(currentPkg): NivaPkg = Context
     parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
     currentReturnType: null allowsNonLocalReturn: false hasNonInlineLambdaBoundary: false
-  on rootWithPkg(currentPkg): NivaPkg returnType(returnType): NivaType? = Context
+  on rootWithPkg(currentPkg): NivaPkg returnType: NivaType? = Context
     parent: null vars: #{}! :currentPkg currentBlockRefNames: #()!
     currentReturnType: returnType allowsNonLocalReturn: false hasNonInlineLambdaBoundary: false
   on fromParent::Context =
