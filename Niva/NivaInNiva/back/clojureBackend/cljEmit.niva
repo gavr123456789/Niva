@@ -816,14 +816,21 @@ IrExpr cljUnwrapLambdaBody(ctx): CljContext scope: CljScope -> String =
 // top-level definitions
 // ---------------------------------------------------------------------------
 
+// hot reload and a REPL session keep a record's class, so the values made with it still match
+CljContext recordDef(name): String fields: String -> String = [
+  record = "(defrecord $name [$fields])"
+  ^ | true
+    | hotReload => "^:clj-reload/keep $record"
+    // eval, since a defrecord makes a new class as it's compiled, even in a branch that isn't run
+    | repl => "(when-not (resolve '$name) (eval '$record))"
+    |=> record
+]
+
 constructor CljBackend [
   on emitTypeDef(def): IrTypeDef ctx: CljContext sb: StringBuilder -> Unit = [
     name = def id cljNormalizeTypeId cljTypeIdent
     fields = def fields joinWith: " " transform: [it name cljSanitizeIdent]
-    typeDef = ctx hotReload
-      ifTrue: ["^:clj-reload/keep (defrecord " + name + " [" + fields + "])"]
-      ifFalse: ["(defrecord " + name + " [" + fields + "])"]
-    sb appendLine: typeDef
+    sb appendLine: (ctx recordDef: name :fields)
     sb appendLine: ""
     ()
   ]
@@ -839,10 +846,7 @@ constructor CljBackend [
         fieldsStr = commonStr == ""
           ifTrue: [branchStr]
           ifFalse: [branchStr == "" ifTrue: [commonStr] ifFalse: [commonStr + " " + branchStr]]
-        typeDef = ctx hotReload
-          ifTrue: ["^:clj-reload/keep (defrecord " + branchName + " [" + fieldsStr + "])"]
-          ifFalse: ["(defrecord " + branchName + " [" + fieldsStr + "])"]
-        sb appendLine: typeDef
+        sb appendLine: (ctx recordDef: branchName fields: fieldsStr)
         ()
       ]
     ]
@@ -1100,7 +1104,7 @@ constructor CljBackend [
       ifTrue: [ir packages first name]
       ifFalse: [""]
     ctx = CljContext newDebug: debug imports: initialImports pkg: packageName
-      namespace: namespace hotReload: (mode == CljEmitMode.HotReload)
+      namespace: namespace hotReload: (mode == CljEmitMode.HotReload) repl: (mode == CljEmitMode.Repl)
     ctx classlessTypes addAll: classlessTypes
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
