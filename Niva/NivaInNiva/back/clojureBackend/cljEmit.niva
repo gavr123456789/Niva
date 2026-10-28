@@ -91,7 +91,7 @@ IrTypeRef toCljCellExpr(expr): String -> String = [
 ]
 
 IrExpr toCljCollectionExpectedExpr(expected): IrTypeRef
-    ctx(ctx): CljContext scope(scope): CljScope -> String = [
+    ctx: CljContext scope: CljScope -> String = [
   cell = this toCljCollectionCellExpr: ctx :scope
   expected isMut ifTrue: [cell] ifFalse: ["(deref " + cell + ")"]
 ]
@@ -109,8 +109,8 @@ IrExpr toCljSnapshotExpr(ctx): CljContext scope: CljScope -> String = [
 
 // pass a plain value when the caller expects one
 // keep the cell when the caller can change the value
-IrExpr toCljExprForExpected(expected): IrTypeRef ctx(ctx): CljContext
-    scope(scope): CljScope -> String = [
+IrExpr toCljExprForExpected(expected): IrTypeRef ctx: CljContext
+    scope: CljScope -> String = [
   raw = this toCljExpr: ctx :scope
   sourceType = this cljExprTypeRef
   sourceIsMut = sourceType isMut
@@ -290,7 +290,7 @@ IrCall cljOrdinaryCallOutput(ctx): CljContext scope: CljScope -> String = [
 // IrLambda
 // ---------------------------------------------------------------------------
 
-IrArg toCljFunctionArg(allowPrimitive): Bool ctx(ctx): CljContext -> String = [
+IrArg toCljFunctionArg(allowPrimitive): Bool ctx: CljContext -> String = [
   primitiveHint = allowPrimitive ifTrue: [typeRef cljPrimitiveFunctionHint] ifFalse: [""]
   classHint = primitiveHint == "" ifTrue: [typeRef cljClassHint: ctx] ifFalse: [""]
   hint = primitiveHint != "" ifTrue: [primitiveHint] ifFalse: [classHint]
@@ -874,7 +874,7 @@ constructor CljBackend [
   // Generic receiver methods are represented by one IR function and a list of
   // concrete call-site instantiations. Clojure has no dispatch by static type,
   // so every concrete receiver needs its own function symbol.
-  on emitFunctionNamed(name): String fn(fn): IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
+  on emitFunctionNamed(name): String fn: IrFunction ctx: CljContext sb: StringBuilder -> Unit = [
     // fn.args already includes `this` for instance methods
     generatedLine = (sb toString) cljLineCount
     primitiveHints = fn cljPrimitiveHintsAllowed
@@ -911,8 +911,8 @@ constructor CljBackend [
     ()
   ]
 
-  on emitEntry(entry): IrBlock stateDefs(stateDefs): List(IrStateDef)
-      ctx(ctx): CljContext sb(sb): StringBuilder -> Unit = [
+  on emitEntry(entry): IrBlock stateDefs: List(IrStateDef)
+      ctx: CljContext sb: StringBuilder -> Unit = [
     // keep entry execution behind a reload-safe hook
     entryToken = entry stmts isNotEmpty
       ifTrue: [(entry stmts first) cljStmtToken]
@@ -994,7 +994,7 @@ constructor CljBackend [
   ]
 
   on fullOutputFromIrModuleForTarget(ir): IrModule debug: Bool mode: CljEmitMode
-      target(target): CljTarget -> CljOutput = [
+      target: CljTarget -> CljOutput = [
     files::mut Map(String, String) = #{}!
 
     // Keep the legacy `main` shim loadable even when the source file is empty.
@@ -1091,15 +1091,15 @@ constructor CljBackend [
 
   // Public entry point.
   on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode
-      namespace(namespace): String initialImports(initialImports): Set(String)
-      mainClass(mainClass): Bool -> String =
+      namespace: String initialImports: Set(String)
+      mainClass: Bool -> String =
     CljBackend fullFromIrModule: ir :debug :mode :namespace :initialImports
       classlessTypes: ir cljClasslessTypes :mainClass
 
   // a file of a program in several gets the classless types of every package
   on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode
-      namespace(namespace): String initialImports(initialImports): Set(String)
-      classlessTypes(classlessTypes): Set(String) mainClass(mainClass): Bool -> String = [
+      namespace: String initialImports: Set(String)
+      classlessTypes: Set(String) mainClass: Bool -> String = [
     packageName = ir packages count == 1
       ifTrue: [ir packages first name]
       ifFalse: [""]

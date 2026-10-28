@@ -47,17 +47,17 @@ extend MethodBuckets [
     bucket at: m name put: m
   ]
 
-  on contains(kind): MethodBucketKind name(name): String -> Bool = [
+  on contains(kind): MethodBucketKind name: String -> Bool = [
     bucket = this bucketFor: kind
     ^ bucket containsKey: name
   ]
 
-  on methodAt(kind): MethodBucketKind name(name): String -> NivaMethod? = [
+  on methodAt(kind): MethodBucketKind name: String -> NivaMethod? = [
     bucket = this bucketFor: kind
     ^ bucket at: name
   ]
 
-  on putAt(kind): MethodBucketKind name(name): String method(m): NivaMethod = [
+  on putAt(kind): MethodBucketKind name: String method(m): NivaMethod = [
     bucket::mut Map(String, NivaMethod) = this bucketFor: kind
     bucket at: name put: m
   ]

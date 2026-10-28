@@ -12,7 +12,7 @@ constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revisi
     entryPoint: "main" documentVersions: #{}
 
 constructor WorkspaceSnapshot fromSources(sources): List(NivaSourceInput) revision: Int
-    entryPoint(entryPoint): String documentVersions(documentVersions): Map(String, Int)
+    entryPoint: String documentVersions: Map(String, Int)
     -> WorkspaceSnapshot =
   WorkspaceSnapshot :revision sources: (sources sortedBy: [it moduleId])
     :documentVersions :entryPoint
@@ -163,7 +163,7 @@ Set(String) incrementalTransitiveDependants(reverseGraph): Map(String, Increment
   result
 ]
 
-CompilerSession bodyModulesFor(snapshot): WorkspaceSnapshot apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> Set(String) = [
+CompilerSession bodyModulesFor(snapshot): WorkspaceSnapshot apiHashes: Map(String, String) config: CompilerConfigFingerprint -> Set(String) = [
   result::mut Set(String) = #()!
 
   apiHashes forEach: [moduleId, newApiHash ->
@@ -251,7 +251,7 @@ CompilerCandidate emitBackend -> CompilerBackendArtifact = [
     cljOutput: output
 ]
 
-CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir(ir): IrModule specializationUses(candidateSpecializationUses): Map(String, Set(String)) apiHashes(apiHashes): Map(String, String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot ir: IrModule specializationUses(candidateSpecializationUses): Map(String, Set(String)) apiHashes: Map(String, String) config: CompilerConfigFingerprint -> CompilerCandidate = [
   newDependencies::mut Map(String, IncrementalDependencyTargets) = #{}!
   ir packages forEach: [pkg ->
     newDependencies at: pkg name put: (IncrementalDependencyTargets values: pkg dependencyPackageNames)
@@ -441,7 +441,7 @@ CompilerSession compilationFailure(requestVersion): Int diagnostics: List(Compil
     :requestVersion candidate: null backendArtifact: null
     :diagnostics cancelled: false
 
-CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container hotReload(hotReload): Bool -> CljGenerationResult = [
+CompilerCompilationResult publishCljOutput(root): String withIO(io): IO_Container hotReload: Bool -> CljGenerationResult = [
   | true
   | this commitReady not => CljGenerationResult notPublished
   |=> [
@@ -476,12 +476,12 @@ CompilerSession commitResult(result): CompilerCompilationResult -> CompilerSessi
     |=> this commit: candidateMaybe
   ]
 
-CompilerSession commitResult(result): CompilerCompilationResult incremental(incremental): Bool -> CompilerSession =
+CompilerSession commitResult(result): CompilerCompilationResult incremental: Bool -> CompilerSession =
   | true
   | incremental not => CompilerSession empty
   |=> this commitResult: result
 
-CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver): ResolverHelper config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver: ResolverHelper config: CompilerConfigFingerprint -> CompilerCandidate = [
   ir = resolver toIrModule
   genericFunctionIds = ir functions filter: [it generics isNotEmpty], map: [it id]
   genericUses::mut Map(String, Set(String)) = #{}!
@@ -493,7 +493,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot resolver(resolver)
       apiHashes: resolver interfaceApiHashes :config
 ]
 
-CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot bodyResolver(bodyResolver): ResolverHelper bodyModules(bodyModules): Set(String) config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot: ResolverInterfaceSnapshot bodyResolver: ResolverHelper bodyModules: Set(String) config: CompilerConfigFingerprint -> CompilerCandidate = [
   apiHashes = interfaceSnapshot interfaceApiHashes
   bodyIr = bodyResolver toIrModule
 
@@ -538,7 +538,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
       :apiHashes :config
 ]
 
-CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint -> CompilerCandidate = [
+CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot: ResolverInterfaceSnapshot config: CompilerConfigFingerprint -> CompilerCandidate = [
   apiHashes = interfaceSnapshot interfaceApiHashes
   bodyModules = this bodyModulesFor: snapshot :apiHashes :config
   bodyResolver = interfaceSnapshot resolveBodiesFor: bodyModules
@@ -546,7 +546,7 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
       :bodyResolver :bodyModules :config
 ]
 
-CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(interfaceSnapshot): ResolverInterfaceSnapshot config(config): CompilerConfigFingerprint requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
+CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot: ResolverInterfaceSnapshot config: CompilerConfigFingerprint requestVersion: Int cancelled: Bool -> CompilerCompilationResult = [
   | true
   | cancelled => CompilerCompilationResult cancelled: requestVersion
   |=> [
@@ -597,8 +597,8 @@ CompilerSession compileCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot(
 ]
 
 // entry point for watch and lsp clients
-CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): CompilerConfigFingerprint
-    requestVersion(requestVersion): Int cancelled(cancelled): Bool -> CompilerCompilationResult = [
+CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config: CompilerConfigFingerprint
+    requestVersion: Int cancelled: Bool -> CompilerCompilationResult = [
   | true
   | cancelled => CompilerCompilationResult cancelled: requestVersion
   |=> [
@@ -610,8 +610,8 @@ CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): Com
 ]
 
 // shared routing point for future watch and lsp adapters
-CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config(config): CompilerConfigFingerprint
-    requestVersion(requestVersion): Int cancelled(cancelled): Bool incremental(incremental): Bool -> CompilerCompilationResult = [
+CompilerSession compileSnapshot(snapshot): WorkspaceSnapshot config: CompilerConfigFingerprint
+    requestVersion: Int cancelled: Bool incremental: Bool -> CompilerCompilationResult = [
   activeSession = incremental ifTrue: [this] ifFalse: [CompilerSession empty]
   activeSession compileSnapshot: snapshot :config
     :requestVersion :cancelled

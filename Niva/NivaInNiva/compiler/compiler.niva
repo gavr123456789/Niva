@@ -113,7 +113,7 @@ NivaBindingProvider bindingInterface(files): List(NivaSourceFile) withIO(io): IO
 ]
 
 constructor NivaBuildSystem [
-    on findAllFilesFrom(path): String? withIO(io): IO_Container backend(backend): String -> List(NivaSourceInput) = [
+    on findAllFilesFrom(path): String? withIO(io): IO_Container backend: String -> List(NivaSourceInput) = [
         bindingMismatch = NivaBuildSystem bindingInterfaceMismatch: path withIO: io
         bindingMismatch ifNotNull: [mismatch -> TO DO: mismatch]
 
@@ -252,7 +252,7 @@ IO_Container cljDepsFileNeedsWrite(file): String -> Bool = [
   ]
 ]
 
-IO_Container ensureCljProjectAt(root): String hotReload(hotReload): Bool -> Unit = [
+IO_Container ensureCljProjectAt(root): String hotReload: Bool -> Unit = [
   this createDirectories path: (root + "/niva")
   depsContent = hotReload
     ifTrue: [CompilerConstants cljProjectDepsSource]
@@ -318,7 +318,7 @@ type CljGenerationResult
 constructor CljGenerationResult notPublished -> CljGenerationResult =
   CljGenerationResult generationId: "" published: false generatedRoot: "" manifestPath: ""
 
-CljOutput publishTo(root): String withIO(io): IO_Container hotReload(hotReload): Bool -> CljGenerationResult = [
+CljOutput publishTo(root): String withIO(io): IO_Container hotReload: Bool -> CljGenerationResult = [
   generationId = (System currentTimeMillis toString) + "-" + (System nanoTime toString)
   stagingRoot = root + "/staging/" + generationId
   stagingGenerated = stagingRoot + "/generated"

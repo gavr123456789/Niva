@@ -18,7 +18,7 @@ IrDependency stableKey -> String =
   toPkg + "|" + kind stableName + "|" + symbol + "|" + token file path +
     "|" + token line toString + "|" + token start toString
 
-IrDependencyCollector addDependencyTo(targetPkg): String kind(kind): IrDependencyKind token(token): Token symbol(symbol): String -> Unit = [
+IrDependencyCollector addDependencyTo(targetPkg): String kind: IrDependencyKind token: Token symbol: String -> Unit = [
   shouldAdd = (targetPkg != currentPkg) && (localPackages contains: targetPkg)
   shouldAdd ifTrue: [
     dependency = IrDependency fromPkg: currentPkg toPkg: targetPkg :kind :token :symbol
@@ -155,7 +155,7 @@ IrFunction collectDependenciesInto(collector): IrDependencyCollector -> Unit = [
   body collectDependenciesInto: collector
 ]
 
-IrPackage collectDependencyEvidence(localPackages): Set(String) entry(entry): IrBlock? -> List(IrDependency) = [
+IrPackage collectDependencyEvidence(localPackages): Set(String) entry: IrBlock? -> List(IrDependency) = [
   collector = IrDependencyCollector forPackage: name :localPackages
 
   imports forEach: [import ->
