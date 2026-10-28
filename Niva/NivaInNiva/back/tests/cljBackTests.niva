@@ -696,6 +696,44 @@ Test cljReplModuleWithFolderPackageRunsOnBabashka = [
   io deleteRecursively path: root
 ]
 
+// a REPL module defines a record only if the session doesn't have it, and programs and hot reload are as before
+Test cljReplDefinesEachRecordOncePerSession = [
+  source = "type Point x: Int y: Int\nunion Shape =\n| Circle radius: Int\n| Square side: Int\np = Point x: 1 y: 2"
+  Assert nivaToClj: source mode: CljEmitMode.Repl containsAll: {
+    "(when-not (resolve 'main_Point) (eval '(defrecord main_Point [x y])))"
+    "(when-not (resolve 'main_Circle) (eval '(defrecord main_Circle [radius])))"
+    "(when-not (resolve 'main_Square) (eval '(defrecord main_Square [side])))"
+  }
+  Assert nivaToClj: source containsAll: {"(defrecord main_Point [x y])" "(defrecord main_Circle [radius])"} containsNone: {"(eval '"}
+  Assert nivaToClj: source mode: CljEmitMode.HotReload containsAll: {
+    "^:clj-reload/keep (defrecord main_Point [x y])"
+    "^:clj-reload/keep (defrecord main_Circle [radius])"
+  } containsNone: {"(eval '"}
+]
+
+// a line loaded into the session after the module keeps its records, so the module's values still match
+Test cljReplLineAfterModuleRunsOnBabashka = [
+  fileMain = "union Shape =\n| Circle radius: Int\n| Square side: Int\nShape size -> Int = | this\n  | Circle => radius\n  | Square => side\nshape::Shape = Square side: 3\nshape size echo"
+  result = ResolverHelper resolve: #{"main" fileMain} entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  full = CljBackend fullFromIrModule: (result toIrModule) debug: false mode: CljEmitMode.Repl
+  line = CljBackend fullFromIrModule: (result toIrModuleFromEntryLine: 8) debug: false mode: CljEmitMode.Repl
+  io = IO_Container new
+  root = ".niva_clj/repl-line"
+  setupExit = io runProgram args: {"sh" "-c"
+    "rm -rf .niva_clj/repl-line && mkdir -p .niva_clj/repl-line/niva"}
+  Assert that: setupExit equals: 0
+  io writeFile file: root + "/full.clj" content: full
+  io writeFile file: root + "/line.clj" content: line
+  io writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
+
+  exit = io runProgramFromPath path: root args: {"sh" "-c"
+    "bb -cp . -e '(load-file \"full.clj\") (load-file \"line.clj\") nil' > result.txt"}
+  Assert that: exit equals: 0
+  Assert that: (io readFile path: root + "/result.txt") equals: "3\n3\n"
+  io deleteRecursively path: root
+]
+
 Test cljProgramMutVarUsesLocalAtom = [
   Assert nivaToClj: """
     mut c = 3
