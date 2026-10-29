@@ -143,6 +143,20 @@ Test buildLoaderUsesBindingManifest = [
   io deleteRecursively path: root
 ]
 
+Test ioMovesAndDeletesFiles = [
+  io = IO_Container new
+  root = ".niva_go/io-tests"
+  io createDirectories path: root
+  io writeFile file: root + "/source" content: "new"
+  io writeFile file: root + "/destination" content: "old"
+  io moveFrom from: root + "/source" to: root + "/destination"
+  Assert that: (io readFile path: root + "/destination") equals: "new"
+  Assert that: (io exists path: root + "/source") equals: false
+  io delete path: root + "/destination"
+  Assert that: (io exists path: root + "/destination") equals: false
+  io deleteRecursively path: root
+]
+
 Test goProjectGenerationCreatesCleanModule = [
   io = IO_Container new
   root = ".niva_go/go-project-tests"
@@ -154,7 +168,7 @@ Test goProjectGenerationCreatesCleanModule = [
   Assert that: (io readFile path: root + "/go.mod") equals: (GoRuntimeSources moduleSource)
   coreSource = io readFile path: root + "/core/core.go"
   Assert that: (coreSource contains: "package core") equals: true
-  Assert that: (FileSystem exists: ((root + "/stale.go") toPath)) equals: false
+  Assert that: (io exists path: root + "/stale.go") equals: false
 
   io deleteRecursively path: root
 ]
@@ -589,6 +603,24 @@ Test compileSnapshotFlagSelectsPersistentOrCleanSession = [
   Assert that: cleanSession revision equals: 0
 ]
 
+Test incrementalReplEmitsOnlyNewExpressions = [
+  initialSources = #{"main" "mut x = 1\nx echo"}
+  changedSources = #{"main" "mut x = 1\nx echo\nx <- x + 2\nx"}
+  config = CompilerConfigFingerprint incrementalTest
+  empty = CompilerSession empty
+  initial = empty compileSnapshot: (initialSources incrementalTestSnapshot: 1) :config
+    requestVersion: 1 cancelled: false incremental: true
+  session = empty commitResult: initial incremental: true
+  changed = session compileSnapshot: (changedSources incrementalTestSnapshot: 2) :config
+    requestVersion: 2 cancelled: false incremental: true
+  candidate = changed candidate expect: "Missing REPL candidate"
+  ir = candidate irModule fromEntryLine: 3
+  clj = CljBackend fullFromIrModule: ir debug: false mode: CljEmitMode.Repl
+  Assert that: (clj contains: "(def x (+ x 2))") equals: true
+  Assert that: (clj contains: "(def x 1)") equals: false
+  Assert that: (clj contains: "Any__echo") equals: false
+]
+
 Test incrementalBackendOutputMatchesCleanCompilation = [
   initialSources = #{
     "person" """
@@ -693,9 +725,9 @@ Test cljPublishingWithoutHotReloadOmitsReloadArtifacts = [
   Assert that: (io readFile path: root + "/deps.edn") equals: (CompilerConstants cljPlainDepsSource)
   Assert that: (io readFile path: root + "/bb.edn") equals: (CompilerConstants cljPlainDepsSource)
   Assert that: ((io readFile path: root + "/deps.edn") contains: "clj-reload") equals: false
-  hostExists = FileSystem exists: ((root + "/niva/hot_reload/host.clj") toPath)
+  hostExists = io exists path: root + "/niva/hot_reload/host.clj"
   Assert that: hostExists equals: false
-  hotReloadExists = FileSystem exists: ((root + "/niva/hot_reload") toPath)
+  hotReloadExists = io exists path: root + "/niva/hot_reload"
   Assert that: hotReloadExists equals: false
   generatedFiles = io walkDir path: root + "/generated"
   Assert that: (generatedFiles any: [it relativePath == "niva/generated/main.clj"]) equals: true
@@ -861,6 +893,95 @@ Test jvmHostHasReloadSafeLifecycle = [
 Test jvmHostDoesNotRequireGeneratedNamespaces = [
   Assert that: ((CompilerConstants jvmHostSource) contains: "(:require [niva.generated") equals: false
   Assert that: ((CompilerConstants jvmHostSource) contains: ":no-reload '#{niva.hot-reload.host}") equals: true
+]
+
+Test jvmHostServesStandardNrepl = [
+  io = IO_Container new
+  root = ".niva_clj/nrepl-host-test"
+  io deleteRecursively path: root
+  io createDirectories path: root + "/niva/hot_reload"
+  io writeFile file: root + "/niva/hot_reload/host.clj" content: (CompilerConstants jvmHostSource)
+  io writeFile file: root + "/deps.edn" content: (CompilerConstants cljProjectDepsSource)
+  testSource = """
+    (ns host-nrepl-test
+      (:require [niva.hot-reload.host :as host]
+                [nrepl.core :as nrepl]
+                [nrepl.transport :as transport]
+                [clojure.java.io :as io]))
+
+    (defn await-file [file]
+      (loop [attempt 0]
+        (when-not (.exists file)
+          (when (> attempt 200) (throw (ex-info "timeout" {})))
+          (Thread/sleep 25)
+          (recur (inc attempt)))))
+
+    (defn compiler-stub []
+      (future
+        (doseq [[source output] [["valid" "(do (println \"hello\") (+ 1 2))"]
+                                 ["bad" "(throw (ex-info \"failure\" {}))"]
+                                 ["loop" "(while (not (.isInterrupted (Thread/currentThread))) nil)"]]]
+          (let [request (io/file "repl-request")
+                response (io/file "repl-response")
+                temporary (io/file "repl-response.tmp")
+                ack (io/file "repl-ack")]
+            (await-file request)
+            (assert (= source (slurp request)))
+            (.delete request)
+            (spit temporary (str "ok\n" output))
+            (assert (.renameTo temporary response))
+            (await-file ack)
+            (println "ack" (slurp ack))
+            (.delete ack)))))
+
+    (defn -main [& _]
+      (swap! host/runtime assoc :generated-dir (.getAbsolutePath (io/file "generated")))
+      (let [server (host/start-nrepl! ".")
+            compiler (compiler-stub)]
+        (try
+          (println "port" (= (str (:port server)) (slurp ".nrepl-port")))
+          (with-open [transport (nrepl/connect :port (:port server))]
+            (let [client (nrepl/client transport 5000)
+                  session-id (nrepl/new-session client)
+                  session (nrepl/client-session client :session session-id)
+                  result (doall (nrepl/message session {:op "eval" :code "(+ 20 22)"}))]
+              (println "value" (first (nrepl/response-values result)))
+              (let [result (doall (nrepl/message session {:op "niva-eval" :code "valid"}))]
+                (println "niva" (first (nrepl/response-values result)))
+                (println "output" (boolean (some #(= "hello\n" (:out %)) result))))
+              (let [result (doall (nrepl/message session {:op "niva-eval" :code "bad"}))]
+                (println "failed" (boolean (some #(some #{"eval-error"} (:status %)) result))))
+              (transport/send transport {:op "niva-eval" :code "loop" :id "long" :session session-id})
+              (Thread/sleep 500)
+              (transport/send transport {:op "interrupt" :id "stop" :interrupt-id "long" :session session-id})
+              (loop [completed #{} interrupted false]
+                (if (= completed #{"long" "stop"})
+                  (println "interrupted" interrupted)
+                  (let [response (transport/recv transport 5000)]
+                    (when-not response (throw (ex-info "missing interrupt response" {})))
+                    (recur (if (some #{"done"} (:status response))
+                             (conj completed (:id response)) completed)
+                           (or interrupted (boolean (some #{"interrupted"} (:status response))))))))))
+          @compiler
+          (finally (host/stop-nrepl!)))
+        (println "removed" (not (.exists (java.io.File. ".nrepl-port"))))
+        (shutdown-agents)))
+  """ trimIndent
+  io writeFile file: root + "/host_nrepl_test.clj" content: testSource
+  exit = io runProgramFromPath path: root args: {"sh" "-c"
+    "clojure -Sdeps '{:deps {nrepl/nrepl {:mvn/version \"1.3.1\"}}}' -M -m host-nrepl-test > result.txt"}
+  Assert that: exit equals: 0
+  result = io readFile path: root + "/result.txt"
+  Assert that: (result contains: "port true") equals: true
+  Assert that: (result contains: "value 42") equals: true
+  Assert that: (result contains: "niva 3") equals: true
+  Assert that: (result contains: "output true") equals: true
+  Assert that: (result contains: "failed true") equals: true
+  Assert that: (result contains: "interrupted true") equals: true
+  Assert that: (result contains: "ack ok") equals: true
+  Assert that: (result contains: "ack error") equals: true
+  Assert that: (result contains: "removed true") equals: true
+  io deleteRecursively path: root
 ]
 
 Test babashkaHostLoadsRecoversAndWatchesSources = [

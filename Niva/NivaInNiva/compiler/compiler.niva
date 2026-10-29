@@ -263,10 +263,11 @@ IO_Container ensureCljProjectAt(root): String hotReload: Bool -> Unit = [
   (this cljDepsFileNeedsWrite: root + "/deps.edn") ifTrue: [
     this writeFile file: root + "/deps.edn" content: depsContent
   ]
-  (this exists path: (root + "/niva/core.clj")) ifFalse: [
-    this writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
-  ]
-  ()
+  .exists path: (root + "/niva/core.clj"),
+    ifFalse: [.writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)]
+  hotReload
+    ifTrue: [.createDirectories path: root + "/niva/hot_reload"
+             .writeFile file: root + "/niva/hot_reload/host.clj" content: (CompilerConstants jvmHostSource)]
 ]
 
 IO_Container initializeGoProjectAt(root): String -> Unit = [
@@ -333,10 +334,10 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload: Bool -> Cl
   legacyGenerated = root + "/niva/generated"
   hostPath = root + "/niva/hot_reload/host.clj"
 
-  FileSystem createDirectories: stagingGenerated toPath
+  io createDirectories path: stagingGenerated
   files forEach: [relativePath, content ->
     destination = stagingGenerated + "/" + relativePath
-    FileSystem createDirectories: (io getParent path: destination) toPath
+    io createDirectories path: (io getParent path: destination)
     io writeFile file: destination :content
   ]
 
@@ -357,34 +358,34 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload: Bool -> Cl
   // publish only fully written staging content
   hadPublishedGenerated = (io exists path: publishedGenerated)
   hadPublishedGenerated ifTrue: [
-    FileSystem moveFrom: publishedGenerated toPath to: backupGenerated toPath
+    io moveFrom from: publishedGenerated to: backupGenerated
   ]
-  FileSystem moveFrom: stagingGenerated toPath to: publishedGenerated toPath
-  FileSystem moveFrom: stagingManifest toPath to: (root + "/manifest.edn") toPath
-  FileSystem moveFrom: stagingShim toPath to: (root + "/main.clj") toPath
+  io moveFrom from: stagingGenerated to: publishedGenerated
+  io moveFrom from: stagingManifest to: root + "/manifest.edn"
+  io moveFrom from: stagingShim to: root + "/main.clj"
   needsPublishedDeps ifTrue: [
-    FileSystem moveFrom: stagingDeps toPath to: publishedDeps toPath
+    io moveFrom from: stagingDeps to: publishedDeps
   ]
   needsPublishedBbDeps ifTrue: [
-    FileSystem moveFrom: stagingBbDeps toPath to: publishedBbDeps toPath
+    io moveFrom from: stagingBbDeps to: publishedBbDeps
   ]
   hadPublishedGenerated ifTrue: [
-    FileSystem deleteRecursively: backupGenerated toPath
+    io deleteRecursively path: backupGenerated
   ]
   hadLegacyGenerated = (io exists path: legacyGenerated)
   hadLegacyGenerated ifTrue: [
-    FileSystem deleteRecursively: legacyGenerated toPath
+    io deleteRecursively path: legacyGenerated
   ]
   hotReloadDir = root + "/niva/hot_reload"
   hotReload ifTrue: [
-    FileSystem createDirectories: (io getParent path: hostPath) toPath
+    io createDirectories path: (io getParent path: hostPath)
     io writeFile file: hostPath content: (CompilerConstants jvmHostSource)
   ] ifFalse: [
     (io exists path: hotReloadDir) ifTrue: [
-      FileSystem deleteRecursively: (hotReloadDir toPath)
+      io deleteRecursively path: hotReloadDir
     ]
   ]
-  FileSystem deleteRecursively: stagingRoot toPath
+  io deleteRecursively path: stagingRoot
 
   CljGenerationResult :generationId published: true
     generatedRoot: publishedGenerated manifestPath: root + "/manifest.edn"
@@ -431,10 +432,10 @@ constructor NivaCompiler [
         ]
 
         option == CompilerOption.Watch ifTrue: [
-          backend != CompilerBackend.Clj ifTrue: [
-            TO DO: "watch is only supported for the Clojure backend"
-            ()
-          ]
+          backend != CompilerBackend.Clj
+            ifTrue: [TO DO: "watch is only supported for the Clojure backend"]
+          repl && (runtime != CompilerRuntime.Jvm)
+            ifTrue: [TO DO: "--repl requires --runtime=jvm"]
         ]
 
 
@@ -443,7 +444,7 @@ constructor NivaCompiler [
         realCljPath = io currentDir + "/.niva_clj"
 
         generateIrFromResolver = [res::ResolverHelper ->
-            FileSystem createDirectories: (realIrPath toPath)
+            io createDirectories path: realIrPath
             irModule = res toIrModule
             irContent = irModule toDebugString
             destanation = realIrPath + "/" + (res entryPointName) + ".nir"
@@ -469,7 +470,7 @@ constructor NivaCompiler [
 
         generateCljFromResolver = [res: ResolverHelper ->
             io ensureCljProjectAt: realCljPath hotReload: false
-            FileSystem createDirectories: realCljPath toPath
+            io createDirectories path: realCljPath
             irModule = repl
               ifTrue:  [res toIrModuleFromEntryLine: replLine]
               ifFalse: [res toIrModule]
@@ -533,8 +534,51 @@ constructor NivaCompiler [
             compilerVersion: "nin-watch" irSchema: "nir/v0" backend: "clj"
             target: watchRuntime abiOptions: "" hotReload: true coreAbiHash: ""
           mut session = CompilerSession empty
+          mut replSession = CompilerSession empty
+          mut replHistory = ""
+          mut pendingHistory = ""
+          mut pendingResult::CompilerCompilationResult? = null
           mut requestVersion = 0
-          mut entryNamespace = "niva.generated." + entryPoint
+          mut entryNamespace = repl
+            ifTrue: [CompilerConstants cljReplNamespace]
+            ifFalse: ["niva.generated." + entryPoint]
+
+          compileRepl = [code: String ->
+            requestVersion <- requestVersion + 1
+            sources = NivaBuildSystem findAllFilesFrom: watchPathMaybe withIO: io backend: "clj"
+            entrySourceMaybe = sources find: [it moduleId == entryPoint]
+            entrySource = entrySourceMaybe expect: "REPL entry source is missing"
+            prefix = entrySource content + "\n" + replHistory
+            startLine = (prefix split: "\n") count
+            combined = prefix + code + "\n"
+            replSources = sources map: [source ->
+              source moduleId == entryPoint
+                ifTrue: [NivaSourceInput moduleId: source moduleId relativePath: source relativePath
+                                             path: source path          content: combined]
+                ifFalse: [source]
+            ]
+            snapshot = WorkspaceSnapshot fromSources: replSources revision: requestVersion
+                                         :entryPoint              documentVersions: #{}
+            result = replSession compileSnapshot: snapshot :config
+                                 :requestVersion cancelled: false incremental: true
+            result commitReady
+              ifFalse: ["error\n" + (result diagnostics joinWith: "\n" transform: [it message])]
+              ifTrue: [
+                candidate = result candidate expect: "REPL compilation has no candidate"
+                ir = candidate irModule fromEntryLine: startLine
+                clj = CljBackend fullFromIrModule: ir :debug mode: CljEmitMode.Repl
+                tokens = Lexer get-tokens: code file: (SourceFile path: rootFile)
+                parsed = Parser newParseTokens: tokens
+                keepsContext = parsed statements any: [statement ->
+                  | statement
+                  | VarDeclaration | DestructingAssign | TypeDecl | EnumDecl | UnionDecl | ExtendDecl | MessageDecl => true
+                  |=> false
+                ]
+                pendingHistory <- keepsContext ifTrue: [replHistory + code + "\n"] ifFalse: [replHistory]
+                pendingResult <- result
+                "ok\n" + clj
+              ]
+          ]
 
           compileAndPublish = [
             mut publishedOk = false
@@ -570,10 +614,26 @@ constructor NivaCompiler [
                     target: CljTarget.Jvm
                 ]
                 |=> cljOutputMaybe
-              entryNamespace <- cljOutput entryNamespace
-              published = result publishCljOutput: realCljPath withIO: io hotReload: true
+              output = repl ifTrue: [
+                candidate = result candidate expect: "REPL compilation has no candidate"
+                clj = CljBackend fullFromIrModule: candidate irModule :debug mode: CljEmitMode.ReplWatch
+                manifest = cljOutput manifest
+                modules = manifest modules map: [module ->
+                  CljModuleManifest moduleId: module moduleId file: "niva/repl/session.clj" deps: module deps
+                ]
+                CljOutput files: #{"niva/repl/session.clj" clj}
+                  entryNamespace: (CompilerConstants cljReplNamespace)
+                  manifest: (CljManifest version: manifest version
+                    entryNamespace: (CompilerConstants cljReplNamespace)
+                    :modules stateVars: manifest stateVars typeShapes: manifest typeShapes)
+                  target: CljTarget.Jvm
+              ] ifFalse: [cljOutput]
+              entryNamespace <- output entryNamespace
+              published = output publishTo: realCljPath withIO: io hotReload: true
               published published ifTrue: [
                 session <- session commitResult: result incremental: true
+                repl && (replSession revision == 0) && (pendingResult == null),
+                  ifTrue: [replSession <- session]
                 publishedOk <- true
               ]
             ]
@@ -581,12 +641,39 @@ constructor NivaCompiler [
           ]
 
           io ensureCljProjectAt: realCljPath hotReload: true
-          // publish a first good generation before asking clj-reload to load it
-          compileAndPublish do
+          mut initialReady = false
+          JvmReloadHost runProtected: [initialReady <- compileAndPublish do]
           JvmReloadHost start: projectRoot generatedDir: realCljPath + "/generated"
-            :entryNamespace runtime: watchRuntime onChange: [
-              changed = compileAndPublish do
-              changed ifTrue: [JvmReloadHost reloadChanged]
+            :entryNamespace runtime: watchRuntime :repl :initialReady onChange: [
+              JvmReloadHost runProtected: [
+                changed = compileAndPublish do
+                changed ifTrue: [io writeFile file: realCljPath + "/niva-reload.signal"
+                                              content: (System nanoTime toString)]
+              ]
+            ] onTick: [
+              JvmReloadHost runProtected: [
+                ackPath = realCljPath + "/repl-ack"
+                requestPath = realCljPath + "/repl-request"
+                responsePath = realCljPath + "/repl-response"
+                (io exists path: ackPath) ifTrue: [
+                  ack = io readFile path: ackPath
+                  io delete path: ackPath
+                  ready = pendingResult
+                  (ack == "ok") && (ready != null) ifTrue: [
+                    ready ifNotNull: [result -> replSession <- replSession commitResult: result incremental: true]
+                    replHistory <- pendingHistory
+                  ]
+                  pendingResult <- null
+                ]
+                (io exists path: requestPath) ifTrue: [
+                  code = io readFile path: requestPath
+                  io delete path: requestPath
+                  response = JvmReloadHost captureError: [compileRepl code: code]
+                  tempPath = responsePath + ".tmp"
+                  io writeFile file: tempPath content: response
+                  io moveFrom from: tempPath to: responsePath
+                ]
+              ]
               ()
             ]
           ()

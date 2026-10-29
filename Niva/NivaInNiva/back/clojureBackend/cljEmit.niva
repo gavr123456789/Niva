@@ -237,7 +237,6 @@ IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
     jvmHostCall ifTrue: [
       | msgNameLocal
       | "start" => "((requiring-resolve 'niva.hot-reload.host/start!)" + argsPart + ")"
-      | "reloadChanged" => "((requiring-resolve 'niva.hot-reload.host/reload-changed!))"
       |=> ""
     ] ifFalse: [""]
   ]
@@ -745,12 +744,14 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
       ]
     | IrSetLocal => [
         goName = name cljSanitizeIdent
-        (scope isMut: name) ifFalse: [
-          TO DO: "Clojure backend: assignment to non-mut var: " + name
-          ()
-        ]
+        replState = ctx repl && (ctx isStateName: name) && ((scope isMut: name) not)
+        ((scope isMut: name) || replState) 
+          ifFalse: [TO DO: "Clojure backend: assignment to non-mut var: " + name]
         valStr = value toCljExpr: ctx :scope
-        CljBinding name: "_" value: ("(reset! " + goName + " " + valStr + ")")
+        expression = replState
+          ifTrue: ["(def " + goName + " " + valStr + ")"]
+          ifFalse: ["(reset! " + goName + " " + valStr + ")"]
+        CljBinding name: "_" value: expression
       ]
     | IrSetField => [
         receiverType = receiver cljExprTypeRef
@@ -788,7 +789,10 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         bodyStr = body isIrLambda
           ifTrue:  [body cljUnwrapLambdaBody: ctx :scope]
           ifFalse: [body toCljExpr: ctx :scope]
-        CljBinding name: "_" value: ("(while " + condStr + " " + bodyStr + ")")
+        condition = ctx repl
+          ifTrue: ["(and (not (.isInterrupted (Thread/currentThread))) " + condStr + ")"]
+          ifFalse: [condStr]
+        CljBinding name: "_" value: ("(while " + condition + " " + bodyStr + ")")
       ]
     | IrThrow => [
         // JVM can only throw Throwables, so wrap the error record in an ex-info
@@ -886,7 +890,7 @@ constructor CljBackend [
     returnPart = returnHint == "" ifTrue: [""] ifFalse: [" ^" + returnHint]
 
     scope = CljScope new
-    ctx stateNames forEach: [it -> scope mutLocals add: it]
+    ctx hotReload ifTrue: [ctx stateNames forEach: [it -> scope mutLocals add: it]]
     body = fn body toCljBlockBody: ctx :scope
 
     (body contains: "\n")
@@ -961,7 +965,7 @@ constructor CljBackend [
         valueMaybe = stmt value
         value = | valueMaybe
           | null => "nil"
-          |=> valueMaybe toCljExpr: ctx :scope
+          |=> valueMaybe toCljExprForExpected: stmt typeRef :ctx :scope
         sb appendLine: ("(def " + (stmt name cljSanitizeIdent) + " " + value + ")")
         ()
       ]
@@ -975,6 +979,15 @@ constructor CljBackend [
       ]
       | IrExprStmt => [
         sb appendLine: (stmt expr toCljExpr: ctx :scope)
+        ()
+      ]
+      | IrDestructure => [
+        binding = stmt toCljStmtBinding: ctx :scope
+        defs = stmt bindings joinWith: " " transform: [it ->
+          name = it name cljSanitizeIdent
+          "(def " + name + " " + name + ")"
+        ]
+        sb appendLine: ("(let [" + binding name + " " + binding value + "] " + defs + ")")
         ()
       ]
       |=> [
@@ -1104,12 +1117,14 @@ constructor CljBackend [
       ifTrue: [ir packages first name]
       ifFalse: [""]
     ctx = CljContext newDebug: debug imports: initialImports pkg: packageName
-      namespace: namespace hotReload: (mode == CljEmitMode.HotReload) repl: (mode == CljEmitMode.Repl)
+      namespace: namespace hotReload: (mode == CljEmitMode.HotReload)
+      repl: ((mode == CljEmitMode.Repl) || (mode == CljEmitMode.ReplWatch))
     ctx classlessTypes addAll: classlessTypes
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut Set(String) = #()!
-    isRepl = mode == CljEmitMode.Repl
+    isRepl = (mode == CljEmitMode.Repl) || (mode == CljEmitMode.ReplWatch)
+    isReplWatch = mode == CljEmitMode.ReplWatch
     isHotReload = mode == CljEmitMode.HotReload
     hasProgramStates = isHotReload && (ir packages any: [it stateDefs isNotEmpty])
     hasProgramStates ifTrue: [
@@ -1121,6 +1136,7 @@ constructor CljBackend [
     // TODO parallel
     ir packages forEach: [pkg ->
       pkg stateDefs forEach: [state ->
+        isRepl ifTrue: [ctx addStateName: state name]
         isHotReload ifTrue: [
           ctx addStateName: state name
           CljBackend emitStateDef: state :ctx sb: body
@@ -1151,7 +1167,9 @@ constructor CljBackend [
     entryMaybe = ir entry
     entryMaybe ifNotNull: [entryValue ->
       isRepl ifTrue: [
+        isReplWatch ifTrue: [body appendLine: "(defn __niva_entry! []"]
         CljBackend emitEntryRepl: entryValue :ctx sb: body
+        isReplWatch ifTrue: [body appendLine: ")"]
         ()
       ]
       isRepl ifFalse: [
@@ -1241,7 +1259,7 @@ constructor CljBackend [
   ]
 
   on fullFromIrModule(ir): IrModule debug: Bool mode: CljEmitMode -> String = [
-    nsName = mode == CljEmitMode.Repl
+    nsName = (mode == CljEmitMode.Repl) || (mode == CljEmitMode.ReplWatch)
       ifTrue: [CompilerConstants cljReplNamespace]
       ifFalse: ["main"]
     ^ CljBackend fullFromIrModule: ir :debug :mode

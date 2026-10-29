@@ -655,6 +655,28 @@ Test cljReplStateInitializersUsePlainValues = [
   """ mode: CljEmitMode.Repl containsAll: {"(def a 1)" "(def b (+ a 1))"} containsNone: {"@a"}
 ]
 
+Test cljReplUpdatesStateInsideBlocks = [
+  Assert nivaToClj: """
+    mut x = 0
+    [x < 3] whileTrue: [x <- x + 1]
+    x
+  """ mode: CljEmitMode.Repl containsAll: {"(.isInterrupted (Thread/currentThread))" "(def x (+ x 1))"}
+]
+
+Test cljReplKeepsDestructuredValues = [
+  Assert nivaToClj: """
+    type Person name: String age: Int
+    alice = Person name: "Alice" age: 24
+    {age name} = alice
+    age
+  """ mode: CljEmitMode.Repl containsAll: {"(def age age)" "(def name name)"}
+]
+
+Test cljReplCreatesMutableCollections = [
+  Assert nivaToClj: "items::mut List(Int) = {1 2}\nitems add: 3\nitems count"
+    mode: CljEmitMode.Repl containsAll: {"(def items (atom [1 2]))" "(niva.core/List__mut_add items 3)"}
+]
+
 // a REPL module has every package in one namespace, so another package's types come before main's functions
 Test cljReplDefinesEveryPackagesTypesBeforeFunctions = [
   sources = #{

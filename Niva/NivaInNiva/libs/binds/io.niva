@@ -19,7 +19,3 @@ Path toString -> String = value
 
 Path == x: Path -> Bool = value == x value
 Path != x: Path -> Bool = value != x value
-
-Path renameTo::String = [
-  FileSystem moveFrom: this to: renameTo toPath
-]

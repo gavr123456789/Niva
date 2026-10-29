@@ -7,12 +7,14 @@ type CljOutput
   target: CljTarget
 
 CljOutput legacyMainShim -> String = [
+  entryNamespace == (CompilerConstants cljReplNamespace)
+    ifTrue: [^ "(ns main (:require [" + entryNamespace + "]))\n"]
   genClass = target == CljTarget.Jvm ifTrue: [" (:gen-class)"] ifFalse: [""]
   ^ "(ns main" + genClass + " (:require [" + entryNamespace + "]))\n" +
     "(defn -main [& args]\n  (apply " + entryNamespace + "/-main args))\n"
 ]
 
-enum CljEmitMode = Program | Repl | HotReload
+enum CljEmitMode = Program | Repl | ReplWatch | HotReload
 enum CljTarget = Jvm | Bb
 
 type CljContext

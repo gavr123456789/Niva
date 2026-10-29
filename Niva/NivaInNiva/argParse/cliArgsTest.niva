@@ -161,6 +161,13 @@ Test cliArgsRunReplBecomesWatch = [
   result = ArgParser args: {"run" "repl.niva" "--repl"} toList
   Assert that: result option equals: CompilerOption.Watch
   Assert that: result repl equals: true
+  Assert that: result runtime equals: CompilerRuntime.Jvm
+
+  bb = ArgParser args: {"run" "repl.niva" "--repl" "--runtime=bb"} toList
+  Assert that: bb runtime equals: CompilerRuntime.Bb
+
+  watch = ArgParser args: {"watch" "main.niva" "--repl"} toList
+  Assert that: watch runtime equals: CompilerRuntime.Jvm
 
   go = ArgParser args: {"run" "main.niva" "--repl" "--backend=go"} toList
   Assert that: go option equals: CompilerOption.Run

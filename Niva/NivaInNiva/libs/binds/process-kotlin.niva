@@ -16,6 +16,9 @@ Bind package: "java.lang" content: [
 
   Process waitFor -> Int
 
+  @emit: "$0.isAlive"
+  Process isAlive -> Bool
+
   @emit: """System.getProperty("user.dir")"""
   constructor Process currentDir -> String
 
