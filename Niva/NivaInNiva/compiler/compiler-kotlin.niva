@@ -1,35 +1,47 @@
 static JvmReloadHost start(projectRoot): String generatedDir: String
-    entryNamespace: String runtime: String
-    onChange: [ -> Unit] -> Unit = [
+    entryNamespace: String runtime: String repl: Bool initialReady: Bool
+    onChange: [ -> Unit] onTick: [ -> Unit] -> Unit = [
   root = projectRoot isEmpty ifTrue: ["."] ifFalse: [projectRoot]
   sessionRoot = generatedDir substringBeforeLast: "/"
   useBb = runtime == "bb"
-  command = useBb
-    ifTrue: [{"bb" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace}]
-    ifFalse: [{"clojure" "-M" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace}]
-  // the session keeps its stdin pipe open so it exits when this compiler dies
-  (ProcessBuilder :command dir: sessionRoot) redirectOutput start
+  ready = initialReady ifTrue: ["true"] ifFalse: ["false"]
+  command = repl ifTrue: [
+    {"clojure" "-Sdeps" "{:deps {nrepl/nrepl {:mvn/version \"1.3.1\"}}}" "-M" "-m"
+      "niva.hot-reload.host" "repl-runtime" generatedDir entryNamespace
+      (JvmReloadHost absolutePath: root) (JvmReloadHost processId) ready}
+  ] ifFalse: [
+    useBb
+      ifTrue: [{"bb" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace ready}]
+      ifFalse: [{"clojure" "-M" "-m" "niva.hot-reload.host" "runtime-loop" generatedDir entryNamespace ready}]
+  ]
+  processBuilder = ProcessBuilder :command dir: sessionRoot
+  process = repl ifTrue: [processBuilder redirectAll start] ifFalse: [processBuilder redirectOutput start]
+  JvmReloadHost stopWithCompiler: process
   "Watching for niva changes" echo
   mut last = JvmReloadHost sourcesFingerprint: root
   mut running = true
   [running] whileTrue: [
     JvmReloadHost sleepMillis: 200 toLong
+    (process isAlive) ifFalse: [running <- false]
     current = JvmReloadHost sourcesFingerprint: root
-    current != last ifTrue: [
+    running && (current != last) ifTrue: [
       last <- current
-      JvmReloadHost runProtected: onChange
+      onChange do
     ]
+    repl && running ifTrue: [onTick do]
     ()
   ]
   ()
 ]
 
-static JvmReloadHost reloadChanged -> Unit = [
-  // the live session polls this marker and reloads the changed namespaces
-  signal = (Process currentDir) + "/.niva_clj/niva-reload.signal"
-  FileSystem write: (signal toPath) content: (System nanoTime toString)
-  ()
-]
+@emit: """java.io.File($1).absoluteFile.normalize().toString()"""
+static JvmReloadHost absolutePath(path): String -> String = ""
+
+@emit: """java.lang.ProcessHandle.current().pid().toString()"""
+static JvmReloadHost processId -> String = ""
+
+@emit: """java.lang.Runtime.getRuntime().addShutdownHook(java.lang.Thread { $1.destroy() })"""
+static JvmReloadHost stopWithCompiler(process): Process -> Unit = []
 
 // watch service register cannot be called from kotlin so the watcher compares file mtimes
 @emit: """runCatching { java.nio.file.Files.walk(java.nio.file.Paths.get($1)).filter { p -> java.nio.file.Files.isRegularFile(p) && p.toString().endsWith(".niva") && !p.toString().drop($1.length).contains("/.") }.map { it.toString() + "@" + it.toFile().lastModified() }.collect(java.util.stream.Collectors.toList()).sorted().joinToString(";") }.getOrDefault("")"""
@@ -41,3 +53,6 @@ static JvmReloadHost sleepMillis(millis): Long -> Unit = []
 // a broken edit must not stop the watcher so report it and keep waiting
 @emit: """runCatching { $1() }.onFailure { e -> println("recompile failed") ; println(e.toString().take(400)) }"""
 static JvmReloadHost runProtected(cb): [ -> Unit] -> Unit = []
+
+@emit: """runCatching { $1() }.getOrElse { e -> "error\n" + (e.message ?: e.toString()) }"""
+static JvmReloadHost captureError(cb): [ -> String] -> String = ""

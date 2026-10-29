@@ -1588,4 +1588,20 @@ ResolverHelper toIrModuleForGo -> IrModule =
   this toIrModuleUncheckedFromEntryLine: 0
 
 ResolverHelper toIrModuleFromEntryLine(startLine): Int -> IrModule =
-  this toIrModuleUncheckedFromEntryLine: startLine, validateNoDependencyCycles
+  .toIrModule fromEntryLine: startLine
+
+IrModule fromEntryLine(startLine): Int -> IrModule = [
+  entryMaybe = entry
+  filtered = | entryMaybe
+    | null => null
+    |=> [
+      resultMaybe = entryMaybe result
+      result = | resultMaybe
+        | null => null
+        |=> resultMaybe token line >= startLine ifTrue: [resultMaybe] ifFalse: [null]
+      IrBlock stmts: (entryMaybe stmts filter: [it token line >= startLine])
+              :result
+              resultType: entryMaybe resultType
+    ]
+  IrModule :version :pkg :packages entry: filtered
+]

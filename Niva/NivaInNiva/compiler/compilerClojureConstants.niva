@@ -719,7 +719,8 @@ constructor CompilerConstants jvmHostSource -> String = """
 (ns niva.hot-reload.host
   (:require [clj-reload.core :as reload]
             [clj-reload.util :as reload-util]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.main :as main]))
 
 (defonce runtime
   (atom {:entry-future nil
@@ -733,7 +734,7 @@ constructor CompilerConstants jvmHostSource -> String = """
          :bb-process nil
          :bb-writer nil}))
 
-(declare print-error! init! invoke-entry! read-syntax-sweep! quiet-reload-log initial-code-load! initial-load! start-entry! rerun-entry! reload-in-process! reload-changed! java-class invoke-static-no-args enum-value watch-kind project-directory? register-directory! register-tree! event-is-source? drain-key! wait-for-debounced-batch! invoke-change! watch-jvm! bb-source-event? watch-bb! stop-watch! babashka-runtime? start-bb-runtime! stop-bb-runtime! signal-file runtime-loop! -main watch! start!)
+(declare print-error! init! invoke-entry! read-syntax-sweep! quiet-reload-log initial-code-load! initial-load! start-entry! rerun-entry! reload-in-process! reload-changed! java-class invoke-static-no-args enum-value watch-kind project-directory? register-directory! register-tree! event-is-source? drain-key! wait-for-debounced-batch! invoke-change! watch-jvm! bb-source-event? watch-bb! stop-watch! babashka-runtime? start-bb-runtime! stop-bb-runtime! start-nrepl! stop-nrepl! signal-file runtime-loop! -main watch! start!)
 
 (defn- print-error! [prefix error]
   (binding [*out* *err*]
@@ -813,7 +814,9 @@ constructor CompilerConstants jvmHostSource -> String = """
 
 (defn- initial-code-load! []
   (try
-    (read-syntax-sweep!)
+    (let [sweep (read-syntax-sweep!)]
+      (when-not (:ok sweep)
+        (throw (:error sweep))))
     (reload/reload {:only :all :log-fn quiet-reload-log})
     (swap! runtime assoc :initial-loaded? true)
     {:ok true}
@@ -876,9 +879,16 @@ constructor CompilerConstants jvmHostSource -> String = """
       (let [sweep (read-syntax-sweep!)]
         (when-not (:ok sweep)
           (throw (:error sweep))))
-      (reload/reload {:only :changed :log-fn quiet-reload-log})
+      (if (:initial-loaded? @runtime)
+        (reload/reload {:only :changed :log-fn quiet-reload-log})
+        (reload/reload {:only :all :log-fn quiet-reload-log}))
       (swap! runtime assoc :initial-loaded? true)
-      (rerun-entry!)
+      (if (:repl? @runtime)
+        (do
+          (when-let [previous (:entry-future @runtime)] (future-cancel previous))
+          (swap! runtime assoc :entry-started? false :entry-executed? false)
+          (start-entry!))
+        (rerun-entry!))
       {:ok true}
       (catch Throwable error
         (print-error! "Clojure reload failed" error)
@@ -1036,15 +1046,149 @@ constructor CompilerConstants jvmHostSource -> String = """
     (try (.destroy process) (catch Throwable _)))
   (swap! runtime assoc :bb-process nil :bb-writer nil))
 
+(defonce niva-eval-lock (Object.))
+
+(defn write-repl-ack! [ack value]
+  (let [temporary (io/file (.getParentFile ^java.io.File ack) "repl-ack.tmp")]
+    (spit temporary value)
+    (when-not (.renameTo temporary ack)
+      (throw (ex-info "could not acknowledge compiler response" {})))))
+
+(defn eval-niva! [code]
+  (locking niva-eval-lock
+    (let [root (.getParentFile (java.io.File. ^String (:generated-dir @runtime)))
+          request (io/file root "repl-request")
+          temporary (io/file root "repl-request.tmp")
+          response (io/file root "repl-response")
+          ack (io/file root "repl-ack")
+          interrupted (volatile! (.isInterrupted (Thread/currentThread)))]
+      (when @interrupted (throw (InterruptedException.)))
+      (spit temporary code)
+      (when-not (.renameTo temporary request)
+        (throw (ex-info "could not send expression to compiler" {})))
+      (loop [attempts 0]
+        (when-not (.exists response)
+          (when (> attempts 4800)
+            (throw (ex-info "compiler did not answer" {})))
+          (try (Thread/sleep 25) (catch InterruptedException _ (vreset! interrupted true)))
+          (recur (inc attempts))))
+      (let [compiled (slurp response)]
+        (.delete response)
+        (if (.startsWith ^String compiled "error\n")
+          (if @interrupted (throw (InterruptedException.)) (throw (ex-info (subs compiled 6) {})))
+          (let [ok (volatile! false)]
+            (try
+              (when @interrupted (throw (InterruptedException.)))
+              (let [value (load-string (subs compiled 3))]
+                (when (.isInterrupted (Thread/currentThread)) (throw (InterruptedException.)))
+                (vreset! ok true)
+                value)
+              (finally (write-repl-ack! ack (if @ok "ok" "error"))))))))))
+
+;; check if repl input needs another line
+(defn incomplete-niva? [source]
+  (let [raw-marker (apply str (repeat 3 (char 34)))
+        size (count source)]
+    (loop [index 0 depth 0 quoted nil escaped false comment false]
+      (if (>= index size)
+        (or (pos? depth) quoted (.endsWith (.trim ^String source) "="))
+        (let [ch (int (.charAt ^String source index))
+              raw? (.startsWith ^String source raw-marker index)
+              next-index (inc index)]
+          (cond
+            comment (recur next-index depth quoted false (not= ch 10))
+            (= quoted :raw) (if raw?
+                              (recur (+ index 3) depth nil false false)
+                              (recur next-index depth quoted false false))
+            quoted (cond
+                     escaped (recur next-index depth quoted false false)
+                     (= ch 92) (recur next-index depth quoted true false)
+                     (= ch 34) (recur next-index depth nil false false)
+                     :else (recur next-index depth quoted false false))
+            raw? (recur (+ index 3) depth :raw false false)
+            (= ch 34) (recur next-index depth :string false false)
+            (and (= ch 47) (< next-index size) (= (int (.charAt ^String source next-index)) 47))
+            (recur (+ index 2) depth nil false true)
+            (#{40 91 123} ch) (recur next-index (inc depth) nil false false)
+            (#{41 93 125} ch) (recur next-index (dec depth) nil false false)
+            :else (recur next-index depth nil false false)))))))
+
+(defn read-niva! []
+  (print "niva=> ")
+  (flush)
+  (when-let [line (read-line)]
+    (if (= line ":paste")
+      (loop [source ""]
+        (print "... ")
+        (flush)
+        (if-let [next-line (read-line)]
+          (if (.isEmpty ^String next-line)
+            source
+            (recur (str source next-line "\n")))
+          nil))
+      (loop [source line]
+        (if (incomplete-niva? source)
+          (do
+            (print "... ")
+            (flush)
+            (when-let [next-line (read-line)]
+              (recur (str source "\n" next-line))))
+          source)))))
+
+(defn wrap-niva-eval [handler]
+  (fn [{:keys [op code] :as message}]
+    (handler (if (= op "niva-eval")
+               (assoc (dissoc message :ns) :op "eval" :code (pr-str code)
+                      :eval "niva.hot-reload.host/eval-niva!")
+               message))))
+
+(defn start-nrepl! [project-root]
+  (let [start-server (requiring-resolve 'nrepl.server/start-server)
+        set-descriptor (requiring-resolve 'nrepl.middleware/set-descriptor!)
+        default-handler (requiring-resolve 'nrepl.server/default-handler)
+        _ (set-descriptor #'wrap-niva-eval
+            {:requires #{"clone" "close"} :expects #{"eval"}
+             :handles {"niva-eval" {:doc "Evaluate Niva code in the live session"
+                                      :requires {"code" "Niva source"}}}})
+        server (start-server :bind "127.0.0.1" :port 0
+                             :handler (default-handler #'wrap-niva-eval))
+        port (str (:port server))
+        port-file (io/file project-root ".nrepl-port")
+        owned? (.createNewFile port-file)]
+    (when owned?
+      (spit port-file port))
+    (swap! runtime assoc :nrepl-server server :nrepl-port-file (when owned? port-file))
+    (println (str "nREPL listening on 127.0.0.1:" port))
+    (when-not owned?
+      (println (str "Existing port file left unchanged: " (.getPath port-file))))
+    server))
+
+(defn stop-nrepl! []
+  (let [{:keys [nrepl-server nrepl-port-file]} @runtime]
+    (when nrepl-server
+      ((requiring-resolve 'nrepl.server/stop-server) nrepl-server))
+    (when (and nrepl-port-file (.exists ^java.io.File nrepl-port-file)
+               (= (str (:port nrepl-server)) (slurp nrepl-port-file)))
+      (.delete ^java.io.File nrepl-port-file))
+    (swap! runtime assoc :nrepl-server nil :nrepl-port-file nil)))
+
 (defn- signal-file [generated-dir]
   (io/file (.getParentFile (java.io.File. ^String generated-dir)) "niva-reload.signal"))
 
-(defn runtime-loop! [generated-dir entry-namespace]
+(defn- poll-reloads! [generated-dir]
+  (let [signal (signal-file generated-dir)]
+    (loop [seen (when (.exists signal) (slurp signal))]
+      (Thread/sleep 200)
+      (let [current (when (.exists signal) (slurp signal))]
+        (when (and (some? current) (not= seen current)) (reload-in-process!))
+        (recur current)))))
+
+(defn runtime-loop! [generated-dir entry-namespace initial-ready]
   (init! generated-dir entry-namespace true)
-  (initial-code-load!)
-  (start-entry!)
-  (let [signal (signal-file generated-dir)
-        reader (java.io.BufferedReader. (java.io.InputStreamReader. System/in))]
+  (when (not= "false" initial-ready)
+    (initial-code-load!)
+    (start-entry!))
+  (let [reader (java.io.BufferedReader. (java.io.InputStreamReader. System/in))]
     (future
       (try
         (loop [^String line (.readLine reader)]
@@ -1055,18 +1199,45 @@ constructor CompilerConstants jvmHostSource -> String = """
         (catch Throwable _))
       ;; closed stdin means the parent compiler process is gone
       (System/exit 0))
-    (loop [seen (when (.exists signal) (slurp signal))]
-      (Thread/sleep 200)
-      (let [current (when (.exists signal) (slurp signal))]
-        (if (and (some? current) (not= seen current))
-          (do
-            (reload-in-process!)
-            (recur current))
-          (recur seen))))))
+    (poll-reloads! generated-dir)))
 
-(defn -main [& [command generated-dir entry-namespace]]
-  (when (= command "runtime-loop")
-    (runtime-loop! generated-dir entry-namespace)))
+(defn repl-runtime! [generated-dir entry-namespace project-root parent-id initial-ready]
+  (let [parent (java.lang.ProcessHandle/of (Long/parseLong parent-id))
+        shutdown (Thread. stop-nrepl!)]
+    (.addShutdownHook (Runtime/getRuntime) shutdown)
+    (try
+      (doseq [name ["repl-request" "repl-request.tmp" "repl-response" "repl-response.tmp" "repl-ack" "repl-ack.tmp"]]
+        (.delete (io/file (.getParentFile (java.io.File. ^String generated-dir)) name)))
+      (swap! runtime assoc :repl? true)
+      (init! generated-dir entry-namespace true)
+      (when (not= "false" initial-ready)
+        (initial-code-load!)
+        (start-entry!))
+      (start-nrepl! project-root)
+      (future
+        (loop []
+          (when (and (.isPresent parent) (.isAlive (.get parent)))
+            (Thread/sleep 500)
+            (recur)))
+        (System/exit 0))
+      (future (poll-reloads! generated-dir))
+      (main/repl :prompt (fn []) :eval eval-niva!
+                 :read (fn [prompt exit]
+                         (let [source (read-niva!)]
+                           (cond
+                             (or (nil? source) (= source ":quit")) exit
+                             (.isEmpty (.trim ^String source)) prompt
+                             :else source))))
+      (finally
+        (stop-nrepl!)
+        (try (.removeShutdownHook (Runtime/getRuntime) shutdown) (catch Throwable _))))))
+
+(defn -main [& [command generated-dir entry-namespace project-root parent-id initial-ready]]
+  (case command
+    "runtime-loop" (runtime-loop! generated-dir entry-namespace project-root)
+    "repl-runtime" (do (repl-runtime! generated-dir entry-namespace project-root parent-id initial-ready)
+                       (System/exit 0))
+    nil))
 
 (defn watch! [project-root on-change runtime-name]
   (if (= runtime-name "bb")

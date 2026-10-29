@@ -1,30 +1,43 @@
-// the go binary hosts no jvm so it spawns the babashka session as a child process
-// start blocks in a polling loop so the compiler stays alive like on the jvm
-// stdin is a pipe that is never written so the session exits when the parent dies
-// the exec package keeps the pipe writer held so garbage collection cannot close it
+// start the runtime as a child process and watch the sources
 static JvmReloadHost start(projectRoot): String generatedDir: String
-    entryNamespace: String runtime: String
-    onChange: [ -> Unit] -> Unit =
+    entryNamespace: String runtime: String repl: Bool initialReady: Bool
+    onChange: [ -> Unit] onTick: [ -> Unit] -> Unit =
   Bind imports: #("fmt" "niva_go/core" "os" "os/exec" "path/filepath" "sort" "strings" "strconv" "time") emit: """(func() core.Unit {
   nivaWatchRoot := $0
   if nivaWatchRoot == "" { nivaWatchRoot = "." }
   nivaWatchGenerated := $1
   nivaWatchEntry := $2
   nivaWatchRuntime := $3
-  nivaWatchOnChange := $4
+  nivaWatchRepl := $4
+  nivaWatchReady := strconv.FormatBool($5)
+  nivaWatchOnChange := $6
+  nivaWatchOnTick := $7
   nivaWatchSessionRoot := filepath.Dir(nivaWatchGenerated)
-  nivaWatchCommand := []string{"bb", "-m", "niva.hot-reload.host", "runtime-loop", nivaWatchGenerated, nivaWatchEntry}
+  nivaWatchCommand := []string{"bb", "-m", "niva.hot-reload.host", "runtime-loop", nivaWatchGenerated, nivaWatchEntry, nivaWatchReady}
   if nivaWatchRuntime != "bb" {
-    nivaWatchCommand = []string{"clojure", "-M", "-m", "niva.hot-reload.host", "runtime-loop", nivaWatchGenerated, nivaWatchEntry}
+    nivaWatchCommand = []string{"clojure", "-M", "-m", "niva.hot-reload.host", "runtime-loop", nivaWatchGenerated, nivaWatchEntry, nivaWatchReady}
+  }
+  if nivaWatchRepl {
+    nivaWatchAbsoluteRoot, nivaWatchRootErr := filepath.Abs(nivaWatchRoot)
+    if nivaWatchRootErr != nil { panic(nivaWatchRootErr) }
+    nivaWatchCommand = []string{"clojure", "-Sdeps", "{:deps {nrepl/nrepl {:mvn/version \"1.3.1\"}}}", "-M", "-m", "niva.hot-reload.host", "repl-runtime", nivaWatchGenerated, nivaWatchEntry, nivaWatchAbsoluteRoot, strconv.Itoa(os.Getpid()), nivaWatchReady}
   }
   nivaWatchCmd := exec.Command(nivaWatchCommand[0], nivaWatchCommand[1:]...)
   nivaWatchCmd.Dir = nivaWatchSessionRoot
   nivaWatchCmd.Stdout = os.Stdout
   nivaWatchCmd.Stderr = os.Stderr
-  nivaWatchStdin, nivaWatchStdinErr := nivaWatchCmd.StdinPipe()
-  if nivaWatchStdinErr != nil { panic(nivaWatchStdinErr) }
+  var nivaWatchStdin interface{}
+  if nivaWatchRepl {
+    nivaWatchCmd.Stdin = os.Stdin
+  } else {
+    nivaWatchPipe, nivaWatchStdinErr := nivaWatchCmd.StdinPipe()
+    if nivaWatchStdinErr != nil { panic(nivaWatchStdinErr) }
+    nivaWatchStdin = nivaWatchPipe
+  }
   if nivaWatchStartErr := nivaWatchCmd.Start(); nivaWatchStartErr != nil { panic(nivaWatchStartErr) }
-  go func() { _ = nivaWatchCmd.Wait() }()
+  nivaWatchDone := make(chan struct{})
+  go func() { _ = nivaWatchCmd.Wait(); close(nivaWatchDone) }()
+  defer nivaWatchCmd.Process.Kill()
   nivaWatchFingerprint := func(nivaWatchDir string) string {
     nivaWatchItems := []string{}
     _ = filepath.Walk(nivaWatchDir, func(nivaWatchPath string, nivaWatchInfo os.FileInfo, nivaWatchErr error) error {
@@ -46,34 +59,36 @@ static JvmReloadHost start(projectRoot): String generatedDir: String
   fmt.Println("Watching for niva changes")
   nivaWatchLast := nivaWatchFingerprint(nivaWatchRoot)
   for {
+    select { case <-nivaWatchDone: return core.UnitInstance; default: }
     time.Sleep(200 * time.Millisecond)
     nivaWatchCurrent := nivaWatchFingerprint(nivaWatchRoot)
     if nivaWatchCurrent != nivaWatchLast {
       nivaWatchLast = nivaWatchCurrent
-      func() {
-        defer func() {
-          if nivaWatchRecovered := recover(); nivaWatchRecovered != nil {
-            nivaWatchMessage := fmt.Sprint(nivaWatchRecovered)
-            nivaWatchRunes := []rune(nivaWatchMessage)
-            if len(nivaWatchRunes) > 400 { nivaWatchMessage = string(nivaWatchRunes[:400]) }
-            fmt.Println("recompile failed")
-            fmt.Println(nivaWatchMessage)
-          }
-        }()
-        nivaWatchOnChange()
-      }()
+      nivaWatchOnChange()
     }
+    if nivaWatchRepl { nivaWatchOnTick() }
     _ = nivaWatchStdin
   }
 })()"""
 
-// the live session polls this marker next to the generated sources and reloads
-static JvmReloadHost reloadChanged -> Unit =
-  Bind imports: #("os" "niva_go/core" "path/filepath" "strconv" "time") emit: """(func() core.Unit {
-  nivaSignalDir, nivaSignalDirErr := os.Getwd()
-  if nivaSignalDirErr != nil { panic(nivaSignalDirErr) }
-  nivaSignalPath := filepath.Join(nivaSignalDir, ".niva_clj", "niva-reload.signal")
-  nivaSignalContent := strconv.FormatInt(time.Now().UnixNano(), 10)
-  if nivaSignalWriteErr := os.WriteFile(nivaSignalPath, []byte(nivaSignalContent), 0o666); nivaSignalWriteErr != nil { panic(nivaSignalWriteErr) }
+static JvmReloadHost runProtected(cb): [ -> Unit] -> Unit =
+  Bind imports: #("fmt" "niva_go/core") emit: """(func() core.Unit {
+  defer func() {
+    if err := recover(); err != nil {
+      message := []rune(fmt.Sprint(err))
+      if len(message) > 400 { message = message[:400] }
+      fmt.Println("recompile failed")
+      fmt.Println(string(message))
+    }
+  }()
+  $0()
   return core.UnitInstance
+})()"""
+
+static JvmReloadHost captureError(cb): [ -> String] -> String =
+  Bind imports: #("fmt") emit: """(func() (result string) {
+  defer func() {
+    if err := recover(); err != nil { result = "error\n" + fmt.Sprint(err) }
+  }()
+  return $0()
 })()"""

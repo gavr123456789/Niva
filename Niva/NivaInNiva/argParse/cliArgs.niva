@@ -49,8 +49,8 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
       Options:
         --backend=go|clj|lsp — select backend (default: clj)
         --debug — include Niva stack traces in the Clojure backend
-        --repl — with run start a watched niva session, with build emit a loadable Clojure REPL module
-        --repl-line=N — emit entry expressions starting at source line N
+        --repl — with run start a watched niva with nrepl , with build emit a loadable module
+        --repl-line=N — with build --repl emit entry expressions starting at source line N
         --native — compile a Clojure build to a native executable with GraalVM native-image
         --incremental — opt in to a persistent compiler session
         --runtime=jvm|bb — select the Clojure runtime for run/watch
@@ -84,6 +84,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut incremental = false
   mut backend = CompilerBackend.Clj
   mut runtime = CompilerRuntime.Bb
+  mut runtimeExplicit = false
   mut target = CompilerTarget.Bb
   mut invalid = false
   mut explicitHelp = false
@@ -111,6 +112,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   ]
 
   applyRuntime = [value: String ->
+    runtimeExplicit <- true
     parsed = value compilerRuntimeFromCli
     | parsed
     | null => [invalid <- true]
@@ -180,6 +182,9 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
 
   // a repl run is a watched niva session so edits recompile into the live session
   replWatch = (option == CompilerOption.Run) && repl && (backend == CompilerBackend.Clj)
+  replSession = repl && ((option == CompilerOption.Run) || (option == CompilerOption.Watch)) &&
+    (backend == CompilerBackend.Clj)
+  replSession && (runtimeExplicit not) ifTrue: [runtime <- CompilerRuntime.Jvm]
   replWatch ifTrue: [option <- CompilerOption.Watch]
 
   explicitHelp ifTrue: [help echo
