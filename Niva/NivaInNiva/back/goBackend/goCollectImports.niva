@@ -33,7 +33,11 @@ IrStmt collectGoImportsInto(imports): mut Set(String) -> Unit = [
     ]
   | IrThrow       => [
       throwErrExpr = errExpr
-      | throwErrExpr | IrTypeRefExpr => [imports add: "fmt"] |=> []
+      | throwErrExpr
+      | IrTypeRefExpr => [
+        (throwErrExpr ref typeId goNormalizeTypeId) == "core_Error" ifTrue: [imports add: "fmt"]
+      ]
+      |=> []
       throwErrExpr collectGoImportsInto: imports
     ]
 ]

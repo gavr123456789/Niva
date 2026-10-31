@@ -311,6 +311,8 @@ constructor CompilerConstants nivaCoreSource -> String = """
 (defn String__isNotEmpty [^String s] (not (.isEmpty s)))
 (defn String__isBlank [^String s] (.isBlank s))
 (defn String__isNotBlank [^String s] (not (.isBlank s)))
+(defn String__endsWith [^String s ^String suffix] (.endsWith s suffix))
+(defn String__startsWith [^String s ^String prefix] (.startsWith s prefix))
 
 (defn String__toFloat [^String s]
   (try

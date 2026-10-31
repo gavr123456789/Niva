@@ -45,6 +45,7 @@ constructor GoBackend [
         sb appendLine: ("type " + branchName + branchTypeParamDecl + " struct {")
         def commonFields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
         br fields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
+        def isErrorDomain ifTrue: [sb appendIndent: 1 line: "nivaMessage string"]
         sb appendLine: "}"
         receiverType = branchName + (branchTypeArgs == "" ifTrue: [""]
                                                           ifFalse: [branchTypeArgs])
@@ -57,7 +58,7 @@ constructor GoBackend [
           ()
         ]
         def isErrorDomain
-            ifTrue: [ sb appendLine: ("func (" + receiverType + ") Error() string { return \"" + br name + "\" }")
+            ifTrue: [ sb appendLine: ("func (this " + receiverType + ") Error() string { if this.nivaMessage != \"\" { return this.nivaMessage }; return \"" + br name + "\" }")
               ()
             ]
         sb appendLine: ""

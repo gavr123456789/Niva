@@ -319,9 +319,13 @@ TypeDeclVisitor
                   | AstType => astOfReceiver isMut
                   | AstLambdaType => false
 
+      msgReturnTypeMaybe = msg returnType
+      returnErrors::List(NivaType) = | msgReturnTypeMaybe
+        | null => {}
+        |=> msgReturnTypeMaybe toErrorsFromDb: db inPkg: null
 
       msg isConstructor ifTrue: [
-        constructorMethod = NivaMethod
+        constructorMethodBase = NivaMethod
           defaultConstructorWithName: msg name
           :receiverType
           args: argsT
@@ -329,15 +333,11 @@ TypeDeclVisitor
           decl: msg
           protocolName: "constructors"
           pkgName: pkg
+        constructorMethod = constructorMethodBase copyWithDifferentReturnErrors: returnErrors
 
         db addNewConstructor: constructorMethod forType: receiverType
         ()
       ] ifFalse: [
-        msgReturnTypeMaybe = msg returnType
-        returnErrors::List(NivaType) = | msgReturnTypeMaybe
-          | null => {}
-          |=> msgReturnTypeMaybe toErrorsFromDb: db inPkg: null
-
         method = NivaMethod
           name: msg name
           :receiverType

@@ -2020,12 +2020,18 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
       inferredReturnType toTypeInfoDefault
     ] do
     declaredReturnTypeMaybe = msgDecl returnType
+    isBindDeclaration = db isBindMessageDecl: msgDecl
     returnInfo = | declaredReturnTypeMaybe
       | null => fallbackReturnInfo
       |=> [
       baseInfo = declaredReturnTypeMaybe toTypeInfoFromDb: db inPkg: null
       declaredReturnTypeMaybe hasAnyErrorMarker
-        ifTrue: [TypeInfo t: baseInfo t isMut: baseInfo isMut listOfErrors: typedBody listOfErrors]
+        ifTrue: [
+          // bind bodies are host calls so declared effects are the source of truth
+          isBindDeclaration
+            ifTrue: [TypeInfo t: baseInfo t isMut: baseInfo isMut listOfErrors: (declaredReturnTypeMaybe toErrorsFromDb: db inPkg: null)]
+            ifFalse: [TypeInfo t: baseInfo t isMut: baseInfo isMut listOfErrors: typedBody listOfErrors]
+        ]
         ifFalse: [baseInfo]
     ]
 

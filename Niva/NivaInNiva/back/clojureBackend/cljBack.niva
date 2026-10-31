@@ -29,6 +29,8 @@ type CljContext
   currentNamespace: String
   // unions and enums, which have no class to hint
   classlessTypes: mut Set(String)
+  // all union definitions visible to the current generated module
+  unionDefs: mut Map(String, IrUnionDef)
   // `^` that can't be put in tail position, reported once emitting is done
   unsupportedReturns: mut Set(String)
 
@@ -54,7 +56,7 @@ constructor CljContext newDebug(debug): Bool imports: Set(String)
     pkg: String namespace: String hotReload: Bool repl: Bool -> CljContext =
   CljContext imports: (imports toMutableSet) stateNames: #()! :debug
     :hotReload :repl debugEntries: #{}! currentPackage: pkg currentNamespace: namespace
-    classlessTypes: #()! unsupportedReturns: #()!
+    classlessTypes: #()! unionDefs: #{}! unsupportedReturns: #()!
 
 constructor CljContext newDebug(debug): Bool imports: Set(String)
     pkg: String -> CljContext =
@@ -165,6 +167,96 @@ IrModule cljClasslessTypes -> Set(String) = [
     pkg enums forEach: [ids add: it id cljNormalizeTypeId]
   ]
   ^ ids
+]
+
+CljContext firstConcreteUnionBranchTypeId(typeId): String -> String? = [
+  unionMaybe = unionDefs at: (typeId cljNormalizeTypeId)
+  | unionMaybe
+  | null => null
+  |=> [
+    mut result::String? = null
+    unionMaybe branches forEach: [branch ->
+      result == null ifTrue: [
+        branchTypeId = unionMaybe pkgId + "_" + branch name
+        branch isInclude
+          ifTrue: [result <- this firstConcreteUnionBranchTypeId: branchTypeId]
+          ifFalse: [result <- branchTypeId]
+      ]
+    ]
+    result
+  ]
+]
+
+CljContext concreteUnionBranchTypeIds(typeId): String -> List(String) = [
+  unionMaybe = unionDefs at: (typeId cljNormalizeTypeId)
+  | unionMaybe
+  | null => {}
+  |=> [
+    result::mut List(String) = {}!
+    unionMaybe branches forEach: [branch ->
+      branchTypeId = unionMaybe pkgId + "_" + branch name
+      branch isInclude
+        ifTrue: [
+          (this concreteUnionBranchTypeIds: branchTypeId) forEach: [result add: it]
+          ()
+        ]
+        ifFalse: [
+          result add: branchTypeId
+          ()
+        ]
+    ]
+    result
+  ]
+]
+
+CljContext errorBranchTypeId(typeId): String -> String? = [
+  normalizedTypeId = typeId cljNormalizeTypeId
+  directUnionMaybe = unionDefs at: normalizedTypeId
+  | directUnionMaybe
+    | null => [
+      mut result::String? = null
+      unionDefs forEach: [key, definition ->
+        result == null ifTrue: [
+          definition isErrorDomain ifTrue: [
+            definition branches forEach: [branch ->
+              result == null ifTrue: [
+                branchTypeId = definition pkgId + "_" + branch name
+                branch isInclude
+                  ifTrue: [
+                    nested = this errorBranchTypeId: branchTypeId
+                    | nested
+                      | null => ()
+                      |=> [result <- nested]
+                  ]
+                  ifFalse: [branchTypeId == normalizedTypeId ifTrue: [result <- branchTypeId]]
+              ]
+            ]
+          ]
+        ]
+      ]
+      ^ result
+    ]
+    |=> [this firstConcreteUnionBranchTypeId: normalizedTypeId]
+]
+
+CljContext errorBranchMapConstructor(errorRef): IrTypeRef -> String? = [
+  directTypeId = errorRef typeId cljNormalizeTypeId
+  branchTypeIdMaybe = this errorBranchTypeId: directTypeId
+  directUnionMaybe = unionDefs at: directTypeId
+  selectedTypeIdMaybe::String? = | branchTypeIdMaybe
+    | null => [
+      | directUnionMaybe
+        | null => [directTypeId == "core_Error" ifTrue: [null] ifFalse: [directTypeId]]
+        |=> null
+    ]
+    |=> branchTypeIdMaybe
+  | selectedTypeIdMaybe
+  | null => null
+  |=> [
+    branchName = selectedTypeIdMaybe cljTypeIdent
+    base = errorRef ownerPkg cljGeneratedNamespace
+    base == "niva.generated." ifTrue: ["map->" + branchName] ifFalse: [base + "/map->" + branchName]
+  ]
 ]
 
 // mangled function name derived directly from IR

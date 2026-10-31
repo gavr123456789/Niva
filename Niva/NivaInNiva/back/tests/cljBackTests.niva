@@ -420,7 +420,7 @@ Test cljPackageOutputQualifiesErrorBranches = [
   mainMaybe = output files at: "niva/generated/main.clj"
   main = mainMaybe expect: "Missing generated main"
 
-  model contains: "(->model_Missing 404)", assertTrue
+  model contains: "(->model_Missing 404 \"\")", assertTrue
   main contains: "niva.generated.model.model_Missing", assertTrue
 ]
 
@@ -436,7 +436,7 @@ Test cljPackageOutputQualifiesThrownBranch = [
   mainMaybe = output files at: "niva/generated/main.clj"
   main = mainMaybe expect: "Missing generated main"
 
-  main contains: "(niva.generated.model/->model_NotFound)", assertTrue
+  main contains: "niva.generated.model/->model_NotFound", assertTrue
 ]
 
 Test cljPackageOutputKeepsBindRequirementWithQualifiedCall = [
@@ -1001,7 +1001,33 @@ Test cljErrorDomainThrowCodegen = [
       (Error2 code: 404) throw
       ^ 42
     ]
-  """ containsAll: {"(defrecord main_Error1 [text])" "(defrecord main_Error2 [code])" "(->main_Error2 404)" "(throw (ex-info (str __cljErr) {:value __cljErr}))"}
+  """ containsAll: {"(defrecord main_Error1 [text nivaMessage])" "(defrecord main_Error2 [code nivaMessage])" "(->main_Error2 404 \"\")" "(throw (ex-info (str __cljErr) {:value __cljErr}))"}
+]
+
+Test cljTailThrowInMatchBranches = [
+  Assert nivaToClj: """
+    errordomain E =
+    | Bad text: String
+    | Absent
+
+    Bool remove -> Unit!{Bad} = [
+      | this
+      | true => [Bad text: "missing", throw]
+      |=> []
+    ]
+
+    Bool read -> String!{Bad} = [
+      | this
+      | true => [Bad text: "missing", throw]
+      |=> "ok"
+    ]
+
+    Unit fail -> Unit!{Absent} = [Absent throw]
+  """ containsAll: {
+    "(->main_Bad \"missing\" \"\")"
+    "(->main_Absent)"
+    "(throw (ex-info (str __cljErr) {:value __cljErr}))"
+  } containsNone: {"niva.core/Error__throw"}
 ]
 
 Test cljErrorDomainHandledMatchCodegen = [
@@ -1271,4 +1297,23 @@ Test cljCollectionOperatorsAndAnyRunOnBabashka = [
   Assert that: exit equals: 0
   Assert that: (io readFile path: root + "/result.txt") equals: "{1 2 3}\n#(2)\ntrue\nfalse\n"
   io deleteRecursively path: root
+]
+
+Test cljBindHostErrorWrapping = [
+  sourceMap = #{
+    "main" """
+      Unit main -> Unit = [
+        | "x" readFile
+        | Error => "bad" echo
+        |=> it echo
+      ]
+    """,
+    "main.bind" """
+      String readFile -> String!Error =
+        Bind pkg: "clojure.core" name: "slurp"
+    """
+  }
+  result = ResolverHelper resolve: sourceMap entryPoint: "main"
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+  clj echo
 ]

@@ -133,8 +133,8 @@ union IrStmt token: Token =
 | IrThrow errExpr: IrExpr
 
 union IrBind =
-| IrBindByName pkg: String name: String isStatic: Bool
-| IrBindEmit template: String imports: Set(String) hasImports: Bool
+| IrBindByName pkg: String name: String isStatic: Bool asString: Bool
+| IrBindEmit template: String imports: Set(String) hasImports: Bool asExitCode: Bool
 
 // Backend-specific constructor emit for external types.
 union IrConstructorBind =

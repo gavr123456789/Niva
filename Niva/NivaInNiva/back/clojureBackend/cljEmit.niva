@@ -44,6 +44,10 @@ extend IrExpr [
         argsStr = argsLocal isNotEmpty
           ifTrue: [" " + (argsLocal joinWith: " " transform: [it toCljExpr: ctx :scope])]
           ifFalse: [""]
+        errorBranchMaybe = ctx errorBranchTypeId: this typeId
+        recordArgsStr = | errorBranchMaybe
+          | null => argsStr
+          |=> [argsStr == "" ifTrue: [" \"\""] ifFalse: [argsStr + " \"\""]]
         constructorBindMaybe = this constructorBind
         constructorOutput = | constructorBindMaybe
           | null => ""
@@ -60,7 +64,7 @@ extend IrExpr [
           ]
         constructorName = "->" + (this typeId cljNormalizeTypeId cljTypeIdent)
         name = this typeRef cljQualifiedVarName: constructorName :ctx
-        recordExpr = "(" + name + argsStr + ")"
+        recordExpr = "(" + name + recordArgsStr + ")"
         recordOutput = (this typeRef isMut) ifTrue: ["(atom " + recordExpr + ")"] ifFalse: [recordExpr]
         constructorOutput != "" ifTrue: [constructorOutput] ifFalse: [recordOutput]
       ]
@@ -199,19 +203,40 @@ IrCall cljAttachedBindOutput(ctx): CljContext scope: CljScope -> String = [
       bindValue = bindMaybe
       | bindValue
       | IrBindByName => [
-          argsStr = (this cljArgValues: ctx :scope) joinWith: " "
+          hasExplicitArgs = ((.args count) > 1) && (bindValue isStatic not)
+          bindArgs = hasExplicitArgs ifTrue: [.args drop: 1] ifFalse: [.args]
+          firstParam = hasExplicitArgs ifTrue: [1] ifFalse: [0]
+          values::mut List(String) = {}!
+          bindArgs forEachIndexed: [i, arg ->
+            paramType = (.paramTypes) at: (i + firstParam)
+            values add: (arg toCljExprForExpected: paramType :ctx :scope)
+          ]
+          argsStr = values toList joinWith: " "
           namespace = bindValue pkg cljNamespace
           namespace != "" ifTrue: [ctx addImport: namespace]
           argsPart = argsStr == "" ifTrue: [""] ifFalse: [" " + argsStr]
-          "(" + namespace + "/" + (bindValue name cljSanitizeIdent) + argsPart + ")"
+          output = "(" + namespace + "/" + (bindValue name cljSanitizeIdent) + argsPart + ")"
+          (.typeRef errors isNotEmpty)
+            ifTrue: [.cljWrapBindError: output :ctx] ifFalse: [output]
         ]
       | IrBindEmit => [
           bindValue imports forEach: [ctx addImport: (it cljNamespace)]
           emitArgVals = this cljArgValues: ctx :scope
-          bindValue template bindApply0: emitArgVals
+          output = bindValue template bindApply0: emitArgVals
+          (this typeRef errors isNotEmpty)
+            ifTrue: [this cljWrapBindError: output :ctx] ifFalse: [output]
         ]
       |=> ""
     ]
+]
+
+IrCall cljWrapBindError(output): String ctx: CljContext -> String = [
+  errorRef = typeRef errors first
+  ctorMaybe = ctx errorBranchMapConstructor: errorRef
+  valuePart = | ctorMaybe
+    | null => "{}"
+    |=> "{:value (" + ctorMaybe + " {:nivaMessage (str __cljBindError)})}"
+  "(try " + output + "\n  (catch Throwable __cljBindError (throw (ex-info (str __cljBindError) " + valuePart + "))))"
 ]
 
 IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
@@ -745,7 +770,7 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
     | IrSetLocal => [
         goName = name cljSanitizeIdent
         replState = ctx repl && (ctx isStateName: name) && ((scope isMut: name) not)
-        ((scope isMut: name) || replState) 
+        ((scope isMut: name) || replState)
           ifFalse: [TO DO: "Clojure backend: assignment to non-mut var: " + name]
         valStr = value toCljExpr: ctx :scope
         expression = replState
@@ -799,14 +824,22 @@ IrStmt toCljStmtBinding(ctx): CljContext scope: CljScope -> CljBinding = [
         // whose data carries it under `:value` (matching niva.core/Error__throw
         // and the extraction done by a ByError match).
         throwErrExpr = errExpr
-        errRecordStr = | throwErrExpr
-          | IrTypeRefExpr => [
-            errRef = throwErrExpr ref
-            "(" + (errRef cljQualifiedVarName: "->" + (errRef typeId cljNormalizeTypeId cljTypeIdent) :ctx) + ")"
-          ]
-          |=> throwErrExpr toCljExpr: ctx :scope
-        CljBinding name: "_"
-          value: ("(let [__cljErr " + errRecordStr + "] (throw (ex-info (str __cljErr) {:value __cljErr})))")
+        isCoreError = | throwErrExpr
+          | IrTypeRefExpr => (throwErrExpr ref typeId cljNormalizeTypeId) == "core_Error"
+          |=> false
+        isCoreError ifTrue: [
+          ctx addImport: "niva.core"
+          CljBinding name: "_" value: "(niva.core/Error__throw :niva.core/Error)"
+        ] ifFalse: [
+          errRecordStr = | throwErrExpr
+            | IrTypeRefExpr => [
+              errRef = throwErrExpr ref
+              "(" + (errRef cljQualifiedVarName: "->" + (errRef typeId cljNormalizeTypeId cljTypeIdent) :ctx) + ")"
+            ]
+            |=> throwErrExpr toCljExpr: ctx :scope
+          CljBinding name: "_"
+            value: ("(let [__cljErr " + errRecordStr + "] (throw (ex-info (str __cljErr) {:value __cljErr})))")
+        ]
       ]
 ]
 
@@ -850,7 +883,8 @@ constructor CljBackend [
         fieldsStr = commonStr == ""
           ifTrue: [branchStr]
           ifFalse: [branchStr == "" ifTrue: [commonStr] ifFalse: [commonStr + " " + branchStr]]
-        sb appendLine: (ctx recordDef: branchName fields: fieldsStr)
+        errorFieldStr = def isErrorDomain ifTrue: [fieldsStr == "" ifTrue: ["nivaMessage"] ifFalse: [fieldsStr + " nivaMessage"]] ifFalse: [fieldsStr]
+        sb appendLine: (ctx recordDef: branchName fields: errorFieldStr)
         ()
       ]
     ]
@@ -1120,6 +1154,9 @@ constructor CljBackend [
       namespace: namespace hotReload: (mode == CljEmitMode.HotReload)
       repl: ((mode == CljEmitMode.Repl) || (mode == CljEmitMode.ReplWatch))
     ctx classlessTypes addAll: classlessTypes
+    ir packages forEach: [pkg ->
+      pkg unions forEach: [unionDef -> ctx unionDefs at: (unionDef id cljNormalizeTypeId) put: unionDef]
+    ]
     // ns declaration is decided at the end; emit bodies first into a scratch buffer
     body = StringBuilder new
     functionNames::mut Set(String) = #()!

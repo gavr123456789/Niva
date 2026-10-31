@@ -107,9 +107,14 @@ extend MessageDecl [
         callArgs = firstExpr bindCallArgs
         callArgs isEmpty ifTrue: [^ null]
           emitArg = callArgs find: [it name name == "emit"]
-          hasSupportedArgs = (callArgs count == 1) ||
-            ((callArgs count == 2) &&
-              (callArgs any: [it name name == "imports"]))
+          hasEmit = callArgs any: [it name name == "emit"]
+          hasUnsupported = callArgs any: [
+            argName = it name name
+            | argName
+              | "emit" | "imports" | "asExitCode" => false
+              |=> true
+          ]
+          hasSupportedArgs = hasEmit && (hasUnsupported not) && (callArgs count <= 3)
           hasSupportedArgs ifFalse: [^ null]
           emitArgMaybe = emitArg
           | emitArgMaybe
@@ -188,6 +193,16 @@ extend MessageDecl [
     |=> null
   ]
 
+  // optional asString says that a go host call returns bytes
+  on bindHasConfigArg(name): String -> Bool = [
+    exprs = body unTypedBody
+    exprs count == 1 ifFalse: [^ false]
+    firstExpr = exprs first
+    ^ | firstExpr
+      | KeywordMsg => (firstExpr bindCallArgs any: [it name name == name])
+      |=> false
+  ]
+
   on bindPlanWith(db): TyperDB -> IrBind? = [
     isBind = db isBindMessageDecl: this
     isBind ifFalse: [^ null]
@@ -208,8 +223,9 @@ extend MessageDecl [
           | importsMaybe
           | null => ()
           |=> imports <- importsMaybe
+          asExitCode = this bindHasConfigArg: "asExitCode"
           bindPlanResult <- IrBindEmit template: tmplValue :imports
-            hasImports: (importsMaybe != null)
+            hasImports: (importsMaybe != null) asExitCode: asExitCode
           ()
         ]
       ]
@@ -218,7 +234,8 @@ extend MessageDecl [
       pkgMaybe ifNotNull: [pkgValue ->
         pkgValue isEmpty ifTrue: [TO DO: "Bind pkg must not be empty"]
         explicitName isEmpty ifTrue: [TO DO: "Bind name must not be empty"]
-        bindPlanResult <- IrBindByName pkg: pkgValue name: explicitName isStatic: isConstructor
+        asString = this bindHasConfigArg: "asString"
+        bindPlanResult <- IrBindByName pkg: pkgValue name: explicitName isStatic: isConstructor asString: asString
         ()
       ]
       ()
@@ -1085,7 +1102,11 @@ TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: Stri
         isLast ifTrue: [
           irExpr = expr toIrExpr: db :currentPkg :typeFieldsById :thisTypeRef
           exprIsUnit = expr typeInfo t isCoreTypeNamed: "Unit"
-          exprIsUnit ifTrue: [
+          exprIsThrow = | irExpr
+            | IrCall => irExpr isCoreThrowCall
+            |=> false
+          emitAsStatement = exprIsUnit || exprIsThrow
+          emitAsStatement ifTrue: [
             | irExpr
             | IrCall => [
                 isThrow = irExpr isCoreThrowCall
@@ -1104,7 +1125,7 @@ TypedBody toIrBlockWithPrefix(prefix): List::IrStmt db: TyperDB currentPkg: Stri
               stmts add: exprStmt
             ]
           ]
-          exprIsUnit ifFalse: [
+          emitAsStatement ifFalse: [
             resultExpr <- irExpr
           ]
         ]

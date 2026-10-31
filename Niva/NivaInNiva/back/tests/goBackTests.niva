@@ -600,8 +600,8 @@ Test goErrorDomainThrowCodegen = [
       ^ 42
     ]
   """ containsAll: {
-    "type main_MyError interface {\n    error\n    ismain_MyError()\n}" "func (main_Error1) Error() string { return \"Error1\" }"
-    "func main__core_Unit__foo(this struct{}) (int, error) {" "return 0, main_Error2{404}" "return 42, nil"
+    "type main_MyError interface {\n    error\n    ismain_MyError()\n}" "func (this main_Error1) Error() string { if this.nivaMessage != \"\" { return this.nivaMessage }; return \"Error1\" }"
+    "func main__core_Unit__foo(this struct{}) (int, error) {" "return 0, main_Error2{404, \"\"}" "return 42, nil"
   }
 ]
 
@@ -1093,4 +1093,23 @@ Test goSortedWithCallsRuntimeFunction = [
     ({3 1 2} sortedWith: [a, b -> a - b]) echo
   """ containsAll: {"core.List__sortedWith["}
   Assert that: (GoRuntimeSources coreSource contains: "func List__sortedWith[T any](s []T, cmp func(T, T) int) []T") equals: true
+]
+
+Test goBindDeclaredErrorEffect = [
+  sourceMap = #{
+    "main" """
+      Unit main -> Unit = [
+        | "x" readFile
+        | Error => "bad" echo
+        |=> it echo
+      ]
+    """,
+    "main.bind" """
+      String readFile -> String!Error =
+        Bind imports: #() emit: "(slurp $0)"
+    """
+  }
+  result = ResolverHelper resolve: sourceMap entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go assertGoContents: {"__matchErr" "__bindErr"} excludes: {}
 ]

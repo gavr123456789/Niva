@@ -199,6 +199,23 @@ IrTypeRef coreFuncNameFromCall(name): String forMut(isMutable): Bool -> String =
 
 ]
 
+IrCall goWrapBindError(output): String ctx: GoContext -> String = [
+  hasErrors = typeRef errors isNotEmpty
+  hasErrors ifFalse: [^ output]
+  errorRef = typeRef errors first
+  branchTypeIdMaybe = ctx symbols errorBranchTypeId: (errorRef typeId)
+  errorExpr = | branchTypeIdMaybe
+    | null => "__bindErr"
+    |=> (ctx goTypeNameFor: branchTypeIdMaybe) + "{nivaMessage: __bindErr.Error()}"
+  typeRef isGoUnitType
+    ifTrue: [
+      "func() error { _, __bindErr := " + output + "; if __bindErr != nil { return " + errorExpr + " }; return nil }()"
+    ] ifFalse: [
+      "func() (" + (typeRef toGoType: ctx) + ", error) { __bindValue, __bindErr := " + output +
+        "; if __bindErr != nil { return " + (typeRef goZeroValue: ctx) + ", " + errorExpr + " }; return __bindValue, nil }()"
+    ]
+]
+
 IrCall toGoTryExpr(ctx): GoContext scope: GoScope -> String = [
   input = args first
   inputType = input typeRef
@@ -331,6 +348,46 @@ GoSymbolTable concreteUnionBranchTypeIds(typeId): String -> List(String) = [
   concreteTypes::mut Set(String) = #()!
   this collectUnionBranchTypes: typeId :seenUnions :concreteTypes
   ^ concreteTypes toList
+]
+
+// Host bindings need a concrete branch because an error domain is an interface.
+// Preserve declaration order from the IR and recurse through included unions.
+GoSymbolTable firstConcreteUnionBranchTypeId(typeId): String -> String? = [
+  unionMaybe = unionDefs at: (typeId goNormalizeTypeId)
+  | unionMaybe
+  | null => null
+  |=> [
+    mut result::String? = null
+    unionMaybe branches forEach: [branch ->
+      result == null ifTrue: [
+        branchTypeId = unionMaybe pkgId + "_" + branch name
+        branch isInclude
+          ifTrue: [result <- this firstConcreteUnionBranchTypeId: branchTypeId]
+          ifFalse: [result <- branchTypeId]
+      ]
+    ]
+    result
+  ]
+]
+
+GoSymbolTable errorBranchTypeId(typeId): String -> String? = [
+  normalizedTypeId = typeId goNormalizeTypeId
+  directUnionMaybe = unionDefs at: normalizedTypeId
+  | directUnionMaybe
+    | null => [
+      mut result::String? = null
+      unionDefs forEach: [key, definition ->
+        result == null ifTrue: [
+          definition isErrorDomain ifTrue: [
+            (this concreteUnionBranchTypeIds: definition id) forEach: [branch ->
+              branch == normalizedTypeId ifTrue: [result <- normalizedTypeId]
+            ]
+          ]
+        ]
+      ]
+      ^ result
+    ]
+    |=> [this firstConcreteUnionBranchTypeId: normalizedTypeId]
 ]
 
 GoSymbolTable collectContainingUnionTypeIds(typeId): String seen: mut Set(String) result: mut Set(String) -> Unit = [
@@ -1262,11 +1319,20 @@ extend IrExpr [
             | bindMaybe
           | IrBindByName => [
               ctx addImport: bindMaybe pkg
-              byNameArgs = args mapIndexed: [i, it ->
-                paramType = paramTypes at: i
+              hasExplicitArgs = (args count > 1) && (bindMaybe isStatic not)
+              bindArgs = hasExplicitArgs ifTrue: [args drop: 1] ifFalse: [args]
+              firstParam = hasExplicitArgs ifTrue: [1] ifFalse: [0]
+              byNameArgs = bindArgs mapIndexed: [i, it ->
+                paramType = paramTypes at: (i + firstParam)
                 it toGoArgExpr: ctx :scope :paramType
               ], goCallArgs
-              (bindMaybe pkg goImportQualifier) + "." + bindMaybe name + "(" + byNameArgs + ")"
+              call = (bindMaybe pkg goImportQualifier) + "." + bindMaybe name + "(" + byNameArgs + ")"
+              canReadBytes = bindMaybe asString && (typeRef typeId goNormalizeTypeId == "core_String") && (typeRef errors isNotEmpty)
+              canReadBytes
+                ifTrue: [
+                  "func() (string, error) { __bindData, __bindErr := " + call +
+                    "; if __bindErr != nil { return \"\", __bindErr }; return string(__bindData), nil }()"
+                ] ifFalse: [call]
             ]
           | IrBindEmit => [
               bindMaybe imports forEach: [ctx addImport: it]
@@ -1275,11 +1341,16 @@ extend IrExpr [
                 paramType = paramTypes at: i
                 it toGoArgExpr: ctx :scope :paramType
               ]
-              bindMaybe template bindApply0: emitArgVals
+              call = bindMaybe template bindApply0: emitArgVals
+              canExit = bindMaybe asExitCode && (typeRef typeId goNormalizeTypeId == "core_Int") && (typeRef errors isNotEmpty)
+              canExit
+                ifTrue: [
+                  "func() (int, error) { __bindValue, __bindErr := " + call + "; if __bindErr != nil { if exitError, ok := __bindErr.(*exec.ExitError); ok { return exitError.ExitCode(), nil }; return 0, __bindErr }; return __bindValue, nil }()"
+                ] ifFalse: [call]
             ]
           |=> ""
         ]
-        bindMaybe != null ifTrue: [bindOutput] ifFalse: [
+        bindMaybe != null ifTrue: [this goWrapBindError: bindOutput :ctx] ifFalse: [
 
         bindExpr = this tryGoBindExpr: ctx :scope
         bindExprMaybe = bindExpr
@@ -1384,7 +1455,10 @@ extend IrExpr [
             fieldType = fieldTypesMaybe at: i
             arg toGoLocalAssignExpr: ctx :scope targetIsNullable: (ctx needsGoNullablePointerFor: fieldType) targetIsMutPointer: (fieldType goIsMutBoxType: ctx)
           ]) joinWith: ", "
-        argsStr == "" ifTrue: [name + "{}"] ifFalse: [name + "{" + argsStr + "}"]
+        errorBranchMaybe = ctx symbols errorBranchTypeId: typeId
+        | errorBranchMaybe
+          | null => [argsStr == "" ifTrue: [name + "{}"] ifFalse: [name + "{" + argsStr + "}"]]
+          |=> [argsStr == "" ifTrue: [name + "{nivaMessage: \"\"}"] ifFalse: [name + "{" + argsStr + ", \"\"}"]]
         ]
       ]
     | IrCollectionLiteral => this collectionToGoExpr: ctx :scope
@@ -1976,8 +2050,11 @@ IrStmt toGoStmt(ctx): GoContext scope: GoScope sb: StringBuilder indent: Int ret
       throwErrExpr = errExpr
       errStr = | throwErrExpr
         | IrTypeRefExpr => [
-            ctx addImport: "fmt"
-            "fmt.Errorf(\"" + (throwErrExpr ref typeId goNormalizeTypeId) + "\")"
+            typeId = throwErrExpr ref typeId goNormalizeTypeId
+            typeId == "core_Error" ifTrue: [
+              ctx addImport: "fmt"
+              "fmt.Errorf(\"" + typeId + "\")"
+            ] ifFalse: [(ctx goTypeNameFor: typeId) + "{}"]
           ]
         |=> (throwErrExpr goLifted: ctx :scope :sb :indent :returnType) toGoExpr: ctx :scope
       returnLine = returnType isGoUnitType
