@@ -45,7 +45,12 @@ constructor GoBackend [
         sb appendLine: ("type " + branchName + branchTypeParamDecl + " struct {")
         def commonFields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
         br fields forEach: [f -> sb appendIndent: 1 line: (f goFieldDeclaration: ctx)]
-        def isErrorDomain ifTrue: [sb appendIndent: 1 line: "nivaMessage string"]
+        def isErrorDomain ifTrue: [
+          // implicit text plus preserved host failure info (original error + captured stack)
+          sb appendIndent: 1 line: "nivaMessage string"
+          sb appendIndent: 1 line: "nivaCause error"
+          sb appendIndent: 1 line: "nivaStack string"
+        ]
         sb appendLine: "}"
         receiverType = branchName + (branchTypeArgs == "" ifTrue: [""]
                                                           ifFalse: [branchTypeArgs])
@@ -59,6 +64,8 @@ constructor GoBackend [
         ]
         def isErrorDomain
             ifTrue: [ sb appendLine: ("func (this " + receiverType + ") Error() string { if this.nivaMessage != \"\" { return this.nivaMessage }; return \"" + br name + "\" }")
+              // expose the preserved host error to errors.Is/As/Unwrap
+              sb appendLine: ("func (this " + receiverType + ") Unwrap() error { return this.nivaCause }")
               ()
             ]
         sb appendLine: ""

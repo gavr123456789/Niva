@@ -601,7 +601,8 @@ Test goErrorDomainThrowCodegen = [
     ]
   """ containsAll: {
     "type main_MyError interface {\n    error\n    ismain_MyError()\n}" "func (this main_Error1) Error() string { if this.nivaMessage != \"\" { return this.nivaMessage }; return \"Error1\" }"
-    "func main__core_Unit__foo(this struct{}) (int, error) {" "return 0, main_Error2{404, \"\"}" "return 42, nil"
+    "func (this main_Error1) Unwrap() error { return this.nivaCause }"
+    "func main__core_Unit__foo(this struct{}) (int, error) {" "return 0, main_Error2{404, \"\", nil, \"\"}" "return 42, nil"
   }
 ]
 
@@ -1112,4 +1113,81 @@ Test goBindDeclaredErrorEffect = [
   result = ResolverHelper resolve: sourceMap entryPoint: "main"
   go = GoBackend fullFromIrModule: (result toIrModule)
   go assertGoContents: {"__matchErr" "__bindErr"} excludes: {}
+]
+
+// a typed branch keeps the original host error and a captured stack beside the text
+Test goBindHostErrorPreservationCodegen = [
+  sourceMap = #{
+    "main" """
+      errordomain FsError =
+      | ReadFailed
+
+      Unit main -> Unit = [
+        |
+          "x" readMissing
+        | ReadFailed => "bad" echo
+        |=> it echo
+      ]
+    """,
+    "main.bind" """
+      String readMissing -> String!{ReadFailed} =
+        Bind imports: #("os") emit: "(os.ReadFile($0))"
+    """
+  }
+  result = ResolverHelper resolve: sourceMap entryPoint: "main"
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go assertGoContents: {
+    "nivaCause error"
+    "nivaStack string"
+    "Unwrap() error { return this.nivaCause }"
+    "nivaCause: __bindErr, nivaStack: string(debug.Stack())"
+  } excludes: {}
+]
+
+// end-to-end: a real host failure fills the typed branch (which has no explicit fields),
+// matching sees it, and the original error plus a captured goroutine stack survive to the
+// match body. Emits avoid double quotes so they sit inside triple-quoted sources cleanly.
+Test goBindHostErrorPreservedAtMatchRuns = [
+  sourceMap = #{
+    "main" """
+      errordomain FsError =
+      | ReadFailed
+
+      Unit showError -> Unit = [
+        |
+          "/no/such/file/niva_go_test_xyz" readMissing
+        | ReadFailed => [
+            ("CAUSE=" + it causeText) echo
+            ("STACK=" + it hasStack toString) echo
+          ]
+        |=> [ it echo ]
+        ()
+      ]
+
+      () showError
+    """,
+    "main.bind" """
+      String readMissing -> String!{ReadFailed} =
+        Bind imports: #("os") emit: "func() (string, error) { b, e := os.ReadFile($0); return string(b), e }()"
+
+      ReadFailed causeText -> String =
+        Bind imports: #() emit: "$0.nivaCause.Error()"
+
+      ReadFailed hasStack -> Bool =
+        Bind imports: #() emit: "len($0.nivaStack) > 0"
+    """
+  }
+  result = ResolverHelper resolve: sourceMap entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+
+  io = IO_Container new
+  root = ".niva_go/go-host-error"
+  io initializeGoProjectAt: root
+  io writeFile file: root + "/main.go" content: go
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "go run . > result.txt 2>&1"}
+  out = io readFile path: root + "/result.txt"
+  Assert that: exit equals: 0
+  out assertGoContents: {"CAUSE=open " "no such file" "STACK=true"} excludes: {"STACK=false"}
+  io deleteRecursively path: root
 ]

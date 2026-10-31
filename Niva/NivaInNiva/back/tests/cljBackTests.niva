@@ -1317,3 +1317,105 @@ Test cljBindHostErrorWrapping = [
   clj = CljBackend fullFromIrModule: (result toIrModule)
   clj echo
 ]
+
+// the wrapper keeps the original Throwable as the ex-info cause and under :nivaHostError
+Test cljBindHostErrorPreservationCodegen = [
+  sourceMap = #{
+    "main" """
+      errordomain FsError =
+      | ReadFailed
+
+      String probe -> String!{ReadFailed} = [
+        ^ this readMissing
+      ]
+      "ready" echo
+    """,
+    "main.bind" """
+      String readMissing -> String!{ReadFailed} =
+        Bind emit: "(slurp $0)"
+    """
+  }
+  result = ResolverHelper resolve: sourceMap entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  mainMaybe = output files at: "niva/generated/main.clj"
+  main = mainMaybe expect: "Missing generated main"
+  main assertCljContents: {
+    ":nivaHostError __cljBindError"
+    // the caught Throwable is passed as the ex-info cause (third arg)
+    ":nivaHostError __cljBindError} __cljBindError)"
+  } excludes: {}
+]
+
+// shared probe: a function that performs a failing host call and lets it propagate,
+// so a host-boundary catch can inspect the preserved cause chain and stack trace
+IO_Container writeHostErrorProbeFilesTo(root): String -> Unit = [
+  io = this
+  sourceMap = #{
+    "main" """
+      errordomain FsError =
+      | ReadFailed
+
+      String probe -> String!{ReadFailed} = [
+        ^ this readMissing
+      ]
+      "ready" echo
+    """,
+    "main.bind" """
+      String readMissing -> String!{ReadFailed} =
+        Bind emit: "(slurp $0)"
+    """
+  }
+  result = ResolverHelper resolve: sourceMap entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  output = CljBackend fullOutputFromIrModule: (result toIrModule)
+    debug: false mode: CljEmitMode.Program
+  output files forEach: [relativePath, content ->
+    io writeFile file: root + "/" + relativePath :content
+  ]
+  io writeFile file: root + "/niva/core.clj" content: (CompilerConstants nivaCoreSource)
+  io writeFile file: root + "/deps.edn" content: "{:paths [\".\"]}\n"
+  // a host-boundary harness: catch the ExceptionInfo and report the preserved metadata
+  io writeFile file: root + "/harness.clj" content: """
+(require 'niva.generated.main)
+(try
+  (niva.generated.main/main__core_String__probe "/no/such/file/niva_clj_test_xyz")
+  (println "NOERROR")
+  (catch clojure.lang.ExceptionInfo e
+    (let [c (.getCause e) d (ex-data e)]
+      (println (str "HASCAUSE=" (some? c)))
+      (println (str "HASHOSTERR=" (contains? d :nivaHostError)))
+      (println (str "SAME=" (identical? c (:nivaHostError d))))
+      (println (str "STACKPOS=" (boolean (and c (pos? (count (.getStackTrace c))))))))))
+"""
+  ()
+]
+
+// Clojure JVM: the original Throwable, its identity, and its stack trace survive wrapping
+Test cljBindHostErrorPreservedAtBoundaryJvm = [
+  io = IO_Container new
+  root = ".niva_clj/host-error-jvm"
+  setupExit = io runProgram args: {"sh" "-c" "rm -rf .niva_clj/host-error-jvm && mkdir -p .niva_clj/host-error-jvm/niva/generated"}
+  Assert that: setupExit equals: 0
+  io writeHostErrorProbeFilesTo: root
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "clojure -M harness.clj > result.txt 2>&1"}
+  out = io readFile path: root + "/result.txt"
+  Assert that: exit equals: 0
+  out assertCljContents: {"HASCAUSE=true" "HASHOSTERR=true" "SAME=true" "STACKPOS=true"} excludes: {"NOERROR"}
+  io deleteRecursively path: root
+]
+
+// Babashka: cause chain and a non-empty stack trace are preserved under SCI too
+Test cljBindHostErrorPreservedAtBoundaryBb = [
+  io = IO_Container new
+  root = ".niva_clj/host-error-bb"
+  setupExit = io runProgram args: {"sh" "-c" "rm -rf .niva_clj/host-error-bb && mkdir -p .niva_clj/host-error-bb/niva/generated"}
+  Assert that: setupExit equals: 0
+  io writeHostErrorProbeFilesTo: root
+  exit = io runProgramFromPath path: root args: {"sh" "-c" "bb -cp . harness.clj > result.txt 2>&1"}
+  out = io readFile path: root + "/result.txt"
+  Assert that: exit equals: 0
+  out assertCljContents: {"HASCAUSE=true" "HASHOSTERR=true" "SAME=true" "STACKPOS=true"} excludes: {"NOERROR"}
+  io deleteRecursively path: root
+]

@@ -205,8 +205,14 @@ IrCall goWrapBindError(output): String ctx: GoContext -> String = [
   errorRef = typeRef errors first
   branchTypeIdMaybe = ctx symbols errorBranchTypeId: (errorRef typeId)
   errorExpr = | branchTypeIdMaybe
+    // built-in Error: keep the raw host error, so its object and unwrap chain survive untouched
     | null => "__bindErr"
-    |=> (ctx goTypeNameFor: branchTypeIdMaybe) + "{nivaMessage: __bindErr.Error()}"
+    // typed branch: preserve the original error and a captured stack next to the text
+    |=> [
+      ctx addImport: "runtime/debug"
+      (ctx goTypeNameFor: branchTypeIdMaybe) +
+        "{nivaMessage: __bindErr.Error(), nivaCause: __bindErr, nivaStack: string(debug.Stack())}"
+    ]
   typeRef isGoUnitType
     ifTrue: [
       "func() error { _, __bindErr := " + output + "; if __bindErr != nil { return " + errorExpr + " }; return nil }()"
@@ -1458,7 +1464,8 @@ extend IrExpr [
         errorBranchMaybe = ctx symbols errorBranchTypeId: typeId
         | errorBranchMaybe
           | null => [argsStr == "" ifTrue: [name + "{}"] ifFalse: [name + "{" + argsStr + "}"]]
-          |=> [argsStr == "" ifTrue: [name + "{nivaMessage: \"\"}"] ifFalse: [name + "{" + argsStr + ", \"\"}"]]
+          // trailing implicit fields: nivaMessage, nivaCause, nivaStack
+          |=> [argsStr == "" ifTrue: [name + "{nivaMessage: \"\"}"] ifFalse: [name + "{" + argsStr + ", \"\", nil, \"\"}"]]
         ]
       ]
     | IrCollectionLiteral => this collectionToGoExpr: ctx :scope

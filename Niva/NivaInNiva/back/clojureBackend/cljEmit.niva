@@ -233,10 +233,12 @@ IrCall cljAttachedBindOutput(ctx): CljContext scope: CljScope -> String = [
 IrCall cljWrapBindError(output): String ctx: CljContext -> String = [
   errorRef = typeRef errors first
   ctorMaybe = ctx errorBranchMapConstructor: errorRef
+  // keep the original Throwable: as ex-info :cause (preserving its stack trace) and under
+  // :nivaHostError in ex-data, while :value stays the typed branch for Niva matching
   valuePart = | ctorMaybe
-    | null => "{}"
-    |=> "{:value (" + ctorMaybe + " {:nivaMessage (str __cljBindError)})}"
-  "(try " + output + "\n  (catch Throwable __cljBindError (throw (ex-info (str __cljBindError) " + valuePart + "))))"
+    | null => "{:nivaHostError __cljBindError}"
+    |=> "{:value (" + ctorMaybe + " {:nivaMessage (str __cljBindError)}) :nivaHostError __cljBindError}"
+  "(try " + output + "\n  (catch Throwable __cljBindError (throw (ex-info (str __cljBindError) " + valuePart + " __cljBindError))))"
 ]
 
 IrCall cljSpecialCallOutput(ctx): CljContext scope: CljScope -> String = [
