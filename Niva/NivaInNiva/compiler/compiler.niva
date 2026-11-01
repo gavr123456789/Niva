@@ -410,7 +410,7 @@ constructor NivaCompiler [
 
 
         argsParsed = ArgParser :args
-        {option path backend runtime target debug repl replLine nativeBuild} = argsParsed
+        {option path backend runtime target debug repl replLine nativeBuild runtimeArgs} = argsParsed
         cljTarget = target == CompilerTarget.Bb
           ifTrue: [CljTarget.Bb]
           ifFalse: [CljTarget.Jvm]
@@ -728,8 +728,8 @@ constructor NivaCompiler [
                   replNamespace = CompilerConstants cljReplNamespace
                   runtime == CompilerRuntime.Jvm ifTrue: [
                     cljRunArgs = repl
-                      ifTrue: [{"clojure" "-M" "-i" "main.clj" "-e" ("(do (in-ns '" + replNamespace + ") nil)") "-r"}]
-                      ifFalse: [{"clojure" "-M" "-m" "main"}]
+                      ifTrue: [{"clojure"} + runtimeArgs + {"-M" "-i" "main.clj" "-e" ("(do (in-ns '" + replNamespace + ") nil)") "-r"}]
+                      ifFalse: [{"clojure"} + runtimeArgs + {"-M" "-m" "main"}]
                     io runProgramFromPath path: realCljPath args: cljRunArgs
                     ()
                   ] ifFalse: [

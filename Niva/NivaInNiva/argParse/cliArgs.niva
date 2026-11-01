@@ -12,6 +12,7 @@ type ArgsParsed
   replLine: Int
   nativeBuild: Bool
   incremental: Bool
+  runtimeArgs: List::String
 
 String compilerRuntimeFromCli -> CompilerRuntime? =
   | true
@@ -30,6 +31,7 @@ String compilerTargetFromCli -> CompilerTarget? =
 constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help
   backend: CompilerBackend.Clj runtime: CompilerRuntime.Jvm target: CompilerTarget.Jvm
   verbose: false debug: false repl: false replLine: 0 nativeBuild: false incremental: false
+  runtimeArgs: {String}
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -54,6 +56,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         --native — compile a Clojure build to a native executable with GraalVM native-image
         --incremental — opt in to a persistent compiler session
         --runtime=jvm|bb — select the Clojure runtime for run/watch
+        --args="..." — extra space-separated arguments for the delegated runtime
         --target=jvm|bb|go|ixgo — select the Clojure output target or the Go toolchain
         --verbose
         --help
@@ -82,6 +85,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut replLine = 0
   mut nativeBuild = false
   mut incremental = false
+  mut runtimeArgs::List::String = {String}
   mut backend = CompilerBackend.Clj
   mut runtime = CompilerRuntime.Bb
   mut runtimeExplicit = false
@@ -126,11 +130,15 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     |=> [target <- parsed]
   ]
 
+  applyRuntimeArgs = [value: String ->
+    runtimeArgs <- value split: " ", filter: [it isNotEmpty]
+  ]
+
   args forEachIndexed: [i, arg ->
     i >= optionStart ifTrue: [
       previous = i > optionStart ifTrue: [args at: i - 1] ifFalse: [""]
-      isSeparatedValue = ((previous == "--runtime") || (previous == "--target")) &&
-        ((arg startsWith: "--") not)
+      isSeparatedValue = ((previous == "--runtime") || (previous == "--target") ||
+        (previous == "--args")) && ((arg startsWith: "--") not)
       isSeparatedValue ifFalse: [
         | arg
         | "--verbose" => verbose <- true
@@ -146,6 +154,10 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         | "--target" => [
           value = readSeparatedValue index: i
           value ifNotNull: [valueValue -> applyTarget value: valueValue]
+        ]
+        | "--args" => [
+          value = readSeparatedValue index: i
+          value ifNotNull: [valueValue -> applyRuntimeArgs value: valueValue]
         ]
         |=> [
           mut handled = false
@@ -170,6 +182,10 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
             handled <- true
             applyTarget value: (arg substringAfter: "=")
           ]
+          arg startsWith: "--args=", ifTrue: [
+            handled <- true
+            applyRuntimeArgs value: (arg substringAfter: "=")
+          ]
           handled ifFalse: [invalid <- true]
         ]
       ]
@@ -192,7 +208,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   shouldReturnHelp = invalid || explicitHelp || commandIsHelp || (option == CompilerOption.Help)
   | shouldReturnHelp
   | true => ArgsParsed help
-  |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl :replLine :nativeBuild :incremental
+  |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl :replLine :nativeBuild :incremental :runtimeArgs
 ]
 
 enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | Help

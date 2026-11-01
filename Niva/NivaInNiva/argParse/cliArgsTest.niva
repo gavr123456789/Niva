@@ -137,8 +137,21 @@ Test cliArgsWatchRuntimeSelection = [
   Assert that: rejected runtime equals: CompilerRuntime.Bb
 ]
 
+Test cliArgsRuntimeArgs = [
+  equals = ArgParser args: {"run" "main.niva" "--runtime=jvm" "--args=-J-Xmx2g -J-XstartOnFirstThread"} toList
+  separated = ArgParser args: {"run" "main.niva" "--runtime" "jvm" "--args" "-J-Xmx2g -J-XstartOnFirstThread"} toList
+
+  Assert that: equals runtimeArgs equals: {"-J-Xmx2g" "-J-XstartOnFirstThread"} toList
+  Assert that: separated runtimeArgs equals: {"-J-Xmx2g" "-J-XstartOnFirstThread"} toList
+]
+
 Test cliArgsRejectsMissingRuntimeValue = [
   result = ArgParser args: {"watch" "main.niva" "--runtime"} toList
+  Assert that: result option equals: CompilerOption.Help
+]
+
+Test cliArgsRejectsMissingArgsValue = [
+  result = ArgParser args: {"run" "main.niva" "--args"} toList
   Assert that: result option equals: CompilerOption.Help
 ]
 
