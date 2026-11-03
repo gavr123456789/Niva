@@ -31,7 +31,7 @@ String compilerTargetFromCli -> CompilerTarget? =
 constructor ArgsParsed help = ArgsParsed path: null option: CompilerOption.Help
   backend: CompilerBackend.Clj runtime: CompilerRuntime.Jvm target: CompilerTarget.Jvm
   verbose: false debug: false repl: false replLine: 0 nativeBuild: false incremental: false
-  runtimeArgs: {String}
+  runtimeArgs: {}
 
 /// prints help if its explicit
 /// if there a mistake in args, returns Help flag
@@ -85,7 +85,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   mut replLine = 0
   mut nativeBuild = false
   mut incremental = false
-  mut runtimeArgs::List::String = {String}
+  mut runtimeArgs::List::String = {}
   mut backend = CompilerBackend.Clj
   mut runtime = CompilerRuntime.Bb
   mut runtimeExplicit = false

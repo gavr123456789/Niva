@@ -113,4 +113,51 @@ extend mut Parser [
     ^ res
   ]
 
+
+  /// host type Vec2 = com.raylib.java.structs.Vector2
+  on hostTypeDeclaration(tok): Token -> HostTypeDecl = [
+    this step // skip the type keyword
+    nameTok = this matchAssertAnyIdent: "name of the host type expected"
+    this matchAssert: TokenType.Assign
+
+    parts::mut List(String) = {}!
+    first = this matchAssertAnyIdent: "host class path expected"
+    parts add: first lexeme
+    [this peek kind == TokenType.Dot] whileTrue: [
+      this match: TokenType.Dot
+      part = this matchAssertAnyIdent: "host class path expected"
+      parts add: part lexeme
+    ]
+
+    ^ HostTypeDecl token: tok name: (nameTok lexeme) hostPath: (parts joinWith: ".")
+  ]
+
+  /// host deps: ["coord and value"]
+  on hostDepsDeclaration(tok): Token -> HostDepsDecl = [
+    this step // skip deps:
+    this matchAssert: TokenType.OpenBracket
+
+    items::mut List(String) = {}!
+    [
+      kind = this peek kind
+      | kind
+      | TokenType.String => [
+          items add: ((this step lexeme) unquoteLiteral)
+          true
+        ]
+      | TokenType.RawString => [
+          items add: ((this step lexeme) unquoteRawLiteral)
+          true
+        ]
+      | TokenType.Comma => [
+          this step
+          true
+        ]
+      |=> false
+    ] whileTrue: []
+
+    this matchAssert: TokenType.CloseBracket
+    ^ HostDepsDecl token: tok items: items toList
+  ]
+
 ]

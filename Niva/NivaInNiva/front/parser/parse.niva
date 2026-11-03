@@ -688,6 +688,14 @@ extend mut Parser [
       // `Int inc = []` or `T? unpack = []`
       | TokenType.Identifier
       | TokenType.NullableIdentifier => [
+        isHostKeyword = (tok kind == TokenType.Identifier) && (tok lexeme == "host")
+        isHostKeyword && (this peek kind == TokenType.Type) ifTrue: [
+          ^ this hostTypeDeclaration: tok
+        ]
+        isHostKeyword && (this peek kind == TokenType.IdentifierColon) &&
+          ((this peek lexeme) == "deps") ifTrue: [
+          ^ this hostDepsDeclaration: tok
+        ]
         firstChar = tok lexeme first
         isTypeName = firstChar isUpperCase
         isTypeName ifTrue: [

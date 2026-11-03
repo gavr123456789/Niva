@@ -2,6 +2,13 @@ type GoRuntimeSources
 
 constructor GoRuntimeSources moduleSource -> String = "module niva_go\n\ngo 1.26.1\n"
 
+// host deps are go module requires like github.com x y v1 2 3
+constructor GoRuntimeSources moduleSourceWith(hostDeps): List(String) -> String = [
+  hostDeps isEmpty ifTrue: [^ GoRuntimeSources moduleSource]
+  requires = hostDeps joinWith: "\n" transform: ["require " + it]
+  ^ "module niva_go\n\ngo 1.26.1\n\n" + requires + "\n"
+]
+
 constructor GoRuntimeSources coreSource -> String = """
   package core
 

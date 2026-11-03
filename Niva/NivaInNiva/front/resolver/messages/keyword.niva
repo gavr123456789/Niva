@@ -174,7 +174,21 @@ KeywordMsg resolveKeywordFromDb2(db): TyperDB withContext(c): Context receiverTy
     ]
   mut kwMsgDB = isTypeReceiver ifTrue: [
     | typedConstructorMaybe
-    | null => db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg :bucket
+    | null => [
+        fallbackMethod = db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg :bucket
+        isCtorKind = (fallbackMethod kind == MessageSendKind.DefaultConstructor) ||
+          (fallbackMethod kind == MessageSendKind.CustomConstructor)
+        receiverHasFields = | receiverType
+          | TypeT => receiverType fields isNotEmpty
+          |=> false
+        // a bare type name is only a value for a fieldless type, calling an
+        // instance method on it would pass the type itself as the receiver
+        (isCtorKind not) && receiverHasFields ifTrue: [
+          db addErrorMessage: (LazyError tok: token
+            msg: "$msgName is an instance method, call it on a value of $receiverType or declare it with static")
+        ]
+        fallbackMethod
+      ]
     |=> typedConstructorMaybe
   ] ifFalse: [
     db findMsgFromReceiver: receiverTypedExpr byName: msgName currentPkg: c currentPkg :bucket

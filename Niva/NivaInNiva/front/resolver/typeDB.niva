@@ -38,9 +38,10 @@ type BindMeta
   bindStatements: mut Set(String)
   bindMessageDecls: mut Set(String)
   bindTypeIds: mut Set(String)
+  hostTypes: mut Map(String, String)
 
 constructor BindMeta new =
-  BindMeta bindFiles: #()! bindFileToPkg: #{}! bindStatements: #()! bindMessageDecls: #()! bindTypeIds: #()!
+  BindMeta bindFiles: #()! bindFileToPkg: #{}! bindStatements: #()! bindMessageDecls: #()! bindTypeIds: #()! hostTypes: #{}!
 
 
 constructor TyperDB new -> TyperDB = [
@@ -240,6 +241,21 @@ extend TyperDB [
 
   on isBindType(t): NivaType -> Bool = this isBindTypeId: (t toMangledName)
 
+  on markHostType(typeId): String hostClass: String = [
+    bindMeta hostTypes at: typeId put: hostClass
+  ]
+
+  on isHostTypeId(typeId): String -> Bool = bindMeta hostTypes containsKey: typeId
+
+  on isHostType(t): NivaType -> Bool = this isHostTypeId: (t toMangledName)
+
+  on isHostTypeNameInPkg(name): String pkgName(pkg): String -> Bool =
+    this isHostTypeId: (pkg + "_" + name)
+
+  // a pkg is a bind pkg when any bind file claims it
+  on isBindPkg(pkgName): String -> Bool =
+    (bindMeta bindFileToPkg values toSet) contains: pkgName
+
   /// for generic instantiation
   on addGeneratedMessageDecl(m): MessageDecl = [
     generatedMessageDecls add: m
@@ -267,6 +283,25 @@ extend TyperDB [
 
   on isUnionBranch(branch): TypeT ofRoot(root): TypeT -> Bool =
     (this unionBranchesDeep: root) contains: branch toIdString
+
+  // error domain branches keep the bare type name as their value form so
+  // `Absent throw` keeps its dedicated throw lowering
+  on isErrorBranchType(t): NivaType -> Bool = [
+    | t
+    | TypeT => [
+        dottedId = t pkgName + "." + t name
+        parentMaybe = branchIdToParentId at: dottedId
+        | parentMaybe
+        | null => false
+        |=> [
+          errorRootsMaybe = this unionRootToBranches at: "core.Error"
+          | errorRootsMaybe
+          | null => false
+          |=> errorRootsMaybe contains: parentMaybe
+        ]
+      ]
+    |=> false
+  ]
 
   on findUnionParent(branch): TypeT -> TypeT? = [
     branchId = branch toIdString
@@ -1527,6 +1562,7 @@ type ResolverBindInterface
   bindStatements: Set(String)
   bindMessageDecls: Set(String)
   bindTypeIds: Set(String)
+  hostTypes: Map(String, String)
 
 type ResolverLookupEnvironment
   errors: List(ResolveErrors)
@@ -1604,7 +1640,8 @@ TyperDB toResolverLookupEnvironment -> ResolverLookupEnvironment = [
       bindFileToPkg: bindMeta bindFileToPkg toMap
       bindStatements: bindMeta bindStatements toSet
       bindMessageDecls: bindMeta bindMessageDecls toSet
-      bindTypeIds: bindMeta bindTypeIds toSet)
+      bindTypeIds: bindMeta bindTypeIds toSet
+      hostTypes: bindMeta hostTypes toMap)
 ]
 
 // make fresh mutable db for body resolution
@@ -1658,6 +1695,7 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
   bindStatements = bindMeta bindStatements toMutableSet
   bindMessages = bindMeta bindMessageDecls toMutableSet
   bindTypes = bindMeta bindTypeIds toMutableSet
+  bindHostTypes = bindMeta hostTypes toMutableMap
 
   ^ TyperDB
     listOfErrors: errorsMutable nonInlineReturnErrors: #{}! packages: packagesMutable
@@ -1672,7 +1710,8 @@ ResolverLookupEnvironment newTyperDB -> TyperDB = [
     generatedMessageDecls: {}! typedBodiesCache: #{}! declToMethod: declMethods
     localGenericScope: localGenerics
     bindMeta: (BindMeta :bindFiles :bindFileToPkg
-      :bindStatements bindMessageDecls: bindMessages bindTypeIds: bindTypes)
+      :bindStatements bindMessageDecls: bindMessages bindTypeIds: bindTypes
+      hostTypes: bindHostTypes)
 ]
 
 ResolverLookupEnvironment findByTypeName(typeName): String inPkg(pkgName): String? -> NivaType = [
@@ -1786,6 +1825,8 @@ Statement interfaceCanonical -> String = [
     | ExtendDecl => "extend|" + receiver interfaceCanonicalType + "|" +
         (messages joinWith: "," transform: [it interfaceCanonical])
     | MessageDecl => this interfaceCanonical
+    // host types compare as fieldless types so providers stay in sync
+    | HostTypeDecl => "type|" + name + "||"
     |=> ""
 ]
 
@@ -1813,6 +1854,22 @@ Map(String, String) toNivaSourceInputs -> List(NivaSourceInput) = [
       :content)
   ]
   ^ sources toList
+]
+
+// a bind declaration body is a single Bind call so the host template is
+// inlined at the call site and no function is emitted for it
+MessageDecl bodyIsBindCall -> Bool = [
+  exprs = body unTypedBody
+  exprs count == 1 ifFalse: [^ false]
+  firstExpr = exprs first
+  ^ | firstExpr
+    | KeywordMsg => [
+        receiverMaybe = firstExpr receiver
+        | receiverMaybe
+        | Identifier => receiverMaybe name == "Bind"
+        |=> false
+      ]
+    |=> false
 ]
 
 // parse bind source name into import path
@@ -1869,6 +1926,10 @@ constructor ResolverInterfaceSnapshot collectSources(sources): List(NivaSourceIn
           | ExtendDecl  => it messages forEach: [db markBindMessageDecl: it]
           | TypeDecl => db markBindTypeId: (pkgName + "_" + it name)
           | UnionDecl => db markBindTypeId: (pkgName + "_" + it name)
+          | HostTypeDecl => [
+              db markHostType: (pkgName + "_" + it name) hostClass: it hostPath
+              db markBindTypeId: (pkgName + "_" + it name)
+            ]
           |=> []
         ]
       ]
@@ -2057,17 +2118,19 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
     mut hasNonBind = false
     statements forEach: [
       isBind = db isBindStatement: it
+      // inside a bind file only bind bodies are inlined, every real method
+      // must reach the ir even when its body is a single expression
       isBindBody = | it
-        | MessageDecl => [
-          (db isBindMessageDecl: it) not ||
-            ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
-        ]
-        | ExtendDecl => [
-          it messages any: [
-            (db isBindMessageDecl: it) not ||
-              ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
-          ]
-        ]
+        | MessageDecl => (it bodyIsBindCall not)
+        | ExtendDecl => (it messages any: [it bodyIsBindCall not])
+        // host declarations carry module level info so they stay in the typed list
+        | HostTypeDecl => true
+        | HostDepsDecl => true
+        // type declarations in bind files must reach the ir so backends can
+        // emit records and structs for them
+        | TypeDecl => true
+        | UnionDecl => true
+        | EnumDecl => true
         |=> false
       (isBind not) || isBindBody ifTrue: [
         hasNonBind <- true
@@ -2110,10 +2173,7 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
         | ExtendDecl => [
           receiverType = it receiver toNivaTypefromDB: db inPkg: null
           typedMsgs = it messages
-            filter: [
-              (db isBindMessageDecl: it) not ||
-                ((it isSingleExpr not) && (it body unTypedBody isNotEmpty))
-            ],
+            filter: [it bodyIsBindCall not],
             map: [m -> toTypedMessageDecl msgDecl: m :pkg]
           typedMsgs isNotEmpty ifTrue: [
             typedExtendDecl::TypedStatement = ExtendDeclT
@@ -2127,6 +2187,17 @@ ResolverInterfaceSnapshot resolveBodiesFor(modules): Set(String) -> ResolverHelp
         | MessageDecl => [
           typedMessageDecl::TypedStatement = toTypedMessageDecl msgDecl: it :pkg
           typedList add: typedMessageDecl
+          ()
+        ]
+        | HostTypeDecl => [
+          typedHostTypeDecl::TypedStatement = HostTypeDeclT
+            token: it token name: it name hostPath: it hostPath
+          typedList add: typedHostTypeDecl
+          ()
+        ]
+        | HostDepsDecl => [
+          typedHostDeps::TypedStatement = HostDepsDeclT token: it token items: it items
+          typedList add: typedHostDeps
           ()
         ]
       ]

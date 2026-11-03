@@ -3,7 +3,7 @@ extend Path [
     Bind imports: #("path/filepath") emit: "libs_binds_io_Path{value: filepath.Clean($0.value)}"
 
   on segments -> List(String) =
-    Bind imports: #("strings") emit: "strings.FieldsFunc($0.value, func(r rune) bool { return r == '/' || r == '\\' })"
+    Bind imports: #("strings") emit: """strings.FieldsFunc($0.value, func(r rune) bool { return r == '/' || r == '\\' })"""
 
   on name -> String =
     Bind imports: #("path/filepath") emit: "filepath.Base($0.value)"
@@ -35,10 +35,10 @@ constructor FileSystem exists::Path -> Bool =
   Bind imports: #("os") emit: "(func() bool { _, err := os.Stat($0.value); return err == nil })()"
 
 constructor FileSystem list::Path -> List(Path) =
-  Bind imports: #("os") emit: "(func() []libs_binds_io_Path { entries, err := os.ReadDir($0.value); if err != nil { panic(err) }; prefix := $0.value; if len(prefix) > 0 && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' { prefix += string(os.PathSeparator) }; paths := make([]libs_binds_io_Path, 0, len(entries)); for _, entry := range entries { paths = append(paths, libs_binds_io_Path{value: prefix+entry.Name()}) }; return paths })()"
+  Bind imports: #("os") emit: """(func() []libs_binds_io_Path { entries, err := os.ReadDir($0.value); if err != nil { panic(err) }; prefix := $0.value; if len(prefix) > 0 && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' { prefix += string(os.PathSeparator) }; paths := make([]libs_binds_io_Path, 0, len(entries)); for _, entry := range entries { paths = append(paths, libs_binds_io_Path{value: prefix+entry.Name()}) }; return paths })()"""
 
 constructor FileSystem listRecursively::Path -> List(Path) =
-  Bind imports: #("os") emit: "(func() []libs_binds_io_Path { paths := []libs_binds_io_Path{}; var walk func(string); walk = func(dir string) { entries, err := os.ReadDir(dir); if err != nil { panic(err) }; prefix := dir; if len(prefix) > 0 && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' { prefix += string(os.PathSeparator) }; for _, entry := range entries { path := prefix+entry.Name(); paths = append(paths, libs_binds_io_Path{value: path}); if entry.IsDir() { walk(path) } } }; walk($0.value); return paths })()"
+  Bind imports: #("os") emit: """(func() []libs_binds_io_Path { paths := []libs_binds_io_Path{}; var walk func(string); walk = func(dir string) { entries, err := os.ReadDir(dir); if err != nil { panic(err) }; prefix := dir; if len(prefix) > 0 && prefix[len(prefix)-1] != '/' && prefix[len(prefix)-1] != '\\' { prefix += string(os.PathSeparator) }; for _, entry := range entries { path := prefix+entry.Name(); paths = append(paths, libs_binds_io_Path{value: path}); if entry.IsDir() { walk(path) } } }; walk($0.value); return paths })()"""
 
 constructor FileSystem delete::Path -> Unit =
   Bind imports: #("os") emit: "(func() core.Unit { if err := os.Remove($0.value); err != nil { panic(err) }; return core.UnitInstance })()"

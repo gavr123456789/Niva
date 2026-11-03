@@ -2,6 +2,17 @@ type CompilerConstants
 
 constructor CompilerConstants cljProjectDepsSource -> String = "{:paths [\"generated\" \".\"] :deps {io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}}}\n"
 constructor CompilerConstants cljPlainDepsSource -> String = "{:paths [\"generated\" \".\"]}\n"
+
+// host deps come from bind files as coord and edn value pairs
+constructor CompilerConstants cljDepsSource(hostDeps): List(String) hotReload: Bool -> String = [
+  parts::mut List(String) = {}!
+  hotReload ifTrue: [parts add: "io.github.tonsky/clj-reload {:mvn/version \"1.0.0\"}"]
+  hostDeps forEach: [parts add: it]
+  parts isEmpty ifTrue: [
+    ^ hotReload ifTrue: [CompilerConstants cljProjectDepsSource] ifFalse: [CompilerConstants cljPlainDepsSource]
+  ]
+  ^ "{:paths [\"generated\" \".\"] :deps {" + (parts joinWith: " ") + "}}\n"
+]
 constructor CompilerConstants cljNativeDepsSource -> String = "{:paths [\".\"] :deps {org.clojure/clojure {:mvn/version \"1.12.2\"}} :aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version \"0.10.9\"}} :ns-default build}}}"
 // repl modules live in this namespace; loading one leaves the session in `user`
 constructor CompilerConstants cljReplNamespace -> String = "niva.repl.session"

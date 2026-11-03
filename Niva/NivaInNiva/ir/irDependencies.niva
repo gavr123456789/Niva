@@ -206,7 +206,7 @@ IrModule withNormalizedDependencies -> IrModule = [
       functions: modulePkg functions
   ]
 
-  ^ IrModule :version :pkg packages: normalizedPackages :entry
+  ^ IrModule :version :pkg packages: normalizedPackages :entry hostDeps: hostDeps
 ]
 
 type IrTarjanState

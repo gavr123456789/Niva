@@ -28,10 +28,44 @@ extend String [
   on unquoteLiteral -> String = [
     len = this count
     ^ len >= 2 ifTrue: [
-      (this drop: 1) dropLast: 1
+      ((this drop: 1) dropLast: 1) unescapeNivaString
     ] ifFalse: [
       this
     ]
+  ]
+
+  // string lexemes keep escape pairs so templates get decoded text here
+  on unescapeNivaString -> String = [
+    sb = StringBuilder new
+    len = this count
+    mut i = 0
+    [i < len] whileTrue: [
+      ch = this at: i
+      (ch == '\\') && ((i + 1) < len) ifTrue: [
+        next = this at: (i + 1)
+        | next
+        | 'n' => [
+            sb append: "\n"
+            i <- i + 2
+          ]
+        | 't' => [
+            sb append: "\t"
+            i <- i + 2
+          ]
+        | 'r' => [
+            sb append: "\r"
+            i <- i + 2
+          ]
+        |=> [
+            sb append: (next toString)
+            i <- i + 2
+          ]
+      ] ifFalse: [
+        sb append: (ch toString)
+        i <- i + 1
+      ]
+    ]
+    ^ sb toString
   ]
   on unquoteRawLiteral -> String = [
     ^ this count > 6

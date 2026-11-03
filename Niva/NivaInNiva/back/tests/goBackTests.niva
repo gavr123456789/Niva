@@ -1183,11 +1183,36 @@ Test goBindHostErrorPreservedAtMatchRuns = [
 
   io = IO_Container new
   root = ".niva_go/go-host-error"
-  io initializeGoProjectAt: root
+  io initializeGoProjectAt: root hostDeps: {}
   io writeFile file: root + "/main.go" content: go
   exit = io runProgramFromPath path: root args: {"sh" "-c" "go run . > result.txt 2>&1"}
   out = io readFile path: root + "/result.txt"
   Assert that: exit equals: 0
   out assertGoContents: {"CAUSE=open " "no such file" "STACK=true"} excludes: {"STACK=false"}
   io deleteRecursively path: root
+]
+
+Test goBindLocalTypeEmitsStruct = [
+  bindSource = """type Vec2
+  x: Int
+  y: Int
+
+constructor Vec2 at(x): Int y(y): Int -> Vec2 =
+  Bind imports: #() emit: "t_Vec2{ $0, $1 }"
+
+extend Vec2 [
+  on getX -> Int = Bind imports: #() emit: "$0.x"
+]
+"""
+  result = ResolverHelper resolve: #{
+    "main" """Unit main -> Unit = [
+  a = Vec2 at: 1 y: 2
+  a getX echo
+  ()
+]"""
+    "t.bind" bindSource
+  } entryPoint: "main" backend: "go"
+  Assert that: result db listOfErrors count equals: 0
+  go = GoBackend fullFromIrModule: (result toIrModule)
+  go assertGoContents: {"type t_Vec2 struct" "t_Vec2{ 1, 2 }"} excludes: {}
 ]

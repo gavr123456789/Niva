@@ -793,8 +793,31 @@ TyperDB irOp(op): String left: IrExpr right: IrExpr leftType: NivaType typeRef: 
 ]
 
 MessageSendT toIrExprFromMsg(db): TyperDB currentPkg: String typeFieldsById: Map(String, List(IrField)) thisTypeRef: IrTypeRef? -> IrExpr = [
-  receiverExpr = receiver toIrExpr: db :currentPkg :typeFieldsById :thisTypeRef
+  mut receiverExpr::IrExpr = receiver toIrExpr: db :currentPkg :typeFieldsById :thisTypeRef
   receiverType = receiver typeInfo t
+
+  // a bare type name used as a value is the zero arg default ctor value, so
+  // pass a real value to the call instead of the type reference
+  receiverTyped::TypedExpr2 = this receiver
+  receiverIsTypeName::Bool = | receiverTyped
+    | IdentifierT => (receiverTyped isNameOfTheType) && (receiverTyped path == null)
+    |=> false
+  (receiverIsTypeName && (dbMsg kind == MessageSendKind.Call)) ifTrue: [
+    | receiverType
+    | TypeT => [
+        isCoreErrorReceiver = (receiverType toMangledName) == "core_Error"
+        ((receiverType fields isEmpty) && (isCoreErrorReceiver not) &&
+          ((db isErrorBranchType: receiverType) not)) ifTrue: [
+          receiverExpr <- IrNewExpr
+            typeRef: (receiverType toIrType-immut-no-errors)
+            token: (this receiver token)
+            typeId: (receiverType toIrTypeId)
+            args: {}
+            constructorBind: (receiverType irConstructorBind)
+        ]
+      ]
+    |=> []
+  ]
   receiverTypeRef = receiverType toIrTypeRefWithMutErrors: false errorsList: {}
   methodReceiverTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: false errorsList: {}
   methodReceiverParamTypeRef = dbMsg receiverType toIrTypeRefWithMutErrors: (dbMsg forMut) errorsList: {}
@@ -1280,7 +1303,13 @@ TypedStatement toIrTypes(db): TyperDB currentPkg: String typeFieldsById: mut Map
     fieldsIr = fields map: [it toIrField]
     typeId = typeFromDb toIrTypeId
     typeFieldsById at: typeId put: fieldsIr
-    {(IrTypeDef id: typeId pkgId: currentPkg :name :typeParams fields: fieldsIr :token)}
+    {(IrTypeDef id: typeId pkgId: currentPkg :name :typeParams fields: fieldsIr hostClass: "" :token)}
+  ]
+  | HostTypeDeclT => [
+    typeFromDb = db findByTypeName: name inPkg: currentPkg
+    typeId = typeFromDb toIrTypeId
+    typeFieldsById at: typeId put: {}
+    {(IrTypeDef id: typeId pkgId: currentPkg :name typeParams: {} fields: {} hostClass: hostPath :token)}
   ]
   |=> [empty::List(IrTypeDef) = {}
        empty]
@@ -1321,6 +1350,11 @@ TypedStatement toIrUnions(db): TyperDB currentPkg: String typeFieldsById: mut Ma
   ]
   |=> [empty::List(IrUnionDef) = {}
        empty]
+
+TypedStatement toIrHostDeps -> List(String) =
+  | this
+  | HostDepsDeclT => items
+  |=> {}
 
 TypedStatement toIrEnums(db): TyperDB currentPkg: String -> List(IrEnumDef) =
   | this
@@ -1451,9 +1485,11 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
   enums::mut List::IrEnumDef = {}!
   functions::mut List::IrFunction = {}!
 
+  hostDeps::mut List(String) = {}!
   // fileToStatements keys are pkg names (file names), not filesystem paths
   fileToStatements forEach: [file, statements ->
     statements forEach: [st ->
+      hostDeps addAll: (st toIrHostDeps)
       types addAll: (st toIrTypes: resolverDb currentPkg: file :typeFieldsById)
       unions addAll: (st toIrUnions: resolverDb currentPkg: file :typeFieldsById)
       enums addAll: (st toIrEnums: resolverDb currentPkg: file)
@@ -1596,6 +1632,7 @@ ResolverHelper toIrModuleUncheckedFromEntryLine(startLine): Int -> IrModule = [
       pkg: entryPointName
       packages: packagesIr toList
       entry: entryBlock
+      hostDeps: hostDeps toList
 
   // dependencies are computed from the original call graph then `^=` methods
   // are expanded at their call sites
@@ -1624,5 +1661,5 @@ IrModule fromEntryLine(startLine): Int -> IrModule = [
               :result
               resultType: entryMaybe resultType
     ]
-  IrModule :version :pkg :packages entry: filtered
+  IrModule :version :pkg :packages entry: filtered hostDeps: hostDeps
 ]

@@ -27,6 +27,8 @@ type IrTypeDef
   name: String
   typeParams: List(String)
   fields: List(IrField)
+  // non empty for host types declared inside bind files
+  hostClass: String
   token: Token
 
 type IrUnionBranch
@@ -176,6 +178,8 @@ type IrModule
   pkg: String
   packages: List(IrPackage)
   entry: IrBlock?
+  // host dependencies declared by bind files
+  hostDeps: List(String)
 
 extend IrTypeRef [
   on isGoRefLike -> Bool = [

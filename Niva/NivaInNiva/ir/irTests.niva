@@ -168,8 +168,8 @@ Test irDependenciesCoverTypeMatchAndKeepProvenance = [
   ]
 ]
 
-Test irDependenciesExcludeExternalBindPackages = [
-  bindFile = """
+Test irDependenciesForBindPackages = [
+  typeBindFile = """
     type Clock
     static Clock now -> Clock = Bind pkg: "java.time" name: "now"
   """
@@ -177,13 +177,24 @@ Test irDependenciesExcludeExternalBindPackages = [
     Clock now
   """
 
-  result = ResolverHelper resolve: #{"main" mainFile "java.time.bind" bindFile}
+  result = ResolverHelper resolve: #{"main" mainFile "java.time.bind" typeBindFile}
     entryPoint: "main" backend: "clj"
   ir = result toIrModule
   mainPkgMaybe = ir packages find: [it name == "main"]
   mainPkg = mainPkgMaybe expect: "Missing main package"
 
-  Assert that: mainPkg dependencyPackageNames isEmpty equals: true
+  // the bind package provides the Clock type so main depends on it
+  Assert that: mainPkg dependencyPackageNames equals: {"java/time"}
+
+  methodBindFile = "Int double -> Int = Bind pkg: \"clojure.core\" name: \"*\""
+  methodResult = ResolverHelper resolve: #{"main" "2 double" "math.bind" methodBindFile}
+    entryPoint: "main" backend: "clj"
+  methodIr = methodResult toIrModule
+  methodMainPkgMaybe = methodIr packages find: [it name == "main"]
+  methodMainPkg = methodMainPkgMaybe expect: "Missing main package"
+
+  // a bind package with only inlined calls adds no dependency
+  Assert that: methodMainPkg dependencyPackageNames isEmpty equals: true
 ]
 
 Test irDependencyCyclesReportTwoNodeCycleWithSourceEvidence = [
@@ -245,3 +256,4 @@ Test irDependencyCyclesIgnoreAcyclicGraphAndSamePackageReferences = [
 
   Assert that: ir dependencyCycles isEmpty equals: true
 ]
+

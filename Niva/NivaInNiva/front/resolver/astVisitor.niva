@@ -171,6 +171,28 @@ TypeDeclVisitor
         db addNewConstructor: noFieldsType generateDefaultConstructor forType: noFieldsType
         ()
       ]
+      | HostTypeDecl => [
+        (db isBindPkg: pkgName) ifFalse: [
+          db addErrorMessage: (LazyError tok: it token
+            msg: "host type is only allowed inside a bind file")
+          ()
+        ] ifTrue: [
+          hostType = TypeT noFieldsWithName: it name :pkgName
+          noFieldsTypes at: it name put: hostType
+          // host types behave like bind types so no record ctor is generated
+          db markBindTypeId: (hostType toMangledName)
+          hostDecl = TypeDecl token: it token name: it name genericParams: {} fields: {}
+          pkgTotypeDecls2 add: (Tuple x: pkgName y: hostDecl)
+          ()
+        ]
+      ]
+      | HostDepsDecl => [
+        (db isBindPkg: pkgName) ifFalse: [
+          db addErrorMessage: (LazyError tok: it token
+            msg: "host deps is only allowed inside a bind file")
+          ()
+        ]
+      ]
       |=> []
     ]
   ]
@@ -202,9 +224,12 @@ TypeDeclVisitor
 
         // add fields
 
-        db
-          addNewConstructor: resolvedType generateDefaultConstructor
-          forType: resolvedType
+        // host types carry a host object so only declared ctor binds exist
+        (db isHostType: resolvedType) ifFalse: [
+          db
+            addNewConstructor: resolvedType generateDefaultConstructor
+            forType: resolvedType
+        ]
 
 
         // это снова происходит внутри  .fillFields

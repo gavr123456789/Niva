@@ -5,6 +5,8 @@ type CljOutput
   entryNamespace: String
   manifest: CljManifest
   target: CljTarget
+  // host dependency entries for deps edn
+  hostDeps: List(String)
 
 CljOutput legacyMainShim -> String = [
   entryNamespace == (CompilerConstants cljReplNamespace)
@@ -160,11 +162,15 @@ IrPackage cljGeneratedNamespace -> String = this name cljGeneratedNamespace
 IrPackage cljGeneratedPath -> String = this name cljGeneratedPath
 
 // a union is one record per branch and an enum is keywords, so neither is a class
+// host types are plain java objects so they carry no generated class either
 IrModule cljClasslessTypes -> Set(String) = [
   ids::mut Set(String) = #()!
   packages forEach: [pkg ->
     pkg unions forEach: [ids add: it id cljNormalizeTypeId]
     pkg enums forEach: [ids add: it id cljNormalizeTypeId]
+    pkg types forEach: [def ->
+      (def hostClass isEmpty) ifFalse: [ids add: (def id cljNormalizeTypeId)]
+    ]
   ]
   ^ ids
 ]

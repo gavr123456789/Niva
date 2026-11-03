@@ -1419,3 +1419,79 @@ Test cljBindHostErrorPreservedAtBoundaryBb = [
   out assertCljContents: {"HASCAUSE=true" "HASHOSTERR=true" "SAME=true" "STACKPOS=true"} excludes: {"NOERROR"}
   io deleteRecursively path: root
 ]
+
+Test cljHostTypeSkipsRecordAndImportsJavaClass = [
+  bindSource = """
+    host type Vec2 = com.example.Point
+
+    constructor Vec2 at(x): Int y(y): Int -> Vec2 =
+      Bind imports: #("java:com.example.Point") emit: "(com.example.Point. $0 $1)"
+
+    extend Vec2 [
+      on getX -> Int = Bind imports: #() emit: "(.x $0)"
+    ]
+  """
+  result = ResolverHelper resolve: #{
+    "main" """Unit main -> Unit = [
+  a = Vec2 at: 1 y: 2
+  a getX echo
+  ()
+]"""
+    "demo.bind" bindSource
+  } entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+  clj assertCljContents: {
+    "(:import com.example.Point)"
+    "(com.example.Point. 1 2)"
+    "(.x a)"
+  } excludes: {"defrecord"}
+]
+
+Test cljHostDepsReachIrModule = [
+  bindSource = "host deps: [\"org.clojure/core.match {:mvn/version \\\"1.1.0\\\"}\"]"
+  result = ResolverHelper resolve: #{
+    "main" "Unit main -> Unit = [\"x\" echo\n()]"
+    "demo.bind" bindSource
+  } entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  Assert that: ((result toIrModule) hostDeps) equals: {"org.clojure/core.match {:mvn/version \"1.1.0\"}"}
+]
+
+Test cljBindTemplateUnescapesEscapedQuotes = [
+  bindSource = """
+    String hi -> String = Bind emit: "(str \"v \" $0)"
+  """
+  result = ResolverHelper resolve: #{
+    "main" "Unit main -> Unit = [q = \"p\" hi ()]"
+    "main.bind" bindSource
+  } entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 0
+  clj = CljBackend fullFromIrModule: (result toIrModule)
+  clj assertCljContents: {"(str \"v \" \"p\")"} excludes: {}
+]
+
+Test hostTypeOutsideBindFileIsError = [
+  result = ResolverHelper resolve: #{
+    "main" "host type Vec2 = com.example.Point"
+  } entryPoint: "main"
+  Assert that: result db listOfErrors count equals: 1
+]
+
+Test cljBindFileTypeEmitsRecord = [
+  Assert nivaFilesToClj: #{
+    "main" """Unit main -> Unit = [
+  a = Vec2 x: 1 y: 2
+  a getX echo
+  ()
+]"""
+    "t.bind" """type Vec2
+  x: Int
+  y: Int
+
+extend Vec2 [
+  on getX -> Int = Bind imports: #() emit: "(:x $0)"
+]
+"""
+  } containsAll: {"(defrecord t_Vec2 [x y])"} containsNone: {}
+]

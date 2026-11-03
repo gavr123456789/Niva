@@ -247,8 +247,10 @@ type NivaCompiler
 IO_Container cljDepsFileNeedsWrite(file): String -> Bool = [
   (this exists path: file) ifFalse: [true] ifTrue: [
     existing = this readFile path: file
+    // any generated deps file starts with the generated paths entry
     (existing == (CompilerConstants cljProjectDepsSource)) ||
-      (existing == (CompilerConstants cljPlainDepsSource))
+      (existing == (CompilerConstants cljPlainDepsSource)) ||
+      (existing startsWith: "{:paths [\"generated\" \".\"]")
   ]
 ]
 
@@ -270,10 +272,10 @@ IO_Container ensureCljProjectAt(root): String hotReload: Bool -> Unit = [
              .writeFile file: root + "/niva/hot_reload/host.clj" content: (CompilerConstants jvmHostSource)]
 ]
 
-IO_Container initializeGoProjectAt(root): String -> Unit = [
+IO_Container initializeGoProjectAt(root): String hostDeps: List(String) -> Unit = [
   this deleteRecursively path: root
   this createDirectories path: root + "/core"
-  this writeFile file: root + "/go.mod" content: (GoRuntimeSources moduleSource)
+  this writeFile file: root + "/go.mod" content: (GoRuntimeSources moduleSourceWith: hostDeps)
   this writeFile file: root + "/core/core.go" content: (GoRuntimeSources coreSource)
   ()
 ]
@@ -343,9 +345,7 @@ CljOutput publishTo(root): String withIO(io): IO_Container hotReload: Bool -> Cl
 
   io writeFile file: stagingManifest content: manifest edn
   io writeFile file: stagingShim content: this legacyMainShim
-  depsContent = hotReload
-    ifTrue: [CompilerConstants cljProjectDepsSource]
-    ifFalse: [CompilerConstants cljPlainDepsSource]
+  depsContent = CompilerConstants cljDepsSource: (this hostDeps) hotReload: hotReload
   needsPublishedDeps = io cljDepsFileNeedsWrite: publishedDeps
   needsPublishedBbDeps = io cljDepsFileNeedsWrite: publishedBbDeps
   needsPublishedDeps ifTrue: [
@@ -454,7 +454,7 @@ constructor NivaCompiler [
         generateGoFromResolver = [res::ResolverHelper ->
             irModule = res toIrModuleForGo
             goContent = GoBackend fullFromIrModule: irModule
-            io initializeGoProjectAt: realGoPath
+            io initializeGoProjectAt: realGoPath hostDeps: (irModule hostDeps)
             destanation = realGoPath + "/main.go"
             io writeFile file: destanation content: goContent
         ]
@@ -612,6 +612,7 @@ constructor NivaCompiler [
                     manifest: (CljManifest
                       version: 0 entryNamespace: "" modules: {} stateVars: {} typeShapes: {})
                     target: CljTarget.Jvm
+                    hostDeps: {}
                 ]
                 |=> cljOutputMaybe
               output = repl ifTrue: [
@@ -627,6 +628,7 @@ constructor NivaCompiler [
                     entryNamespace: (CompilerConstants cljReplNamespace)
                     :modules stateVars: manifest stateVars typeShapes: manifest typeShapes)
                   target: CljTarget.Jvm
+                  hostDeps: (cljOutput hostDeps)
               ] ifFalse: [cljOutput]
               entryNamespace <- output entryNamespace
               published = output publishTo: realCljPath withIO: io hotReload: true

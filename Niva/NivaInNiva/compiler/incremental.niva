@@ -118,11 +118,12 @@ type CompilerSession
   specializationUses: Map(String, Set(String))
   compilerConfig: CompilerConfigFingerprint?
   cljManifest: CljManifest?
+  hostDeps: List(String)
 
 constructor CompilerSession empty -> CompilerSession =
   CompilerSession revision: 0 committedSnapshot: null modules: #{} entry: null
     dependencies: #{} reverseDependencies: #{} specializationUses: #{}
-    compilerConfig: null cljManifest: null
+    compilerConfig: null cljManifest: null hostDeps: {}
 
 Map(String, IncrementalDependencyTargets) incrementalReverseGraph -> Map(String, IncrementalDependencyTargets) = [
   reverseLists::mut Map(String, IncrementalDependencyTargets) = #{}!
@@ -417,6 +418,7 @@ CompilerSession commit(candidate): CompilerCandidate -> CompilerSession =
     specializationUses: candidate specializationUses
     compilerConfig: candidate compilerConfig
     cljManifest: candidate cljManifest
+    hostDeps: (candidate irModule hostDeps)
 
 type CompilerDiagnostic
   requestVersion: Int
@@ -508,11 +510,19 @@ CompilerSession prepareCandidate(snapshot): WorkspaceSnapshot interfaceSnapshot:
   mergedEntry = (bodyModules contains: interfaceSnapshot entryPointName)
     ifTrue: [bodyIr entry]
     ifFalse: [entry]
+  // host deps accumulate during a session because removed entries only
+  // reset on the next full build
+  mergedHostDeps::mut List(String) = {}!
+  hostDeps forEach: [mergedHostDeps add: it]
+  bodyIr hostDeps forEach: [dep ->
+    (mergedHostDeps any: [it == dep]) ifFalse: [mergedHostDeps add: dep]
+  ]
   mergedIr = IrModule
     version: bodyIr version
     pkg: interfaceSnapshot entryPointName
     packages: mergedPackages
     entry: mergedEntry
+    hostDeps: mergedHostDeps toList
 
   mergedSpecializationUses::mut Map(String, Set(String)) = #{}!
   specializationUses forEach: [key, contributors ->

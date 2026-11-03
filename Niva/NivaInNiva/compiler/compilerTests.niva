@@ -163,7 +163,7 @@ Test goProjectGenerationCreatesCleanModule = [
   io createDirectories path: root
   io writeFile file: root + "/stale.go" content: "package stale"
 
-  io initializeGoProjectAt: root
+  io initializeGoProjectAt: root hostDeps: {}
 
   Assert that: (io readFile path: root + "/go.mod") equals: (GoRuntimeSources moduleSource)
   coreSource = io readFile path: root + "/core/core.go"
@@ -1076,4 +1076,18 @@ Test babashkaHostLoadsRecoversAndWatchesSources = [
   Assert that: (result contains: "watch-stopped true") equals: true
 
   io deleteRecursively path: root
+]
+
+Test cljDepsSourceMergesHostDeps = [
+  merged = CompilerConstants cljDepsSource: {"org.clojure/core.match {:mvn/version \"1.1.0\"}"} hotReload: true
+  Assert that: (merged contains: "clj-reload") equals: true
+  Assert that: (merged contains: "core.match") equals: true
+  Assert that: (CompilerConstants cljDepsSource: {} hotReload: true) equals: (CompilerConstants cljProjectDepsSource)
+  Assert that: (CompilerConstants cljDepsSource: {} hotReload: false) equals: (CompilerConstants cljPlainDepsSource)
+]
+
+Test goModuleSourceAddsHostDeps = [
+  src = GoRuntimeSources moduleSourceWith: {"github.com/x/y v1.2.3"}
+  Assert that: (src contains: "require github.com/x/y v1.2.3") equals: true
+  Assert that: (GoRuntimeSources moduleSourceWith: {}) equals: (GoRuntimeSources moduleSource)
 ]

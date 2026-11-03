@@ -28,6 +28,9 @@ union Declaration token: Token =
   | ExtendDecl
     receiver: AstType2
     messages: List(MessageDecl)
+  // host declarations are only allowed inside bind files
+  | HostTypeDecl name: String hostPath: String
+  | HostDepsDecl items: List(String)
   | MessageDecl
     receiver: AstType2
     name: String

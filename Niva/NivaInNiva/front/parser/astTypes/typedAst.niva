@@ -200,6 +200,8 @@ union TypedDeclaration token: Token =
 | ExtendDeclT
   receiver: NivaType
   messages: List::MessageDeclT
+| HostTypeDeclT name: String hostPath: String
+| HostDepsDeclT items: List(String)
 | MessageDeclT
   receiver: NivaType
   name: String
