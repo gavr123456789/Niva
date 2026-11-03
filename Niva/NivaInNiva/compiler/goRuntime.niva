@@ -13,6 +13,8 @@ constructor GoRuntimeSources coreSource -> String = """
   package core
 
   import (
+	"crypto/sha256"
+	"encoding/base64"
   	"fmt"
   	"math/rand/v2"
   	"os"
@@ -436,6 +438,42 @@ constructor GoRuntimeSources coreSource -> String = """
   	return string(r)
   }
   func String__toInt(s string) int { return String__toIntRadix(s, 10) }
+  func String__toIntOr(s string, fallback int) int {
+	value, err := strconv.ParseInt(s, 10, 0)
+	if err != nil {
+		return fallback
+	}
+	return int(value)
+  }
+  func String__toDoubleOr(s string, fallback float64) float64 {
+	value, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return fallback
+	}
+	return value
+  }
+  func String__encodeBase64(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
+  func String__decodeBase64(s string) string {
+	value, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return ""
+	}
+	return string(value)
+  }
+  func String__sha256(s string) string {
+	digest := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", digest[:])
+  }
+  func String__truncate(s string, max int) string {
+	if max < 0 {
+		max = 0
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max]) + "..."
+  }
   func String__toIntRadix(s string, r int) int {
   	i, err := strconv.ParseInt(s, r, 0)
   	if err != nil {

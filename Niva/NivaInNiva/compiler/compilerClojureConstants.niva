@@ -336,6 +336,7 @@ constructor CompilerConstants nivaCoreSource -> String = """
     (catch NumberFormatException _ 0.0)))
 
 (defn String__lowercase [^String s] (.toLowerCase s))
+(defn String__uppercase [^String s] (.toUpperCase s))
 
 (defn String__first [s]
   (let [cps (string-code-points s)]
@@ -404,6 +405,37 @@ constructor CompilerConstants nivaCoreSource -> String = """
 
 (defn String__toInt [^String s]
   (String__toIntRadix s 10))
+(defn String__toIntOr [^String s fallback]
+  (try
+    (Long/parseLong s)
+    (catch Exception _ fallback)))
+
+(defn String__toDoubleOr [^String s fallback]
+  (try
+    (Double/parseDouble s)
+    (catch Exception _ fallback)))
+
+(defn String__encodeBase64 [^String s]
+  (.encodeToString (java.util.Base64/getEncoder) (.getBytes s "UTF-8")))
+
+(defn String__decodeBase64 [^String s]
+  (try
+    (String. (.decode (java.util.Base64/getDecoder) s) "UTF-8")
+    (catch IllegalArgumentException _ "")))
+
+(defn String__sha256 [^String s]
+  (let [digest (.digest (java.security.MessageDigest/getInstance "SHA-256") (.getBytes s "UTF-8"))
+        builder (StringBuilder.)]
+    (doseq [b digest]
+      (.append builder (format "%02x" (bit-and b 0xff))))
+    (.toString builder)))
+
+(defn String__truncate [^String s max]
+  (let [cps (string-code-points s)
+        limit (clojure.core/max 0 max)]
+    (if (<= (count cps) limit)
+      s
+      (str (code-points->string (take limit cps)) "..."))))
 
 ;; Bool
 
