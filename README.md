@@ -434,6 +434,7 @@ Other commands:
 `niva run` to run all files in the folder recursivelly starting from main.niva
 `niva build` to output jar\binary file
 `niva info > info.md` to output all types and their methods
+`niva infofull > info.md` to output all packages including core types
 `niva --help` for more
 
 ### Project with 2 files

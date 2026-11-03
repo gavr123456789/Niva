@@ -495,7 +495,7 @@ constructor NivaCompiler [
 
         // for `info package.Type`, we always start from main
         // path arg in info mode is PKG.TYPE
-        rootFile = option == CompilerOption.Info
+        rootFile = ((option == CompilerOption.Info) || (option == CompilerOption.InfoFull))
           ifTrue: ["main.niva"]
           ifFalse: [
             pathMaybe = path
@@ -806,11 +806,12 @@ constructor NivaCompiler [
             generateIrFromResolver res: resolver
             ()
         ]
-        option == CompilerOption.Info ifTrue: [
+        ((option == CompilerOption.Info) || (option == CompilerOption.InfoFull)) ifTrue: [
             resolver = runOrBuild do
             pathMaybe = path
             info = | pathMaybe
-              | null => resolver db structureInfo
+              | null => (option == CompilerOption.InfoFull)
+                  ifTrue: [resolver db structureInfoFull] ifFalse: [resolver db structureInfo]
               |=> resolver db structureInfoFor: pathMaybe
             info echo
             ()

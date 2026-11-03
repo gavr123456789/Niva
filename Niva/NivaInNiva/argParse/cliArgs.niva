@@ -45,6 +45,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
         niva ir [FILE] [OPTIONS]
         niva info — print packages, types, fields, and methods as Markdown
         niva info PACKAGE.TYPE — print information about one type
+        niva infofull — print all packages including core types
 
       FILE defaults to main.niva.
 
@@ -73,6 +74,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
     | "watch" => CompilerOption.Watch
     | "ir" => CompilerOption.Ir
     | "info" => CompilerOption.Info
+    | "infofull" => CompilerOption.InfoFull
     |=> CompilerOption.Help
 
   unknownCommand = (option == CompilerOption.Help) && (commandIsHelp not)
@@ -211,7 +213,7 @@ constructor ArgParser args::List(String) -> ArgsParsed = [
   |=> ArgsParsed :path :option :backend :runtime :target :verbose :debug :repl :replLine :nativeBuild :incremental :runtimeArgs
 ]
 
-enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | Help
+enum CompilerOption = Run | Build | Watch | Ir | Daemon | RunTests | Info | InfoFull | Help
 enum CompilerBackend = Go  | Clj | Lsp
 enum CompilerRuntime = Jvm | Bb
 enum CompilerTarget = Jvm | Bb | Go | Ixgo

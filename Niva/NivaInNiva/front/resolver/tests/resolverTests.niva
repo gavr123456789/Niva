@@ -1581,6 +1581,9 @@ Test structureInfoMarkdownAndTypePath = [
 
   invalidInfo = result db structureInfoFor: "Person"
   (invalidInfo contains: "Expected a type path in the form `package.Type`") assertTrue
+
+  fullInfo = result db structureInfoFull
+  (fullInfo contains: "## Package `core`") assertTrue
 ]
 
 Test compileTimeInfoMessage = [

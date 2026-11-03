@@ -1509,6 +1509,14 @@ extend TyperDB [
     ^ sb toString
   ]
 
+  on structureInfoFull -> String = [
+    sb = StringBuilder new
+    allPackages = packages values toList
+      sortedBy: [it name]
+    allPackages forEach: [this appendStructureInfoForPackage: it to: sb]
+    ^ sb toString
+  ]
+
   on structureInfoFor(typePath): String -> String = [
     hasPackageAndType = (typePath contains: ".") &&
       ((typePath substringBeforeLast: ".") count != 0) &&
